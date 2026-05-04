@@ -145,14 +145,12 @@
 
                 <label class="dsc-field-group" for="monitor-curso">
                   <span>Data do curso</span>
-                  <input class="dsc-form-control" id="monitor-curso" type="date" required />
-                  <div class="dsc-form-error" id="monitor-curso-error"></div>
+                  <input class="dsc-form-control" id="monitor-curso" type="date" />
                 </label>
 
                 <label class="dsc-field-group" for="monitor-validade-curso">
                   <span>Validade do curso</span>
-                  <input class="dsc-form-control" id="monitor-validade-curso" type="date" required />
-                  <div class="dsc-form-error" id="monitor-validade-curso-error"></div>
+                  <input class="dsc-form-control" id="monitor-validade-curso" type="date" readonly />
                 </label>
               </div>
 
@@ -280,8 +278,6 @@
       const nascimentoInput = document.getElementById('monitor-nascimento');
       const nomeError = document.getElementById('monitor-nome-error');
       const cpfError = document.getElementById('monitor-cpf-error');
-      const cursoError = document.getElementById('monitor-curso-error');
-      const validadeCursoError = document.getElementById('monitor-validade-curso-error');
       const nascimentoError = document.getElementById('monitor-nascimento-error');
       const feedback = document.getElementById('monitor-form-feedback');
       const gridFeedback = document.getElementById('monitor-grid-feedback');
@@ -546,6 +542,24 @@
         return `${year}-${month}-${day}`;
       };
 
+      const shiftDateInputValueYears = (value, yearOffset) => {
+        const normalizedValue = String(value || '').trim();
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+          return '';
+        }
+
+        const [year, month, day] = normalizedValue.split('-').map(Number);
+        const shiftedDate = new Date(year, month - 1, day);
+
+        if (Number.isNaN(shiftedDate.getTime())) {
+          return '';
+        }
+
+        shiftedDate.setFullYear(shiftedDate.getFullYear() + yearOffset);
+        return formatEditableDateInputValue(shiftedDate);
+      };
+
       const isBirthDateBeforeToday = (value) => Boolean(value) && value < getCurrentDateInputValue();
       const getNextDateInputValue = () => {
         const nextDay = new Date();
@@ -555,11 +569,9 @@
         const day = String(nextDay.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       };
-      const isTodayOrFutureDate = (value) => Boolean(value) && value >= getCurrentDateInputValue();
-      const isCourseValidityOnOrAfterCourseDate = (cursoMonitor, validadeCurso) => Boolean(cursoMonitor) && Boolean(validadeCurso) && validadeCurso >= cursoMonitor;
-      const syncValidadeCursoMin = () => {
-        const currentDate = getCurrentDateInputValue();
-        validadeCursoInput.min = cursoInput.value && cursoInput.value > currentDate ? cursoInput.value : currentDate;
+      const syncValidadeCursoFromCurso = () => {
+        const comparableCurso = getComparableDateInputValue(cursoInput);
+        validadeCursoInput.value = comparableCurso ? shiftDateInputValueYears(comparableCurso, 5) : '';
       };
 
       const formatDateTimeLabel = (value) => {
@@ -667,8 +679,6 @@
         codigoError.textContent = '';
         nomeError.textContent = '';
         cpfError.textContent = '';
-        cursoError.textContent = '';
-        validadeCursoError.textContent = '';
         nascimentoError.textContent = '';
         feedback.textContent = '';
         feedback.className = 'dsc-feedback';
@@ -677,16 +687,12 @@
         codigo: codigoError,
         monitor: nomeError,
         cpfMonitor: cpfError,
-        cursoMonitor: cursoError,
-        validadeCurso: validadeCursoError,
         nascimento: nascimentoError,
       };
       const errorTargets = {
         codigo: codigoInput,
         monitor: nomeInput,
         cpfMonitor: cpfInput,
-        cursoMonitor: cursoInput,
-        validadeCurso: validadeCursoInput,
         nascimento: nascimentoInput,
       };
       const revealFirstFormError = (errorMap = {}) => {
@@ -741,46 +747,6 @@
         }
 
         nascimentoError.textContent = '';
-        return false;
-      };
-
-      const validateMonitorValidityField = (showRequired = false) => {
-        const cursoMonitor = getComparableDateInputValue(cursoInput);
-        const validadeCurso = getComparableDateInputValue(validadeCursoInput);
-
-        if (!validadeCurso) {
-          validadeCursoError.textContent = showRequired ? 'Informe a validade do curso.' : '';
-          return showRequired;
-        }
-
-        if (!isTodayOrFutureDate(validadeCurso)) {
-          validadeCursoError.textContent = 'Validade do curso deve ser maior ou igual a hoje.';
-          return true;
-        }
-
-        if (cursoMonitor && !isCourseValidityOnOrAfterCourseDate(cursoMonitor, validadeCurso)) {
-          validadeCursoError.textContent = 'Validade do curso deve ser maior ou igual a data do curso.';
-          return true;
-        }
-
-        validadeCursoError.textContent = '';
-        return false;
-      };
-
-      const validateMonitorCourseField = () => {
-        const cursoMonitor = getComparableDateInputValue(cursoInput);
-
-        if (!cursoMonitor) {
-          cursoError.textContent = 'Informe a data do curso.';
-          return true;
-        }
-
-        if (!isTodayOrFutureDate(cursoMonitor)) {
-          cursoError.textContent = 'Data do curso deve ser maior ou igual a hoje.';
-          return true;
-        }
-
-        cursoError.textContent = '';
         return false;
       };
 
@@ -1037,7 +1003,9 @@
         saveButton.textContent = isEditing ? 'Salvar alteracao' : 'Salvar monitor';
         setFormReadOnly(isReadOnly);
         setActiveFormTab('cadastro');
-        void loadMonitorVinculosByCpf(cpfInput.value);
+        if (!isOrdemServicoMonitorPopup) {
+          void loadMonitorVinculosByCpf(cpfInput.value);
+        }
       };
 
       const showImportForm = () => {
@@ -1072,6 +1040,7 @@
         syncPopupPageState();
         form.reset();
         codigoInput.value = '';
+        syncValidadeCursoFromCurso();
         setSelectedTipoVinculo('');
         editingCodigo = null;
         formMode = 'create';
@@ -1280,6 +1249,41 @@
         cpfInput.value = normalizeCpf(cpf);
       };
 
+      const startPopupFlow = async ({ cpf = '' } = {}) => {
+        const normalizedCpf = normalizeCpf(cpf);
+
+        if (!normalizedCpf) {
+          startInsert();
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/monitor/lookup?cpf=${encodeURIComponent(normalizedCpf)}`, {
+            headers: { Accept: 'application/json' },
+          });
+          const payload = await readJsonResponse(response);
+
+          if (response.status === 404) {
+            startInsert({ cpf: normalizedCpf });
+            feedback.textContent = 'Monitor nao encontrado. Cadastre o monitor e salve para retornar a Ordem de Servico.';
+            feedback.className = 'dsc-feedback dsc-feedback-error';
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao localizar monitor.');
+          }
+
+          startEdit(payload.item || {});
+          feedback.textContent = 'Monitor localizado pelo CPF informado na Ordem de Servico.';
+          feedback.className = 'dsc-feedback dsc-feedback-success';
+        } catch (error) {
+          startInsert({ cpf: normalizedCpf });
+          feedback.textContent = getRequestErrorMessage(error, 'Falha ao localizar monitor.');
+          feedback.className = 'dsc-feedback dsc-feedback-error';
+        }
+      };
+
       const startEdit = (item) => {
         editingCodigo = item.codigo;
         originalCpfValue = normalizeCpf(item.cpf_monitor || '');
@@ -1287,7 +1291,7 @@
         nomeInput.value = item.monitor;
         cpfInput.value = item.cpf_monitor;
         cursoInput.value = item.curso_monitor || '';
-        validadeCursoInput.value = item.validade_curso || '';
+        validadeCursoInput.value = item.curso_monitor ? shiftDateInputValueYears(item.curso_monitor, 5) : (item.validade_curso || '');
         nascimentoInput.value = item.nascimento || '';
         setSelectedTipoVinculo(item.tipo_vinculo || '');
         resetMessages();
@@ -1301,7 +1305,7 @@
         nomeInput.value = item.monitor;
         cpfInput.value = item.cpf_monitor;
         cursoInput.value = item.curso_monitor || '';
-        validadeCursoInput.value = item.validade_curso || '';
+        validadeCursoInput.value = item.curso_monitor ? shiftDateInputValueYears(item.curso_monitor, 5) : (item.validade_curso || '');
         nascimentoInput.value = item.nascimento || '';
         setSelectedTipoVinculo(item.tipo_vinculo || '');
         resetMessages();
@@ -1403,16 +1407,11 @@
       });
 
       cursoInput.addEventListener('input', () => {
-        syncValidadeCursoMin();
-        if (cursoError.textContent.trim()) {
-          validateMonitorCourseField();
-        }
-        validateMonitorValidityField();
+        syncValidadeCursoFromCurso();
       });
 
       cursoInput.addEventListener('blur', () => {
-        validateMonitorCourseField();
-        validateMonitorValidityField(Boolean(validadeCursoInput.value));
+        syncValidadeCursoFromCurso();
       });
 
       nascimentoInput.addEventListener('input', () => {
@@ -1425,31 +1424,19 @@
         validateMonitorBirthDateField();
       });
 
-      validadeCursoInput.addEventListener('input', () => {
-        if (validadeCursoError.textContent.trim()) {
-          validateMonitorValidityField(true);
-          return;
-        }
-        validateMonitorValidityField();
-      });
-
-      validadeCursoInput.addEventListener('blur', () => {
-        validateMonitorValidityField(true);
-      });
-
-      cursoInput.min = getCurrentDateInputValue();
       nascimentoInput.max = getPreviousDateInputValue();
-      syncValidadeCursoMin();
+      syncValidadeCursoFromCurso();
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        [nascimentoInput, cursoInput, validadeCursoInput].forEach(commitEditableDateInput);
+        [nascimentoInput, cursoInput].forEach(commitEditableDateInput);
+        syncValidadeCursoFromCurso();
 
         const codigo = editingCodigo ? normalizeCodigo(codigoInput.value) : '';
         const monitor = normalizeName(nomeInput.value);
         const cpfMonitor = normalizeCpf(cpfInput.value);
-        const cursoMonitor = cursoInput.value;
+        const cursoMonitor = getComparableDateInputValue(cursoInput);
         const validadeCurso = validadeCursoInput.value;
         const nascimento = nascimentoInput.value;
         const tipoVinculo = getSelectedTipoVinculo();
@@ -1485,16 +1472,6 @@
           hasError = true;
         }
 
-        if (!cursoMonitor) {
-          hasError = validateMonitorCourseField();
-        } else if (validateMonitorCourseField()) {
-          hasError = true;
-        }
-
-        if (validateMonitorValidityField(true)) {
-          hasError = true;
-        }
-
         if (hasError) {
           feedback.textContent = 'Corrija os campos para continuar.';
           feedback.classList.add('dsc-feedback-error');
@@ -1503,8 +1480,6 @@
             monitor: nomeError.textContent,
             cpfMonitor: cpfError.textContent,
             nascimento: nascimentoError.textContent,
-            cursoMonitor: cursoError.textContent,
-            validadeCurso: validadeCursoError.textContent,
           });
           return;
         }
@@ -1839,16 +1814,16 @@
         void loadItems();
       });
 
-      [nascimentoInput, cursoInput, validadeCursoInput].forEach(enableFullDateSelection);
+      [nascimentoInput, cursoInput].forEach(enableFullDateSelection);
 
       hideForm();
       hideImportForm();
       hideRejectionPanel();
       if (isOrdemServicoMonitorPopup) {
-        startInsert({ cpf: popupCpf });
-        feedback.textContent = 'Monitor nao encontrado. Cadastre o monitor e salve para retornar a Ordem de Servico.';
+        void startPopupFlow({ cpf: popupCpf });
+      } else {
+        void loadItems();
       }
-      void loadItems();
     </script>
   </body>
 </html>

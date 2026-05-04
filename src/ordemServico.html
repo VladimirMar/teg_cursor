@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ORDEM DE SERVICO</title>
 
-    <link rel="stylesheet" href="css/login.css?v=20260423-emissao-footer-static-7" />
+    <link rel="stylesheet" href="css/login.css?v=20260504-resumo-os-single-panel-30" />
   </head>
   <body>
     <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
@@ -382,7 +382,7 @@
                 <button type="submit" class="dsc-btn dsc-btn-blue" id="save-ordem-servico-button">Salvar OrdemServico</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="cancel-ordem-servico-button">Cancelar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="show-ordem-servico-termo-button">Consulta Termo</button>
-                <button type="button" class="dsc-btn dsc-btn-white" id="show-ordem-servico-summary-button">Resumo OS</button>
+                <button type="button" class="dsc-btn dsc-btn-white" id="show-ordem-servico-dados-os-button">Dados OS</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="show-ordem-servico-emissao-button">Emissao Doc</button>
               </div>
 
@@ -404,18 +404,18 @@
                   </section>
                 </div>
 
-                <div class="dsc-summary-overlay dsc-hidden" id="ordem-servico-summary-modal" aria-hidden="true">
-                  <section class="dsc-form-section-card dsc-form-section-card-ordem-servico-resumo dsc-hidden" id="ordem-servico-summary-panel" tabindex="-1">
-                    <div class="dsc-ordem-servico-summary-header dsc-popup-header-with-compact-close">
+                <div class="dsc-summary-overlay dsc-hidden" id="ordem-servico-dados-os-modal" aria-hidden="true">
+                  <section class="dsc-form-section-card dsc-form-section-card-ordem-servico-termo dsc-hidden" id="ordem-servico-dados-os-panel" tabindex="-1">
+                    <div class="dsc-ordem-servico-termo-header dsc-popup-header-with-compact-close">
                       <div>
-                        <h3 class="dsc-form-section-title">Resumo termo e OS</h3>
-                        <p class="dsc-ordem-servico-summary-subtitle" id="ordem-servico-summary-subtitle">Dados consolidados do termo, condutor, monitor e veiculo.</p>
+                        <h3 class="dsc-form-section-title">Dados OS</h3>
+                        <p class="dsc-ordem-servico-summary-subtitle" id="ordem-servico-dados-os-subtitle">Consulta dos dados principais da OS.</p>
                       </div>
-                      <button type="button" class="dsc-btn dsc-btn-white dsc-popup-close-button dsc-popup-compact-close-button" id="close-ordem-servico-summary-button" aria-label="Fechar resumo da ordem de servico">X</button>
+                      <button type="button" class="dsc-btn dsc-btn-white dsc-popup-close-button dsc-popup-compact-close-button" id="close-ordem-servico-dados-os-button" aria-label="Fechar dados da OS">X</button>
                     </div>
 
-                    <div class="dsc-ordem-servico-summary-grid" id="ordem-servico-summary-content"></div>
-                    <p class="dsc-feedback" id="ordem-servico-summary-feedback"></p>
+                    <div class="dsc-ordem-servico-dados-os-layout" id="ordem-servico-dados-os-content"></div>
+                    <p class="dsc-feedback" id="ordem-servico-dados-os-feedback"></p>
                   </section>
                 </div>
 
@@ -604,7 +604,7 @@
       const formTitle = document.getElementById('ordem-servico-form-title');
       const saveButton = document.getElementById('save-ordem-servico-button');
       const showTermoButton = document.getElementById('show-ordem-servico-termo-button');
-      const showSummaryButton = document.getElementById('show-ordem-servico-summary-button');
+      const showDadosOsButton = document.getElementById('show-ordem-servico-dados-os-button');
       const showEmissaoButton = document.getElementById('show-ordem-servico-emissao-button');
       const termoModal = document.getElementById('ordem-servico-termo-modal');
       const termoPanel = document.getElementById('ordem-servico-termo-panel');
@@ -612,12 +612,12 @@
       const termoSubtitle = document.getElementById('ordem-servico-termo-subtitle');
       const termoContent = document.getElementById('ordem-servico-termo-content');
       const termoFeedback = document.getElementById('ordem-servico-termo-feedback');
-      const summaryModal = document.getElementById('ordem-servico-summary-modal');
-      const summaryPanel = document.getElementById('ordem-servico-summary-panel');
-      const closeSummaryButton = document.getElementById('close-ordem-servico-summary-button');
-      const summarySubtitle = document.getElementById('ordem-servico-summary-subtitle');
-      const summaryContent = document.getElementById('ordem-servico-summary-content');
-      const summaryFeedback = document.getElementById('ordem-servico-summary-feedback');
+      const dadosOsModal = document.getElementById('ordem-servico-dados-os-modal');
+      const dadosOsPanel = document.getElementById('ordem-servico-dados-os-panel');
+      const closeDadosOsButton = document.getElementById('close-ordem-servico-dados-os-button');
+      const dadosOsSubtitle = document.getElementById('ordem-servico-dados-os-subtitle');
+      const dadosOsContent = document.getElementById('ordem-servico-dados-os-content');
+      const dadosOsFeedback = document.getElementById('ordem-servico-dados-os-feedback');
       const emissaoModal = document.getElementById('ordem-servico-emissao-modal');
       const emissaoPanel = document.getElementById('ordem-servico-emissao-panel');
       const closeEmissaoButton = document.getElementById('close-ordem-servico-emissao-button');
@@ -932,21 +932,62 @@
         });
       };
 
-      const buildSummaryFieldHtml = (label, value) => `
-        <div class="dsc-ordem-servico-summary-field">
-          <span class="dsc-ordem-servico-summary-label">${escapeHtml(label)}</span>
-          <strong class="dsc-ordem-servico-summary-value">${escapeHtml(value)}</strong>
+      const buildResumoOsFieldHtml = (label, value, options = {}) => {
+        const classNames = ['dsc-resumo-os-field'];
+        const span = options.span || 12;
+        const basis = `${((span / 12) * 100).toFixed(4)}%`;
+
+        if (options.className) {
+          classNames.push(options.className);
+        }
+
+        if (options.full) {
+          classNames.push('dsc-resumo-os-field-full');
+        }
+
+        if (options.compact) {
+          classNames.push('dsc-resumo-os-field-compact');
+        }
+
+        if (options.highlight) {
+          classNames.push('dsc-resumo-os-field-highlight');
+        }
+
+        return `
+          <div class="${classNames.join(' ')}" style="--resumo-os-field-basis:${basis}">
+            <span class="dsc-resumo-os-label">${escapeHtml(label)}</span>
+            <strong class="dsc-resumo-os-box">${escapeHtml(formatSummaryValue(value))}</strong>
+          </div>
+        `;
+      };
+
+      const buildResumoOsRowHtml = (fields) => `
+        <div class="dsc-resumo-os-row">
+          ${fields.join('')}
         </div>
       `;
 
-      const buildSummaryCardHtml = (title, fields) => `
-        <article class="dsc-ordem-servico-summary-card">
+      const buildResumoOsSectionHtml = (title, rows) => {
+        return `
+        <section class="dsc-resumo-os-section">
           <h4>${escapeHtml(title)}</h4>
-          <div class="dsc-ordem-servico-summary-fields">
-            ${fields.map((field) => buildSummaryFieldHtml(field.label, field.value)).join('')}
+          <div class="dsc-resumo-os-section-body">
+            ${rows.join('')}
           </div>
-        </article>
+        </section>
       `;
+      };
+
+      const buildResumoOsGroupHtml = (title, rows) => {
+        return `
+        <div class="dsc-resumo-os-group">
+          <h4>${escapeHtml(title)}</h4>
+          <div class="dsc-resumo-os-group-body">
+            ${rows.join('')}
+          </div>
+        </div>
+      `;
+      };
 
       const getVeiculoCapacitiesSummary = (veiculoItem) => {
         const entries = [
@@ -1106,6 +1147,104 @@
         focusOrdemServicoTermo();
       };
 
+      const clearOrdemServicoDadosOs = () => {
+        dadosOsModal.classList.add('dsc-hidden');
+        dadosOsModal.setAttribute('aria-hidden', 'true');
+        dadosOsPanel.classList.add('dsc-hidden');
+        dadosOsContent.innerHTML = '';
+        dadosOsSubtitle.textContent = 'Consulta dos dados principais da OS.';
+        dadosOsFeedback.textContent = '';
+        dadosOsFeedback.className = 'dsc-feedback';
+        syncPopupPageState();
+      };
+
+      const focusOrdemServicoDadosOs = () => {
+        if (dadosOsPanel.classList.contains('dsc-hidden')) {
+          return;
+        }
+
+        closeDadosOsButton.disabled = false;
+        closeDadosOsButton.focus({ preventScroll: true });
+      };
+
+      const renderOrdemServicoDadosOs = (termoItem, condutorItem = null, monitorItem = null, veiculoItem = null) => {
+        const termoAdesao = normalizeTermoAdesao(termoItem?.termoAdesao || termoAdesaoInput.value);
+        const tipoTermo = termoItem?.tipo_termo || termoItem?.tipoTermo;
+        const dre = String(dreDescricaoInput.value ?? '').trim();
+        const credenciado = termoItem?.credenciado || termoItem?.empresa || credenciadoInput.value;
+        const nomeCondutor = condutorItem?.condutor || condutorInput.value;
+        const cpfCondutor = condutorItem?.cpf_condutor || cpfCondutorInput.value;
+        const vinculoProfissional = condutorItem?.tipo_vinculo;
+        const validadeCurso = condutorItem?.validade_curso;
+        const nomeMonitor = monitorItem?.monitor || monitorInput.value;
+        const cpfMonitor = monitorItem?.cpf_monitor || cpfMonitorInput.value;
+        const nascimentoMonitor = monitorItem?.nascimento;
+        const vinculoMonitor = monitorItem?.tipo_vinculo;
+        const validadeCursoMonitor = monitorItem?.validade_curso;
+        const crm = veiculoItem?.crm || crmInput.value;
+        const validadeCrm = veiculoItem?.val_crm || veiculoItem?.validade_crm;
+        const seguradora = veiculoItem?.seguradora;
+        const placa = veiculoItem?.placas || veiculoPlacasInput.value;
+        const ano = veiculoItem?.ano;
+        const capacidades = getVeiculoCapacitiesSummary(veiculoItem);
+        const tipos = getVeiculoTypesSummary(veiculoItem);
+        const titular = veiculoItem?.titular;
+
+        dadosOsSubtitle.textContent = `Consulta dos dados principais da OS ${formatSummaryValue(buildOrdemServicoLabel())}.`;
+        dadosOsContent.innerHTML = `
+          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section">
+            <h4>Credenciado</h4>
+            <div class="dsc-ordem-servico-dados-os-row">
+              ${buildReadonlyTermoFieldHtml('Termo de adesao', termoAdesao, { emphasis: true, compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Tipo de termo', tipoTermo, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('DRE', dre, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Credenciado', credenciado, { emphasis: true })}
+            </div>
+          </section>
+          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section">
+            <h4>Condutor</h4>
+            <div class="dsc-ordem-servico-dados-os-condutor-top">
+              ${buildReadonlyTermoFieldHtml('Nome', nomeCondutor, { emphasis: true })}
+            </div>
+            <div class="dsc-ordem-servico-dados-os-condutor-bottom">
+              ${buildReadonlyTermoFieldHtml('CPF', cpfCondutor, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Vinculo profissional', vinculoProfissional, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Validade do curso', formatSummaryDate(validadeCurso), { compactLabel: true })}
+            </div>
+          </section>
+          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section">
+            <h4>Monitor</h4>
+            <div class="dsc-ordem-servico-dados-os-monitor-top">
+              ${buildReadonlyTermoFieldHtml('Nome', nomeMonitor, { emphasis: true })}
+              ${buildReadonlyTermoFieldHtml('CPF', cpfMonitor, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Data de nascimento', formatSummaryDate(nascimentoMonitor), { compactLabel: true })}
+            </div>
+            <div class="dsc-ordem-servico-dados-os-monitor-bottom">
+              ${buildReadonlyTermoFieldHtml('Tipo de vinculo', vinculoMonitor, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Validade do curso', formatSummaryDate(validadeCursoMonitor), { compactLabel: true })}
+            </div>
+          </section>
+          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section">
+            <h4>Veiculo</h4>
+            <div class="dsc-ordem-servico-dados-os-veiculo-top">
+              ${buildReadonlyTermoFieldHtml('CRM', crm, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Validade CRM', formatSummaryDate(validadeCrm), { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Seguradora', seguradora, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Placa', placa, { compactLabel: true })}
+            </div>
+            <div class="dsc-ordem-servico-dados-os-veiculo-bottom">
+              ${buildReadonlyTermoFieldHtml('Ano', ano, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Capacidades', capacidades, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Tipos', tipos, { compactLabel: true })}
+              ${buildReadonlyTermoFieldHtml('Titular', titular, { compactLabel: true })}
+            </div>
+          </section>
+        `;
+        dadosOsFeedback.textContent = '';
+        dadosOsFeedback.className = 'dsc-feedback';
+        focusOrdemServicoDadosOs();
+      };
+
       const handleShowOrdemServicoTermo = async () => {
         const termoAdesao = normalizeTermoAdesao(termoAdesaoInput.value);
         termoAdesaoInput.value = termoAdesao;
@@ -1143,156 +1282,35 @@
         }
       };
 
-      const clearOrdemServicoSummary = () => {
-        summaryModal.classList.add('dsc-hidden');
-        summaryModal.setAttribute('aria-hidden', 'true');
-        summaryPanel.classList.add('dsc-hidden');
-        summaryContent.innerHTML = '';
-        summarySubtitle.textContent = 'Dados consolidados do termo, condutor, monitor e veiculo.';
-        summaryFeedback.textContent = '';
-        summaryFeedback.className = 'dsc-feedback';
-        syncPopupPageState();
-      };
-
-      const focusOrdemServicoSummary = () => {
-        if (summaryPanel.classList.contains('dsc-hidden')) {
-          return;
-        }
-
-        if (document.activeElement instanceof HTMLElement && typeof document.activeElement.blur === 'function') {
-          document.activeElement.blur();
-        }
-
-        closeSummaryButton.disabled = false;
-        closeSummaryButton.focus({ preventScroll: true });
-
-        window.setTimeout(() => {
-          if (summaryPanel.classList.contains('dsc-hidden')) {
-            return;
-          }
-
-          if (document.activeElement instanceof HTMLElement && typeof document.activeElement.blur === 'function') {
-            document.activeElement.blur();
-          }
-
-          closeSummaryButton.focus({ preventScroll: true });
-        }, 24);
-
-        window.requestAnimationFrame(() => {
-          if (summaryPanel.classList.contains('dsc-hidden')) {
-            return;
-          }
-
-          if (document.activeElement instanceof HTMLElement && typeof document.activeElement.blur === 'function') {
-            document.activeElement.blur();
-          }
-
-          closeSummaryButton.focus({ preventScroll: true });
-        });
-      };
-
-      const renderOrdemServicoSummary = ({ termoItem, condutorItem, monitorItem, veiculoItem, notices = [] }) => {
-        const osLabel = formatSummaryValue(osConcatInput.value, 'OS em preenchimento');
-        summarySubtitle.textContent = `Resumo consolidado para ${osLabel}.`;
-
-        const termoFields = [
-          { label: 'Termo de adesao', value: formatSummaryValue(termoAdesaoInput.value) },
-          { label: 'Tipo de termo', value: formatSummaryValue(termoItem?.tipo_termo) },
-          { label: 'DRE', value: formatSummaryValue([dreCodigoInput.value, dreDescricaoInput.value].filter(Boolean).join(' - ')) },
-          { label: 'Credenciada', value: formatSummaryValue(termoItem?.credenciado || credenciadoInput.value) },
-        ];
-
-        const condutorFields = [
-          { label: 'Nome do condutor', value: formatSummaryValue(condutorItem?.condutor || condutorInput.value) },
-          { label: 'CPF do condutor', value: formatSummaryValue(condutorItem?.cpf_condutor || cpfCondutorInput.value) },
-          { label: 'CRMC do condutor', value: formatSummaryValue(condutorItem?.crmc) },
-          { label: 'Validade CRMC', value: formatSummaryDate(condutorItem?.validade_crmc) },
-          { label: 'Vinculo profissional', value: formatSummaryValue(condutorItem?.tipo_vinculo) },
-          { label: 'Validade do curso', value: formatSummaryDate(condutorItem?.validade_curso) },
-        ];
-
-        const monitorFields = [
-          { label: 'Nome do monitor', value: formatSummaryValue(monitorItem?.monitor || monitorInput.value) },
-          { label: 'CPF do monitor', value: formatSummaryValue(monitorItem?.cpf_monitor || cpfMonitorInput.value) },
-          { label: 'Data de nascimento', value: formatSummaryDate(monitorItem?.nascimento) },
-          { label: 'Vinculo profissional', value: formatSummaryValue(monitorItem?.tipo_vinculo) },
-          { label: 'Validade do curso', value: formatSummaryDate(monitorItem?.validade_curso) },
-        ];
-
-        const veiculoFields = [
-          { label: 'CRM do veiculo', value: formatSummaryValue(veiculoItem?.crm || crmInput.value) },
-          { label: 'Validade do CRM', value: formatSummaryDate(veiculoItem?.val_crm) },
-          { label: 'Seguradora', value: formatSummaryValue(veiculoItem?.seguradora) },
-          { label: 'Placa do veiculo', value: formatSummaryValue(veiculoItem?.placas || veiculoPlacasInput.value) },
-          { label: 'Ano do veiculo', value: formatSummaryValue(veiculoItem?.ano) },
-          { label: 'Capacidades do veiculo', value: getVeiculoCapacitiesSummary(veiculoItem) },
-          { label: 'Tipos do veiculo', value: getVeiculoTypesSummary(veiculoItem) },
-          { label: 'Validade da apolice', value: formatSummaryDate(veiculoItem?.seguro_termino) },
-          { label: 'Titular do veiculo', value: formatSummaryValue(veiculoItem?.titular) },
-        ];
-
-        summaryContent.innerHTML = [
-          buildSummaryCardHtml('Termo e OS', termoFields),
-          buildSummaryCardHtml('Condutor', condutorFields),
-          buildSummaryCardHtml('Monitor', monitorFields),
-          buildSummaryCardHtml('Veiculo', veiculoFields),
-        ].join('');
-
-        summaryModal.classList.remove('dsc-hidden');
-        summaryModal.setAttribute('aria-hidden', 'false');
-        summaryPanel.classList.remove('dsc-hidden');
-        summaryFeedback.textContent = notices.join(' ');
-        summaryFeedback.className = 'dsc-feedback';
-        syncPopupPageState();
-        focusOrdemServicoSummary();
-      };
-
-      const fetchSummaryLookup = async (url, fallbackMessage) => {
-        try {
-          return {
-            item: await fetchLookupItem(url, fallbackMessage),
-            error: '',
-          };
-        } catch (error) {
-          return {
-            item: null,
-            error: getRequestErrorMessage(error, fallbackMessage),
-          };
-        }
-      };
-
-      const handleShowOrdemServicoSummary = async () => {
+      const handleShowOrdemServicoDadosOs = async () => {
         const termoAdesao = normalizeTermoAdesao(termoAdesaoInput.value);
-        const cpfCondutor = normalizeCpf(cpfCondutorInput.value);
-        const cpfMonitor = normalizeCpf(cpfMonitorInput.value);
-        const crm = normalizeCrm(crmInput.value);
-
         termoAdesaoInput.value = termoAdesao;
+
+        dadosOsModal.classList.remove('dsc-hidden');
+        dadosOsModal.setAttribute('aria-hidden', 'false');
+        dadosOsPanel.classList.remove('dsc-hidden');
+        dadosOsContent.innerHTML = '';
+        dadosOsFeedback.textContent = '';
+        dadosOsFeedback.className = 'dsc-feedback';
+
+        const cpfCondutor = normalizeCpf(cpfCondutorInput.value);
         cpfCondutorInput.value = cpfCondutor;
+        const cpfMonitor = normalizeCpf(cpfMonitorInput.value);
         cpfMonitorInput.value = cpfMonitor;
+        const crm = normalizeText(String(crmInput.value ?? ''), 20);
         crmInput.value = crm;
 
-        const hasAnyReference = termoAdesao || getDocumentDigits(cpfCondutor) || getDocumentDigits(cpfMonitor) || crm;
-
-        if (!hasAnyReference) {
-          summaryFeedback.textContent = 'Preencha ao menos termo, CPF do condutor, CPF do monitor ou CRM para gerar o resumo.';
-          summaryFeedback.className = 'dsc-feedback dsc-feedback-error';
-          summaryModal.classList.remove('dsc-hidden');
-          summaryModal.setAttribute('aria-hidden', 'false');
-          summaryPanel.classList.remove('dsc-hidden');
-          summaryContent.innerHTML = '';
-          focusOrdemServicoSummary();
+        if (!termoAdesao && !getDocumentDigits(cpfCondutor) && !getDocumentDigits(cpfMonitor) && !crm) {
+          renderOrdemServicoDadosOs(null, null, null, null);
+          dadosOsFeedback.textContent = 'Preencha o termo de adesao, o CPF do condutor, o CPF do monitor ou o CRM para completar os dados automaticamente.';
+          focusOrdemServicoDadosOs();
           return;
         }
 
-        showSummaryButton.disabled = true;
-        showSummaryButton.textContent = 'Carregando resumo...';
-        summaryFeedback.textContent = 'Montando resumo consolidado...';
-        summaryFeedback.className = 'dsc-feedback';
-        summaryModal.classList.remove('dsc-hidden');
-        summaryModal.setAttribute('aria-hidden', 'false');
-        summaryPanel.classList.remove('dsc-hidden');
-        focusOrdemServicoSummary();
+        showDadosOsButton.disabled = true;
+        showDadosOsButton.textContent = 'Consultando dados...';
+        dadosOsSubtitle.textContent = `Consultando dados da OS ${formatSummaryValue(buildOrdemServicoLabel())}...`;
+        dadosOsFeedback.textContent = 'Buscando dados do credenciado, do condutor, do monitor e do veiculo...';
 
         try {
           const [termoResult, condutorResult, monitorResult, veiculoResult] = await Promise.all([
@@ -1310,34 +1328,46 @@
               : Promise.resolve({ item: null, error: '' }),
           ]);
 
+          renderOrdemServicoDadosOs(termoResult.item, condutorResult.item, monitorResult.item, veiculoResult.item);
+
           const notices = [];
-
           if (termoAdesao && termoResult.error) {
-            notices.push('Termo exibido com dados do formulario porque o lookup do termo nao retornou registro.');
+            notices.push('Termo exibido com dados do formulario.');
           }
-
           if (getDocumentDigits(cpfCondutor) && condutorResult.error) {
-            notices.push('Nao foi possivel complementar os dados detalhados do condutor.');
+            notices.push('Condutor exibido com dados disponiveis no formulario.');
           }
-
           if (getDocumentDigits(cpfMonitor) && monitorResult.error) {
-            notices.push('Nao foi possivel complementar os dados detalhados do monitor.');
+            notices.push('Monitor exibido com dados disponiveis no formulario.');
           }
-
           if (crm && veiculoResult.error) {
-            notices.push('Nao foi possivel complementar os dados detalhados do veiculo.');
+            notices.push('Veiculo exibido com dados disponiveis no formulario.');
           }
 
-          renderOrdemServicoSummary({
-            termoItem: termoResult.item,
-            condutorItem: condutorResult.item,
-            monitorItem: monitorResult.item,
-            veiculoItem: veiculoResult.item,
-            notices,
-          });
+          dadosOsFeedback.textContent = notices.join(' ');
+          dadosOsFeedback.className = notices.length ? 'dsc-feedback' : 'dsc-feedback';
+        } catch (error) {
+          renderOrdemServicoDadosOs(null, null, null, null);
+          dadosOsFeedback.textContent = getRequestErrorMessage(error, 'Falha ao consultar os dados da OS.');
+          dadosOsFeedback.className = 'dsc-feedback dsc-feedback-error';
+          focusOrdemServicoDadosOs();
         } finally {
-          showSummaryButton.disabled = false;
-          showSummaryButton.textContent = 'Resumo OS';
+          showDadosOsButton.disabled = false;
+          showDadosOsButton.textContent = 'Dados OS';
+        }
+      };
+
+      const fetchSummaryLookup = async (url, fallbackMessage) => {
+        try {
+          return {
+            item: await fetchLookupItem(url, fallbackMessage),
+            error: '',
+          };
+        } catch (error) {
+          return {
+            item: null,
+            error: getRequestErrorMessage(error, fallbackMessage),
+          };
         }
       };
 
@@ -2648,33 +2678,31 @@
 
       const clearViewOnlyLock = () => {
         getFormControls().forEach((element) => {
-            if (element !== cancelButton && element !== closeFormModalButton && element !== closeSummaryButton) {
+            if (element !== cancelButton && element !== closeFormModalButton) {
             element.disabled = false;
           }
         });
         cancelButton.disabled = false;
         closeFormModalButton.disabled = false;
-        closeSummaryButton.disabled = false;
         saveButton.classList.remove('dsc-hidden');
       };
 
       const applyViewOnlyLock = () => {
         getFormControls().forEach((element) => {
-              element.disabled = element !== cancelButton && element !== closeFormModalButton && element !== closeSummaryButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showSummaryButton && element !== showEmissaoButton;
+              element.disabled = element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showDadosOsButton && element !== showEmissaoButton;
         });
         cancelButton.disabled = false;
         closeFormModalButton.disabled = false;
-        closeSummaryButton.disabled = false;
         openVinculoCondutorPopupButton.disabled = false;
         openVinculoMonitorPopupButton.disabled = false;
-            showTermoButton.disabled = false;
-        showSummaryButton.disabled = false;
-          showEmissaoButton.disabled = false;
+        showTermoButton.disabled = false;
+        showDadosOsButton.disabled = false;
+        showEmissaoButton.disabled = false;
         saveButton.classList.add('dsc-hidden');
       };
 
       const getInsertGuardControls = () => getFormControls()
-          .filter((element) => element !== termoAdesaoInput && element !== cancelButton && element !== closeFormModalButton && element !== closeSummaryButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showSummaryButton);
+          .filter((element) => element !== termoAdesaoInput && element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showDadosOsButton);
 
       const updateInsertTermGuard = ({ focusIfMissing = false, showMissingError = true } = {}) => {
         if (formMode === 'view') {
@@ -2701,7 +2729,6 @@
         });
 
         closeFormModalButton.disabled = false;
-        closeSummaryButton.disabled = false;
 
         applyInsertSpecificRules();
         syncDataEncerramentoState();
@@ -2760,7 +2787,6 @@
         setPopupVisibility(formModal, true);
         syncPopupPageState();
         formMode = mode;
-        clearOrdemServicoSummary();
         clearViewOnlyLock();
         dataAdmissaoCondutorInput.max = getCurrentDateInputValue();
         dataAdmissaoMonitorInput.max = getCurrentDateInputValue();
@@ -2780,7 +2806,6 @@
 
         updateSaveButtonAvailability();
         closeFormModalButton.disabled = false;
-        closeSummaryButton.disabled = false;
         focusFormForMode(mode);
       };
 
@@ -2848,7 +2873,7 @@
         setSelectedSituacao('Ativo');
         resetMessages();
         clearOrdemServicoTermo();
-        clearOrdemServicoSummary();
+        clearOrdemServicoDadosOs();
       };
 
       const showImportForm = () => {
@@ -3944,21 +3969,12 @@
         cpfCondutorInput.value = cpfCondutor;
 
         if (!getDocumentDigits(cpfCondutor)) {
-          cpfCondutorError.textContent = 'Informe o CPF do condutor para consultar os vínculos.';
+          cpfCondutorError.textContent = 'Informe o CPF do condutor para abrir o formulario do condutor.';
           cpfCondutorInput.focus();
           return;
         }
 
-        const popupUrl = `/src/vinculoCondutorPopup.html?cpf_condutor=${encodeURIComponent(cpfCondutor)}`;
-        const popupWindow = window.open(popupUrl, 'vinculoCondutorPopup', 'width=980,height=700,resizable=yes,scrollbars=yes');
-
-        if (!popupWindow) {
-          showBanner('Não foi possível abrir a consulta de vínculos do condutor.', 'error');
-          return;
-        }
-
-        cpfCondutorError.textContent = '';
-        popupWindow.focus();
+        openCondutorCadastroPopup({ cpf: cpfCondutor });
       };
 
       const openMonitorVinculoPopup = () => {
@@ -3966,21 +3982,12 @@
         cpfMonitorInput.value = cpfMonitor;
 
         if (!getDocumentDigits(cpfMonitor)) {
-          cpfMonitorError.textContent = 'Informe o CPF do monitor para consultar os vínculos.';
+          cpfMonitorError.textContent = 'Informe o CPF do monitor para abrir o formulario do monitor.';
           cpfMonitorInput.focus();
           return;
         }
 
-        const popupUrl = `/src/vinculoMonitorPopup.html?cpf_monitor=${encodeURIComponent(cpfMonitor)}`;
-        const popupWindow = window.open(popupUrl, 'vinculoMonitorPopup', 'width=980,height=700,resizable=yes,scrollbars=yes');
-
-        if (!popupWindow) {
-          showBanner('Não foi possível abrir a consulta de vínculos do monitor.', 'error');
-          return;
-        }
-
-        cpfMonitorError.textContent = '';
-        popupWindow.focus();
+        openMonitorCadastroPopup({ cpf: cpfMonitor });
       };
 
       const buildCenteredPopupFeatures = ({ width, height }) => {
@@ -4942,18 +4949,6 @@
         void syncTipoTroca();
       });
 
-      form.addEventListener('input', () => {
-        if (!summaryModal.classList.contains('dsc-hidden')) {
-          clearOrdemServicoSummary();
-        }
-      });
-
-      form.addEventListener('change', () => {
-        if (!summaryModal.classList.contains('dsc-hidden')) {
-          clearOrdemServicoSummary();
-        }
-      });
-
       window.addEventListener('message', (event) => {
         void handleVeiculoPopupMessage(event);
         void handleCondutorPopupMessage(event);
@@ -5426,14 +5421,14 @@
       cancelButton.addEventListener('click', hideForm);
       closeFormModalButton.addEventListener('click', hideForm);
       closeTermoButton.addEventListener('click', clearOrdemServicoTermo);
-      closeSummaryButton.addEventListener('click', clearOrdemServicoSummary);
+      closeDadosOsButton.addEventListener('click', clearOrdemServicoDadosOs);
       closeEmissaoButton.addEventListener('click', clearOrdemServicoEmissao);
       dismissEmissaoButton.addEventListener('click', clearOrdemServicoEmissao);
       showTermoButton.addEventListener('click', () => {
         void handleShowOrdemServicoTermo();
       });
-      showSummaryButton.addEventListener('click', () => {
-        void handleShowOrdemServicoSummary();
+      showDadosOsButton.addEventListener('click', () => {
+        void handleShowOrdemServicoDadosOs();
       });
       showEmissaoButton.addEventListener('click', () => {
         void handleShowOrdemServicoEmissao();
@@ -5445,9 +5440,9 @@
           clearOrdemServicoTermo();
         }
       });
-      summaryModal.addEventListener('click', (event) => {
-        if (event.target === summaryModal) {
-          clearOrdemServicoSummary();
+      dadosOsModal.addEventListener('click', (event) => {
+        if (event.target === dadosOsModal) {
+          clearOrdemServicoDadosOs();
         }
       });
       emissaoModal.addEventListener('click', (event) => {
@@ -5502,8 +5497,8 @@
           return;
         }
 
-        if (!summaryModal.classList.contains('dsc-hidden')) {
-          clearOrdemServicoSummary();
+        if (!dadosOsModal.classList.contains('dsc-hidden')) {
+          clearOrdemServicoDadosOs();
           return;
         }
 

@@ -27,6 +27,7 @@
     "verify:credenciada:ceps": "node scripts/verify-credenciada-ceps.mjs",
     "smoke:api": "node scripts/smoke-api.mjs all",
     "smoke:api:condutor": "node scripts/smoke-api.mjs condutor",
+    "smoke:api:monitor": "node scripts/smoke-api.mjs monitor",
     "smoke:api:credenciada": "node scripts/smoke-api.mjs credenciada",
     "smoke:api:veiculo": "node scripts/smoke-api.mjs veiculo",
     "smoke:api:marca-modelo": "node scripts/smoke-api.mjs marca-modelo"

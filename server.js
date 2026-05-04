@@ -2158,9 +2158,8 @@ const parseCondutorXml = (xmlContent) => {
 
   return records.map((record) => {
     const validadeCrmc = normalizeXmlDateInput(record?.VAL_CRMC)
-    const validadeCurso = normalizeXmlDateInput(record?.VCurso_condutor)
-      || normalizeXmlDateInput(record?.Curso_condutor)
-      || validadeCrmc
+    const dataCurso = normalizeXmlDateInput(record?.Curso_condutor)
+    const validadeCurso = dataCurso ? shiftDateInputValueYears(dataCurso, 5) : ''
 
     return {
       codigo: normalizeRequestValue(record?.['C\u00f3digo']),
@@ -2229,7 +2228,7 @@ const parseMonitorXml = (xmlContent) => {
     rgMonitor: normalizeRequestValue(record?.RG_monitor),
     cpfMonitor: normalizeRequestValue(record?.CPF_monitor),
     cursoMonitor: normalizeXmlDateInput(record?.Curso_monitor),
-    validadeCurso: normalizeXmlDateInput(record?.VCurso_monitor),
+    validadeCurso: shiftDateInputValueYears(normalizeXmlDateInput(record?.Curso_monitor), 5),
     tipoVinculo: normalizeRequestValue(record?.Tipo_de_vinculo),
     nascimento: normalizeXmlDateInput(record?.Nascimento),
   }))
@@ -2361,10 +2360,6 @@ const normalizeImportedMonitorRecord = (record, index) => {
     throw new Error(`${itemLabel}: RG invalido no XML.`)
   }
 
-  if (validadeCurso && !isDateInputValid(validadeCurso)) {
-    throw new Error(`${itemLabel}: validade do curso invalida no XML.`)
-  }
-
   if (nascimento && !isDateInputValid(nascimento)) {
     throw new Error(`${itemLabel}: data de nascimento invalida no XML.`)
   }
@@ -2378,6 +2373,7 @@ const normalizeImportedMonitorRecord = (record, index) => {
   }
 
   return {
+    index: index + 1,
     codigo,
     monitor,
     rgMonitor,
@@ -2555,6 +2551,7 @@ const normalizeImportedCondutorRecord = (record, index) => {
   }
 
   return {
+    index: index + 1,
     codigo,
     condutor,
     cpfCondutor,
@@ -6459,6 +6456,32 @@ const getCurrentDateInputValue = () => {
   return `${year}-${month}-${day}`
 }
 
+const shiftDateInputValueYears = (value, yearOffset) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+    return ''
+  }
+
+  const [year, month, day] = normalizedValue.split('-').map(Number)
+  const shiftedDate = new Date(year, month - 1, day)
+
+  if (Number.isNaN(shiftedDate.getTime())) {
+    return ''
+  }
+
+  shiftedDate.setFullYear(shiftedDate.getFullYear() + yearOffset)
+
+  if (Number.isNaN(shiftedDate.getTime())) {
+    return ''
+  }
+
+  const shiftedYear = shiftedDate.getFullYear()
+  const shiftedMonth = String(shiftedDate.getMonth() + 1).padStart(2, '0')
+  const shiftedDay = String(shiftedDate.getDate()).padStart(2, '0')
+  return `${shiftedYear}-${shiftedMonth}-${shiftedDay}`
+}
+
 const normalizeEmissaoDocumentoDateKey = (value) => {
   const normalizedValue = normalizeRequestValue(value)
 
@@ -6811,18 +6834,6 @@ const validateCondutorPayload = async ({
     return { status: 400, payload: { message: 'Validade do CRMC deve ser maior ou igual a hoje.' } }
   }
 
-  if (!normalizedValidadeCurso) {
-    return { status: 400, payload: { message: 'Validade do curso e obrigatoria.' } }
-  }
-
-  if (!isDateInputValid(normalizedValidadeCurso)) {
-    return { status: 400, payload: { message: 'Validade do curso invalida.' } }
-  }
-
-  if (!isDateOnOrAfterToday(normalizedValidadeCurso)) {
-    return { status: 400, payload: { message: 'Validade do curso deve ser maior ou igual a hoje.' } }
-  }
-
   if (normalizedTipoVinculo === null) {
     return { status: 400, payload: { message: 'Tipo de vinculo invalido.' } }
   }
@@ -6951,34 +6962,6 @@ const validateMonitorPayload = async ({
 
   if (!normalizedNascimento) {
     return { status: 400, payload: { message: 'Data de nascimento e obrigatoria.' } }
-  }
-
-  if (!normalizedCursoMonitor) {
-    return { status: 400, payload: { message: 'Data do curso e obrigatoria.' } }
-  }
-
-  if (!normalizedValidadeCurso) {
-    return { status: 400, payload: { message: 'Validade do curso e obrigatoria.' } }
-  }
-
-  if (normalizedCursoMonitor && !isDateInputValid(normalizedCursoMonitor)) {
-    return { status: 400, payload: { message: 'Data do curso invalida.' } }
-  }
-
-  if (normalizedCursoMonitor && !isDateOnOrAfterToday(normalizedCursoMonitor)) {
-    return { status: 400, payload: { message: 'Data do curso deve ser maior ou igual a hoje.' } }
-  }
-
-  if (normalizedValidadeCurso && !isDateInputValid(normalizedValidadeCurso)) {
-    return { status: 400, payload: { message: 'Validade do curso invalida.' } }
-  }
-
-  if (normalizedValidadeCurso && !isDateOnOrAfterToday(normalizedValidadeCurso)) {
-    return { status: 400, payload: { message: 'Validade do curso deve ser maior ou igual a hoje.' } }
-  }
-
-  if (normalizedCursoMonitor && normalizedValidadeCurso && normalizedValidadeCurso < normalizedCursoMonitor) {
-    return { status: 400, payload: { message: 'Validade do curso deve ser maior ou igual a data do curso.' } }
   }
 
   if (normalizedNascimento && !isDateInputValid(normalizedNascimento)) {
@@ -7196,26 +7179,6 @@ const validateVeiculoPayload = async ({
 
   if (normalizedValCrm && normalizedValCrm < getCurrentDateInputValue()) {
     return { status: 400, payload: { message: 'Validade do CRM nao pode ser passada.' } }
-  }
-
-  if (normalizedSeguroInicio && !isDateInputValid(normalizedSeguroInicio)) {
-    return { status: 400, payload: { message: 'Data inicial do seguro invalida.' } }
-  }
-
-  if (normalizedSeguroInicio && normalizedSeguroInicio < getCurrentDateInputValue()) {
-    return { status: 400, payload: { message: 'Data inicial do seguro deve ser maior ou igual a hoje.' } }
-  }
-
-  if (normalizedSeguroTermino && !isDateInputValid(normalizedSeguroTermino)) {
-    return { status: 400, payload: { message: 'Data final do seguro invalida.' } }
-  }
-
-  if (normalizedSeguroTermino && normalizedSeguroTermino < getCurrentDateInputValue()) {
-    return { status: 400, payload: { message: 'Data final do seguro nao pode ser passada.' } }
-  }
-
-  if (normalizedSeguroInicio && normalizedSeguroTermino && normalizedSeguroTermino < normalizedSeguroInicio) {
-    return { status: 400, payload: { message: 'Data final do seguro deve ser maior ou igual a data inicial.' } }
   }
 
   if (normalizedTipoDeBancada === null) {

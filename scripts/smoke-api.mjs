@@ -3,7 +3,7 @@ import { dirname } from 'node:path'
 
 const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:3001'
 const reportPath = process.env.SMOKE_REPORT_PATH ?? ''
-const availableSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo', 'marca-modelo'])
+const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'veiculo', 'marca-modelo'])
 const suite = (process.argv[2] ?? process.env.SMOKE_SUITE ?? 'all').trim().toLowerCase()
 
 const report = {
@@ -114,6 +114,32 @@ const isStrictlyFutureDate = (value) => {
   }
 
   return candidateDate > today
+}
+
+const shiftDateInputValueYears = (value, yearOffset) => {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+    return ''
+  }
+
+  const [year, month, day] = normalizedValue.split('-').map(Number)
+  const shiftedDate = new Date(year, month - 1, day)
+
+  if (Number.isNaN(shiftedDate.getTime())) {
+    return ''
+  }
+
+  shiftedDate.setFullYear(shiftedDate.getFullYear() + yearOffset)
+
+  if (Number.isNaN(shiftedDate.getTime())) {
+    return ''
+  }
+
+  const shiftedYear = shiftedDate.getFullYear()
+  const shiftedMonth = String(shiftedDate.getMonth() + 1).padStart(2, '0')
+  const shiftedDay = String(shiftedDate.getDate()).padStart(2, '0')
+  return `${shiftedYear}-${shiftedMonth}-${shiftedDay}`
 }
 
 const findPaginatedFixture = async ({ resourcePath, sortBy = 'codigo', sortDirection = 'asc', pageSize = 100, maxPages = 20, predicate, description }) => {
@@ -228,7 +254,11 @@ const runCondutorSmoke = async () => {
     const targetCode = String(originalItem.codigo)
     const updatedTipoVinculo = 'Cooperado'
     const updatedHistorico = 'SMOKE TEST API CONDUTOR'
-    const updatedValidadeCurso = '2030-12-31'
+    const updatedDataCurso = '2025-12-31'
+    const updatedValidadeCurso = shiftDateInputValueYears(updatedDataCurso, 5)
+    const importedFixtureCode = '14392'
+    const importedFixtureDataCurso = '2023-07-16'
+    const importedFixtureValidadeCurso = shiftDateInputValueYears(importedFixtureDataCurso, 5)
 
     await requestJson(`/api/condutor/${encodeURIComponent(targetCode)}`, {
       method: 'PUT',
@@ -268,6 +298,11 @@ const runCondutorSmoke = async () => {
     assert(validImport.skipped >= 0, 'Importacao valida de condutor retornou recusas invalidas.')
     logStep(`importacao valida do condutor: ${validImport.processed} processado(s), ${validImport.updated} alterado(s), ${validImport.inserted} incluido(s), ${validImport.skipped} recusado(s)`)
 
+    const importedFixtureItem = await findExactItemByCode('/api/condutor', importedFixtureCode)
+    assert(Boolean(importedFixtureItem), `Registro ${importedFixtureCode} nao foi localizado apos importacao valida do condutor.`)
+    assert(importedFixtureItem.validade_curso === importedFixtureValidadeCurso, 'Importacao de condutor nao recalculou validade do curso a partir da data do curso do XML.')
+    logStep(`importacao do condutor recalculou validade do curso para o registro ${importedFixtureCode}`)
+
     const restoredItem = await findExactItemByCode('/api/condutor', targetCode)
     assert(Boolean(restoredItem), `Registro ${targetCode} nao foi restaurado apos reimportacao valida.`)
     assert(restoredItem.tipo_vinculo === originalItem.tipo_vinculo, 'Tipo de vinculo original nao foi restaurado apos reimportacao valida.')
@@ -295,6 +330,90 @@ const runCondutorSmoke = async () => {
     assert(rejectionReasons.some((reason) => reason.includes('codigo invalido no XML')), 'Recusa por codigo invalido nao encontrada para condutor.')
     assert(rejectionReasons.some((reason) => reason.includes('CPF invalido no XML')), 'Recusa por CPF invalido nao encontrada para condutor.')
     logStep('importacao invalida e painel de recusas do condutor ok')
+
+    finalizeSuite(suiteReport, 'passed')
+  } catch (error) {
+    finalizeSuite(suiteReport, 'failed')
+    throw error
+  }
+}
+
+const runMonitorSmoke = async () => {
+  console.log('Smoke test da API Monitor')
+  const suiteReport = recordSuite('monitor')
+
+  try {
+    const listResponse = await requestJson('/api/monitor?page=1&pageSize=5')
+    assert(Array.isArray(listResponse.items), 'Listagem de monitor nao retornou items.')
+    assert(listResponse.total > 0, 'Listagem de monitor retornou total zerado.')
+    logStep(`listagem inicial ok com ${listResponse.total} registro(s)`)
+
+    const ascResponse = await requestJson('/api/monitor?page=1&pageSize=5&sortBy=monitor&sortDirection=asc')
+    const descResponse = await requestJson('/api/monitor?page=1&pageSize=5&sortBy=monitor&sortDirection=desc')
+    expectSortedBy(ascResponse.items, 'monitor', 'asc')
+    expectSortedBy(descResponse.items, 'monitor', 'desc')
+    assert(
+      String(ascResponse.items[0]?.monitor ?? '') !== String(descResponse.items[0]?.monitor ?? ''),
+      'Ordenacao asc/desc de monitor retornou o mesmo primeiro registro.',
+    )
+    logStep('ordenacao asc/desc por monitor ok')
+
+    const validImport = await requestJson('/api/monitor/import-xml', {
+      method: 'POST',
+      body: JSON.stringify({ fileName: 'Monitor.xml' }),
+    })
+    recordImport(suiteReport, 'valid-import', validImport)
+    assert(validImport.total >= validImport.processed, 'Importacao valida de monitor retornou total inconsistente.')
+    assert((validImport.processed + validImport.skipped) === validImport.total, 'Importacao valida de monitor nao fechou a contagem total.')
+    assert((validImport.inserted + validImport.updated) === validImport.processed, 'Importacao valida de monitor retornou contagem inconsistente.')
+    logStep(`importacao valida do monitor: ${validImport.processed} processado(s), ${validImport.updated} alterado(s), ${validImport.inserted} incluido(s), ${validImport.skipped} recusado(s)`)
+
+    const fixtureCode = '15141'
+    const fixtureCurso = '2023-06-04'
+    const fixtureValidadeCurso = shiftDateInputValueYears(fixtureCurso, 5)
+    const originalItem = await findExactItemByCode('/api/monitor', fixtureCode)
+    assert(Boolean(originalItem), `Registro ${fixtureCode} do monitor nao foi localizado apos importacao valida.`)
+    assert(originalItem.curso_monitor === fixtureCurso, 'Importacao de monitor nao persistiu a data do curso esperada do XML.')
+    assert(originalItem.validade_curso === fixtureValidadeCurso, 'Importacao de monitor nao recalculou validade do curso a partir da data do curso do XML.')
+    logStep(`importacao do monitor recalculou validade do curso para o registro ${fixtureCode}`)
+
+    const updatedTipoVinculo = 'Funcionario'
+    const updatedCursoMonitor = '2024-07-01'
+    const updatedValidadeCurso = shiftDateInputValueYears(updatedCursoMonitor, 5)
+
+    await requestJson(`/api/monitor/${encodeURIComponent(fixtureCode)}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        codigo: originalItem.codigo,
+        monitor: originalItem.monitor,
+        cpfMonitor: originalItem.cpf_monitor,
+        cursoMonitor: updatedCursoMonitor,
+        validadeCurso: updatedValidadeCurso,
+        tipoVinculo: updatedTipoVinculo,
+        nascimento: originalItem.nascimento,
+      }),
+    })
+
+    const updatedItem = await findExactItemByCode('/api/monitor', fixtureCode)
+    assert(Boolean(updatedItem), `Registro ${fixtureCode} do monitor nao foi localizado apos alteracao.`)
+    assert(updatedItem.curso_monitor === updatedCursoMonitor, 'Alteracao do monitor nao persistiu a data do curso.')
+    assert(updatedItem.validade_curso === updatedValidadeCurso, 'Alteracao do monitor nao persistiu a validade do curso derivada.')
+    assert(updatedItem.tipo_vinculo === updatedTipoVinculo, 'Alteracao do monitor nao persistiu tipo de vinculo.')
+    logStep(`edicao do registro importado ${fixtureCode} ok`)
+
+    const restoreImport = await requestJson('/api/monitor/import-xml', {
+      method: 'POST',
+      body: JSON.stringify({ fileName: 'Monitor.xml' }),
+    })
+    recordImport(suiteReport, 'restore-import', restoreImport)
+    assert((restoreImport.processed + restoreImport.skipped) === restoreImport.total, 'Reimportacao valida de monitor nao fechou a contagem total.')
+    assert((restoreImport.inserted + restoreImport.updated) === restoreImport.processed, 'Reimportacao valida de monitor retornou contagem inconsistente.')
+
+    const restoredItem = await findExactItemByCode('/api/monitor', fixtureCode)
+    assert(Boolean(restoredItem), `Registro ${fixtureCode} nao foi restaurado apos reimportacao valida do monitor.`)
+    assert(restoredItem.curso_monitor === fixtureCurso, 'Data do curso original nao foi restaurada apos reimportacao valida do monitor.')
+    assert(restoredItem.validade_curso === fixtureValidadeCurso, 'Validade do curso original nao foi restaurada apos reimportacao valida do monitor.')
+    logStep(`reimportacao valida e restauracao do registro ${fixtureCode} ok`)
 
     finalizeSuite(suiteReport, 'passed')
   } catch (error) {
@@ -622,6 +741,14 @@ const runMarcaModeloSmoke = async () => {
 try {
   if (suite === 'all' || suite === 'condutor') {
     await runCondutorSmoke()
+  }
+
+  if (suite === 'all') {
+    console.log('')
+  }
+
+  if (suite === 'all' || suite === 'monitor') {
+    await runMonitorSmoke()
   }
 
   if (suite === 'all') {

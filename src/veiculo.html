@@ -167,16 +167,9 @@
                     <div class="dsc-form-error" id="veiculo-val-crm-error"></div>
                   </label>
 
-                  <label class="dsc-field-group" for="veiculo-seguro-inicio">
-                    <span>Seguro inicio</span>
-                    <input class="dsc-form-control" id="veiculo-seguro-inicio" type="date" />
-                    <div class="dsc-form-error" id="veiculo-seguro-inicio-error"></div>
-                  </label>
-
                   <label class="dsc-field-group" for="veiculo-seguro-termino">
                     <span>Seguro termino</span>
                     <input class="dsc-form-control" id="veiculo-seguro-termino" type="date" />
-                    <div class="dsc-form-error" id="veiculo-seguro-termino-error"></div>
                   </label>
                 </div>
               </section>
@@ -390,7 +383,6 @@
       const valCrmInput = document.getElementById('veiculo-val-crm');
       const seguradoraInput = document.getElementById('veiculo-seguradora');
       const seguradoraOptionsList = document.getElementById('veiculo-seguradora-options');
-      const seguroInicioInput = document.getElementById('veiculo-seguro-inicio');
       const seguroTerminoInput = document.getElementById('veiculo-seguro-termino');
       const tipoDeBancadaInput = document.getElementById('veiculo-tipo-de-bancada');
       const tipoDeBancadaOptionsList = document.getElementById('veiculo-tipo-de-bancada-options');
@@ -412,8 +404,6 @@
       const capAcessivelError = document.getElementById('veiculo-cap-acessivel-error');
       const valCrmError = document.getElementById('veiculo-val-crm-error');
       const seguradoraError = document.getElementById('veiculo-seguradora-error');
-      const seguroInicioError = document.getElementById('veiculo-seguro-inicio-error');
-      const seguroTerminoError = document.getElementById('veiculo-seguro-termino-error');
       const tipoDeBancadaError = document.getElementById('veiculo-tipo-de-bancada-error');
       const tipoDeVeiculoError = document.getElementById('veiculo-tipo-de-veiculo-error');
       const marcaModeloError = document.getElementById('veiculo-marca-modelo-error');
@@ -983,54 +973,6 @@
         return false;
       };
 
-      const validateSeguroInicioField = () => {
-        const seguroInicio = getComparableDateInputValue(seguroInicioInput);
-
-        if (!seguroInicio) {
-          seguroInicioError.textContent = '';
-          return false;
-        }
-
-        if (!isTodayOrFutureDate(seguroInicio)) {
-          seguroInicioError.textContent = 'Data inicial do seguro deve ser maior ou igual a hoje.';
-          return true;
-        }
-
-        seguroInicioError.textContent = '';
-        return false;
-      };
-
-      const validateSeguroTerminoField = () => {
-        const seguroInicio = getComparableDateInputValue(seguroInicioInput);
-        const seguroTermino = getComparableDateInputValue(seguroTerminoInput);
-
-        if (!seguroTermino) {
-          seguroTerminoError.textContent = '';
-          return false;
-        }
-
-        if (!isTodayOrFutureDate(seguroTermino)) {
-          seguroTerminoError.textContent = 'Data final do seguro nao pode ser passada.';
-          return true;
-        }
-
-        if (seguroInicio && seguroTermino < seguroInicio) {
-          seguroTerminoError.textContent = 'Data final do seguro deve ser maior ou igual a data inicial.';
-          return true;
-        }
-
-        seguroTerminoError.textContent = '';
-        return false;
-      };
-
-      const syncSeguroTerminoMin = () => {
-        const currentDate = getCurrentDateInputValue();
-        seguroInicioInput.min = currentDate;
-        seguroTerminoInput.min = seguroInicioInput.value && seguroInicioInput.value > currentDate
-          ? seguroInicioInput.value
-          : currentDate;
-      };
-
       const formatDateTimeLabel = (value) => {
         if (!value) {
           return '';
@@ -1104,8 +1046,6 @@
         capAcessivelError.textContent = '';
         valCrmError.textContent = '';
         seguradoraError.textContent = '';
-        seguroInicioError.textContent = '';
-        seguroTerminoError.textContent = '';
         tipoDeBancadaError.textContent = '';
         tipoDeVeiculoError.textContent = '';
         marcaModeloError.textContent = '';
@@ -1462,7 +1402,7 @@
       };
 
       const setFormReadOnly = (isReadOnly) => {
-        [crmInput, placasInput, anoInput, capDetranInput, capTegInput, capTegCrecheInput, capAcessivelInput, valCrmInput, seguradoraInput, seguroInicioInput, seguroTerminoInput, tipoDeBancadaInput, tipoDeVeiculoInput, marcaModeloInput, titularInput, cnpjCpfInput, valorInput].forEach((input) => {
+        [crmInput, placasInput, anoInput, capDetranInput, capTegInput, capTegCrecheInput, capAcessivelInput, valCrmInput, seguradoraInput, seguroTerminoInput, tipoDeBancadaInput, tipoDeVeiculoInput, marcaModeloInput, titularInput, cnpjCpfInput, valorInput].forEach((input) => {
           input.readOnly = isReadOnly;
         });
         form.querySelectorAll('input[type="radio"], input[type="checkbox"], input[type="date"], select').forEach((input) => {
@@ -1746,7 +1686,6 @@
         capAcessivelInput.value = item.cap_acessivel || '';
         valCrmInput.value = item.val_crm || '';
         renderSeguradoraOptions(item.seguradora || '');
-        seguroInicioInput.value = item.seguro_inicio || '';
         seguroTerminoInput.value = item.seguro_termino || '';
         renderTipoDeBancadaOptions(item.tipo_de_bancada || '');
         renderTipoDeVeiculoOptions(item.tipo_de_veiculo || '');
@@ -1771,7 +1710,6 @@
         capAcessivelInput.value = item.cap_acessivel || '';
         valCrmInput.value = item.val_crm || '';
         renderSeguradoraOptions(item.seguradora || '');
-        seguroInicioInput.value = item.seguro_inicio || '';
         seguroTerminoInput.value = item.seguro_termino || '';
         renderTipoDeBancadaOptions(item.tipo_de_bancada || '');
         renderTipoDeVeiculoOptions(item.tipo_de_veiculo || '');
@@ -1932,21 +1870,6 @@
         capAcessivelInput.value = normalizeIntegerInput(capAcessivelInput.value);
       });
 
-      seguroInicioInput.addEventListener('input', () => {
-        syncSeguroTerminoMin();
-        if (seguroInicioError.textContent.trim()) {
-          validateSeguroInicioField();
-        }
-        if (seguroTerminoError.textContent.trim()) {
-          validateSeguroTerminoField();
-        }
-      });
-
-      seguroInicioInput.addEventListener('blur', () => {
-        validateSeguroInicioField();
-        validateSeguroTerminoField();
-      });
-
       valCrmInput.addEventListener('input', () => {
         if (valCrmError.textContent.trim()) {
           validateValCrmField();
@@ -1955,16 +1878,6 @@
 
       valCrmInput.addEventListener('blur', () => {
         validateValCrmField();
-      });
-
-      seguroTerminoInput.addEventListener('input', () => {
-        if (seguroTerminoError.textContent.trim()) {
-          validateSeguroTerminoField();
-        }
-      });
-
-      seguroTerminoInput.addEventListener('blur', () => {
-        validateSeguroTerminoField();
       });
 
       seguradoraInput.addEventListener('input', () => {
@@ -2024,7 +1937,6 @@
         const capAcessivel = normalizeIntegerInput(capAcessivelInput.value);
         const valCrm = valCrmInput.value;
         const seguradora = resolveOptionValue(seguradoraInput.value, seguradoraOptions, (value) => normalizeText(value, 255));
-        const seguroInicio = seguroInicioInput.value;
         const seguroTermino = seguroTerminoInput.value;
         const tipoDeBancada = resolveOptionValue(tipoDeBancadaInput.value, tipoDeBancadaOptions, (value) => normalizeComboInput(value, 50));
         const tipoDeVeiculo = resolveOptionValue(tipoDeVeiculoInput.value, tipoDeVeiculoOptions, (value) => normalizeComboInput(value, 50));
@@ -2073,14 +1985,6 @@
         }
 
         if (validateValCrmField()) {
-          hasError = true;
-        }
-
-        if (validateSeguroInicioField()) {
-          hasError = true;
-        }
-
-        if (validateSeguroTerminoField()) {
           hasError = true;
         }
 
@@ -2142,7 +2046,7 @@
               capAcessivel,
               valCrm,
               seguradora,
-              seguroInicio,
+              seguroInicio: '',
               seguroTermino,
               tipoDeBancada,
               tipoDeVeiculo,
@@ -2413,8 +2317,7 @@
       });
 
       valCrmInput.min = getCurrentDateInputValue();
-      syncSeguroTerminoMin();
-      [valCrmInput, seguroInicioInput, seguroTerminoInput].forEach(enableFullDateSelection);
+      [valCrmInput, seguroTerminoInput].forEach(enableFullDateSelection);
       void loadSeguradoraOptions();
       void loadMarcaModeloOptions();
 

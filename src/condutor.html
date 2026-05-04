@@ -136,17 +136,21 @@
                 </label>
               </div>
 
-              <div class="dsc-form-row">
+              <div class="dsc-form-row dsc-form-row-condutor-dates">
                 <label class="dsc-field-group" for="condutor-validade-crmc">
                   <span>Validade do CRMC</span>
                   <input class="dsc-form-control" id="condutor-validade-crmc" type="date" />
                   <div class="dsc-form-error" id="condutor-validade-crmc-error"></div>
                 </label>
 
+                <label class="dsc-field-group" for="condutor-data-curso">
+                  <span>Data do curso</span>
+                  <input class="dsc-form-control" id="condutor-data-curso" type="date" />
+                </label>
+
                 <label class="dsc-field-group" for="condutor-validade-curso">
                   <span>Validade do curso</span>
-                  <input class="dsc-form-control" id="condutor-validade-curso" type="date" />
-                  <div class="dsc-form-error" id="condutor-validade-curso-error"></div>
+                  <input class="dsc-form-control" id="condutor-validade-curso" type="date" readonly />
                 </label>
               </div>
 
@@ -274,13 +278,13 @@
       const cpfInput = document.getElementById('condutor-cpf');
       const crmcInput = document.getElementById('condutor-crmc');
       const validadeCrmcInput = document.getElementById('condutor-validade-crmc');
+      const dataCursoInput = document.getElementById('condutor-data-curso');
       const validadeCursoInput = document.getElementById('condutor-validade-curso');
       const historicoInput = document.getElementById('condutor-historico');
       const nomeError = document.getElementById('condutor-nome-error');
       const cpfError = document.getElementById('condutor-cpf-error');
       const crmcError = document.getElementById('condutor-crmc-error');
       const validadeCrmcError = document.getElementById('condutor-validade-crmc-error');
-      const validadeCursoError = document.getElementById('condutor-validade-curso-error');
       const feedback = document.getElementById('condutor-form-feedback');
       const gridFeedback = document.getElementById('condutor-grid-feedback');
       const formModal = document.getElementById('condutor-form-modal');
@@ -544,6 +548,29 @@
         return `${year}-${month}-${day}`;
       };
 
+      const shiftDateInputValueYears = (value, yearOffset) => {
+        const normalizedValue = String(value || '').trim();
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+          return '';
+        }
+
+        const [year, month, day] = normalizedValue.split('-').map(Number);
+        const shiftedDate = new Date(year, month - 1, day);
+
+        if (Number.isNaN(shiftedDate.getTime())) {
+          return '';
+        }
+
+        shiftedDate.setFullYear(shiftedDate.getFullYear() + yearOffset);
+        return formatEditableDateInputValue(shiftedDate);
+      };
+
+      const syncValidadeCursoFromDataCurso = () => {
+        const comparableDataCurso = getComparableDateInputValue(dataCursoInput);
+        validadeCursoInput.value = comparableDataCurso ? shiftDateInputValueYears(comparableDataCurso, 5) : '';
+      };
+
       const isTodayOrFutureDate = (value) => Boolean(value) && value >= getCurrentDateInputValue();
       const formatDateTimeLabel = (value) => {
         if (!value) {
@@ -680,7 +707,6 @@
         cpfError.textContent = '';
         crmcError.textContent = '';
         validadeCrmcError.textContent = '';
-        validadeCursoError.textContent = '';
         feedback.textContent = '';
         feedback.className = 'dsc-feedback';
       };
@@ -689,14 +715,12 @@
         cpfCondutor: cpfError,
         crmc: crmcError,
         validadeCrmc: validadeCrmcError,
-        validadeCurso: validadeCursoError,
       };
       const errorTargets = {
         condutor: nomeInput,
         cpfCondutor: cpfInput,
         crmc: crmcInput,
         validadeCrmc: validadeCrmcInput,
-        validadeCurso: validadeCursoInput,
       };
       const revealFirstFormError = (errorMap = {}) => {
         const firstErrorEntry = Object.entries(errorMap).find(([key, value]) => formErrors[key] && value);
@@ -985,7 +1009,7 @@
       };
 
       const setFormReadOnly = (isReadOnly) => {
-        [nomeInput, cpfInput, crmcInput, validadeCrmcInput, validadeCursoInput, historicoInput].forEach((input) => {
+        [nomeInput, cpfInput, crmcInput, validadeCrmcInput, dataCursoInput, validadeCursoInput, historicoInput].forEach((input) => {
           input.readOnly = isReadOnly;
         });
         form.querySelectorAll('input[type="radio"], input[type="checkbox"], input[type="date"], select').forEach((input) => {
@@ -1020,7 +1044,9 @@
         saveButton.textContent = isEditing ? 'Salvar alteracao' : 'Salvar condutor';
         setFormReadOnly(isReadOnly);
         setActiveFormTab('cadastro');
-        void loadCondutorVinculosByCpf(cpfInput.value);
+        if (!isOrdemServicoCondutorPopup) {
+          void loadCondutorVinculosByCpf(cpfInput.value);
+        }
       };
 
       const showImportForm = () => {
@@ -1054,6 +1080,7 @@
         setPopupVisibility(formModal, false);
         syncPopupPageState();
         form.reset();
+        syncValidadeCursoFromDataCurso();
         setSelectedTipoVinculo('');
         editingCodigo = null;
         formMode = 'create';
@@ -1262,6 +1289,41 @@
         cpfInput.value = normalizeCpf(cpf);
       };
 
+      const startPopupFlow = async ({ cpf = '' } = {}) => {
+        const normalizedCpf = normalizeCpf(cpf);
+
+        if (!normalizedCpf) {
+          startInsert();
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/condutor/lookup?cpf=${encodeURIComponent(normalizedCpf)}`, {
+            headers: { Accept: 'application/json' },
+          });
+          const payload = await readJsonResponse(response);
+
+          if (response.status === 404) {
+            startInsert({ cpf: normalizedCpf });
+            feedback.textContent = 'Condutor nao encontrado. Cadastre o condutor e salve para retornar a Ordem de Servico.';
+            feedback.className = 'dsc-feedback dsc-feedback-error';
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao localizar condutor.');
+          }
+
+          startEdit(payload.item || {});
+          feedback.textContent = 'Condutor localizado pelo CPF informado na Ordem de Servico.';
+          feedback.className = 'dsc-feedback dsc-feedback-success';
+        } catch (error) {
+          startInsert({ cpf: normalizedCpf });
+          feedback.textContent = getRequestErrorMessage(error, 'Falha ao localizar condutor.');
+          feedback.className = 'dsc-feedback dsc-feedback-error';
+        }
+      };
+
       const startEdit = (item) => {
         editingCodigo = item.codigo;
         originalCpfValue = normalizeCpf(item.cpf_condutor || '');
@@ -1269,6 +1331,7 @@
         cpfInput.value = item.cpf_condutor;
         crmcInput.value = item.crmc;
         validadeCrmcInput.value = item.validade_crmc;
+        dataCursoInput.value = shiftDateInputValueYears(item.validade_curso, -5);
         validadeCursoInput.value = item.validade_curso;
         setSelectedTipoVinculo(item.tipo_vinculo || '');
         historicoInput.value = item.historico || '';
@@ -1283,6 +1346,7 @@
         cpfInput.value = item.cpf_condutor;
         crmcInput.value = item.crmc;
         validadeCrmcInput.value = item.validade_crmc;
+        dataCursoInput.value = shiftDateInputValueYears(item.validade_curso, -5);
         validadeCursoInput.value = item.validade_curso;
         setSelectedTipoVinculo(item.tipo_vinculo || '');
         historicoInput.value = item.historico || '';
@@ -1385,40 +1449,46 @@
       });
 
       validadeCrmcInput.min = getCurrentDateInputValue();
-      validadeCursoInput.min = getCurrentDateInputValue();
 
-      [validadeCrmcInput, validadeCursoInput].forEach((input) => {
-        input.addEventListener('input', () => {
-          const errorElement = input === validadeCrmcInput ? validadeCrmcError : validadeCursoError;
-          validateCondutorValidityField(
-            input,
-            errorElement,
-            input === validadeCrmcInput ? 'Informe a validade do CRMC.' : 'Informe a validade do curso.',
-            input === validadeCrmcInput ? 'Validade do CRMC deve ser maior ou igual a hoje.' : 'Validade do curso deve ser maior ou igual a hoje.',
-            Boolean(errorElement.textContent.trim()),
-          );
-        });
+      validadeCrmcInput.addEventListener('input', () => {
+        validateCondutorValidityField(
+          validadeCrmcInput,
+          validadeCrmcError,
+          'Informe a validade do CRMC.',
+          'Validade do CRMC deve ser maior ou igual a hoje.',
+          Boolean(validadeCrmcError.textContent.trim()),
+        );
+      });
 
-        input.addEventListener('blur', () => {
-          validateCondutorValidityField(
-            input,
-            input === validadeCrmcInput ? validadeCrmcError : validadeCursoError,
-            input === validadeCrmcInput ? 'Informe a validade do CRMC.' : 'Informe a validade do curso.',
-            input === validadeCrmcInput ? 'Validade do CRMC deve ser maior ou igual a hoje.' : 'Validade do curso deve ser maior ou igual a hoje.',
-            true,
-          );
-        });
+      validadeCrmcInput.addEventListener('blur', () => {
+        validateCondutorValidityField(
+          validadeCrmcInput,
+          validadeCrmcError,
+          'Informe a validade do CRMC.',
+          'Validade do CRMC deve ser maior ou igual a hoje.',
+          true,
+        );
+      });
+
+      dataCursoInput.addEventListener('input', () => {
+        syncValidadeCursoFromDataCurso();
+      });
+
+      dataCursoInput.addEventListener('blur', () => {
+        syncValidadeCursoFromDataCurso();
       });
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        [validadeCrmcInput, validadeCursoInput].forEach(commitEditableDateInput);
+        [validadeCrmcInput, dataCursoInput].forEach(commitEditableDateInput);
+        syncValidadeCursoFromDataCurso();
 
         const condutor = normalizeName(nomeInput.value);
         const cpfCondutor = normalizeCpf(cpfInput.value);
         const crmc = normalizeCrmc(crmcInput.value);
         const validadeCrmc = validadeCrmcInput.value;
+        const dataCurso = getComparableDateInputValue(dataCursoInput);
         const validadeCurso = validadeCursoInput.value;
         const tipoVinculo = getSelectedTipoVinculo();
         const historico = historicoInput.value.trim();
@@ -1454,10 +1524,6 @@
           hasError = true;
         }
 
-        if (validateCondutorValidityField(validadeCursoInput, validadeCursoError, 'Informe a validade do curso.', 'Validade do curso deve ser maior ou igual a hoje.', true)) {
-          hasError = true;
-        }
-
         if (hasError) {
           feedback.textContent = 'Corrija os campos para continuar.';
           feedback.classList.add('dsc-feedback-error');
@@ -1466,7 +1532,6 @@
             cpfCondutor: cpfError.textContent,
             crmc: crmcError.textContent,
             validadeCrmc: validadeCrmcError.textContent,
-            validadeCurso: validadeCursoError.textContent,
           });
           return;
         }
@@ -1502,7 +1567,7 @@
               cpfCondutor,
               crmc,
               validadeCrmc,
-              validadeCurso,
+              validadeCurso: dataCurso ? validadeCurso : '',
               tipoVinculo,
               historico,
             }),
@@ -1802,16 +1867,16 @@
         void loadItems();
       });
 
-      [validadeCrmcInput, validadeCursoInput].forEach(enableFullDateSelection);
+      [validadeCrmcInput, dataCursoInput].forEach(enableFullDateSelection);
 
       hideForm();
       hideImportForm();
       hideRejectionPanel();
       if (isOrdemServicoCondutorPopup) {
-        startInsert({ cpf: popupCpf });
-        feedback.textContent = 'Condutor nao encontrado. Cadastre o condutor e salve para retornar a Ordem de Servico.';
+        void startPopupFlow({ cpf: popupCpf });
+      } else {
+        void loadItems();
       }
-      void loadItems();
     </script>
   </body>
 </html>
