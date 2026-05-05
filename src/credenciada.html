@@ -14,6 +14,25 @@
         gap: 20px;
       }
 
+      #credenciada-form .dsc-form-row-credenciada-top {
+        display: grid;
+        grid-template-columns: minmax(320px, 1.55fr) minmax(220px, 0.9fr) minmax(220px, 0.75fr) minmax(140px, 0.45fr) !important;
+        gap: 16px;
+        align-items: start;
+      }
+
+      @media (max-width: 1180px) {
+        #credenciada-form .dsc-form-row-credenciada-top {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        #credenciada-form .dsc-form-row-credenciada-top {
+          grid-template-columns: minmax(0, 1fr) !important;
+        }
+      }
+
       #credenciada-tab-termos .dsc-form-section-card {
         margin-bottom: 0;
       }
@@ -215,6 +234,12 @@
                   </select>
                   <div class="dsc-form-error" id="credenciada-tipo-termo-error"></div>
                 </label>
+
+                <label class="dsc-field-group" for="credenciada-termo-permissao">
+                  <span>Termo permissao</span>
+                  <input class="dsc-form-control" id="credenciada-termo-permissao" type="text" inputmode="numeric" placeholder="9999-9" maxlength="6" />
+                  <div class="dsc-form-error" id="credenciada-termo-permissao-error"></div>
+                </label>
               </div>
 
               <div class="dsc-form-row dsc-form-row-contact">
@@ -404,6 +429,7 @@
       const nomeInput = document.getElementById('credenciada-nome');
       const cnpjCpfInput = document.getElementById('credenciada-cnpj-cpf');
       const tipoTermoInput = document.getElementById('credenciada-tipo-termo');
+      const termoPermissaoInput = document.getElementById('credenciada-termo-permissao');
       const logradouroInput = document.getElementById('credenciada-logradouro');
       const bairroInput = document.getElementById('credenciada-bairro');
       const cepInput = document.getElementById('credenciada-cep');
@@ -419,6 +445,7 @@
       const nomeError = document.getElementById('credenciada-nome-error');
       const cnpjCpfError = document.getElementById('credenciada-cnpj-cpf-error');
       const tipoTermoError = document.getElementById('credenciada-tipo-termo-error');
+      const termoPermissaoError = document.getElementById('credenciada-termo-permissao-error');
       const logradouroError = document.getElementById('credenciada-logradouro-error');
       const bairroError = document.getElementById('credenciada-bairro-error');
       const cepError = document.getElementById('credenciada-cep-error');
@@ -564,6 +591,16 @@
         }
 
         return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+      };
+
+      const normalizeTermoPermissao = (value) => {
+        const digits = value.replace(/\D/g, '').slice(0, 5);
+
+        if (digits.length <= 4) {
+          return digits;
+        }
+
+        return `${digits.slice(0, 4)}-${digits.slice(4, 5)}`;
       };
 
       const normalizePhone = (value) => {
@@ -714,6 +751,7 @@
         nomeError.textContent = '';
         cnpjCpfError.textContent = '';
         tipoTermoError.textContent = '';
+        termoPermissaoError.textContent = '';
         logradouroError.textContent = '';
         bairroError.textContent = '';
         cepError.textContent = '';
@@ -733,6 +771,7 @@
         credenciado: nomeError,
         cnpjCpf: cnpjCpfError,
         tipoPessoa: tipoTermoError,
+        termoPermissao: termoPermissaoError,
         cep: cepError,
         numero: numeroError,
         complemento: complementoError,
@@ -750,6 +789,7 @@
         credenciado: nomeInput,
         cnpjCpf: cnpjCpfInput,
         tipoPessoa: tipoTermoInput,
+        termoPermissao: termoPermissaoInput,
         cep: cepInput,
         numero: numeroInput,
         complemento: complementoInput,
@@ -926,7 +966,7 @@
       };
 
       const setFormReadOnly = (isReadOnly) => {
-        [nomeInput, cnpjCpfInput, cepInput, numeroInput, complementoInput, emailInput, telefone1Input, telefone2Input, representanteInput, cpfRepresentanteInput, statusInput, tipoTermoInput].forEach((input) => {
+        [nomeInput, cnpjCpfInput, cepInput, numeroInput, complementoInput, emailInput, telefone1Input, telefone2Input, representanteInput, cpfRepresentanteInput, statusInput, tipoTermoInput, termoPermissaoInput].forEach((input) => {
           if ('readOnly' in input) {
             input.readOnly = isReadOnly;
           }
@@ -1203,6 +1243,7 @@
         editingCodigo = null;
         form.reset();
         tipoTermoInput.value = '';
+        termoPermissaoInput.value = '';
         tipoTermoInput.disabled = true;
         resetMessages();
         showForm('create');
@@ -1213,6 +1254,7 @@
         nomeInput.value = item.credenciado || '';
         cnpjCpfInput.value = normalizeCnpjCpf(item.cnpj_cpf || '');
         tipoTermoInput.value = normalizeTipoTermoValue(item.tipo_pessoa || '');
+        termoPermissaoInput.value = item.termo_permissao || '';
         logradouroInput.value = item.logradouro || '';
         bairroInput.value = item.bairro || '';
         cepInput.value = item.cep || '';
@@ -1234,6 +1276,7 @@
         nomeInput.value = item.credenciado || '';
         cnpjCpfInput.value = normalizeCnpjCpf(item.cnpj_cpf || '');
         tipoTermoInput.value = normalizeTipoTermoValue(item.tipo_pessoa || '');
+        termoPermissaoInput.value = item.termo_permissao || '';
         logradouroInput.value = item.logradouro || '';
         bairroInput.value = item.bairro || '';
         cepInput.value = item.cep || '';
@@ -1339,6 +1382,10 @@
         cepInput.value = normalizeCep(cepInput.value);
       });
 
+      termoPermissaoInput.addEventListener('input', () => {
+        termoPermissaoInput.value = normalizeTermoPermissao(termoPermissaoInput.value);
+      });
+
       const fillAddressFromCep = (item) => {
         logradouroInput.value = item.logradouro || '';
         bairroInput.value = item.bairro || '';
@@ -1414,6 +1461,7 @@
         const credenciado = normalizeText(nomeInput.value, 255);
         const cnpjCpf = normalizeCnpjCpf(cnpjCpfInput.value);
         const tipoTermo = normalizeTipoTermoValue(tipoTermoInput.value);
+        const termoPermissao = normalizeTermoPermissao(termoPermissaoInput.value);
         const cep = normalizeCep(cepInput.value);
         const numero = normalizeText(numeroInput.value, 30);
         const complemento = normalizeText(complementoInput.value, 30);
@@ -1435,6 +1483,7 @@
         nomeInput.value = credenciado;
         cnpjCpfInput.value = cnpjCpf;
         syncTipoTermoByDocument();
+        termoPermissaoInput.value = termoPermissao;
         cepInput.value = cep;
         numeroInput.value = numero;
         complementoInput.value = complemento;
@@ -1458,6 +1507,11 @@
 
         if (cnpjCpf.replace(/\D/g, '').length === 14 && !['PESSOA JURIDICA', 'COOPERATIVA'].includes(tipoTermo)) {
           tipoTermoError.textContent = 'Para CNPJ, selecione Pessoa Juridica ou Cooperativa.';
+          hasError = true;
+        }
+
+        if (termoPermissao && !/^\d{4}-\d$/.test(termoPermissao)) {
+          termoPermissaoError.textContent = 'Termo permissao deve seguir o formato 9999-9.';
           hasError = true;
         }
 
@@ -1493,6 +1547,7 @@
             credenciado: nomeError.textContent,
             cnpjCpf: cnpjCpfError.textContent,
             tipoPessoa: tipoTermoError.textContent,
+            termoPermissao: termoPermissaoError.textContent,
             cep: cepError.textContent,
             email: emailError.textContent,
             telefone1: telefone1Error.textContent,
@@ -1513,6 +1568,7 @@
               credenciado,
               cnpjCpf,
               tipoPessoa: tipoTermo,
+              termoPermissao,
               cep,
               numero,
               complemento,

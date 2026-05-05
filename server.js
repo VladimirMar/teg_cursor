@@ -562,6 +562,18 @@ const normalizeCredenciadaStatusValue = (value) => {
   return normalizedValue === 'CANCELADO' ? 'CANCELADO' : 'ATIVO'
 }
 
+const normalizeCredenciadaTermoPermissao = (value) => {
+  const digits = String(value ?? '').replace(/\D/g, '').slice(0, 5)
+
+  if (digits.length <= 4) {
+    return digits
+  }
+
+  return `${digits.slice(0, 4)}-${digits.slice(4, 5)}`
+}
+
+const isCredenciadaTermoPermissaoValid = (value) => /^\d{4}-\d$/.test(String(value ?? '').trim())
+
 const normalizeTrocaText = (value, maxLength = 255) => {
   return normalizeRequestValue(value)
     .replace(/\s+/g, ' ')
@@ -3581,6 +3593,7 @@ const credenciadaSelectClause = `
   codigo::text AS codigo,
   BTRIM(credenciado) AS credenciado,
   COALESCE(BTRIM(tipo_pessoa), '') AS tipo_pessoa,
+  COALESCE(BTRIM(termo_permissao), '') AS termo_permissao,
   BTRIM(cnpj_cpf) AS cnpj_cpf,
   COALESCE(BTRIM(cep), '') AS cep,
   COALESCE(BTRIM(numero), '') AS numero,
@@ -7374,6 +7387,7 @@ const validateCredenciadaPayload = async ({
   codigo,
   credenciado,
   tipoPessoa,
+  termoPermissao,
   cnpjCpf,
   cep,
   numero,
@@ -7390,6 +7404,7 @@ const validateCredenciadaPayload = async ({
   const normalizedCredenciado = normalizeCredenciadaText(credenciado, 255)
   const normalizedCnpjCpf = normalizeCnpjCpf(cnpjCpf)
   const normalizedTipoPessoaSource = normalizeCredenciadaTipoPessoaValue(tipoPessoa)
+  const normalizedTermoPermissao = normalizeCredenciadaTermoPermissao(termoPermissao)
   const normalizedCep = normalizeCep(cep)
   const normalizedNumero = normalizeCredenciadaText(numero, 30)
   const normalizedComplemento = normalizeCredenciadaText(complemento, 30)
@@ -7438,6 +7453,10 @@ const validateCredenciadaPayload = async ({
 
   if (documentDigitsLength === 14 && !normalizedTipoPessoa) {
     return { status: 400, payload: { message: 'Para CNPJ, tipo de termo deve ser Pessoa Juridica ou Cooperativa.' } }
+  }
+
+  if (normalizedTermoPermissao && !isCredenciadaTermoPermissaoValid(normalizedTermoPermissao)) {
+    return { status: 400, payload: { message: 'Termo permissao deve seguir o formato 9999-9.' } }
   }
 
   if (normalizedCep && !isCepValid(normalizedCep)) {
@@ -7492,6 +7511,7 @@ const validateCredenciadaPayload = async ({
       codigo: normalizedCodigo,
       credenciado: normalizedCredenciado,
       tipoPessoa: normalizedTipoPessoa,
+      termoPermissao: normalizedTermoPermissao,
       cnpjCpf: normalizedCnpjCpf,
       cep: normalizedCep,
       numero: normalizedNumero,
@@ -9669,6 +9689,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS telefone_02 varchar(20)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS representante varchar(255)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS cpf_representante varchar(20)')
+  await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS termo_permissao varchar(6)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS status varchar(50)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
@@ -15820,6 +15841,7 @@ const server = createServer(async (request, response) => {
         codigo: generatedCodigo,
         credenciado: body.credenciado,
         tipoPessoa: body.tipoPessoa,
+        termoPermissao: body.termoPermissao,
         cnpjCpf: body.cnpjCpf,
         cep: body.cep,
         numero: body.numero,
@@ -15844,6 +15866,7 @@ const server = createServer(async (request, response) => {
            empresa,
            condutor,
            tipo_pessoa,
+           termo_permissao,
            credenciado,
            cnpj_cpf,
            cep,
@@ -15858,7 +15881,7 @@ const server = createServer(async (request, response) => {
            data_inclusao,
            data_modificacao
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), NOW(), NOW())
+         VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), NULLIF($17, ''), NOW(), NOW())
          RETURNING ${credenciadaSelectClause}`,
         [
           validationResult.payload.codigo,
@@ -15866,6 +15889,7 @@ const server = createServer(async (request, response) => {
           validationResult.payload.empresa,
           validationResult.payload.condutor,
           validationResult.payload.tipoPessoa,
+          validationResult.payload.termoPermissao,
           validationResult.payload.credenciado,
           validationResult.payload.cnpjCpf,
           validationResult.payload.cep,
@@ -17107,6 +17131,7 @@ const server = createServer(async (request, response) => {
         codigo: originalCodigo,
         credenciado: body.credenciado,
         tipoPessoa: body.tipoPessoa,
+        termoPermissao: body.termoPermissao,
         cnpjCpf: body.cnpjCpf,
         cep: body.cep,
         numero: body.numero,
@@ -17131,25 +17156,27 @@ const server = createServer(async (request, response) => {
            empresa = $2,
            condutor = $3,
            tipo_pessoa = $4,
-           credenciado = $5,
-           cnpj_cpf = $6,
-           cep = NULLIF($7, ''),
-           numero = NULLIF($8, ''),
-           complemento = NULLIF($9, ''),
-           email = NULLIF($10, ''),
-           telefone_01 = NULLIF($11, ''),
-           telefone_02 = NULLIF($12, ''),
-           representante = NULLIF($13, ''),
-           cpf_representante = NULLIF($14, ''),
-           status = NULLIF($15, ''),
+           termo_permissao = NULLIF($5, ''),
+           credenciado = $6,
+           cnpj_cpf = $7,
+           cep = NULLIF($8, ''),
+           numero = NULLIF($9, ''),
+           complemento = NULLIF($10, ''),
+           email = NULLIF($11, ''),
+           telefone_01 = NULLIF($12, ''),
+           telefone_02 = NULLIF($13, ''),
+           representante = NULLIF($14, ''),
+           cpf_representante = NULLIF($15, ''),
+           status = NULLIF($16, ''),
              data_modificacao = NOW()
-         WHERE codigo = $16
+         WHERE codigo = $17
          RETURNING ${credenciadaSelectClause}`,
         [
           validationResult.payload.placa,
           validationResult.payload.empresa,
           validationResult.payload.condutor,
           validationResult.payload.tipoPessoa,
+          validationResult.payload.termoPermissao,
           validationResult.payload.credenciado,
           validationResult.payload.cnpjCpf,
           validationResult.payload.cep,
