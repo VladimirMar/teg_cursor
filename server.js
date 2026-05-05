@@ -1379,6 +1379,22 @@ const formatActiveOrdemServicoLabel = (item) => {
   ].filter(Boolean).join('-') || String(item?.codigo || '').trim()
 }
 
+const buildOrdemServicoNumeroLabel = (item) => {
+  const termoAdesao = normalizeRequestValue(item?.termo_adesao)
+  const numOs = normalizeRequestValue(item?.num_os)
+  const revisao = normalizeRequestValue(item?.revisao)
+  const codigo = normalizeRequestValue(item?.codigo)
+  let label = [termoAdesao, numOs].filter(Boolean).join('-')
+
+  if (revisao) {
+    label += revisao.startsWith('-')
+      ? revisao
+      : `${label ? '-' : ''}${revisao}`
+  }
+
+  return label || codigo
+}
+
 const findActiveOrdemServicoByCpf = async (cpfValue, { excludeCodigo = null } = {}, executor = pool) => {
   const digits = extractDocumentDigits(cpfValue)
   const normalizedExcludeCodigo = normalizeCondutorCodigo(excludeCodigo)
@@ -2041,22 +2057,6 @@ const normalizeVehicleMoney = (value) => {
 
   const parsed = Number(normalizedValue)
   return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : Number.NaN
-
-  const buildOrdemServicoNumeroLabel = (item) => {
-    const termoAdesao = normalizeRequestValue(item?.termo_adesao)
-    const numOs = normalizeRequestValue(item?.num_os)
-    const revisao = normalizeRequestValue(item?.revisao)
-    const codigo = normalizeRequestValue(item?.codigo)
-    let label = [termoAdesao, numOs].filter(Boolean).join('-')
-
-    if (revisao) {
-      label += revisao.startsWith('-')
-        ? revisao
-        : `${label ? '-' : ''}${revisao}`
-    }
-
-    return label || codigo
-  }
 }
 
 const normalizeTipoDeVeiculo = (value) => {
@@ -7241,9 +7241,11 @@ const validateVeiculoPayload = async ({
     }
   }
 
+  let originalPlaca = ''
+
   if (Number.isInteger(originalCodigo) && originalCodigo > 0) {
     const existingVeiculoItem = await fetchVeiculoAuditItemByCodigo(pool, originalCodigo)
-    const originalPlaca = normalizeVehiclePlaca(existingVeiculoItem?.placas ?? '')
+    originalPlaca = normalizeVehiclePlaca(existingVeiculoItem?.placas ?? '')
 
     if (originalPlaca && originalPlaca !== normalizedPlacas) {
       const activeOriginalPlacaItem = await findActiveOrdemServicoByPlaca(originalPlaca)
@@ -7266,7 +7268,7 @@ const validateVeiculoPayload = async ({
     }
   }
 
-  if (normalizedPlacas) {
+  if (normalizedPlacas && (!originalPlaca || originalPlaca !== normalizedPlacas)) {
     const activeOrdemServicoItem = await findActiveOrdemServicoByPlaca(normalizedPlacas)
 
     if (activeOrdemServicoItem) {

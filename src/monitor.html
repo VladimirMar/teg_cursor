@@ -1291,7 +1291,7 @@
         nomeInput.value = item.monitor;
         cpfInput.value = item.cpf_monitor;
         cursoInput.value = item.curso_monitor || '';
-        validadeCursoInput.value = item.curso_monitor ? shiftDateInputValueYears(item.curso_monitor, 5) : (item.validade_curso || '');
+        validadeCursoInput.value = item.validade_curso || (item.curso_monitor ? shiftDateInputValueYears(item.curso_monitor, 5) : '');
         nascimentoInput.value = item.nascimento || '';
         setSelectedTipoVinculo(item.tipo_vinculo || '');
         resetMessages();
@@ -1305,7 +1305,7 @@
         nomeInput.value = item.monitor;
         cpfInput.value = item.cpf_monitor;
         cursoInput.value = item.curso_monitor || '';
-        validadeCursoInput.value = item.curso_monitor ? shiftDateInputValueYears(item.curso_monitor, 5) : (item.validade_curso || '');
+        validadeCursoInput.value = item.validade_curso || (item.curso_monitor ? shiftDateInputValueYears(item.curso_monitor, 5) : '');
         nascimentoInput.value = item.nascimento || '';
         setSelectedTipoVinculo(item.tipo_vinculo || '');
         resetMessages();

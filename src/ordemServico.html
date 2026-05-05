@@ -415,6 +415,9 @@
                     </div>
 
                     <div class="dsc-ordem-servico-dados-os-layout" id="ordem-servico-dados-os-content"></div>
+                    <div class="dsc-login-form-buttons dsc-access-form-buttons dsc-ordem-servico-dados-os-actions">
+                      <button type="button" class="dsc-btn dsc-btn-blue" id="save-ordem-servico-dados-os-button" disabled>Gravar validades</button>
+                    </div>
                     <p class="dsc-feedback" id="ordem-servico-dados-os-feedback"></p>
                   </section>
                 </div>
@@ -605,6 +608,7 @@
       const saveButton = document.getElementById('save-ordem-servico-button');
       const showTermoButton = document.getElementById('show-ordem-servico-termo-button');
       const showDadosOsButton = document.getElementById('show-ordem-servico-dados-os-button');
+      const saveDadosOsButton = document.getElementById('save-ordem-servico-dados-os-button');
       const showEmissaoButton = document.getElementById('show-ordem-servico-emissao-button');
       const termoModal = document.getElementById('ordem-servico-termo-modal');
       const termoPanel = document.getElementById('ordem-servico-termo-panel');
@@ -627,6 +631,12 @@
       const emissaoSubtitle = document.getElementById('ordem-servico-emissao-subtitle');
       const emissaoContent = document.getElementById('ordem-servico-emissao-content');
       const emissaoFeedback = document.getElementById('ordem-servico-emissao-feedback');
+      let dadosOsState = {
+        termoItem: null,
+        condutorItem: null,
+        monitorItem: null,
+        veiculoItem: null,
+      };
       const statusBanner = document.getElementById('status-banner');
       const closeFormModalButton = document.getElementById('close-ordem-servico-form-modal-button');
       const importButton = document.getElementById('open-ordem-servico-import-button');
@@ -1012,6 +1022,7 @@
 
       const buildReadonlyTermoFieldHtml = (label, value, options = {}) => {
         const classNames = ['dsc-ordem-servico-termo-field'];
+        const valueClassNames = ['dsc-ordem-servico-summary-value', 'dsc-ordem-servico-termo-box'];
 
         if (options.emphasis) {
           classNames.push('dsc-ordem-servico-termo-field-emphasis');
@@ -1033,12 +1044,173 @@
           classNames.push('dsc-ordem-servico-termo-field-compact-label');
         }
 
+        if (options.fieldClassName) {
+          classNames.push(options.fieldClassName);
+        }
+
+        if (options.valueClassName) {
+          valueClassNames.push(options.valueClassName);
+        }
+
         return `
           <div class="dsc-ordem-servico-summary-field ${classNames.join(' ')}">
             <span class="dsc-ordem-servico-summary-label dsc-ordem-servico-termo-label">${escapeHtml(label)}</span>
-            <strong class="dsc-ordem-servico-summary-value dsc-ordem-servico-termo-box">${escapeHtml(formatSummaryValue(value))}</strong>
+            <strong class="${valueClassNames.join(' ')}">${escapeHtml(formatSummaryValue(value))}</strong>
           </div>
         `;
+      };
+
+      const normalizeDadosOsDateValue = (value) => {
+        const normalizedValue = String(value ?? '').trim();
+
+        if (!normalizedValue) {
+          return '';
+        }
+
+        const [datePart] = normalizedValue.split(' ');
+        return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : '';
+      };
+
+      const getDadosOsValidityMeta = (value) => {
+        const normalizedValue = normalizeDadosOsDateValue(value);
+
+        if (!normalizedValue) {
+          return {
+            normalizedValue: '',
+            hasDate: false,
+            isExpired: false,
+          };
+        }
+
+        const targetDate = new Date(`${normalizedValue}T00:00:00`);
+
+        if (Number.isNaN(targetDate.getTime())) {
+          return {
+            normalizedValue: '',
+            hasDate: false,
+            isExpired: false,
+          };
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return {
+          normalizedValue,
+          hasDate: true,
+          isExpired: targetDate.getTime() < today.getTime(),
+        };
+      };
+
+      const buildDadosOsValidityFieldHtml = (label, rawValue, options = {}) => {
+        const validityMeta = getDadosOsValidityMeta(rawValue);
+
+        if (!validityMeta.hasDate) {
+          return buildReadonlyTermoFieldHtml(label, formatSummaryDate(rawValue), options);
+        }
+
+        return buildReadonlyTermoFieldHtml(
+          label,
+          validityMeta.isExpired ? 'Validade vencida' : formatSummaryDate(validityMeta.normalizedValue),
+          {
+            ...options,
+            valueClassName: validityMeta.isExpired
+              ? 'dsc-ordem-servico-validity-expired'
+              : 'dsc-ordem-servico-validity-current',
+          },
+        );
+      };
+
+      const buildEditableDadosOsValidityFieldHtml = (label, rawValue, inputId, options = {}) => {
+        const classNames = ['dsc-ordem-servico-summary-field', 'dsc-ordem-servico-termo-field'];
+        const validityMeta = getDadosOsValidityMeta(rawValue);
+
+        if (options.compactLabel) {
+          classNames.push('dsc-ordem-servico-termo-field-compact-label');
+        }
+
+        if (options.fieldClassName) {
+          classNames.push(options.fieldClassName);
+        }
+
+        const statusClassName = validityMeta.hasDate
+          ? (validityMeta.isExpired ? 'dsc-ordem-servico-validity-expired' : 'dsc-ordem-servico-validity-current')
+          : '';
+        const statusText = validityMeta.hasDate
+          ? (validityMeta.isExpired ? 'Validade vencida' : 'Em dia')
+          : 'Nao informado';
+
+        return `
+          <div class="${classNames.join(' ')}">
+            <span class="dsc-ordem-servico-summary-label dsc-ordem-servico-termo-label">${escapeHtml(label)}</span>
+            <div class="dsc-ordem-servico-dados-os-edit-control">
+              <input
+                class="dsc-form-control dsc-ordem-servico-dados-os-edit-input ${statusClassName}"
+                id="${escapeHtml(inputId)}"
+                type="date"
+                value="${escapeHtml(validityMeta.normalizedValue)}"
+              />
+              <span class="dsc-ordem-servico-dados-os-edit-status ${statusClassName}">${escapeHtml(statusText)}</span>
+            </div>
+          </div>
+        `;
+      };
+
+      const getDadosOsValidityStatusConfig = (dateValue, options = {}) => {
+        const validityMeta = getDadosOsValidityMeta(dateValue);
+
+        if (!validityMeta.hasDate) {
+          return {
+            className: '',
+            text: options.emptyText || 'Nao informado',
+          };
+        }
+
+        return validityMeta.isExpired
+          ? {
+            className: 'dsc-ordem-servico-validity-expired',
+            text: options.expiredText || 'Validade vencida',
+          }
+          : {
+            className: 'dsc-ordem-servico-validity-current',
+            text: options.currentText || 'Em dia',
+          };
+      };
+
+      const syncDadosOsValidityFieldState = (inputId, options = {}) => {
+        const input = document.getElementById(inputId);
+
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+
+        const statusElement = input.parentElement?.querySelector('.dsc-ordem-servico-dados-os-edit-status');
+
+        if (!(statusElement instanceof HTMLElement)) {
+          return;
+        }
+
+        if (options.min) {
+          input.min = options.min;
+        }
+
+        const applyState = () => {
+          const statusConfig = getDadosOsValidityStatusConfig(input.value, options);
+
+          input.classList.remove('dsc-ordem-servico-validity-expired', 'dsc-ordem-servico-validity-current');
+          statusElement.classList.remove('dsc-ordem-servico-validity-expired', 'dsc-ordem-servico-validity-current');
+
+          if (statusConfig.className) {
+            input.classList.add(statusConfig.className);
+            statusElement.classList.add(statusConfig.className);
+          }
+
+          statusElement.textContent = statusConfig.text;
+        };
+
+        input.addEventListener('input', applyState);
+        input.addEventListener('change', applyState);
+        applyState();
       };
 
       const buildReadonlyTermoSectionHtml = (title, fields, options = {}) => `
@@ -1148,6 +1320,12 @@
       };
 
       const clearOrdemServicoDadosOs = () => {
+        dadosOsState = {
+          termoItem: null,
+          condutorItem: null,
+          monitorItem: null,
+          veiculoItem: null,
+        };
         dadosOsModal.classList.add('dsc-hidden');
         dadosOsModal.setAttribute('aria-hidden', 'true');
         dadosOsPanel.classList.add('dsc-hidden');
@@ -1155,6 +1333,8 @@
         dadosOsSubtitle.textContent = 'Consulta dos dados principais da OS.';
         dadosOsFeedback.textContent = '';
         dadosOsFeedback.className = 'dsc-feedback';
+        saveDadosOsButton.disabled = true;
+        saveDadosOsButton.textContent = 'Gravar validades';
         syncPopupPageState();
       };
 
@@ -1167,7 +1347,15 @@
         closeDadosOsButton.focus({ preventScroll: true });
       };
 
+      const isDadosOsEditAllowed = () => formMode === 'edit' && normalizeKey(getSelectedSituacao()) === 'ativo';
+
       const renderOrdemServicoDadosOs = (termoItem, condutorItem = null, monitorItem = null, veiculoItem = null) => {
+        dadosOsState = {
+          termoItem,
+          condutorItem,
+          monitorItem,
+          veiculoItem,
+        };
         const termoAdesao = normalizeTermoAdesao(termoItem?.termoAdesao || termoAdesaoInput.value);
         const tipoTermo = termoItem?.tipo_termo || termoItem?.tipoTermo;
         const dre = String(dreDescricaoInput.value ?? '').trim();
@@ -1192,7 +1380,7 @@
 
         dadosOsSubtitle.textContent = `Consulta dos dados principais da OS ${formatSummaryValue(buildOrdemServicoLabel())}.`;
         dadosOsContent.innerHTML = `
-          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section">
+          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section dsc-ordem-servico-dados-os-section-credenciado">
             <h4>Credenciado</h4>
             <div class="dsc-ordem-servico-dados-os-row">
               ${buildReadonlyTermoFieldHtml('Termo de adesao', termoAdesao, { emphasis: true, compactLabel: true })}
@@ -1201,48 +1389,277 @@
               ${buildReadonlyTermoFieldHtml('Credenciado', credenciado, { emphasis: true })}
             </div>
           </section>
-          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section">
+          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section dsc-ordem-servico-dados-os-section-condutor">
             <h4>Condutor</h4>
-            <div class="dsc-ordem-servico-dados-os-condutor-top">
+            <div class="dsc-ordem-servico-dados-os-condutor-row">
               ${buildReadonlyTermoFieldHtml('Nome', nomeCondutor, { emphasis: true })}
-            </div>
-            <div class="dsc-ordem-servico-dados-os-condutor-bottom">
               ${buildReadonlyTermoFieldHtml('CPF', cpfCondutor, { compactLabel: true })}
               ${buildReadonlyTermoFieldHtml('Vinculo profissional', vinculoProfissional, { compactLabel: true })}
-              ${buildReadonlyTermoFieldHtml('Validade do curso', formatSummaryDate(validadeCurso), { compactLabel: true })}
+              ${isDadosOsEditAllowed() && condutorItem?.codigo
+                ? buildEditableDadosOsValidityFieldHtml('Validade do curso', validadeCurso, 'ordem-servico-dados-os-condutor-validade-curso', { compactLabel: true })
+                : buildDadosOsValidityFieldHtml('Validade do curso', validadeCurso, { compactLabel: true })}
             </div>
           </section>
-          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section">
+          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section dsc-ordem-servico-dados-os-section-monitor">
             <h4>Monitor</h4>
-            <div class="dsc-ordem-servico-dados-os-monitor-top">
+            <div class="dsc-ordem-servico-dados-os-monitor-row">
               ${buildReadonlyTermoFieldHtml('Nome', nomeMonitor, { emphasis: true })}
               ${buildReadonlyTermoFieldHtml('CPF', cpfMonitor, { compactLabel: true })}
               ${buildReadonlyTermoFieldHtml('Data de nascimento', formatSummaryDate(nascimentoMonitor), { compactLabel: true })}
-            </div>
-            <div class="dsc-ordem-servico-dados-os-monitor-bottom">
               ${buildReadonlyTermoFieldHtml('Tipo de vinculo', vinculoMonitor, { compactLabel: true })}
-              ${buildReadonlyTermoFieldHtml('Validade do curso', formatSummaryDate(validadeCursoMonitor), { compactLabel: true })}
+              ${isDadosOsEditAllowed() && monitorItem?.codigo
+                ? buildEditableDadosOsValidityFieldHtml('Validade do curso', validadeCursoMonitor, 'ordem-servico-dados-os-monitor-validade-curso', { compactLabel: true })
+                : buildDadosOsValidityFieldHtml('Validade do curso', validadeCursoMonitor, { compactLabel: true })}
             </div>
           </section>
-          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section">
+          <section class="dsc-ordem-servico-summary-card dsc-ordem-servico-dados-os-section dsc-ordem-servico-dados-os-section-veiculo">
             <h4>Veiculo</h4>
-            <div class="dsc-ordem-servico-dados-os-veiculo-top">
+            <div class="dsc-ordem-servico-dados-os-veiculo-row">
               ${buildReadonlyTermoFieldHtml('CRM', crm, { compactLabel: true })}
-              ${buildReadonlyTermoFieldHtml('Validade CRM', formatSummaryDate(validadeCrm), { compactLabel: true })}
               ${buildReadonlyTermoFieldHtml('Seguradora', seguradora, { compactLabel: true })}
               ${buildReadonlyTermoFieldHtml('Placa', placa, { compactLabel: true })}
-            </div>
-            <div class="dsc-ordem-servico-dados-os-veiculo-bottom">
               ${buildReadonlyTermoFieldHtml('Ano', ano, { compactLabel: true })}
               ${buildReadonlyTermoFieldHtml('Capacidades', capacidades, { compactLabel: true })}
               ${buildReadonlyTermoFieldHtml('Tipos', tipos, { compactLabel: true })}
               ${buildReadonlyTermoFieldHtml('Titular', titular, { compactLabel: true })}
+              ${isDadosOsEditAllowed() && veiculoItem?.codigo
+                ? buildEditableDadosOsValidityFieldHtml('Validade CRM', validadeCrm, 'ordem-servico-dados-os-veiculo-validade-crm', { compactLabel: true })
+                : buildDadosOsValidityFieldHtml('Validade CRM', validadeCrm, { compactLabel: true })}
             </div>
           </section>
         `;
+        const dadosOsRowLayouts = [
+          {
+            selector: '.dsc-ordem-servico-dados-os-row',
+            columns: 'minmax(150px, 0.9fr) minmax(150px, 0.9fr) minmax(180px, 1fr) minmax(260px, 1.6fr)',
+          },
+          {
+            selector: '.dsc-ordem-servico-dados-os-condutor-row',
+            columns: 'minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1fr)',
+          },
+          {
+            selector: '.dsc-ordem-servico-dados-os-monitor-row',
+            columns: 'minmax(0, 1.45fr) minmax(0, 0.85fr) minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1fr)',
+          },
+          {
+            selector: '.dsc-ordem-servico-dados-os-veiculo-row',
+            columns: 'minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.65fr) minmax(0, 1.15fr) minmax(0, 1.1fr) minmax(0, 1.25fr)',
+          },
+        ];
+        dadosOsRowLayouts.forEach(({ selector, columns }) => {
+          const row = dadosOsContent.querySelector(selector);
+
+          if (row instanceof HTMLElement) {
+            row.style.display = 'grid';
+            row.style.gridTemplateColumns = columns;
+            row.style.gap = '6px';
+            row.style.alignItems = 'start';
+          }
+        });
+        dadosOsContent.querySelectorAll('.dsc-ordem-servico-summary-field').forEach((field) => {
+          field.style.flexDirection = 'column';
+          field.style.alignItems = 'flex-start';
+          field.style.gap = '3px';
+        });
         dadosOsFeedback.textContent = '';
         dadosOsFeedback.className = 'dsc-feedback';
+        saveDadosOsButton.disabled = !isDadosOsEditAllowed() || !(condutorItem?.codigo || monitorItem?.codigo || veiculoItem?.codigo);
+        saveDadosOsButton.textContent = 'Gravar validades';
+        dadosOsContent.style.gridTemplateColumns = 'minmax(0, 1fr)';
+        dadosOsContent.querySelectorAll('.dsc-ordem-servico-dados-os-section').forEach((section) => {
+          section.style.gridColumn = '1 / -1';
+        });
+        if (isDadosOsEditAllowed() && condutorItem?.codigo) {
+          syncDadosOsValidityFieldState('ordem-servico-dados-os-condutor-validade-curso');
+        }
+        if (isDadosOsEditAllowed() && monitorItem?.codigo) {
+          syncDadosOsValidityFieldState('ordem-servico-dados-os-monitor-validade-curso');
+        }
+        if (isDadosOsEditAllowed() && veiculoItem?.codigo) {
+          syncDadosOsValidityFieldState('ordem-servico-dados-os-veiculo-validade-crm', {
+            currentText: 'Validade em dia',
+            min: getCurrentDateInputValue(),
+          });
+        }
         focusOrdemServicoDadosOs();
+      };
+
+      const buildDadosOsCondutorUpdatePayload = (item, validadeCurso) => ({
+        codigo: item.codigo,
+        condutor: item.condutor || '',
+        cpfCondutor: item.cpf_condutor || '',
+        crmc: item.crmc || '',
+        validadeCrmc: item.validade_crmc || '',
+        validadeCurso,
+        tipoVinculo: item.tipo_vinculo || '',
+        historico: item.historico || '',
+      });
+
+      const buildDadosOsMonitorUpdatePayload = (item, validadeCurso) => ({
+        codigo: item.codigo,
+        monitor: item.monitor || '',
+        cpfMonitor: item.cpf_monitor || '',
+        cursoMonitor: item.curso_monitor || '',
+        validadeCurso,
+        nascimento: item.nascimento || '',
+        tipoVinculo: item.tipo_vinculo || '',
+      });
+
+      const buildDadosOsVeiculoUpdatePayload = (item, valCrm) => ({
+        codigo: item.codigo,
+        crm: item.crm || '',
+        placas: item.placas || '',
+        ano: item.ano || '',
+        capDetran: item.cap_detran || '',
+        capTeg: item.cap_teg || '',
+        capTegCreche: item.cap_teg_creche || '',
+        capAcessivel: item.cap_acessivel || '',
+        valCrm,
+        seguradora: item.seguradora || '',
+        seguroInicio: item.seguro_inicio || '',
+        seguroTermino: item.seguro_termino || '',
+        tipoDeBancada: item.tipo_de_bancada || '',
+        tipoDeVeiculo: item.tipo_de_veiculo || '',
+        marcaModelo: item.marca_modelo || '',
+        titular: item.titular || '',
+        cnpjCpf: item.cnpj_cpf || '',
+        valorVeiculo: item.valor_veiculo || '',
+        osEspecial: item.os_especial || '',
+      });
+
+      const handleSaveOrdemServicoDadosOs = async () => {
+        if (!isDadosOsEditAllowed()) {
+          dadosOsFeedback.textContent = 'As validades de Dados OS so podem ser alteradas ao acionar Corrigir em uma OrdemServico ativa.';
+          dadosOsFeedback.className = 'dsc-feedback dsc-feedback-error';
+          return;
+        }
+
+        const nextState = { ...dadosOsState };
+        const successMessages = [];
+        const errorMessages = [];
+        const condutorInput = document.getElementById('ordem-servico-dados-os-condutor-validade-curso');
+        const monitorInput = document.getElementById('ordem-servico-dados-os-monitor-validade-curso');
+        const veiculoInput = document.getElementById('ordem-servico-dados-os-veiculo-validade-crm');
+        const condutorValidadeCurso = normalizeDadosOsDateValue(condutorInput?.value);
+        const monitorValidadeCurso = normalizeDadosOsDateValue(monitorInput?.value);
+        const veiculoValidadeCrm = normalizeDadosOsDateValue(veiculoInput?.value);
+        const originalCondutorValidadeCurso = normalizeDadosOsDateValue(dadosOsState.condutorItem?.validade_curso);
+        const originalMonitorValidadeCurso = normalizeDadosOsDateValue(dadosOsState.monitorItem?.validade_curso);
+        const originalVeiculoValidadeCrm = normalizeDadosOsDateValue(dadosOsState.veiculoItem?.val_crm || dadosOsState.veiculoItem?.validade_crm);
+        const currentDate = getCurrentDateInputValue();
+
+        if (!(dadosOsState.condutorItem?.codigo || dadosOsState.monitorItem?.codigo || dadosOsState.veiculoItem?.codigo)) {
+          dadosOsFeedback.textContent = 'Nao ha registros editaveis disponiveis para gravacao.';
+          dadosOsFeedback.className = 'dsc-feedback dsc-feedback-error';
+          return;
+        }
+
+        if (
+          condutorValidadeCurso === originalCondutorValidadeCurso
+          && monitorValidadeCurso === originalMonitorValidadeCurso
+          && veiculoValidadeCrm === originalVeiculoValidadeCrm
+        ) {
+          dadosOsFeedback.textContent = 'Nenhuma alteracao de validade para gravar.';
+          dadosOsFeedback.className = 'dsc-feedback';
+          return;
+        }
+
+        if (veiculoValidadeCrm && veiculoValidadeCrm !== originalVeiculoValidadeCrm && veiculoValidadeCrm < currentDate) {
+          dadosOsFeedback.textContent = 'Validade CRM nao pode ser passada.';
+          dadosOsFeedback.className = 'dsc-feedback dsc-feedback-error';
+          return;
+        }
+
+        saveDadosOsButton.disabled = true;
+        saveDadosOsButton.textContent = 'Gravando...';
+        dadosOsFeedback.textContent = 'Gravando validades editadas...';
+        dadosOsFeedback.className = 'dsc-feedback';
+
+        if (dadosOsState.condutorItem?.codigo && condutorValidadeCurso !== originalCondutorValidadeCurso) {
+          try {
+            const response = await fetch(`/api/condutor/${encodeURIComponent(dadosOsState.condutorItem.codigo)}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
+              body: JSON.stringify(buildDadosOsCondutorUpdatePayload(dadosOsState.condutorItem, condutorValidadeCurso)),
+            });
+            const payload = await readJsonResponse(response);
+
+            if (!response.ok) {
+              throw new Error(payload.message || 'Falha ao gravar validade do curso do condutor.');
+            }
+
+            nextState.condutorItem = payload.item || nextState.condutorItem;
+            successMessages.push('Validade do curso do condutor gravada.');
+          } catch (error) {
+            errorMessages.push(getRequestErrorMessage(error, 'Falha ao gravar validade do curso do condutor.'));
+          }
+        }
+
+        if (dadosOsState.monitorItem?.codigo && monitorValidadeCurso !== originalMonitorValidadeCurso) {
+          try {
+            const response = await fetch(`/api/monitor/${encodeURIComponent(dadosOsState.monitorItem.codigo)}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
+              body: JSON.stringify(buildDadosOsMonitorUpdatePayload(dadosOsState.monitorItem, monitorValidadeCurso)),
+            });
+            const payload = await readJsonResponse(response);
+
+            if (!response.ok) {
+              throw new Error(payload.message || 'Falha ao gravar validade do curso do monitor.');
+            }
+
+            nextState.monitorItem = payload.item || nextState.monitorItem;
+            successMessages.push('Validade do curso do monitor gravada.');
+          } catch (error) {
+            errorMessages.push(getRequestErrorMessage(error, 'Falha ao gravar validade do curso do monitor.'));
+          }
+        }
+
+        if (dadosOsState.veiculoItem?.codigo && veiculoValidadeCrm !== originalVeiculoValidadeCrm) {
+          try {
+            const response = await fetch(`/api/veiculo/${encodeURIComponent(dadosOsState.veiculoItem.codigo)}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                ...getAuditHeaders(),
+              },
+              body: JSON.stringify(buildDadosOsVeiculoUpdatePayload(dadosOsState.veiculoItem, veiculoValidadeCrm)),
+            });
+            const payload = await readJsonResponse(response);
+
+            if (!response.ok) {
+              throw new Error(payload.message || 'Falha ao gravar validade CRM.');
+            }
+
+            nextState.veiculoItem = payload.item || nextState.veiculoItem;
+            successMessages.push('Validade CRM gravada.');
+          } catch (error) {
+            errorMessages.push(getRequestErrorMessage(error, 'Falha ao gravar validade CRM.'));
+          }
+        }
+
+        if (errorMessages.length) {
+          renderOrdemServicoDadosOs(nextState.termoItem, nextState.condutorItem, nextState.monitorItem, nextState.veiculoItem);
+          dadosOsFeedback.textContent = [...successMessages, ...errorMessages].join(' ');
+          dadosOsFeedback.className = 'dsc-feedback dsc-feedback-error';
+        } else {
+          const successMessage = successMessages.join(' ') || 'Validades de Dados OS gravadas com sucesso.';
+          clearOrdemServicoDadosOs();
+          feedback.textContent = successMessage;
+          feedback.className = 'dsc-feedback dsc-feedback-success';
+          showBanner(successMessage, 'success');
+          showDadosOsButton.focus({ preventScroll: true });
+          return;
+        }
+
+        saveDadosOsButton.focus({ preventScroll: true });
       };
 
       const handleShowOrdemServicoTermo = async () => {
@@ -2689,7 +3106,7 @@
 
       const applyViewOnlyLock = () => {
         getFormControls().forEach((element) => {
-              element.disabled = element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showDadosOsButton && element !== showEmissaoButton;
+            element.disabled = element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showDadosOsButton && element !== saveDadosOsButton && element !== showEmissaoButton;
         });
         cancelButton.disabled = false;
         closeFormModalButton.disabled = false;
@@ -2697,12 +3114,13 @@
         openVinculoMonitorPopupButton.disabled = false;
         showTermoButton.disabled = false;
         showDadosOsButton.disabled = false;
+        saveDadosOsButton.disabled = !(dadosOsState.condutorItem?.codigo || dadosOsState.monitorItem?.codigo || dadosOsState.veiculoItem?.codigo);
         showEmissaoButton.disabled = false;
         saveButton.classList.add('dsc-hidden');
       };
 
       const getInsertGuardControls = () => getFormControls()
-          .filter((element) => element !== termoAdesaoInput && element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showDadosOsButton);
+          .filter((element) => element !== termoAdesaoInput && element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showDadosOsButton && element !== saveDadosOsButton);
 
       const updateInsertTermGuard = ({ focusIfMissing = false, showMissingError = true } = {}) => {
         if (formMode === 'view') {
@@ -5422,6 +5840,11 @@
       closeFormModalButton.addEventListener('click', hideForm);
       closeTermoButton.addEventListener('click', clearOrdemServicoTermo);
       closeDadosOsButton.addEventListener('click', clearOrdemServicoDadosOs);
+      saveDadosOsButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void handleSaveOrdemServicoDadosOs();
+      });
       closeEmissaoButton.addEventListener('click', clearOrdemServicoEmissao);
       dismissEmissaoButton.addEventListener('click', clearOrdemServicoEmissao);
       showTermoButton.addEventListener('click', () => {

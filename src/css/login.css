@@ -3,9 +3,7 @@
 html,
 body {
   min-height: 100%;
-  background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 30%),
-    linear-gradient(180deg, #f6efe0 0%, #e6f0ed 100%);
+  background: #ffffff;
 }
 
 body {
@@ -1153,9 +1151,9 @@ body:has(#ordem-servico-search) #ordem-servico-search {
 }
 
 #ordem-servico-dados-os-panel {
-  width: min(100%, 1120px);
-  max-height: min(92vh, 860px);
-  overflow: auto;
+  width: min(calc(100vw - 32px), 1120px);
+  max-height: none;
+  overflow: visible;
   margin: 0;
   padding: 24px 26px;
   box-shadow: 0 24px 54px rgba(15, 23, 42, 0.18);
@@ -1236,7 +1234,7 @@ body:has(#ordem-servico-search) #ordem-servico-search {
 
 .dsc-ordem-servico-dados-os-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -1259,22 +1257,115 @@ body:has(#ordem-servico-search) #ordem-servico-search {
 .dsc-ordem-servico-dados-os-condutor-top,
 .dsc-ordem-servico-dados-os-condutor-bottom {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
+  align-items: start;
+}
+
+.dsc-ordem-servico-dados-os-condutor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 6px;
   align-items: start;
 }
 
 .dsc-ordem-servico-dados-os-monitor-top,
 .dsc-ordem-servico-dados-os-monitor-bottom {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
+  align-items: start;
+}
+
+.dsc-ordem-servico-dados-os-monitor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.85fr) minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
   align-items: start;
 }
 
 .dsc-ordem-servico-dados-os-veiculo-top,
 .dsc-ordem-servico-dados-os-veiculo-bottom {
   display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   align-items: start;
+}
+
+.dsc-ordem-servico-dados-os-veiculo-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.65fr) minmax(0, 1.15fr) minmax(0, 1.1fr) minmax(0, 1.25fr);
+  gap: 6px;
+  align-items: start;
+}
+
+#ordem-servico-dados-os-modal .dsc-popup-shell-ordem-servico {
+  width: min(100%, 1820px);
+}
+
+#ordem-servico-form-modal:has(#ordem-servico-dados-os-modal:not(.dsc-hidden)) .dsc-access-form {
+  width: min(100%, 1780px);
+  max-width: none;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+#ordem-servico-form-modal:has(#ordem-servico-dados-os-modal:not(.dsc-hidden)) .dsc-popup-shell-ordem-servico {
+  width: min(100%, 1820px);
+}
+
+#ordem-servico-dados-os-panel {
+  width: min(calc(100vw - 32px), 1740px) !important;
+}
+
+#ordem-servico-dados-os-content {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-credenciado {
+  grid-column: 1;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-condutor {
+  grid-column: 2;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-monitor {
+  grid-column: 1;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-veiculo {
+  grid-column: 2;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-condutor-bottom {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-condutor-row {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1fr) !important;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-monitor-top {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr) minmax(0, 0.9fr) !important;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-monitor-bottom {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-monitor-row {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.85fr) minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1fr) !important;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-veiculo-top,
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-veiculo-bottom {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-veiculo-row {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.65fr) minmax(0, 1.15fr) minmax(0, 1.1fr) minmax(0, 1.25fr) !important;
 }
 
 .dsc-ordem-servico-dados-os-condutor-top {
@@ -1307,9 +1398,14 @@ body:has(#ordem-servico-search) #ordem-servico-search {
 }
 
 .dsc-ordem-servico-dados-os-section .dsc-ordem-servico-summary-field {
-  gap: 2px;
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 3px;
   padding-bottom: 0;
   border-bottom: 0;
+  min-width: 0;
 }
 
 .dsc-ordem-servico-dados-os-row .dsc-ordem-servico-summary-field,
@@ -1319,19 +1415,26 @@ body:has(#ordem-servico-search) #ordem-servico-search {
 .dsc-ordem-servico-dados-os-veiculo-top .dsc-ordem-servico-summary-field,
 .dsc-ordem-servico-dados-os-veiculo-bottom .dsc-ordem-servico-summary-field {
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 4px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   min-width: 0;
 }
 
 .dsc-ordem-servico-dados-os-section .dsc-ordem-servico-summary-label {
   font-size: 0.72rem;
+  white-space: nowrap;
+  flex: none;
 }
 
 .dsc-ordem-servico-dados-os-section .dsc-ordem-servico-summary-value,
 .dsc-ordem-servico-dados-os-section .dsc-ordem-servico-termo-box {
   line-height: 1.2;
+  min-width: 0;
+  flex: 0 1 auto;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .dsc-ordem-servico-dados-os-condutor-bottom .dsc-ordem-servico-summary-label {
@@ -1369,6 +1472,34 @@ body:has(#ordem-servico-search) #ordem-servico-search {
   font-size: 0.8rem;
   line-height: 1.1;
   min-width: 0;
+}
+
+.dsc-ordem-servico-dados-os-edit-control {
+  display: flex;
+  flex: 1 1 180px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dsc-ordem-servico-dados-os-edit-input {
+  width: min(100%, 180px);
+  min-width: 150px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.dsc-ordem-servico-dados-os-edit-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.dsc-ordem-servico-dados-os-actions {
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .dsc-ordem-servico-termo-section {
@@ -1479,6 +1610,14 @@ body:has(#ordem-servico-search) #ordem-servico-search {
   line-height: 1.4;
   word-break: break-word;
   box-shadow: none;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-validity-expired {
+  color: #b42318 !important;
+}
+
+#ordem-servico-dados-os-content .dsc-ordem-servico-validity-current {
+  color: #18794e !important;
 }
 
 .dsc-ordem-servico-termo-field-status .dsc-ordem-servico-termo-box {
@@ -2544,6 +2683,8 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   border: none;
   border-radius: 999px;
   padding: 6px 12px;
+  background: rgba(8, 24, 34, 0.08);
+  color: #213139;
   font: inherit;
   font-size: 0.88rem;
   font-weight: 700;
@@ -2640,6 +2781,17 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
 
   .dsc-access-form {
     max-width: 100%;
+  }
+
+  #ordem-servico-dados-os-content {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-credenciado,
+  #ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-condutor,
+  #ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-monitor,
+  #ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-veiculo {
+    grid-column: 1 / -1 !important;
   }
 
   .dsc-popup-overlay {
@@ -2816,12 +2968,28 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   }
 
   #ordem-servico-dados-os-panel {
-    width: min(100%, 980px);
-    max-height: min(86vh, 820px);
+    width: min(100%, 1440px);
+    max-height: none;
+  }
+
+  #ordem-servico-dados-os-content {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-credenciado,
+  #ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-condutor,
+  #ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-monitor,
+  #ordem-servico-dados-os-content .dsc-ordem-servico-dados-os-section-veiculo {
+    grid-column: 1 / -1 !important;
+  }
+
+  .dsc-ordem-servico-dados-os-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 
   .dsc-ordem-servico-dados-os-row {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.5fr);
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.95fr) minmax(0, 1.45fr);
   }
 
   .dsc-ordem-servico-dados-os-condutor-top {
@@ -2829,11 +2997,11 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   }
 
   .dsc-ordem-servico-dados-os-condutor-bottom {
-    grid-template-columns: minmax(150px, 0.9fr) minmax(220px, 1.4fr) minmax(170px, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .dsc-ordem-servico-dados-os-monitor-top {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.95fr) minmax(0, 0.95fr);
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
   }
 
   .dsc-ordem-servico-dados-os-monitor-bottom {
