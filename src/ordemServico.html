@@ -1363,6 +1363,7 @@
         const nomeCondutor = condutorItem?.condutor || condutorInput.value;
         const cpfCondutor = condutorItem?.cpf_condutor || cpfCondutorInput.value;
         const vinculoProfissional = condutorItem?.tipo_vinculo;
+        const validadeCrmcCondutor = condutorItem?.validade_crmc;
         const validadeCurso = condutorItem?.validade_curso;
         const nomeMonitor = monitorItem?.monitor || monitorInput.value;
         const cpfMonitor = monitorItem?.cpf_monitor || cpfMonitorInput.value;
@@ -1395,6 +1396,9 @@
               ${buildReadonlyTermoFieldHtml('Nome', nomeCondutor, { emphasis: true })}
               ${buildReadonlyTermoFieldHtml('CPF', cpfCondutor, { compactLabel: true })}
               ${buildReadonlyTermoFieldHtml('Vinculo profissional', vinculoProfissional, { compactLabel: true })}
+              ${isDadosOsEditAllowed() && condutorItem?.codigo
+                ? buildEditableDadosOsValidityFieldHtml('Validade CRMC', validadeCrmcCondutor, 'ordem-servico-dados-os-condutor-validade-crmc', { compactLabel: true })
+                : buildDadosOsValidityFieldHtml('Validade CRMC', validadeCrmcCondutor, { compactLabel: true })}
               ${isDadosOsEditAllowed() && condutorItem?.codigo
                 ? buildEditableDadosOsValidityFieldHtml('Validade do curso', validadeCurso, 'ordem-servico-dados-os-condutor-validade-curso', { compactLabel: true })
                 : buildDadosOsValidityFieldHtml('Validade do curso', validadeCurso, { compactLabel: true })}
@@ -1435,7 +1439,7 @@
           },
           {
             selector: '.dsc-ordem-servico-dados-os-condutor-row',
-            columns: 'minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1fr)',
+            columns: 'minmax(0, 1.45fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
           },
           {
             selector: '.dsc-ordem-servico-dados-os-monitor-row',
@@ -1470,12 +1474,20 @@
           section.style.gridColumn = '1 / -1';
         });
         if (isDadosOsEditAllowed() && condutorItem?.codigo) {
+          enableFullDateSelection(document.getElementById('ordem-servico-dados-os-condutor-validade-crmc'));
+          enableFullDateSelection(document.getElementById('ordem-servico-dados-os-condutor-validade-curso'));
+          syncDadosOsValidityFieldState('ordem-servico-dados-os-condutor-validade-crmc', {
+            currentText: 'Validade em dia',
+            min: getCurrentDateInputValue(),
+          });
           syncDadosOsValidityFieldState('ordem-servico-dados-os-condutor-validade-curso');
         }
         if (isDadosOsEditAllowed() && monitorItem?.codigo) {
+          enableFullDateSelection(document.getElementById('ordem-servico-dados-os-monitor-validade-curso'));
           syncDadosOsValidityFieldState('ordem-servico-dados-os-monitor-validade-curso');
         }
         if (isDadosOsEditAllowed() && veiculoItem?.codigo) {
+          enableFullDateSelection(document.getElementById('ordem-servico-dados-os-veiculo-validade-crm'));
           syncDadosOsValidityFieldState('ordem-servico-dados-os-veiculo-validade-crm', {
             currentText: 'Validade em dia',
             min: getCurrentDateInputValue(),
@@ -1484,12 +1496,12 @@
         focusOrdemServicoDadosOs();
       };
 
-      const buildDadosOsCondutorUpdatePayload = (item, validadeCurso) => ({
+      const buildDadosOsCondutorUpdatePayload = (item, validadeCrmc, validadeCurso) => ({
         codigo: item.codigo,
         condutor: item.condutor || '',
         cpfCondutor: item.cpf_condutor || '',
         crmc: item.crmc || '',
-        validadeCrmc: item.validade_crmc || '',
+        validadeCrmc,
         validadeCurso,
         tipoVinculo: item.tipo_vinculo || '',
         historico: item.historico || '',
@@ -1537,12 +1549,15 @@
         const nextState = { ...dadosOsState };
         const successMessages = [];
         const errorMessages = [];
+        const condutorCrmcInput = document.getElementById('ordem-servico-dados-os-condutor-validade-crmc');
         const condutorInput = document.getElementById('ordem-servico-dados-os-condutor-validade-curso');
         const monitorInput = document.getElementById('ordem-servico-dados-os-monitor-validade-curso');
         const veiculoInput = document.getElementById('ordem-servico-dados-os-veiculo-validade-crm');
+        const condutorValidadeCrmc = normalizeDadosOsDateValue(condutorCrmcInput?.value);
         const condutorValidadeCurso = normalizeDadosOsDateValue(condutorInput?.value);
         const monitorValidadeCurso = normalizeDadosOsDateValue(monitorInput?.value);
         const veiculoValidadeCrm = normalizeDadosOsDateValue(veiculoInput?.value);
+        const originalCondutorValidadeCrmc = normalizeDadosOsDateValue(dadosOsState.condutorItem?.validade_crmc);
         const originalCondutorValidadeCurso = normalizeDadosOsDateValue(dadosOsState.condutorItem?.validade_curso);
         const originalMonitorValidadeCurso = normalizeDadosOsDateValue(dadosOsState.monitorItem?.validade_curso);
         const originalVeiculoValidadeCrm = normalizeDadosOsDateValue(dadosOsState.veiculoItem?.val_crm || dadosOsState.veiculoItem?.validade_crm);
@@ -1555,12 +1570,20 @@
         }
 
         if (
+          condutorValidadeCrmc === originalCondutorValidadeCrmc
+          &&
           condutorValidadeCurso === originalCondutorValidadeCurso
           && monitorValidadeCurso === originalMonitorValidadeCurso
           && veiculoValidadeCrm === originalVeiculoValidadeCrm
         ) {
           dadosOsFeedback.textContent = 'Nenhuma alteracao de validade para gravar.';
           dadosOsFeedback.className = 'dsc-feedback';
+          return;
+        }
+
+        if (condutorValidadeCrmc && condutorValidadeCrmc !== originalCondutorValidadeCrmc && condutorValidadeCrmc < currentDate) {
+          dadosOsFeedback.textContent = 'Validade do CRMC do condutor nao pode ser passada.';
+          dadosOsFeedback.className = 'dsc-feedback dsc-feedback-error';
           return;
         }
 
@@ -1575,7 +1598,10 @@
         dadosOsFeedback.textContent = 'Gravando validades editadas...';
         dadosOsFeedback.className = 'dsc-feedback';
 
-        if (dadosOsState.condutorItem?.codigo && condutorValidadeCurso !== originalCondutorValidadeCurso) {
+        if (
+          dadosOsState.condutorItem?.codigo
+          && (condutorValidadeCrmc !== originalCondutorValidadeCrmc || condutorValidadeCurso !== originalCondutorValidadeCurso)
+        ) {
           try {
             const response = await fetch(`/api/condutor/${encodeURIComponent(dadosOsState.condutorItem.codigo)}`, {
               method: 'PUT',
@@ -1583,18 +1609,18 @@
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
               },
-              body: JSON.stringify(buildDadosOsCondutorUpdatePayload(dadosOsState.condutorItem, condutorValidadeCurso)),
+              body: JSON.stringify(buildDadosOsCondutorUpdatePayload(dadosOsState.condutorItem, condutorValidadeCrmc, condutorValidadeCurso)),
             });
             const payload = await readJsonResponse(response);
 
             if (!response.ok) {
-              throw new Error(payload.message || 'Falha ao gravar validade do curso do condutor.');
+              throw new Error(payload.message || 'Falha ao gravar validades do condutor.');
             }
 
             nextState.condutorItem = payload.item || nextState.condutorItem;
-            successMessages.push('Validade do curso do condutor gravada.');
+            successMessages.push('Validades do condutor gravadas.');
           } catch (error) {
-            errorMessages.push(getRequestErrorMessage(error, 'Falha ao gravar validade do curso do condutor.'));
+            errorMessages.push(getRequestErrorMessage(error, 'Falha ao gravar validades do condutor.'));
           }
         }
 
@@ -3106,12 +3132,13 @@
 
       const applyViewOnlyLock = () => {
         getFormControls().forEach((element) => {
-            element.disabled = element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showDadosOsButton && element !== saveDadosOsButton && element !== showEmissaoButton;
+            element.disabled = element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== openVeiculoPopupButton && element !== showTermoButton && element !== showDadosOsButton && element !== saveDadosOsButton && element !== showEmissaoButton;
         });
         cancelButton.disabled = false;
         closeFormModalButton.disabled = false;
         openVinculoCondutorPopupButton.disabled = false;
         openVinculoMonitorPopupButton.disabled = false;
+        openVeiculoPopupButton.disabled = false;
         showTermoButton.disabled = false;
         showDadosOsButton.disabled = false;
         saveDadosOsButton.disabled = !(dadosOsState.condutorItem?.codigo || dadosOsState.monitorItem?.codigo || dadosOsState.veiculoItem?.codigo);
@@ -3120,7 +3147,7 @@
       };
 
       const getInsertGuardControls = () => getFormControls()
-          .filter((element) => element !== termoAdesaoInput && element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== showTermoButton && element !== showDadosOsButton && element !== saveDadosOsButton);
+          .filter((element) => element !== termoAdesaoInput && element !== cancelButton && element !== closeFormModalButton && element !== openVinculoCondutorPopupButton && element !== openVinculoMonitorPopupButton && element !== openVeiculoPopupButton && element !== showTermoButton && element !== showDadosOsButton && element !== saveDadosOsButton);
 
       const updateInsertTermGuard = ({ focusIfMissing = false, showMissingError = true } = {}) => {
         if (formMode === 'view') {
@@ -3248,6 +3275,8 @@
         prepostoInicioError.textContent = '';
         prepostoDiasError.textContent = '';
       };
+
+      const popupReturnStorageKey = 'tegfinanc:ordem-servico-popup-return';
 
       const syncPrepostoState = ({ clearValues = false } = {}) => {
         const hasPreposto = Boolean(possuiPrepostoInput.checked);
@@ -4433,6 +4462,7 @@
         const popupFeatures = buildCenteredPopupFeatures({ width: 1120, height: 860 });
 
         popupUrl.searchParams.set('popupMode', 'ordem-servico-condutor');
+        popupUrl.searchParams.set('returnTo', window.location.href);
 
         if (normalizedCpf) {
           popupUrl.searchParams.set('cpf', normalizedCpf);
@@ -4455,6 +4485,7 @@
         const popupFeatures = buildCenteredPopupFeatures({ width: 1120, height: 860 });
 
         popupUrl.searchParams.set('popupMode', 'ordem-servico-monitor');
+        popupUrl.searchParams.set('returnTo', window.location.href);
 
         if (normalizedCpf) {
           popupUrl.searchParams.set('cpf', normalizedCpf);
@@ -4574,6 +4605,7 @@
 
         crmInput.value = crm;
         popupUrl.searchParams.set('popupMode', 'ordem-servico-relacao-crm');
+        popupUrl.searchParams.set('returnTo', window.location.href);
 
         if (crm) {
           popupUrl.searchParams.set('crm', crm);
@@ -4609,6 +4641,91 @@
         await applyVeiculoPopupItem(data.item || {});
       };
 
+      const applyCondutorPopupItem = async (item) => {
+        cpfCondutorInput.value = normalizeCpf(String(item?.cpf_condutor || item?.cpfCondutor || ''));
+        condutorInput.value = normalizeText(String(item?.condutor || ''), 255);
+        cpfCondutorError.textContent = '';
+        await validateActiveOrdemServicoCpf({ cpf: cpfCondutorInput.value, roleLabel: 'condutor', errorElement: cpfCondutorError });
+      };
+
+      const applyMonitorPopupItem = async (item) => {
+        cpfMonitorInput.value = normalizeCpf(String(item?.cpf_monitor || item?.cpfMonitor || ''));
+        monitorInput.value = normalizeText(String(item?.monitor || ''), 255);
+        cpfMonitorError.textContent = '';
+        await validateActiveOrdemServicoCpf({ cpf: cpfMonitorInput.value, roleLabel: 'monitor', errorElement: cpfMonitorError });
+      };
+
+      const consumePendingPopupReturnPayload = async (payload) => {
+        if (!payload || typeof payload !== 'object') {
+          return false;
+        }
+
+        if (payload.context === 'ordem-servico-relacao-crm' && payload.type === 'tegfinanc:veiculo-created') {
+          veiculoPopupWindow = null;
+          await applyVeiculoPopupItem(payload.item || {});
+          return true;
+        }
+
+        if (payload.context === 'ordem-servico-condutor' && payload.type === 'tegfinanc:condutor-created') {
+          condutorPopupWindow = null;
+          await applyCondutorPopupItem(payload.item || {});
+          return true;
+        }
+
+        if (payload.context === 'ordem-servico-monitor' && payload.type === 'tegfinanc:monitor-created') {
+          monitorPopupWindow = null;
+          await applyMonitorPopupItem(payload.item || {});
+          return true;
+        }
+
+        return false;
+      };
+
+      const readPendingPopupReturnPayload = async () => {
+        let rawPayload = '';
+
+        try {
+          rawPayload = window.localStorage.getItem(popupReturnStorageKey) || '';
+        } catch {
+          rawPayload = '';
+        }
+
+        if (!rawPayload) {
+          return false;
+        }
+
+        try {
+          const payload = JSON.parse(rawPayload);
+          const consumed = await consumePendingPopupReturnPayload(payload);
+
+          if (consumed) {
+            window.localStorage.removeItem(popupReturnStorageKey);
+          }
+
+          return consumed;
+        } catch {
+          window.localStorage.removeItem(popupReturnStorageKey);
+          return false;
+        }
+      };
+
+      const handlePopupReturnStorage = async (event) => {
+        if (event.key !== popupReturnStorageKey || !event.newValue) {
+          return;
+        }
+
+        try {
+          const payload = JSON.parse(event.newValue);
+          const consumed = await consumePendingPopupReturnPayload(payload);
+
+          if (consumed) {
+            window.localStorage.removeItem(popupReturnStorageKey);
+          }
+        } catch {
+          window.localStorage.removeItem(popupReturnStorageKey);
+        }
+      };
+
       const handleCondutorPopupMessage = async (event) => {
         if (event.origin !== window.location.origin) {
           return;
@@ -4621,10 +4738,7 @@
         }
 
         condutorPopupWindow = null;
-        cpfCondutorInput.value = normalizeCpf(String(data.item?.cpf_condutor || data.item?.cpfCondutor || ''));
-        condutorInput.value = normalizeText(String(data.item?.condutor || ''), 255);
-        cpfCondutorError.textContent = '';
-        await validateActiveOrdemServicoCpf({ cpf: cpfCondutorInput.value, roleLabel: 'condutor', errorElement: cpfCondutorError });
+        await applyCondutorPopupItem(data.item || {});
       };
 
       const handleMonitorPopupMessage = async (event) => {
@@ -4639,10 +4753,7 @@
         }
 
         monitorPopupWindow = null;
-        cpfMonitorInput.value = normalizeCpf(String(data.item?.cpf_monitor || data.item?.cpfMonitor || ''));
-        monitorInput.value = normalizeText(String(data.item?.monitor || ''), 255);
-        cpfMonitorError.textContent = '';
-        await validateActiveOrdemServicoCpf({ cpf: cpfMonitorInput.value, roleLabel: 'monitor', errorElement: cpfMonitorError });
+        await applyMonitorPopupItem(data.item || {});
       };
 
       const syncTipoTroca = async () => {
@@ -5930,6 +6041,10 @@
         }
       });
 
+      window.addEventListener('storage', (event) => {
+        void handlePopupReturnStorage(event);
+      });
+
       if (topGridScroll && gridWrapper) {
         let syncingGridScroll = false;
 
@@ -5988,6 +6103,7 @@
       renderDreOptions('');
       renderModalidadeOptions('');
       renderTipoTrocaOptions('');
+      void readPendingPopupReturnPayload();
       void loadItems();
       void bootstrapInsertFromTermoPopup();
     </script>

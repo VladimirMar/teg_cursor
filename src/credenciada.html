@@ -14,9 +14,22 @@
         gap: 20px;
       }
 
+      #credenciada-form-modal {
+        padding: 12px 16px;
+      }
+
+      #credenciada-form-modal .dsc-popup-shell-ordem-servico {
+        width: min(100%, 1820px);
+      }
+
+      #credenciada-form-modal .dsc-access-form {
+        max-width: none;
+        width: min(100%, 1720px);
+      }
+
       #credenciada-form .dsc-form-row-credenciada-top {
         display: grid;
-        grid-template-columns: minmax(320px, 1.55fr) minmax(220px, 0.9fr) minmax(220px, 0.75fr) minmax(140px, 0.45fr) !important;
+        grid-template-columns: minmax(280px, 1.45fr) minmax(200px, 0.85fr) minmax(180px, 0.7fr) minmax(150px, 0.55fr) minmax(140px, 0.45fr) !important;
         gap: 16px;
         align-items: start;
       }
@@ -235,6 +248,17 @@
                   <div class="dsc-form-error" id="credenciada-tipo-termo-error"></div>
                 </label>
 
+                <label class="dsc-field-group" for="credenciada-tp-optante">
+                  <span>Tipo optante</span>
+                  <select class="dsc-form-control" id="credenciada-tp-optante">
+                    <option value="">Selecione</option>
+                    <option value="O">O</option>
+                    <option value="N">N</option>
+                    <option value="C">C</option>
+                  </select>
+                  <div class="dsc-form-error" id="credenciada-tp-optante-error"></div>
+                </label>
+
                 <label class="dsc-field-group" for="credenciada-termo-permissao">
                   <span>Termo permissao</span>
                   <input class="dsc-form-control" id="credenciada-termo-permissao" type="text" inputmode="numeric" placeholder="9999-9" maxlength="6" />
@@ -429,6 +453,7 @@
       const nomeInput = document.getElementById('credenciada-nome');
       const cnpjCpfInput = document.getElementById('credenciada-cnpj-cpf');
       const tipoTermoInput = document.getElementById('credenciada-tipo-termo');
+      const tpOptanteInput = document.getElementById('credenciada-tp-optante');
       const termoPermissaoInput = document.getElementById('credenciada-termo-permissao');
       const logradouroInput = document.getElementById('credenciada-logradouro');
       const bairroInput = document.getElementById('credenciada-bairro');
@@ -445,6 +470,7 @@
       const nomeError = document.getElementById('credenciada-nome-error');
       const cnpjCpfError = document.getElementById('credenciada-cnpj-cpf-error');
       const tipoTermoError = document.getElementById('credenciada-tipo-termo-error');
+      const tpOptanteError = document.getElementById('credenciada-tp-optante-error');
       const termoPermissaoError = document.getElementById('credenciada-termo-permissao-error');
       const logradouroError = document.getElementById('credenciada-logradouro-error');
       const bairroError = document.getElementById('credenciada-bairro-error');
@@ -692,6 +718,30 @@
           input.disabled = shouldDisable;
         });
       };
+      const syncTipoTermoDependentFieldsState = ({ clearDisabledValues = false } = {}) => {
+        const tipoTermo = normalizeTipoTermoValue(tipoTermoInput.value);
+        const isPessoaFisica = tipoTermo === 'PESSOA FISICA';
+        const isPessoaJuridica = tipoTermo === 'PESSOA JURIDICA';
+
+        tpOptanteInput.disabled = formMode === 'view' || !isPessoaJuridica;
+        termoPermissaoInput.disabled = formMode === 'view' || isPessoaFisica;
+
+        if (!isPessoaJuridica) {
+          tpOptanteError.textContent = '';
+
+          if (clearDisabledValues) {
+            tpOptanteInput.value = '';
+          }
+        }
+
+        if (isPessoaFisica) {
+          termoPermissaoError.textContent = '';
+
+          if (clearDisabledValues) {
+            termoPermissaoInput.value = '';
+          }
+        }
+      };
       const syncTipoTermoByDocument = () => {
         const digits = cnpjCpfInput.value.replace(/\D/g, '');
 
@@ -700,6 +750,7 @@
           tipoTermoInput.disabled = true;
           syncRepresentanteFieldsValue();
           syncRepresentanteFieldsState();
+          syncTipoTermoDependentFieldsState({ clearDisabledValues: true });
           return;
         }
 
@@ -708,6 +759,7 @@
           tipoTermoInput.disabled = true;
           syncRepresentanteFieldsValue();
           syncRepresentanteFieldsState();
+          syncTipoTermoDependentFieldsState({ clearDisabledValues: true });
           return;
         }
 
@@ -719,6 +771,7 @@
 
         syncRepresentanteFieldsValue();
         syncRepresentanteFieldsState();
+        syncTipoTermoDependentFieldsState({ clearDisabledValues: true });
       };
 
       const readJsonResponse = async (response) => {
@@ -751,6 +804,7 @@
         nomeError.textContent = '';
         cnpjCpfError.textContent = '';
         tipoTermoError.textContent = '';
+        tpOptanteError.textContent = '';
         termoPermissaoError.textContent = '';
         logradouroError.textContent = '';
         bairroError.textContent = '';
@@ -771,6 +825,7 @@
         credenciado: nomeError,
         cnpjCpf: cnpjCpfError,
         tipoPessoa: tipoTermoError,
+        tpOptante: tpOptanteError,
         termoPermissao: termoPermissaoError,
         cep: cepError,
         numero: numeroError,
@@ -789,6 +844,7 @@
         credenciado: nomeInput,
         cnpjCpf: cnpjCpfInput,
         tipoPessoa: tipoTermoInput,
+        tpOptante: tpOptanteInput,
         termoPermissao: termoPermissaoInput,
         cep: cepInput,
         numero: numeroInput,
@@ -966,7 +1022,7 @@
       };
 
       const setFormReadOnly = (isReadOnly) => {
-        [nomeInput, cnpjCpfInput, cepInput, numeroInput, complementoInput, emailInput, telefone1Input, telefone2Input, representanteInput, cpfRepresentanteInput, statusInput, tipoTermoInput, termoPermissaoInput].forEach((input) => {
+        [nomeInput, cnpjCpfInput, cepInput, numeroInput, complementoInput, emailInput, telefone1Input, telefone2Input, representanteInput, cpfRepresentanteInput, statusInput, tipoTermoInput, tpOptanteInput, termoPermissaoInput].forEach((input) => {
           if ('readOnly' in input) {
             input.readOnly = isReadOnly;
           }
@@ -978,6 +1034,7 @@
           syncTipoTermoByDocument();
         } else {
           syncRepresentanteFieldsState();
+          syncTipoTermoDependentFieldsState();
         }
         saveButton.classList.toggle('dsc-hidden', isReadOnly);
       };
@@ -1243,6 +1300,7 @@
         editingCodigo = null;
         form.reset();
         tipoTermoInput.value = '';
+        tpOptanteInput.value = '';
         termoPermissaoInput.value = '';
         tipoTermoInput.disabled = true;
         resetMessages();
@@ -1254,6 +1312,7 @@
         nomeInput.value = item.credenciado || '';
         cnpjCpfInput.value = normalizeCnpjCpf(item.cnpj_cpf || '');
         tipoTermoInput.value = normalizeTipoTermoValue(item.tipo_pessoa || '');
+        tpOptanteInput.value = item.tp_optante || '';
         termoPermissaoInput.value = item.termo_permissao || '';
         logradouroInput.value = item.logradouro || '';
         bairroInput.value = item.bairro || '';
@@ -1276,6 +1335,7 @@
         nomeInput.value = item.credenciado || '';
         cnpjCpfInput.value = normalizeCnpjCpf(item.cnpj_cpf || '');
         tipoTermoInput.value = normalizeTipoTermoValue(item.tipo_pessoa || '');
+        tpOptanteInput.value = item.tp_optante || '';
         termoPermissaoInput.value = item.termo_permissao || '';
         logradouroInput.value = item.logradouro || '';
         bairroInput.value = item.bairro || '';
@@ -1372,6 +1432,13 @@
         syncTipoTermoByDocument();
       });
 
+      tipoTermoInput.addEventListener('change', () => {
+        tipoTermoInput.value = normalizeTipoTermoValue(tipoTermoInput.value);
+        syncRepresentanteFieldsValue();
+        syncRepresentanteFieldsState();
+        syncTipoTermoDependentFieldsState({ clearDisabledValues: true });
+      });
+
       cnpjCpfInput.addEventListener('blur', () => {
         if (termoTabPanel.classList.contains('dsc-form-tab-panel-active')) {
           void loadLinkedTermos(true);
@@ -1461,7 +1528,12 @@
         const credenciado = normalizeText(nomeInput.value, 255);
         const cnpjCpf = normalizeCnpjCpf(cnpjCpfInput.value);
         const tipoTermo = normalizeTipoTermoValue(tipoTermoInput.value);
-        const termoPermissao = normalizeTermoPermissao(termoPermissaoInput.value);
+        const tpOptante = tipoTermo === 'PESSOA JURIDICA'
+          ? String(tpOptanteInput.value || '').trim().toUpperCase()
+          : '';
+        const termoPermissao = tipoTermo === 'PESSOA FISICA'
+          ? ''
+          : normalizeTermoPermissao(termoPermissaoInput.value);
         const cep = normalizeCep(cepInput.value);
         const numero = normalizeText(numeroInput.value, 30);
         const complemento = normalizeText(complementoInput.value, 30);
@@ -1483,6 +1555,7 @@
         nomeInput.value = credenciado;
         cnpjCpfInput.value = cnpjCpf;
         syncTipoTermoByDocument();
+        tpOptanteInput.value = tpOptante;
         termoPermissaoInput.value = termoPermissao;
         cepInput.value = cep;
         numeroInput.value = numero;
@@ -1507,6 +1580,11 @@
 
         if (cnpjCpf.replace(/\D/g, '').length === 14 && !['PESSOA JURIDICA', 'COOPERATIVA'].includes(tipoTermo)) {
           tipoTermoError.textContent = 'Para CNPJ, selecione Pessoa Juridica ou Cooperativa.';
+          hasError = true;
+        }
+
+        if (tpOptante && !['O', 'N', 'C'].includes(tpOptante)) {
+          tpOptanteError.textContent = 'Tipo optante invalido.';
           hasError = true;
         }
 
@@ -1547,6 +1625,7 @@
             credenciado: nomeError.textContent,
             cnpjCpf: cnpjCpfError.textContent,
             tipoPessoa: tipoTermoError.textContent,
+            tpOptante: tpOptanteError.textContent,
             termoPermissao: termoPermissaoError.textContent,
             cep: cepError.textContent,
             email: emailError.textContent,
@@ -1568,6 +1647,7 @@
               credenciado,
               cnpjCpf,
               tipoPessoa: tipoTermo,
+              tpOptante,
               termoPermissao,
               cep,
               numero,

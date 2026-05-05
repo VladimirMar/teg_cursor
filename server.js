@@ -574,6 +574,10 @@ const normalizeCredenciadaTermoPermissao = (value) => {
 
 const isCredenciadaTermoPermissaoValid = (value) => /^\d{4}-\d$/.test(String(value ?? '').trim())
 
+const normalizeTpOptanteValue = (value) => normalizeRequestValue(value).toUpperCase().slice(0, 20)
+
+const isTpOptanteValueValid = (value) => ['O', 'N', 'C'].includes(normalizeTpOptanteValue(value))
+
 const normalizeTrocaText = (value, maxLength = 255) => {
   return normalizeRequestValue(value)
     .replace(/\s+/g, ' ')
@@ -836,6 +840,23 @@ const findCredenciadaByName = async (credenciado, executor = pool) => {
   )
 
   return result.rows[0] ?? null
+}
+
+const syncCredenciadaTpOptante = async (executor, credenciadaCodigo, tpOptante) => {
+  const normalizedCodigo = normalizeCondutorCodigo(credenciadaCodigo)
+  const normalizedTpOptante = normalizeTpOptanteValue(tpOptante)
+
+  if (!Number.isInteger(normalizedCodigo) || normalizedCodigo <= 0) {
+    return
+  }
+
+  await executor.query(
+    `UPDATE credenciada
+        SET tp_optante = NULLIF($1, ''),
+            data_modificacao = NOW()
+      WHERE codigo = $2`,
+    [normalizedTpOptante, normalizedCodigo],
+  )
 }
 
 const dreSelectClause = `
@@ -2952,7 +2973,7 @@ const parseCredenciamentoTermoXml = (xmlContent) => {
 
 const buildCredenciamentoTermoBaseRecord = (record, index) => {
   const itemLabel = `Registro ${index + 1}`
-  const codigoXml = normalizeCondutorCodigo(record['C�digo'])
+  const codigoXml = normalizeCondutorCodigo(record['Código'] ?? record.Codigo ?? record['C�digo'])
   const termoAdesao = normalizeRequestValue(record.Termo_de_adesao).toUpperCase().slice(0, 255)
   const credenciado = normalizeCredenciadaText(record.Credenciado, 255)
   const cnpjCpf = normalizeCnpjCpf(record.CNPJ_CPF)
@@ -3412,7 +3433,7 @@ const importOrdemServicoXmlFile = async (fileName) => {
       fileName: sanitizedFileName,
       filePath: resolvedPath,
       total: parsedRecords.length,
-      processed: normalizedRecords.length,
+      processed: inserted + updated,
       inserted,
       updated,
       skipped: skippedRecords.length,
@@ -3593,6 +3614,7 @@ const credenciadaSelectClause = `
   codigo::text AS codigo,
   BTRIM(credenciado) AS credenciado,
   COALESCE(BTRIM(tipo_pessoa), '') AS tipo_pessoa,
+  COALESCE(BTRIM(tp_optante), '') AS tp_optante,
   COALESCE(BTRIM(termo_permissao), '') AS termo_permissao,
   BTRIM(cnpj_cpf) AS cnpj_cpf,
   COALESCE(BTRIM(cep), '') AS cep,
@@ -3692,7 +3714,7 @@ const credenciamentoTermoSelectClause = `
   valor_contrato_atualizado::text AS valor_contrato_atualizado,
   TO_CHAR(vencimento_geral::date, 'YYYY-MM-DD') AS vencimento_geral,
   ${credenciamentoTermoMesRenovacaoExpression} AS mes_renovacao,
-  COALESCE(BTRIM(tp_optante), '') AS tp_optante,
+  COALESCE(BTRIM((SELECT cr.tp_optante FROM credenciada cr WHERE cr.codigo = credenciada_codigo)), '') AS tp_optante,
   TO_CHAR(data_inclusao, 'YYYY-MM-DD HH24:MI:SS') AS data_inclusao,
   TO_CHAR(data_modificacao, 'YYYY-MM-DD HH24:MI:SS') AS data_modificacao`
 
@@ -4243,7 +4265,7 @@ const importCondutorXmlFile = async (fileName) => {
       fileName: sanitizedFileName,
       filePath: resolvedPath,
       total: parsedRecords.length,
-      processed: normalizedRecords.length,
+      processed: inserted + updated,
       inserted,
       updated,
       skipped: skippedRecords.length,
@@ -4954,6 +4976,8 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
         continue
       }
 
+      await syncCredenciadaTpOptante(client, credenciadaItem.codigo, record.tpOptante)
+
       const existingResult = await client.query(
         `SELECT codigo
          FROM ${credenciamentoTermoTableName}
@@ -4979,19 +5003,14 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
         record.checkAditivo,
         record.statusTermo,
         record.tipoTermo,
-        record.logradouro,
-        record.bairro,
-        record.municipio,
         record.especificacaoSei,
         record.valorContrato,
         record.objeto,
-        record.folhas,
         record.dataPublicacao,
         record.infoSei,
         record.valorContratoAtualizado,
         record.vencimentoGeral,
         record.mesRenovacao,
-        record.tpOptante,
       ]
 
       if (existingResult.rowCount > 0) {
@@ -5012,20 +5031,16 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
                check_aditivo = $13,
                status_termo = NULLIF($14, ''),
                tipo_termo = NULLIF($15, ''),
-               logradouro = NULLIF($16, ''),
-               bairro = NULLIF($17, ''),
-               municipio = NULLIF($18, ''),
-               especificacao_sei = NULLIF($19, ''),
-               valor_contrato = $20,
-                objeto = NULLIF($21, ''),
-               data_publicacao = NULLIF($22, '')::date,
-               info_sei = NULLIF($23, ''),
-               valor_contrato_atualizado = $24,
-               vencimento_geral = NULLIF($25, '')::date,
-               mes_renovacao = NULLIF($26, ''),
-               tp_optante = NULLIF($27, ''),
+               especificacao_sei = NULLIF($16, ''),
+               valor_contrato = $17,
+                objeto = NULLIF($18, ''),
+               data_publicacao = NULLIF($19, '')::date,
+               info_sei = NULLIF($20, ''),
+               valor_contrato_atualizado = $21,
+               vencimento_geral = NULLIF($22, '')::date,
+               mes_renovacao = NULLIF($23, ''),
                data_modificacao = NOW()
-              WHERE codigo = $28`,
+              WHERE codigo = $24`,
           [...values, existingResult.rows[0].codigo],
         )
         updated += 1
@@ -5049,9 +5064,6 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
            check_aditivo,
            status_termo,
            tipo_termo,
-           logradouro,
-           bairro,
-           municipio,
            especificacao_sei,
            valor_contrato,
            objeto,
@@ -5060,11 +5072,10 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
            valor_contrato_atualizado,
            vencimento_geral,
            mes_renovacao,
-           tp_optante,
            data_inclusao,
            data_modificacao
          )
-         VALUES ($1, $2, $3, NULLIF($4, ''), $5, NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, '')::date, NULLIF($9, '')::date, NULLIF($10, '')::date, NULLIF($11, ''), NULLIF($12, '')::date, $13, NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), NULLIF($17, ''), NULLIF($18, ''), NULLIF($19, ''), $20, NULLIF($21, '')::date, NULLIF($22, ''), $23, NULLIF($24, '')::date, NULLIF($25, ''), NULLIF($26, ''), NOW(), NOW())`,
+         VALUES ($1, $2, $3, NULLIF($4, ''), $5, NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, '')::date, NULLIF($9, '')::date, NULLIF($10, '')::date, NULLIF($11, ''), NULLIF($12, '')::date, $13, NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), $17, NULLIF($18, ''), NULLIF($19, '')::date, NULLIF($20, ''), $21, NULLIF($22, '')::date, NULLIF($23, ''), NOW(), NOW())`,
         values,
       )
       inserted += 1
@@ -7393,6 +7404,7 @@ const validateCredenciadaPayload = async ({
   codigo,
   credenciado,
   tipoPessoa,
+  tpOptante,
   termoPermissao,
   cnpjCpf,
   cep,
@@ -7410,6 +7422,7 @@ const validateCredenciadaPayload = async ({
   const normalizedCredenciado = normalizeCredenciadaText(credenciado, 255)
   const normalizedCnpjCpf = normalizeCnpjCpf(cnpjCpf)
   const normalizedTipoPessoaSource = normalizeCredenciadaTipoPessoaValue(tipoPessoa)
+  const normalizedTpOptante = normalizeTpOptanteValue(tpOptante)
   const normalizedTermoPermissao = normalizeCredenciadaTermoPermissao(termoPermissao)
   const normalizedCep = normalizeCep(cep)
   const normalizedNumero = normalizeCredenciadaText(numero, 30)
@@ -7465,6 +7478,10 @@ const validateCredenciadaPayload = async ({
     return { status: 400, payload: { message: 'Termo permissao deve seguir o formato 9999-9.' } }
   }
 
+  if (normalizedTpOptante && !isTpOptanteValueValid(normalizedTpOptante)) {
+    return { status: 400, payload: { message: 'Tipo optante invalido.' } }
+  }
+
   if (normalizedCep && !isCepValid(normalizedCep)) {
     return { status: 400, payload: { message: 'CEP invalido.' } }
   }
@@ -7517,6 +7534,7 @@ const validateCredenciadaPayload = async ({
       codigo: normalizedCodigo,
       credenciado: normalizedCredenciado,
       tipoPessoa: normalizedTipoPessoa,
+      tpOptante: normalizedTpOptante,
       termoPermissao: normalizedTermoPermissao,
       cnpjCpf: normalizedCnpjCpf,
       cep: normalizedCep,
@@ -7597,7 +7615,7 @@ const validateCredenciamentoTermoPayload = async ({
   const normalizedValorContratoAtualizado = normalizeDecimalValue(valorContratoAtualizado)
   const normalizedVencimentoGeral = normalizeXmlDateInput(vencimentoGeral) || normalizeRequestValue(vencimentoGeral)
   const normalizedMesRenovacao = normalizeRequestValue(mesRenovacao).toUpperCase().slice(0, 50)
-  const normalizedTpOptante = normalizeRequestValue(tpOptante).toUpperCase().slice(0, 20)
+  const normalizedTpOptante = normalizeTpOptanteValue(tpOptante)
 
   if (normalizedCodigoXml !== null && (!Number.isInteger(normalizedCodigoXml) || normalizedCodigoXml <= 0)) {
     errors.codigoXml = 'Codigo XML invalido.'
@@ -7655,12 +7673,6 @@ const validateCredenciamentoTermoPayload = async ({
     errors.valorContratoAtualizado = 'Valor do contrato atualizado invalido.'
   }
 
-  if (!normalizedTpOptante) {
-    errors.tpOptante = 'Tipo optante e obrigatorio.'
-  } else if (!['O', 'N', 'C'].includes(normalizedTpOptante)) {
-    errors.tpOptante = 'Tipo optante invalido.'
-  }
-
   if (!normalizedStatusTermo) {
     errors.statusTermo = 'Status do termo e obrigatorio.'
   } else if (!allowedCredenciamentoTermoStatusValues.has(normalizedStatusTermo)) {
@@ -7683,6 +7695,14 @@ const validateCredenciamentoTermoPayload = async ({
 
   if (!credenciadaItem) {
     errors.credenciado = 'Credenciado nao encontrado na tabela credenciada.'
+  }
+
+  const resolvedTpOptante = normalizedTpOptante || normalizeTpOptanteValue(credenciadaItem?.tp_optante)
+
+  if (!resolvedTpOptante) {
+    errors.tpOptante = 'Tipo optante e obrigatorio.'
+  } else if (!isTpOptanteValueValid(resolvedTpOptante)) {
+    errors.tpOptante = 'Tipo optante invalido.'
   }
 
   if (Object.keys(errors).length > 0) {
@@ -7725,7 +7745,7 @@ const validateCredenciamentoTermoPayload = async ({
       valorContratoAtualizado: normalizedValorContratoAtualizado,
       vencimentoGeral: normalizedVencimentoGeral,
       mesRenovacao: normalizedMesRenovacao,
-      tpOptante: normalizedTpOptante,
+      tpOptante: resolvedTpOptante,
     },
   }
 }
@@ -9670,6 +9690,7 @@ const ensureDatabaseSchema = async () => {
       bairro varchar(120),
       cep varchar(10),
       municipio varchar(120),
+      tp_optante varchar(20),
       email varchar(255),
       telefone_01 varchar(20),
       telefone_02 varchar(20),
@@ -9690,6 +9711,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS bairro varchar(120)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS cep varchar(10)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS municipio varchar(120)')
+  await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS tp_optante varchar(20)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS email varchar(255)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS telefone_01 varchar(20)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS telefone_02 varchar(20)')
@@ -9769,7 +9791,6 @@ const ensureDatabaseSchema = async () => {
       valor_contrato_atualizado numeric(14, 2),
       vencimento_geral date,
       mes_renovacao varchar(50),
-      tp_optante varchar(20),
       data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
       data_modificacao timestamp without time zone NOT NULL DEFAULT NOW()
     )
@@ -9807,8 +9828,8 @@ const ensureDatabaseSchema = async () => {
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS valor_contrato_atualizado numeric(14, 2)`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS vencimento_geral date`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS mes_renovacao varchar(50)`)
-  await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS tp_optante varchar(20)`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} DROP COLUMN IF EXISTS comparecimento_ext`)
+  await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} DROP COLUMN IF EXISTS tp_optante`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ALTER COLUMN codigo SET DEFAULT nextval('${credenciamentoTermoCodigoSequenceName}')`)
@@ -15049,6 +15070,7 @@ const server = createServer(async (request, response) => {
         }
 
         const createPayload = buildCredenciamentoTermoCreatePayload(validationResult.payload, latestTermoItem)
+        await syncCredenciadaTpOptante(client, createPayload.credenciadaCodigo, createPayload.tpOptante)
         let nextAditivo = 0
 
         if (latestTermo) {
@@ -15101,11 +15123,10 @@ const server = createServer(async (request, response) => {
              valor_contrato_atualizado,
              vencimento_geral,
              mes_renovacao,
-             tp_optante,
              data_inclusao,
              data_modificacao
            )
-           VALUES ($1, $2, $3, NULLIF($4, ''), $5, NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, '')::date, NULLIF($9, '')::date, NULLIF($10, '')::date, NULLIF($11, '')::date, NULLIF($12, ''), NULLIF($13, '')::date, $14, NULLIF($15, ''), NULLIF($16, ''), NULLIF($17, ''), $18, NULLIF($19, '')::date, NULLIF($20, '')::date, $21, NULLIF($22, '')::date, NULLIF($23, ''), NULLIF($24, ''), NOW(), NOW())
+           VALUES ($1, $2, $3, NULLIF($4, ''), $5, NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, '')::date, NULLIF($9, '')::date, NULLIF($10, '')::date, NULLIF($11, '')::date, NULLIF($12, ''), NULLIF($13, '')::date, $14, NULLIF($15, ''), NULLIF($16, ''), NULLIF($17, ''), $18, NULLIF($19, '')::date, NULLIF($20, '')::date, $21, NULLIF($22, '')::date, NULLIF($23, ''), NOW(), NOW())
            RETURNING codigo`,
           [
               createPayload.codigoXml,
@@ -15131,7 +15152,6 @@ const server = createServer(async (request, response) => {
               createPayload.valorContratoAtualizado,
               createPayload.vencimentoGeral,
               createPayload.mesRenovacao,
-              createPayload.tpOptante,
           ],
         )
 
@@ -15847,6 +15867,7 @@ const server = createServer(async (request, response) => {
         codigo: generatedCodigo,
         credenciado: body.credenciado,
         tipoPessoa: body.tipoPessoa,
+        tpOptante: body.tpOptante,
         termoPermissao: body.termoPermissao,
         cnpjCpf: body.cnpjCpf,
         cep: body.cep,
@@ -15872,6 +15893,7 @@ const server = createServer(async (request, response) => {
            empresa,
            condutor,
            tipo_pessoa,
+           tp_optante,
            termo_permissao,
            credenciado,
            cnpj_cpf,
@@ -15887,7 +15909,7 @@ const server = createServer(async (request, response) => {
            data_inclusao,
            data_modificacao
          )
-         VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), NULLIF($17, ''), NOW(), NOW())
+         VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), NULLIF($7, ''), $8, $9, NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), NULLIF($17, ''), NULLIF($18, ''), NOW(), NOW())
          RETURNING ${credenciadaSelectClause}`,
         [
           validationResult.payload.codigo,
@@ -15895,6 +15917,7 @@ const server = createServer(async (request, response) => {
           validationResult.payload.empresa,
           validationResult.payload.condutor,
           validationResult.payload.tipoPessoa,
+          validationResult.payload.tpOptante,
           validationResult.payload.termoPermissao,
           validationResult.payload.credenciado,
           validationResult.payload.cnpjCpf,
@@ -16844,6 +16867,12 @@ const server = createServer(async (request, response) => {
           ? validationResult.payload.checkAditivo
           : pickCredenciamentoTermoIntegerValue(existingItem.check_aditivo, 0) ?? 0
 
+        await syncCredenciadaTpOptante(
+          client,
+          validationResult.payload.credenciadaCodigo,
+          validationResult.payload.tpOptante,
+        )
+
         const updateResult = await client.query(
           `UPDATE ${credenciamentoTermoTableName}
          SET codigo_xml = $1,
@@ -16869,9 +16898,8 @@ const server = createServer(async (request, response) => {
             valor_contrato_atualizado = $21,
             vencimento_geral = NULLIF($22, '')::date,
             mes_renovacao = NULLIF($23, ''),
-            tp_optante = NULLIF($24, ''),
              data_modificacao = NOW()
-           WHERE codigo = $25
+           WHERE codigo = $24
          RETURNING codigo`,
           [
           validationResult.payload.codigoXml,
@@ -16897,7 +16925,6 @@ const server = createServer(async (request, response) => {
           validationResult.payload.valorContratoAtualizado,
           validationResult.payload.vencimentoGeral,
           validationResult.payload.mesRenovacao,
-          validationResult.payload.tpOptante,
             originalCodigo,
           ],
         )
@@ -17137,6 +17164,7 @@ const server = createServer(async (request, response) => {
         codigo: originalCodigo,
         credenciado: body.credenciado,
         tipoPessoa: body.tipoPessoa,
+        tpOptante: body.tpOptante,
         termoPermissao: body.termoPermissao,
         cnpjCpf: body.cnpjCpf,
         cep: body.cep,
@@ -17162,26 +17190,28 @@ const server = createServer(async (request, response) => {
            empresa = $2,
            condutor = $3,
            tipo_pessoa = $4,
-           termo_permissao = NULLIF($5, ''),
-           credenciado = $6,
-           cnpj_cpf = $7,
-           cep = NULLIF($8, ''),
-           numero = NULLIF($9, ''),
-           complemento = NULLIF($10, ''),
-           email = NULLIF($11, ''),
-           telefone_01 = NULLIF($12, ''),
-           telefone_02 = NULLIF($13, ''),
-           representante = NULLIF($14, ''),
-           cpf_representante = NULLIF($15, ''),
-           status = NULLIF($16, ''),
+           tp_optante = NULLIF($5, ''),
+           termo_permissao = NULLIF($6, ''),
+           credenciado = $7,
+           cnpj_cpf = $8,
+           cep = NULLIF($9, ''),
+           numero = NULLIF($10, ''),
+           complemento = NULLIF($11, ''),
+           email = NULLIF($12, ''),
+           telefone_01 = NULLIF($13, ''),
+           telefone_02 = NULLIF($14, ''),
+           representante = NULLIF($15, ''),
+           cpf_representante = NULLIF($16, ''),
+           status = NULLIF($17, ''),
              data_modificacao = NOW()
-         WHERE codigo = $17
+         WHERE codigo = $18
          RETURNING ${credenciadaSelectClause}`,
         [
           validationResult.payload.placa,
           validationResult.payload.empresa,
           validationResult.payload.condutor,
           validationResult.payload.tipoPessoa,
+          validationResult.payload.tpOptante,
           validationResult.payload.termoPermissao,
           validationResult.payload.credenciado,
           validationResult.payload.cnpjCpf,

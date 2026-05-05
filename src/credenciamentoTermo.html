@@ -630,16 +630,6 @@
                     <div class="dsc-form-error" id="credenciamento-termo-mes-renovacao-error"></div>
                   </label>
 
-                  <label class="dsc-field-group" for="credenciamento-termo-tp-optante">
-                    <span>Tipo optante</span>
-                    <select class="dsc-form-control dsc-form-control-tall" id="credenciamento-termo-tp-optante" style="height: 36px; min-height: 36px; padding-top: 0; padding-bottom: 0;" required>
-                      <option value=""></option>
-                      <option value="O">Optante</option>
-                      <option value="N">Nao optante</option>
-                      <option value="C">Cooperativa</option>
-                    </select>
-                    <div class="dsc-form-error" id="credenciamento-termo-tp-optante-error"></div>
-                  </label>
                 </div>
 
               </section>
@@ -983,7 +973,6 @@
       const dataPublicacaoFieldGroup = dataPublicacaoInput.closest('.dsc-field-group');
       const vencimentoGeralInput = document.getElementById('credenciamento-termo-vencimento-geral');
       const mesRenovacaoInput = document.getElementById('credenciamento-termo-mes-renovacao');
-      const tpOptanteInput = document.getElementById('credenciamento-termo-tp-optante');
       const lastAditivoModal = document.getElementById('credenciamento-termo-last-aditivo-modal');
       const lastAditivoPanel = document.getElementById('credenciamento-termo-last-aditivo-panel');
       const lastAditivoForm = document.getElementById('credenciamento-termo-last-aditivo-form');
@@ -1078,7 +1067,6 @@
         dataPublicacao: document.getElementById('credenciamento-termo-data-publicacao-error'),
         vencimentoGeral: document.getElementById('credenciamento-termo-vencimento-geral-error'),
         mesRenovacao: document.getElementById('credenciamento-termo-mes-renovacao-error'),
-        tpOptante: document.getElementById('credenciamento-termo-tp-optante-error'),
       };
       const errorTargets = {
         codigoXml: codigoXmlInput,
@@ -1110,7 +1098,6 @@
         dataPublicacao: dataPublicacaoInput,
         vencimentoGeral: vencimentoGeralInput,
         mesRenovacao: mesRenovacaoInput,
-        tpOptante: tpOptanteInput,
       };
 
       let pageSize = 20;
@@ -1152,6 +1139,7 @@
       let lastTermoRescisaoMarkup = '';
       let lastTermoRescisaoPrintMarkup = '';
       let lastTermoRescisaoFileName = 'termo-rescisao.docx';
+      let currentTermoTpOptante = '';
       let isExistingTermCreateBlocked = false;
       let lastTermoContratoRequestPayload = null;
       let lastTermoDespachoRescisaoRequestPayload = null;
@@ -1692,7 +1680,7 @@
         dataPublicacaoInput.value = '';
         vencimentoGeralInput.value = '';
         mesRenovacaoInput.value = '';
-        tpOptanteInput.value = '';
+        currentTermoTpOptante = '';
         inheritedAditivoTermoAdesao = '';
         syncEspecificacaoSei();
         syncTextoCopia();
@@ -1730,7 +1718,7 @@
         dataPublicacaoInput.value = item.data_publicacao || '';
         vencimentoGeralInput.value = item.vencimento_geral || '';
         mesRenovacaoInput.value = formatMonthYearLabel(item.termino_vigencia || '');
-        tpOptanteInput.value = item.tp_optante || '';
+        currentTermoTpOptante = item.tp_optante || '';
         syncDerivedTermoFields();
         inheritedAditivoTermoAdesao = normalizeTermoAdesao(item.termo_adesao || termoAdesaoInput.value);
         applyCreateTermoDefaults(resolveNextInicioVigenciaDate(item));
@@ -2203,7 +2191,7 @@
         dataPublicacao: normalizeReportDateKey(dataPublicacaoInput.value),
         vencimentoGeral: normalizeReportDateKey(vencimentoGeralInput.value),
         mesRenovacao: String(mesRenovacaoInput.value || '').trim(),
-        tpOptante: String(tpOptanteInput.value || '').trim(),
+        tpOptante: String(currentTermoTpOptante || '').trim(),
         valorContrato: String(valorContratoInput.value || '').trim(),
         valorContratoAtualizado: String(valorContratoAtualizadoInput.value || '').trim(),
       });
@@ -4116,7 +4104,6 @@
         valorContratoInput.readOnly = true;
         valorContratoAtualizadoInput.readOnly = true;
         mesRenovacaoInput.readOnly = true;
-        tpOptanteInput.disabled = isReadOnly;
         syncDataRescisaoState();
         syncSaveButtonState();
         syncAditivoDependentFieldState();
@@ -4186,6 +4173,7 @@
         resetDespachoRescisaoState();
         resetRescisaoState();
         inheritedAditivoTermoAdesao = '';
+        currentTermoTpOptante = '';
         applyCreateTermoDefaults();
         syncSaveButtonState();
         syncEmitDespachoRescisaoButtonState();
@@ -4231,7 +4219,7 @@
         dataPublicacaoInput.value = item.data_publicacao || '';
         vencimentoGeralInput.value = item.vencimento_geral || '';
         mesRenovacaoInput.value = formatMonthYearLabel(item.termino_vigencia || '');
-        tpOptanteInput.value = item.tp_optante || '';
+        currentTermoTpOptante = item.tp_optante || '';
         syncDerivedTermoFields();
         syncAditivoDependentFieldState();
         resetDespachoRescisaoState();
@@ -4652,10 +4640,6 @@
             throw new Error('Codigo da credenciada nao encontrado para o novo aditivo.');
           }
 
-          if (!createPayload.tpOptante) {
-            throw new Error('Tipo optante nao encontrado para o novo aditivo.');
-          }
-
           linkedAditivosFeedback.textContent = 'Gravando novo aditivo...';
 
           const saveResponse = await fetch('/api/termo', {
@@ -4902,6 +4886,7 @@
           credenciadoInput.value = payload.item.credenciado || credenciado;
           credenciadaCodigoInput.value = payload.item.codigo || '';
           cnpjCpfInput.value = payload.item.cnpj_cpf || '';
+          currentTermoTpOptante = payload.item.tp_optante || '';
           tipoTermoInput.value = normalizeTipoTermoLabel(payload.item.tipo_pessoa || payload.item.tipo_termo || '');
           syncEspecificacaoSei();
           syncTextoCopia();
@@ -4921,6 +4906,7 @@
         } catch (error) {
           credenciadaCodigoInput.value = '';
           cnpjCpfInput.value = '';
+          currentTermoTpOptante = '';
           tipoTermoInput.value = '';
           syncEspecificacaoSei();
           representanteInput.value = '';
@@ -4972,6 +4958,7 @@
           credenciadoInput.value = payload.item.credenciado || '';
           credenciadaCodigoInput.value = payload.item.codigo || '';
           cnpjCpfInput.value = payload.item.cnpj_cpf || cnpjCpf;
+          currentTermoTpOptante = payload.item.tp_optante || '';
           tipoTermoInput.value = normalizeTipoTermoLabel(payload.item.tipo_pessoa || payload.item.tipo_termo || '');
           syncEspecificacaoSei();
           syncTextoCopia();
@@ -4996,6 +4983,7 @@
         } catch (error) {
           credenciadaCodigoInput.value = '';
           credenciadoInput.value = '';
+          currentTermoTpOptante = '';
           tipoTermoInput.value = '';
           representanteInput.value = '';
           cpfRepresentanteInput.value = '';
@@ -5083,7 +5071,6 @@
         dataPublicacao: formMode === 'create' ? '' : dataPublicacaoInput.value,
         vencimentoGeral: vencimentoGeralInput.value,
         mesRenovacao: normalizeText(formatMonthYearLabel(terminoVigenciaInput.value), 50),
-        tpOptante: normalizeText(tpOptanteInput.value, 20),
       });
 
       form.addEventListener('submit', async (event) => {
@@ -5114,13 +5101,6 @@
           errors.credenciado.textContent = 'Informe o credenciado (codigo da credenciada e obrigatorio).';
           feedback.textContent = 'Corrija os campos do credenciamento termo para continuar.';
           revealFirstFormError({ credenciado: errors.credenciado.textContent });
-          return;
-        }
-
-        if (!payload.tpOptante) {
-          errors.tpOptante.textContent = 'Tipo optante e obrigatorio.';
-          feedback.textContent = 'Corrija os campos do credenciamento termo para continuar.';
-          revealFirstFormError({ tpOptante: errors.tpOptante.textContent });
           return;
         }
 
@@ -5164,16 +5144,18 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
 
           if (!response.ok) {
             const responsePayload = await response.json().catch(() => ({}));
+            const responseMessage = responsePayload.message || 'Falha ao salvar o registro.';
             if (responsePayload.errors) {
               Object.entries(responsePayload.errors).forEach(([key, value]) => {
                 if (errors[key]) {
                   errors[key].textContent = value;
                 }
               });
-              feedback.textContent = responsePayload.message || 'Falha ao salvar o registro.';
+              feedback.textContent = responseMessage;
               revealFirstFormError(responsePayload.errors);
             }
-            throw new Error(responsePayload.message || 'Falha ao salvar o registro.');
+            feedback.textContent = responseMessage;
+            throw new Error(responseMessage);
           }
 
           const responsePayload = await response.json().catch(() => ({}));
@@ -5194,9 +5176,7 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
             openOrdemServicoPopupFromTermo(responsePayload?.item || requestPayload);
           }
         } catch (error) {
-          if (!feedback.textContent.trim()) {
-            feedback.textContent = error instanceof Error ? error.message : 'Falha ao salvar o registro.';
-          }
+          feedback.textContent = error instanceof Error ? error.message : 'Falha ao salvar o registro.';
         }
       });
 

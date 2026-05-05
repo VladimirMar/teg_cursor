@@ -297,6 +297,8 @@
       const filterForm = document.getElementById('monitor-filter-form');
       const clearFilterButton = document.getElementById('clear-monitor-filter-button');
       const searchInput = document.getElementById('monitor-search');
+      const accessToolbar = document.querySelector('.dsc-access-toolbar');
+      const accessGridCard = document.querySelector('.dsc-access-grid-card');
       const gridBody = document.getElementById('monitor-grid-body');
       const emptyState = document.getElementById('monitor-empty-state');
       const totalLabel = document.getElementById('monitor-total');
@@ -653,16 +655,27 @@
       const pageSearchParams = new URLSearchParams(window.location.search);
       const popupMode = String(pageSearchParams.get('popupMode') || '').trim().toLowerCase();
       const popupCpf = normalizeCpf(String(pageSearchParams.get('cpf') || ''));
+      const popupReturnTo = String(pageSearchParams.get('returnTo') || '').trim();
       const isOrdemServicoMonitorPopup = popupMode === 'ordem-servico-monitor';
+      const popupReturnStorageKey = 'tegfinanc:ordem-servico-popup-return';
       let activeCpfValidationRequestId = 0;
       let activeCpfValidationTimeoutId = null;
 
+      const applyPopupModeLayout = () => {
+        if (!isOrdemServicoMonitorPopup) {
+          return;
+        }
+
+        accessToolbar?.classList.add('dsc-hidden');
+        accessGridCard?.classList.add('dsc-hidden');
+      };
+
       const notifyOrdemServicoMonitorSaved = (item) => {
-        if (!isOrdemServicoMonitorPopup || !window.opener || window.opener.closed) {
+        if (!isOrdemServicoMonitorPopup) {
           return false;
         }
 
-        window.opener.postMessage({
+        const payload = {
           type: 'tegfinanc:monitor-created',
           context: 'ordem-servico-monitor',
           item: {
@@ -670,7 +683,71 @@
             monitor: normalizeName(String(item?.monitor || '')),
             cpf_monitor: normalizeCpf(String(item?.cpf_monitor || item?.cpfMonitor || '')),
           },
-        }, window.location.origin);
+          emittedAt: Date.now(),
+        };
+
+        try {
+          window.localStorage.setItem(popupReturnStorageKey, JSON.stringify(payload));
+        } catch {
+          // Ignore storage failures and keep trying the direct popup path.
+        }
+
+        if (!window.opener || window.opener.closed) {
+          return true;
+        }
+
+        window.opener.postMessage(payload, window.location.origin);
+
+        return true;
+      };
+
+      const finalizeOrdemServicoMonitorReturn = () => {
+        if (!isOrdemServicoMonitorPopup) {
+          return false;
+        }
+
+        if (window.opener && !window.opener.closed && typeof window.opener.focus === 'function') {
+          window.opener.focus();
+        }
+
+        window.close();
+
+        window.setTimeout(() => {
+          if (window.closed || !popupReturnTo) {
+            return;
+          }
+
+          window.location.replace(popupReturnTo);
+        }, 150);
+
+        return true;
+      };
+
+      const returnToOrdemServicoFromMonitorPopup = () => {
+        if (!isOrdemServicoMonitorPopup) {
+          return false;
+        }
+
+        if (window.opener && !window.opener.closed && typeof window.opener.focus === 'function') {
+          window.opener.focus();
+        }
+
+        window.close();
+
+        window.setTimeout(() => {
+          if (window.closed) {
+            return;
+          }
+
+          if (popupReturnTo) {
+            window.location.replace(popupReturnTo);
+            return;
+          }
+
+          if (window.history.length > 1) {
+            window.history.back();
+          }
+        }, 150);
 
         return true;
       };
@@ -1003,6 +1080,7 @@
         saveButton.textContent = isEditing ? 'Salvar alteracao' : 'Salvar monitor';
         setFormReadOnly(isReadOnly);
         setActiveFormTab('cadastro');
+        resetVinculoGrid();
         if (!isOrdemServicoMonitorPopup) {
           void loadMonitorVinculosByCpf(cpfInput.value);
         }
@@ -1392,7 +1470,14 @@
       });
 
       cpfInput.addEventListener('blur', () => {
-        void loadMonitorVinculosByCpf(cpfInput.value, vinculoTabPanel.classList.contains('dsc-form-tab-panel-active'));
+        const isVinculoTabActive = vinculoTabPanel.classList.contains('dsc-form-tab-panel-active');
+
+        if (isOrdemServicoMonitorPopup && !isVinculoTabActive) {
+          resetVinculoGrid();
+        } else {
+          void loadMonitorVinculosByCpf(cpfInput.value, isVinculoTabActive);
+        }
+
         void validateActiveOrdemServicoCpf(cpfInput.value);
       });
 
@@ -1545,7 +1630,7 @@
           showBanner(feedback.textContent, 'success');
 
           if (shouldReturnToOrdemServico) {
-            window.close();
+            finalizeOrdemServicoMonitorReturn();
             return;
           }
 
@@ -1579,6 +1664,11 @@
           }
 
           if (modalElement === formModal) {
+            if (isOrdemServicoMonitorPopup) {
+              returnToOrdemServicoFromMonitorPopup();
+              return;
+            }
+
             hideForm();
             return;
           }
@@ -1592,12 +1682,28 @@
         });
       });
 
+      if (isOrdemServicoMonitorPopup) {
+        cancelButton.removeEventListener('click', hideForm);
+        closeFormModalButton.removeEventListener('click', hideForm);
+        cancelButton.addEventListener('click', () => {
+          returnToOrdemServicoFromMonitorPopup();
+        });
+        closeFormModalButton.addEventListener('click', () => {
+          returnToOrdemServicoFromMonitorPopup();
+        });
+      }
+
       document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') {
           return;
         }
 
         if (!formModal.classList.contains('dsc-hidden')) {
+          if (isOrdemServicoMonitorPopup) {
+            returnToOrdemServicoFromMonitorPopup();
+            return;
+          }
+
           hideForm();
           return;
         }
@@ -1816,6 +1922,7 @@
 
       [nascimentoInput, cursoInput].forEach(enableFullDateSelection);
 
+      applyPopupModeLayout();
       hideForm();
       hideImportForm();
       hideRejectionPanel();

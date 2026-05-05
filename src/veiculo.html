@@ -1034,7 +1034,9 @@
       const popupMode = String(pageSearchParams.get('popupMode') || '').trim().toLowerCase();
       const popupCrm = normalizeCrm(String(pageSearchParams.get('crm') || ''));
       const popupPlaca = normalizePlaca(String(pageSearchParams.get('placa') || ''));
+      const popupReturnTo = String(pageSearchParams.get('returnTo') || '').trim();
       const isOrdemServicoRelacaoCrmPopup = popupMode === 'ordem-servico-relacao-crm';
+      const popupReturnStorageKey = 'tegfinanc:ordem-servico-popup-return';
 
       const resetMessages = () => {
         crmError.textContent = '';
@@ -1062,11 +1064,11 @@
       };
 
       const notifyOrdemServicoVeiculoSaved = (item) => {
-        if (!isOrdemServicoRelacaoCrmPopup || !window.opener || window.opener.closed) {
+        if (!isOrdemServicoRelacaoCrmPopup) {
           return false;
         }
 
-        window.opener.postMessage({
+        const payload = {
           type: 'tegfinanc:veiculo-created',
           context: 'ordem-servico-relacao-crm',
           item: {
@@ -1074,7 +1076,49 @@
             crm: normalizeCrm(String(item?.crm || '')),
             placas: normalizeText(String(item?.placas || ''), 20),
           },
-        }, window.location.origin);
+          emittedAt: Date.now(),
+        };
+
+        try {
+          window.localStorage.setItem(popupReturnStorageKey, JSON.stringify(payload));
+        } catch {
+          // Ignore storage failures and keep trying the direct popup path.
+        }
+
+        if (!window.opener || window.opener.closed) {
+          return true;
+        }
+
+        window.opener.postMessage(payload, window.location.origin);
+
+        return true;
+      };
+
+      const returnToOrdemServicoFromVeiculoPopup = () => {
+        if (!isOrdemServicoRelacaoCrmPopup) {
+          return false;
+        }
+
+        if (window.opener && !window.opener.closed && typeof window.opener.focus === 'function') {
+          window.opener.focus();
+        }
+
+        window.close();
+
+        window.setTimeout(() => {
+          if (window.closed) {
+            return;
+          }
+
+          if (popupReturnTo) {
+            window.location.replace(popupReturnTo);
+            return;
+          }
+
+          if (window.history.length > 1) {
+            window.history.back();
+          }
+        }, 150);
 
         return true;
       };
@@ -2077,7 +2121,7 @@
           showBanner(feedback.textContent, 'success');
 
           if (shouldReturnToOrdemServico) {
-            window.close();
+            returnToOrdemServicoFromVeiculoPopup();
             return;
           }
 
@@ -2103,15 +2147,36 @@
 
       formModal.addEventListener('click', (event) => {
         if (event.target === formModal) {
+          if (isOrdemServicoRelacaoCrmPopup) {
+            returnToOrdemServicoFromVeiculoPopup();
+            return;
+          }
+
           hideForm();
         }
       });
 
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !formModal.classList.contains('dsc-hidden')) {
+          if (isOrdemServicoRelacaoCrmPopup) {
+            returnToOrdemServicoFromVeiculoPopup();
+            return;
+          }
+
           hideForm();
         }
       });
+
+      if (isOrdemServicoRelacaoCrmPopup) {
+        cancelButton.removeEventListener('click', hideForm);
+        closeFormModalButton.removeEventListener('click', hideForm);
+        cancelButton.addEventListener('click', () => {
+          returnToOrdemServicoFromVeiculoPopup();
+        });
+        closeFormModalButton.addEventListener('click', () => {
+          returnToOrdemServicoFromVeiculoPopup();
+        });
+      }
 
       importForm.addEventListener('submit', async (event) => {
         event.preventDefault();

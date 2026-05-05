@@ -303,6 +303,8 @@
       const filterForm = document.getElementById('condutor-filter-form');
       const clearFilterButton = document.getElementById('clear-condutor-filter-button');
       const searchInput = document.getElementById('condutor-search');
+      const accessToolbar = document.querySelector('.dsc-access-toolbar');
+      const accessGridCard = document.querySelector('.dsc-access-grid-card');
       const gridBody = document.getElementById('condutor-grid-body');
       const emptyState = document.getElementById('condutor-empty-state');
       const totalLabel = document.getElementById('condutor-total');
@@ -651,16 +653,27 @@
       const pageSearchParams = new URLSearchParams(window.location.search);
       const popupMode = String(pageSearchParams.get('popupMode') || '').trim().toLowerCase();
       const popupCpf = normalizeCpf(String(pageSearchParams.get('cpf') || ''));
+      const popupReturnTo = String(pageSearchParams.get('returnTo') || '').trim();
       const isOrdemServicoCondutorPopup = popupMode === 'ordem-servico-condutor';
+      const popupReturnStorageKey = 'tegfinanc:ordem-servico-popup-return';
       let activeCpfValidationRequestId = 0;
       let activeCpfValidationTimeoutId = null;
 
+      const applyPopupModeLayout = () => {
+        if (!isOrdemServicoCondutorPopup) {
+          return;
+        }
+
+        accessToolbar?.classList.add('dsc-hidden');
+        accessGridCard?.classList.add('dsc-hidden');
+      };
+
       const notifyOrdemServicoCondutorSaved = (item) => {
-        if (!isOrdemServicoCondutorPopup || !window.opener || window.opener.closed) {
+        if (!isOrdemServicoCondutorPopup) {
           return false;
         }
 
-        window.opener.postMessage({
+        const payload = {
           type: 'tegfinanc:condutor-created',
           context: 'ordem-servico-condutor',
           item: {
@@ -668,7 +681,20 @@
             condutor: normalizeName(String(item?.condutor || '')),
             cpf_condutor: normalizeCpf(String(item?.cpf_condutor || item?.cpfCondutor || '')),
           },
-        }, window.location.origin);
+          emittedAt: Date.now(),
+        };
+
+        try {
+          window.localStorage.setItem(popupReturnStorageKey, JSON.stringify(payload));
+        } catch {
+          // Ignore storage failures and keep trying the direct popup path.
+        }
+
+        if (!window.opener || window.opener.closed) {
+          return true;
+        }
+
+        window.opener.postMessage(payload, window.location.origin);
 
         return true;
       };
@@ -689,6 +715,11 @@
             return;
           }
 
+          if (popupReturnTo) {
+            window.location.replace(popupReturnTo);
+            return;
+          }
+
           document.body.innerHTML = `
             <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px;background:#f3f7fb;font-family:Segoe UI,Tahoma,sans-serif;">
               <section style="max-width:640px;width:100%;background:#ffffff;border:1px solid #d8e3ec;border-radius:16px;padding:32px;box-shadow:0 20px 40px rgba(17,24,39,0.08);text-align:center;">
@@ -697,6 +728,35 @@
               </section>
             </main>
           `;
+        }, 150);
+
+        return true;
+      };
+
+      const returnToOrdemServicoFromCondutorPopup = () => {
+        if (!isOrdemServicoCondutorPopup) {
+          return false;
+        }
+
+        if (window.opener && !window.opener.closed && typeof window.opener.focus === 'function') {
+          window.opener.focus();
+        }
+
+        window.close();
+
+        window.setTimeout(() => {
+          if (window.closed) {
+            return;
+          }
+
+          if (popupReturnTo) {
+            window.location.replace(popupReturnTo);
+            return;
+          }
+
+          if (window.history.length > 1) {
+            window.history.back();
+          }
         }, 150);
 
         return true;
@@ -1044,6 +1104,7 @@
         saveButton.textContent = isEditing ? 'Salvar alteracao' : 'Salvar condutor';
         setFormReadOnly(isReadOnly);
         setActiveFormTab('cadastro');
+        resetVinculoGrid();
         if (!isOrdemServicoCondutorPopup) {
           void loadCondutorVinculosByCpf(cpfInput.value);
         }
@@ -1430,7 +1491,14 @@
       });
 
       cpfInput.addEventListener('blur', () => {
-        void loadCondutorVinculosByCpf(cpfInput.value, vinculoTabPanel.classList.contains('dsc-form-tab-panel-active'));
+        const isVinculoTabActive = vinculoTabPanel.classList.contains('dsc-form-tab-panel-active');
+
+        if (isOrdemServicoCondutorPopup && !isVinculoTabActive) {
+          resetVinculoGrid();
+        } else {
+          void loadCondutorVinculosByCpf(cpfInput.value, isVinculoTabActive);
+        }
+
         void validateActiveOrdemServicoCpf(cpfInput.value);
       });
 
@@ -1632,6 +1700,11 @@
           }
 
           if (modalElement === formModal) {
+            if (isOrdemServicoCondutorPopup) {
+              returnToOrdemServicoFromCondutorPopup();
+              return;
+            }
+
             hideForm();
             return;
           }
@@ -1645,12 +1718,28 @@
         });
       });
 
+      if (isOrdemServicoCondutorPopup) {
+        cancelButton.removeEventListener('click', hideForm);
+        closeFormModalButton.removeEventListener('click', hideForm);
+        cancelButton.addEventListener('click', () => {
+          returnToOrdemServicoFromCondutorPopup();
+        });
+        closeFormModalButton.addEventListener('click', () => {
+          returnToOrdemServicoFromCondutorPopup();
+        });
+      }
+
       document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') {
           return;
         }
 
         if (!formModal.classList.contains('dsc-hidden')) {
+          if (isOrdemServicoCondutorPopup) {
+            returnToOrdemServicoFromCondutorPopup();
+            return;
+          }
+
           hideForm();
           return;
         }
@@ -1869,6 +1958,7 @@
 
       [validadeCrmcInput, dataCursoInput].forEach(enableFullDateSelection);
 
+      applyPopupModeLayout();
       hideForm();
       hideImportForm();
       hideRejectionPanel();
