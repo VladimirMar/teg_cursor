@@ -4922,7 +4922,11 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
     }
 
     for (const record of normalizedRecords) {
-      const credenciadaItem = await findCredenciadaByName(record.credenciado, client)
+      let credenciadaItem = await findCredenciadaByCnpjCpf(record.cnpjCpf, client)
+
+      if (!credenciadaItem && !record.cnpjCpf) {
+        credenciadaItem = await findCredenciadaByName(record.credenciado, client)
+      }
 
       if (!credenciadaItem) {
         await client.query(
@@ -4942,7 +4946,9 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
             String(record.codigoXml),
             record.credenciado,
             String(record.aditivo),
-            'Credenciado nao encontrado na tabela credenciada.',
+            record.cnpjCpf
+              ? 'Credenciado nao encontrado na tabela credenciada pelo CNPJ/CPF informado no XML.'
+              : 'Credenciado nao encontrado na tabela credenciada pelo nome informado no XML.',
           ],
         )
         continue
