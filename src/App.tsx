@@ -12,6 +12,21 @@ import { createMarcaModeloItem, deleteMarcaModeloItem, listMarcaModeloItemsPagin
 import type { MarcaModeloItem } from './services/marcaModelo'
 import { createSeguradoraItem, deleteSeguradoraItem, listSeguradoraItemsPaginated, updateSeguradoraItem } from './services/seguradora'
 import type { SeguradoraItem } from './services/seguradora'
+import { getOrdemServicoDashboardAtivos, getOrdemServicoDashboardAtivosBancada, getOrdemServicoDashboardAtivosDetalhes } from './services/ordemServicoDashboard'
+import type {
+  OrdemServicoDashboardBancadaData,
+  OrdemServicoDashboardData,
+  OrdemServicoDashboardDetailData,
+  OrdemServicoDashboardDetailItem,
+} from './services/ordemServicoDashboard'
+
+type DashboardBancadaMatrixRow = {
+  dreCodigo: string
+  dreDescricao: string
+  totalGeral: number
+  totalsByModalidade: Record<string, number>
+  countsByModalidadeAndTipo: Record<string, Record<string, number>>
+}
 
 type StatusTone = 'idle' | 'error' | 'success'
 type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
@@ -23,6 +38,14 @@ type TitularSortField = 'codigo' | 'cnpj_cpf' | 'titular'
 type MarcaModeloSortField = 'codigo' | 'descricao'
 type SeguradoraSortField = 'codigo' | 'controle' | 'descricao'
 type FormMode = 'create' | 'edit' | 'view'
+
+type DashboardDrillDownContext = {
+  dreCodigo: string
+  dreDescricao: string
+  modalidadeDescricao: string
+  tipoDeBancada?: string
+  total: number
+}
 
 type SmokeSkippedRecord = {
   index: number
@@ -111,54 +134,439 @@ const SESSION_STORAGE_KEY = 'tegfinanc.auth'
 const DRE_PAGE_SIZE = 20
 const normalizeDreSiglaInput = (value: string) => value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2)
 
-function SchoolBusArt() {
-  return (
-    <svg
-      className="bus-illustration"
-      viewBox="0 0 640 360"
-      role="img"
-      aria-label="Ilustracao de onibus escolar"
-    >
-      <defs>
-        <linearGradient id="busBody" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#f4be2a" />
-          <stop offset="100%" stopColor="#df8e1d" />
-        </linearGradient>
-        <linearGradient id="skyGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#f8fbff" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#cfe7f7" stopOpacity="0.2" />
-        </linearGradient>
-      </defs>
+function getCurrentMonthInputValue() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
 
-      <rect x="24" y="24" width="592" height="312" rx="36" fill="url(#skyGlow)" />
-      <circle cx="132" cy="104" r="34" fill="#fff3c4" />
-      <path d="M70 276h500" stroke="#86af78" strokeWidth="10" strokeLinecap="round" />
-      <path d="M78 294h482" stroke="#648d5d" strokeWidth="18" strokeLinecap="round" />
+function formatDashboardMonthLabel(value: string) {
+  if (!/^\d{4}-\d{2}$/.test(value)) {
+    return value
+  }
 
-      <g transform="translate(88 98)">
-        <rect x="20" y="36" width="398" height="118" rx="26" fill="url(#busBody)" />
-        <path
-          d="M74 10h222c30 0 58 17 72 44l17 32H33l16-30C55 28 83 10 114 10Z"
-          fill="url(#busBody)"
-        />
-        <rect x="88" y="35" width="256" height="18" rx="9" fill="#45413a" opacity="0.18" />
-        <rect x="58" y="64" width="54" height="44" rx="8" fill="#d8eefc" />
-        <rect x="122" y="64" width="54" height="44" rx="8" fill="#d8eefc" />
-        <rect x="186" y="64" width="54" height="44" rx="8" fill="#d8eefc" />
-        <rect x="250" y="64" width="54" height="44" rx="8" fill="#d8eefc" />
-        <rect x="314" y="64" width="54" height="44" rx="8" fill="#d8eefc" />
-        <rect x="22" y="64" width="26" height="78" rx="8" fill="#45413a" opacity="0.9" />
-        <rect x="383" y="66" width="26" height="66" rx="8" fill="#7d4d1f" opacity="0.72" />
-        <path d="M42 122h334" stroke="#4d3a16" strokeWidth="6" strokeLinecap="round" />
-        <circle cx="104" cy="164" r="32" fill="#2f3b45" />
-        <circle cx="104" cy="164" r="15" fill="#b9c6cf" />
-        <circle cx="344" cy="164" r="32" fill="#2f3b45" />
-        <circle cx="344" cy="164" r="15" fill="#b9c6cf" />
-        <circle cx="50" cy="120" r="7" fill="#f97316" />
-        <circle cx="391" cy="120" r="7" fill="#ef4444" />
-      </g>
-    </svg>
-  )
+  const [yearText, monthText] = value.split('-')
+  const monthDate = new Date(Number(yearText), Number(monthText) - 1, 1)
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  }).format(monthDate)
+}
+
+function formatDashboardGeneratedAt(value: string) {
+  const generatedDate = new Date(value)
+
+  if (Number.isNaN(generatedDate.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(generatedDate)
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function normalizeDashboardDrillDownSearchValue(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim()
+}
+
+function buildDashboardReportMarkup(dashboardData: OrdemServicoDashboardData, options?: { autoPrint?: boolean }) {
+  const monthLabel = formatDashboardMonthLabel(dashboardData.requestedMonth)
+  const generatedAt = formatDashboardGeneratedAt(dashboardData.generatedAt)
+  const autoPrint = Boolean(options?.autoPrint)
+  const tableRows = dashboardData.rows
+    .map((row) => {
+      const modalidadeCells = dashboardData.modalidades
+        .map((modalidade) => `<td class="report-number">${row.countsByModalidade[modalidade.descricao] ?? 0}</td>`)
+        .join('')
+
+      return `
+        <tr>
+          <td>
+            <div class="report-dre-cell">
+              <strong>${escapeHtml(row.dreCodigo)}</strong>
+              <span>${escapeHtml(row.dreDescricao)}</span>
+            </div>
+          </td>
+          ${modalidadeCells}
+          <td class="report-number report-total-cell">${row.totalGeral}</td>
+        </tr>`
+    })
+    .join('')
+
+  const totalCells = dashboardData.modalidades
+    .map((modalidade) => `<th class="report-number">${modalidade.total}</th>`)
+    .join('')
+
+  const printScript = autoPrint
+    ? `
+    <script>
+      window.addEventListener('load', function () {
+        window.focus();
+        window.print();
+      });
+
+      window.addEventListener('afterprint', function () {
+        window.close();
+      });
+    </script>`
+    : ''
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard OrdemServico ${escapeHtml(dashboardData.requestedMonth)}</title>
+    <style>
+      body {
+        margin: 24px;
+        font-family: Calibri, Arial, sans-serif;
+        color: #111827;
+      }
+
+      .report-header {
+        margin-bottom: 18px;
+      }
+
+      .report-header h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+
+      .report-header p {
+        margin: 4px 0;
+        font-size: 13px;
+      }
+
+      .report-table,
+      .report-person-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .report-table {
+        table-layout: fixed;
+      }
+
+      .report-table th,
+      .report-table td,
+      .report-person-table th,
+      .report-person-table td {
+        border: 1px solid #6b7280;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+
+      .report-table thead th,
+      .report-table tfoot th,
+      .report-person-table th {
+        background: #e5e7eb;
+      }
+
+      .report-table th:first-child,
+      .report-table td:first-child {
+        text-align: left;
+      }
+
+      .report-number {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .report-dre-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .report-dre-cell span {
+        color: #4b5563;
+      }
+
+      .report-total-cell {
+        font-weight: 700;
+      }
+
+      .report-footer {
+        margin-top: 18px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .report-person-table {
+        max-width: 420px;
+      }
+
+      .report-generated {
+        min-width: 220px;
+        text-align: right;
+      }
+
+      .report-generated p {
+        margin: 4px 0;
+        font-size: 13px;
+      }
+
+      @media print {
+        body {
+          margin: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="report-header">
+      <h1>Ordens de Servico Ativas por DRE e Modalidade</h1>
+      <p><strong>Mes:</strong> ${escapeHtml(monthLabel)}</p>
+      <p><strong>Gerado em:</strong> ${escapeHtml(generatedAt)}</p>
+    </header>
+    <section>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>DRE</th>
+            ${dashboardData.modalidades.map((modalidade) => `<th>${escapeHtml(modalidade.descricao)}</th>`).join('')}
+            <th>Total Geral</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot>
+          <tr>
+            <th>Total</th>
+            ${totalCells}
+            <th class="report-number">${dashboardData.totals.totalOverall}</th>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+    <section class="report-footer">
+      <table class="report-person-table">
+        <tbody>
+          <tr>
+            <th>PESSOA FISICA</th>
+            <td class="report-number">${dashboardData.personTypeTotals.pessoaFisica}</td>
+          </tr>
+          <tr>
+            <th>PESSOA JURIDICA</th>
+            <td class="report-number">${dashboardData.personTypeTotals.pessoaJuridica}</td>
+          </tr>
+          <tr>
+            <th>COOPERATIVA</th>
+            <td class="report-number">${dashboardData.personTypeTotals.cooperativa}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="report-generated">
+        <p><strong>Data da geracao:</strong></p>
+        <p>${escapeHtml(generatedAt)}</p>
+      </div>
+    </section>${printScript}
+  </body>
+</html>`
+}
+
+function getDashboardBancadaLayout(dashboardBancadaData: OrdemServicoDashboardBancadaData) {
+  const modalidades = Array.from(new Set(dashboardBancadaData.rows.map((row) => row.modalidadeDescricao)))
+    .sort((left, right) => left.localeCompare(right, 'pt-BR'))
+
+  const totalsByModalidade = modalidades.reduce<Record<string, {
+    totalGeral: number
+    countsByTipoBancada: Record<string, number>
+  }>>((accumulator, modalidadeDescricao) => {
+    accumulator[modalidadeDescricao] = {
+      totalGeral: 0,
+      countsByTipoBancada: {},
+    }
+
+    return accumulator
+  }, {})
+
+  const matrixRows = Array.from(dashboardBancadaData.rows.reduce((accumulator, row) => {
+    if (!accumulator.has(row.dreCodigo)) {
+      accumulator.set(row.dreCodigo, {
+        dreCodigo: row.dreCodigo,
+        dreDescricao: row.dreDescricao,
+        totalGeral: 0,
+        totalsByModalidade: {},
+        countsByModalidadeAndTipo: {},
+      })
+    }
+
+    const currentRow = accumulator.get(row.dreCodigo) as DashboardBancadaMatrixRow
+    currentRow.totalGeral += row.totalGeral
+    currentRow.totalsByModalidade[row.modalidadeDescricao] = row.totalGeral
+    currentRow.countsByModalidadeAndTipo[row.modalidadeDescricao] = row.countsByTipoBancada
+
+    if (!totalsByModalidade[row.modalidadeDescricao]) {
+      totalsByModalidade[row.modalidadeDescricao] = {
+        totalGeral: 0,
+        countsByTipoBancada: {},
+      }
+    }
+
+    totalsByModalidade[row.modalidadeDescricao].totalGeral += row.totalGeral
+
+    for (const tipoBancada of dashboardBancadaData.tiposBancada) {
+      totalsByModalidade[row.modalidadeDescricao].countsByTipoBancada[tipoBancada.descricao] =
+        (totalsByModalidade[row.modalidadeDescricao].countsByTipoBancada[tipoBancada.descricao] ?? 0)
+        + (row.countsByTipoBancada[tipoBancada.descricao] ?? 0)
+    }
+
+    return accumulator
+  }, new Map<string, DashboardBancadaMatrixRow>()).values())
+    .sort((left, right) => left.dreCodigo.localeCompare(right.dreCodigo, 'pt-BR'))
+
+  const visibleTiposByModalidade = modalidades.reduce<Record<string, string[]>>((accumulator, modalidadeDescricao) => {
+    accumulator[modalidadeDescricao] = dashboardBancadaData.tiposBancada
+      .filter((tipoBancada) => (totalsByModalidade[modalidadeDescricao]?.countsByTipoBancada[tipoBancada.descricao] ?? 0) > 0)
+      .map((tipoBancada) => tipoBancada.descricao)
+
+    return accumulator
+  }, {})
+
+  return {
+    modalidades,
+    matrixRows,
+    totalsByModalidade,
+    visibleTiposByModalidade,
+  }
+}
+
+function buildDashboardBancadaReportMarkup(dashboardBancadaData: OrdemServicoDashboardBancadaData, options?: { autoPrint?: boolean }) {
+  const monthLabel = formatDashboardMonthLabel(dashboardBancadaData.requestedMonth)
+  const generatedAt = formatDashboardGeneratedAt(dashboardBancadaData.generatedAt)
+  const autoPrint = Boolean(options?.autoPrint)
+  const layout = getDashboardBancadaLayout(dashboardBancadaData)
+
+  const headerTopCells = layout.modalidades
+    .map((modalidadeDescricao) => `<th colspan="${layout.visibleTiposByModalidade[modalidadeDescricao]?.length ?? 0}">${escapeHtml(modalidadeDescricao)}</th>`)
+    .join('')
+
+  const headerBottomCells = layout.modalidades
+    .flatMap((modalidadeDescricao) => (layout.visibleTiposByModalidade[modalidadeDescricao] ?? [])
+      .map((tipoBancadaDescricao) => `<th>${escapeHtml(tipoBancadaDescricao)}</th>`))
+    .join('')
+
+  const bodyRows = layout.matrixRows
+    .map((row) => {
+      const bancadaCells = layout.modalidades
+        .flatMap((modalidadeDescricao) => (layout.visibleTiposByModalidade[modalidadeDescricao] ?? [])
+          .map((tipoBancadaDescricao) => `<td class="report-number">${row.countsByModalidadeAndTipo[modalidadeDescricao]?.[tipoBancadaDescricao] ?? 0}</td>`))
+        .join('')
+
+      return `
+        <tr>
+          <td>
+            <div class="report-dre-cell">
+              <strong>${escapeHtml(row.dreCodigo)}</strong>
+              <span>${escapeHtml(row.dreDescricao)}</span>
+            </div>
+          </td>
+          ${bancadaCells}
+          <td class="report-number report-total-cell">${row.totalGeral}</td>
+        </tr>`
+    })
+    .join('')
+
+  const totalCells = layout.modalidades
+    .flatMap((modalidadeDescricao) => (layout.visibleTiposByModalidade[modalidadeDescricao] ?? [])
+      .map((tipoBancadaDescricao) => `<th class="report-number">${layout.totalsByModalidade[modalidadeDescricao]?.countsByTipoBancada[tipoBancadaDescricao] ?? 0}</th>`))
+    .join('')
+
+  const printScript = autoPrint
+    ? `
+    <script>
+      window.addEventListener('load', function () {
+        window.focus();
+        window.print();
+      });
+
+      window.addEventListener('afterprint', function () {
+        window.close();
+      });
+    </script>`
+    : ''
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Bancada ${escapeHtml(dashboardBancadaData.requestedMonth)}</title>
+    <style>
+      body { margin: 24px; font-family: Calibri, Arial, sans-serif; color: #111827; }
+      .report-header { margin-bottom: 18px; }
+      .report-header h1 { margin: 0 0 8px; font-size: 24px; }
+      .report-header p { margin: 4px 0; font-size: 13px; }
+      .report-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .report-table th, .report-table td { border: 1px solid #6b7280; padding: 6px 8px; font-size: 12px; }
+      .report-table thead th, .report-table tfoot th { background: #e5e7eb; }
+      .report-table th:first-child, .report-table td:first-child { text-align: left; }
+      .report-number { text-align: right; font-variant-numeric: tabular-nums; }
+      .report-dre-cell { display: flex; flex-direction: column; gap: 2px; }
+      .report-dre-cell span { color: #4b5563; }
+      .report-total-cell { font-weight: 700; }
+      @media print { body { margin: 12px; } }
+    </style>
+  </head>
+  <body>
+    <header class="report-header">
+      <h1>Ordens de Servico Ativas por DRE, Modalidade e Tipo de Bancada</h1>
+      <p><strong>Mes:</strong> ${escapeHtml(monthLabel)}</p>
+      <p><strong>Gerado em:</strong> ${escapeHtml(generatedAt)}</p>
+    </header>
+    <section>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th rowspan="2">DRE</th>
+            ${headerTopCells}
+            <th rowspan="2">Total Geral</th>
+          </tr>
+          <tr>
+            ${headerBottomCells}
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+        <tfoot>
+          <tr>
+            <th>Total</th>
+            ${totalCells}
+            <th class="report-number">${dashboardBancadaData.totals.totalOverall}</th>
+          </tr>
+        </tfoot>
+      </table>
+    </section>${printScript}
+  </body>
+</html>`
+}
+
+function downloadTextFile(content: string, fileName: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType })
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = fileName
+  document.body.append(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(objectUrl)
 }
 
 function getStoredSession() {
@@ -252,6 +660,22 @@ function App() {
   const [selectedSmokeLogStream, setSelectedSmokeLogStream] = useState<SmokeLogStream>('stdout')
   const [smokeReportActionMessage, setSmokeReportActionMessage] = useState('')
   const [smokeResult, setSmokeResult] = useState<SmokeRunResponse | null>(null)
+  const [dashboardMonth, setDashboardMonth] = useState(getCurrentMonthInputValue())
+  const [dashboardData, setDashboardData] = useState<OrdemServicoDashboardData | null>(null)
+  const [dashboardBancadaData, setDashboardBancadaData] = useState<OrdemServicoDashboardBancadaData | null>(null)
+  const [dashboardStatusMessage, setDashboardStatusMessage] = useState('')
+  const [dashboardStatusTone, setDashboardStatusTone] = useState<StatusTone>('idle')
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
+  const [isDashboardResumoExpanded, setIsDashboardResumoExpanded] = useState(false)
+  const [isDashboardBancadaExpanded, setIsDashboardBancadaExpanded] = useState(false)
+  const [isDashboardDrillDownVisible, setIsDashboardDrillDownVisible] = useState(false)
+  const [isLoadingDashboardDrillDown, setIsLoadingDashboardDrillDown] = useState(false)
+  const [dashboardDrillDownContext, setDashboardDrillDownContext] = useState<DashboardDrillDownContext | null>(null)
+  const [dashboardDrillDownData, setDashboardDrillDownData] = useState<OrdemServicoDashboardDetailData | null>(null)
+  const [dashboardDrillDownSearch, setDashboardDrillDownSearch] = useState('')
+  const [dashboardDrillDownStatusMessage, setDashboardDrillDownStatusMessage] = useState('')
+  const [isDashboardOsPopupVisible, setIsDashboardOsPopupVisible] = useState(false)
+  const [dashboardOsPopupUrl, setDashboardOsPopupUrl] = useState('')
   const [dreItems, setDreItems] = useState<DreItem[]>([])
   const [dreSigla, setDreSigla] = useState('')
   const [dreSiglaError, setDreSiglaError] = useState('')
@@ -348,10 +772,89 @@ function App() {
   const [seguradoraSortBy, setSeguradoraSortBy] = useState<SeguradoraSortField>('codigo')
   const [seguradoraSortDirection, setSeguradoraSortDirection] = useState<DreSortDirection>('asc')
   const deferredSeguradoraSearch = useDeferredValue(seguradoraSearch)
+  const deferredDashboardDrillDownSearch = useDeferredValue(dashboardDrillDownSearch)
 
   useEffect(() => {
     setSession(getStoredSession())
   }, [])
+
+  const loadDashboardAtivos = useCallback(async (monthToLoad: string) => {
+    setIsLoadingDashboard(true)
+    setDashboardStatusTone('idle')
+    setDashboardStatusMessage('Carregando painel mensal de OrdemServico...')
+    setIsDashboardDrillDownVisible(false)
+    setDashboardDrillDownContext(null)
+    setDashboardDrillDownData(null)
+    setDashboardDrillDownSearch('')
+    setDashboardDrillDownStatusMessage('')
+    setIsDashboardOsPopupVisible(false)
+    setDashboardOsPopupUrl('')
+
+    try {
+      const [result, bancadaResult] = await Promise.all([
+        getOrdemServicoDashboardAtivos(monthToLoad),
+        getOrdemServicoDashboardAtivosBancada(monthToLoad),
+      ])
+
+      setDashboardData(result)
+      setDashboardBancadaData(bancadaResult)
+      setDashboardStatusMessage(result.rows.length ? '' : 'Nenhuma OrdemServico esteve ativa no mes selecionado.')
+      setDashboardStatusTone('idle')
+    } catch (error) {
+      setDashboardData(null)
+      setDashboardBancadaData(null)
+      setDashboardStatusTone('error')
+      setDashboardStatusMessage(error instanceof Error ? error.message : 'Falha ao carregar o dashboard de OrdemServico.')
+    } finally {
+      setIsLoadingDashboard(false)
+    }
+  }, [])
+
+  const handleCloseDashboardDrillDown = () => {
+    setIsDashboardDrillDownVisible(false)
+    setIsLoadingDashboardDrillDown(false)
+    setDashboardDrillDownContext(null)
+    setDashboardDrillDownData(null)
+    setDashboardDrillDownSearch('')
+    setDashboardDrillDownStatusMessage('')
+  }
+
+  const handleCloseDashboardOsPopup = () => {
+    setIsDashboardOsPopupVisible(false)
+    setDashboardOsPopupUrl('')
+  }
+
+  useEffect(() => {
+    const handleDashboardOsPopupMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return
+      }
+
+      if (!event.data || typeof event.data !== 'object') {
+        return
+      }
+
+      if ((event.data as { type?: string }).type !== 'teg-dashboard-close-os-popup') {
+        return
+      }
+
+      handleCloseDashboardOsPopup()
+    }
+
+    window.addEventListener('message', handleDashboardOsPopupMessage)
+
+    return () => {
+      window.removeEventListener('message', handleDashboardOsPopupMessage)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!session || activeView !== 'inicio' || (dashboardData && dashboardBancadaData)) {
+      return
+    }
+
+    void loadDashboardAtivos(dashboardMonth)
+  }, [activeView, dashboardBancadaData, dashboardData, dashboardMonth, loadDashboardAtivos, session])
 
   const loadDreItems = useCallback(async (pageToLoad: number) => {
     setIsLoadingDre(true)
@@ -1570,6 +2073,8 @@ function App() {
       || isTitularFormVisible
       || isMarcaModeloFormVisible
       || isSeguradoraFormVisible
+      || isDashboardDrillDownVisible
+      || isDashboardOsPopupVisible
 
     if (!hasOpenManagementModal) {
       document.body.classList.remove('management-modal-open')
@@ -1605,6 +2110,16 @@ function App() {
 
       if (isSeguradoraFormVisible && !isSavingSeguradora) {
         handleCancelSeguradoraForm()
+        return
+      }
+
+      if (isDashboardDrillDownVisible) {
+        handleCloseDashboardDrillDown()
+        return
+      }
+
+      if (isDashboardOsPopupVisible) {
+        handleCloseDashboardOsPopup()
       }
     }
 
@@ -1620,6 +2135,10 @@ function App() {
     handleCancelModalidadeForm,
     handleCancelSeguradoraForm,
     handleCancelTitularForm,
+    handleCloseDashboardDrillDown,
+    handleCloseDashboardOsPopup,
+    isDashboardDrillDownVisible,
+    isDashboardOsPopupVisible,
     isDreFormVisible,
     isMarcaModeloFormVisible,
     isModalidadeFormVisible,
@@ -1825,6 +2344,183 @@ function App() {
   const canGoToNextMarcaModeloPage = marcaModeloPage < marcaModeloTotalPages
   const canGoToPreviousSeguradoraPage = seguradoraPage > 1
   const canGoToNextSeguradoraPage = seguradoraPage < seguradoraTotalPages
+  const dashboardModalidades = dashboardData?.modalidades ?? []
+  const dashboardRows = dashboardData?.rows ?? []
+  const dashboardBancadaRows = dashboardBancadaData?.rows ?? []
+  const dashboardBancadaLayout = dashboardBancadaData ? getDashboardBancadaLayout(dashboardBancadaData) : null
+  const dashboardBancadaModalidades = dashboardBancadaLayout?.modalidades ?? []
+  const dashboardBancadaMatrixRows = dashboardBancadaLayout?.matrixRows ?? []
+  const dashboardBancadaTotalsByModalidade = dashboardBancadaLayout?.totalsByModalidade ?? {}
+  const dashboardBancadaVisibleTiposByModalidade = dashboardBancadaLayout?.visibleTiposByModalidade ?? {}
+  const normalizedDashboardDrillDownSearch = normalizeDashboardDrillDownSearchValue(deferredDashboardDrillDownSearch)
+  const filteredDashboardDrillDownItems = (dashboardDrillDownData?.items ?? []).filter((item) => {
+    if (!normalizedDashboardDrillDownSearch) {
+      return true
+    }
+
+    const searchableValue = normalizeDashboardDrillDownSearchValue([
+      item.codigo,
+      item.termoAdesao,
+      item.numOs,
+      item.revisao,
+      item.osConcat,
+      item.credenciado,
+      item.cnpjCpf,
+      item.tipoPessoa,
+      item.condutor,
+      item.cpfCondutor,
+      item.crm,
+      item.veiculoPlacas,
+      item.veiculoTipoDeBancada,
+      item.situacao,
+      item.modalidadeDescricao,
+    ].join(' '))
+
+    return searchableValue.includes(normalizedDashboardDrillDownSearch)
+  })
+
+  const handleOpenDashboardDrillDown = async ({
+    dreCodigo,
+    dreDescricao,
+    modalidadeDescricao,
+    tipoDeBancada,
+    total,
+  }: DashboardDrillDownContext) => {
+    const requestedMonth = dashboardData?.requestedMonth ?? dashboardBancadaData?.requestedMonth ?? dashboardMonth
+
+    if (!requestedMonth || total <= 0) {
+      return
+    }
+
+    setIsDashboardDrillDownVisible(true)
+    setIsLoadingDashboardDrillDown(true)
+    setDashboardDrillDownContext({ dreCodigo, dreDescricao, modalidadeDescricao, tipoDeBancada, total })
+    setDashboardDrillDownData(null)
+    setDashboardDrillDownSearch('')
+    setDashboardDrillDownStatusMessage('Carregando Ordens de Servico da celula selecionada...')
+
+    try {
+      const result = await getOrdemServicoDashboardAtivosDetalhes({
+        month: requestedMonth,
+        dreCodigo,
+        modalidade: modalidadeDescricao || undefined,
+        tipoDeBancada: tipoDeBancada || undefined,
+      })
+
+      setDashboardDrillDownData(result)
+      setDashboardDrillDownStatusMessage(result.items.length ? '' : 'Nenhuma OrdemServico encontrada para a celula selecionada.')
+    } catch (error) {
+      setDashboardDrillDownStatusMessage(error instanceof Error ? error.message : 'Falha ao carregar o detalhe do dashboard.')
+    } finally {
+      setIsLoadingDashboardDrillDown(false)
+    }
+  }
+
+  const renderDashboardValueButton = ({
+    total,
+    dreCodigo,
+    dreDescricao,
+    modalidadeDescricao,
+    tipoDeBancada,
+  }: DashboardDrillDownContext) => (
+    <button
+      type="button"
+      className="dashboard-cell-button"
+      onClick={() => {
+        void handleOpenDashboardDrillDown({ total, dreCodigo, dreDescricao, modalidadeDescricao, tipoDeBancada })
+      }}
+      disabled={total <= 0}
+      aria-label={tipoDeBancada
+        ? `Abrir detalhe de ${total} ordens de servico em ${dreCodigo} - ${modalidadeDescricao} - ${tipoDeBancada}`
+        : modalidadeDescricao
+          ? `Abrir detalhe de ${total} ordens de servico em ${dreCodigo} - ${modalidadeDescricao}`
+          : `Abrir detalhe de ${total} ordens de servico em ${dreCodigo}`}
+    >
+      {total}
+    </button>
+  )
+
+  const handleOpenDashboardOsPopup = (codigo: string) => {
+    const normalizedCodigo = codigo.trim()
+
+    if (!normalizedCodigo) {
+      return
+    }
+
+    const params = new URLSearchParams({
+      popupMode: 'dashboard-ordem-servico',
+      codigo: normalizedCodigo,
+      mode: 'view',
+    })
+
+    setDashboardOsPopupUrl(`/src/ordemServico.html?${params.toString()}`)
+    setIsDashboardOsPopupVisible(true)
+  }
+
+  const handleDashboardSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void loadDashboardAtivos(dashboardMonth)
+  }
+
+  const handleExportDashboardResumoExcel = () => {
+    if (!dashboardData) {
+      return
+    }
+
+    downloadTextFile(
+      buildDashboardReportMarkup(dashboardData),
+      `dashboard-ordem-servico-${dashboardData.requestedMonth}.xls`,
+      'application/vnd.ms-excel;charset=utf-8',
+    )
+  }
+
+  const handlePrintDashboardResumo = () => {
+    if (!dashboardData) {
+      return
+    }
+
+    const printWindow = window.open('', '_blank')
+
+    if (!printWindow) {
+      setDashboardStatusTone('error')
+      setDashboardStatusMessage('Nao foi possivel abrir a janela de impressao.')
+      return
+    }
+
+    printWindow.document.open()
+    printWindow.document.write(buildDashboardReportMarkup(dashboardData, { autoPrint: true }))
+    printWindow.document.close()
+  }
+
+  const handleExportDashboardBancadaExcel = () => {
+    if (!dashboardBancadaData) {
+      return
+    }
+
+    downloadTextFile(
+      buildDashboardBancadaReportMarkup(dashboardBancadaData),
+      `dashboard-ordem-servico-bancada-${dashboardBancadaData.requestedMonth}.xls`,
+      'application/vnd.ms-excel;charset=utf-8',
+    )
+  }
+
+  const handlePrintDashboardBancada = () => {
+    if (!dashboardBancadaData) {
+      return
+    }
+
+    const printWindow = window.open('', '_blank')
+
+    if (!printWindow) {
+      setDashboardStatusTone('error')
+      setDashboardStatusMessage('Nao foi possivel abrir a janela de impressao.')
+      return
+    }
+
+    printWindow.document.open()
+    printWindow.document.write(buildDashboardBancadaReportMarkup(dashboardBancadaData, { autoPrint: true }))
+    printWindow.document.close()
+  }
 
   const toggleMenuGroup = (groupName: 'cadastros' | 'operacional') => {
     setCollapsedMenuGroups((current) => ({
@@ -2028,16 +2724,475 @@ function App() {
         {activeView === 'inicio' ? (
           <>
             <div className="content-copy">
-              <p className="content-kicker">Centro de monitoramento</p>
-              <h2 id="content-title">Sistema Transporte Escolar Gratuito</h2>
+              <p className="content-kicker">Dashboard operacional</p>
+              <h2 id="content-title">Ordens de Servico Ativas por Mes</h2>
               <p className="content-description">
-                Area central dedicada a visualizacao do transporte escolar com foco
-                nas rotas, status da frota e organizacao do atendimento diario.
+                Consulte a quantidade de Ordens de Servico que ficaram ativas ao menos um dia no mes selecionado,
+                agrupadas por DRE e modalidade.
               </p>
             </div>
 
-            <div className="bus-stage">
-              <SchoolBusArt />
+            <div className="management-layout dashboard-layout">
+              <div className="management-card dashboard-controls-card">
+                <form className="dashboard-filter-form" onSubmit={handleDashboardSubmit}>
+                  <label className="field-group dashboard-month-group" htmlFor="dashboard-month">
+                    <span>Mes de referencia</span>
+                    <input
+                      id="dashboard-month"
+                      type="month"
+                      value={dashboardMonth}
+                      onChange={(event) => setDashboardMonth(event.target.value)}
+                      max={getCurrentMonthInputValue()}
+                    />
+                  </label>
+
+                  <div className="dashboard-filter-actions">
+                    <button type="submit" className="primary-button" disabled={isLoadingDashboard || !dashboardMonth}>
+                      {isLoadingDashboard ? 'Atualizando...' : 'Atualizar painel'}
+                    </button>
+                  </div>
+                </form>
+
+                <p className={`status-message status-${dashboardStatusTone}`} aria-live="polite">
+                  {dashboardStatusMessage}
+                </p>
+              </div>
+
+              <div className="dashboard-summary-grid">
+                <article className="dashboard-summary-card">
+                  <span className="dashboard-summary-label">Mes carregado</span>
+                  <strong>{formatDashboardMonthLabel(dashboardData?.requestedMonth ?? dashboardMonth)}</strong>
+                </article>
+                <article className="dashboard-summary-card">
+                  <span className="dashboard-summary-label">OS ativas</span>
+                  <strong>{dashboardData?.totals.totalOverall ?? 0}</strong>
+                </article>
+                <article className="dashboard-summary-card">
+                  <span className="dashboard-summary-label">DREs com atividade</span>
+                  <strong>{dashboardData?.totals.totalDres ?? 0}</strong>
+                </article>
+                <article className="dashboard-summary-card">
+                  <span className="dashboard-summary-label">Modalidades no mes</span>
+                  <strong>{dashboardData?.totals.totalModalidades ?? 0}</strong>
+                </article>
+              </div>
+
+              <div className="management-card dashboard-table-card">
+                <button
+                  type="button"
+                  className="management-grid-header dashboard-grid-header dashboard-section-toggle"
+                  onClick={() => setIsDashboardResumoExpanded((current) => !current)}
+                  aria-expanded={isDashboardResumoExpanded}
+                >
+                  <h2>Distribuicao por DRE x Modalidade</h2>
+                  <span className="dashboard-section-toggle-indicator" aria-hidden="true">{isDashboardResumoExpanded ? '▾' : '▸'}</span>
+                </button>
+
+                {isDashboardResumoExpanded ? (
+                  <div className="dashboard-section-actions">
+                    <button type="button" className="secondary-button" onClick={handleExportDashboardResumoExcel} disabled={isLoadingDashboard || !dashboardData}>
+                      Exportar Excel
+                    </button>
+                    <button type="button" className="secondary-button" onClick={handlePrintDashboardResumo} disabled={isLoadingDashboard || !dashboardData}>
+                      Imprimir relatorio
+                    </button>
+                  </div>
+                ) : null}
+
+                {isDashboardResumoExpanded && dashboardData ? (
+                  <div className="dashboard-table-wrapper">
+                    <table className="dre-table dashboard-table">
+                      <thead>
+                        <tr>
+                          <th>DRE</th>
+                          {dashboardModalidades.map((modalidade) => (
+                            <th key={modalidade.descricao}>{modalidade.descricao}</th>
+                          ))}
+                          <th>Total Geral</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashboardRows.map((row) => (
+                          <tr key={row.dreCodigo}>
+                            <td>
+                              <div className="dashboard-dre-cell">
+                                <strong>{row.dreCodigo}</strong>
+                                <span>{row.dreDescricao}</span>
+                              </div>
+                            </td>
+                            {dashboardModalidades.map((modalidade) => (
+                              <td key={`${row.dreCodigo}-${modalidade.descricao}`} className="dashboard-numeric-cell">
+                                {renderDashboardValueButton({
+                                  total: row.countsByModalidade[modalidade.descricao] ?? 0,
+                                  dreCodigo: row.dreCodigo,
+                                  dreDescricao: row.dreDescricao,
+                                  modalidadeDescricao: modalidade.descricao,
+                                })}
+                              </td>
+                            ))}
+                            <td className="dashboard-total-cell">
+                              {renderDashboardValueButton({
+                                total: row.totalGeral,
+                                dreCodigo: row.dreCodigo,
+                                dreDescricao: row.dreDescricao,
+                                modalidadeDescricao: '',
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <th>Total</th>
+                          {dashboardModalidades.map((modalidade) => (
+                            <th key={`total-${modalidade.descricao}`} className="dashboard-numeric-cell">
+                              {modalidade.total}
+                            </th>
+                          ))}
+                          <th className="dashboard-total-cell">{dashboardData.totals.totalOverall}</th>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : null}
+
+                {isDashboardResumoExpanded && !isLoadingDashboard && dashboardData && dashboardRows.length === 0 ? (
+                  <p className="management-empty-state">Nenhuma OrdemServico ativa encontrada para o mes selecionado.</p>
+                ) : null}
+
+                {isDashboardResumoExpanded && dashboardData ? (
+                  <div className="dashboard-person-summary">
+                    <div className="dashboard-person-summary-table">
+                      <div className="dashboard-person-summary-row">
+                        <span>PESSOA FISICA</span>
+                        <strong>{dashboardData.personTypeTotals.pessoaFisica}</strong>
+                      </div>
+                      <div className="dashboard-person-summary-row">
+                        <span>PESSOA JURIDICA</span>
+                        <strong>{dashboardData.personTypeTotals.pessoaJuridica}</strong>
+                      </div>
+                      <div className="dashboard-person-summary-row">
+                        <span>COOPERATIVA</span>
+                        <strong>{dashboardData.personTypeTotals.cooperativa}</strong>
+                      </div>
+                    </div>
+
+                    <div className="dashboard-generated-at">
+                      <span>Data da geracao</span>
+                      <strong>{formatDashboardGeneratedAt(dashboardData.generatedAt)}</strong>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="management-card dashboard-table-card">
+                <button
+                  type="button"
+                  className="management-grid-header dashboard-grid-header dashboard-section-toggle"
+                  onClick={() => setIsDashboardBancadaExpanded((current) => !current)}
+                  aria-expanded={isDashboardBancadaExpanded}
+                >
+                  <h2>DRE x Modalidade x Tipo de Bancada</h2>
+                  <span className="dashboard-section-toggle-indicator" aria-hidden="true">{isDashboardBancadaExpanded ? '▾' : '▸'}</span>
+                </button>
+
+                {isDashboardBancadaExpanded ? (
+                  <div className="dashboard-section-actions">
+                    <button type="button" className="secondary-button" onClick={handleExportDashboardBancadaExcel} disabled={isLoadingDashboard || !dashboardBancadaData}>
+                      Exportar Excel
+                    </button>
+                    <button type="button" className="secondary-button" onClick={handlePrintDashboardBancada} disabled={isLoadingDashboard || !dashboardBancadaData}>
+                      Imprimir relatorio
+                    </button>
+                  </div>
+                ) : null}
+
+                {isDashboardBancadaExpanded && dashboardBancadaData ? (
+                  <div className="dashboard-table-wrapper">
+                    <table className="dre-table dashboard-table dashboard-bancada-table">
+                      <thead>
+                        <tr>
+                          <th rowSpan={2}>DRE</th>
+                          {dashboardBancadaModalidades.map((modalidadeDescricao) => (
+                            <th
+                              key={modalidadeDescricao}
+                              colSpan={dashboardBancadaVisibleTiposByModalidade[modalidadeDescricao]?.length ?? 0}
+                              className="dashboard-bancada-group-header dashboard-bancada-group-divider"
+                            >
+                              {modalidadeDescricao}
+                            </th>
+                          ))}
+                          <th rowSpan={2}>Total Geral</th>
+                        </tr>
+                        <tr>
+                          {dashboardBancadaModalidades.map((modalidadeDescricao) => (
+                            (dashboardBancadaVisibleTiposByModalidade[modalidadeDescricao] ?? []).map((tipoBancadaDescricao) => (
+                              <th
+                                key={`${modalidadeDescricao}-${tipoBancadaDescricao}`}
+                                className={`dashboard-bancada-subheader ${tipoBancadaDescricao === (dashboardBancadaVisibleTiposByModalidade[modalidadeDescricao] ?? []).at(-1) ? 'dashboard-bancada-group-divider' : ''}`}
+                              >
+                                {tipoBancadaDescricao}
+                              </th>
+                            ))
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashboardBancadaMatrixRows.map((row) => (
+                          <tr key={row.dreCodigo}>
+                            <td>
+                              <div className="dashboard-bancada-main-cell">
+                                <strong>{row.dreCodigo}</strong>
+                                <span>{row.dreDescricao}</span>
+                              </div>
+                            </td>
+                            {dashboardBancadaModalidades.map((modalidadeDescricao) => (
+                              (dashboardBancadaVisibleTiposByModalidade[modalidadeDescricao] ?? []).map((tipoBancadaDescricao) => (
+                                <td
+                                  key={`${row.dreCodigo}-${modalidadeDescricao}-${tipoBancadaDescricao}`}
+                                  className={`dashboard-numeric-cell ${tipoBancadaDescricao === (dashboardBancadaVisibleTiposByModalidade[modalidadeDescricao] ?? []).at(-1) ? 'dashboard-bancada-group-divider' : ''}`}
+                                >
+                                  {renderDashboardValueButton({
+                                    total: row.countsByModalidadeAndTipo[modalidadeDescricao]?.[tipoBancadaDescricao] ?? 0,
+                                    dreCodigo: row.dreCodigo,
+                                    dreDescricao: row.dreDescricao,
+                                    modalidadeDescricao,
+                                    tipoDeBancada: tipoBancadaDescricao,
+                                  })}
+                                </td>
+                              ))
+                            ))}
+                            <td className="dashboard-total-cell">
+                              {renderDashboardValueButton({
+                                total: row.totalGeral,
+                                dreCodigo: row.dreCodigo,
+                                dreDescricao: row.dreDescricao,
+                                modalidadeDescricao: '',
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <th>Total</th>
+                          {dashboardBancadaModalidades.map((modalidadeDescricao) => (
+                            (dashboardBancadaVisibleTiposByModalidade[modalidadeDescricao] ?? []).map((tipoBancadaDescricao) => (
+                              <th
+                                key={`total-${modalidadeDescricao}-${tipoBancadaDescricao}`}
+                                className={`dashboard-numeric-cell ${tipoBancadaDescricao === (dashboardBancadaVisibleTiposByModalidade[modalidadeDescricao] ?? []).at(-1) ? 'dashboard-bancada-group-divider' : ''}`}
+                              >
+                                {dashboardBancadaTotalsByModalidade[modalidadeDescricao]?.countsByTipoBancada[tipoBancadaDescricao] ?? 0}
+                              </th>
+                            ))
+                          ))}
+                          <th className="dashboard-total-cell">{dashboardBancadaData.totals.totalOverall}</th>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : null}
+
+                {isDashboardBancadaExpanded && !isLoadingDashboard && dashboardBancadaData && dashboardBancadaRows.length === 0 ? (
+                  <p className="management-empty-state">Nenhuma OrdemServico ativa com veiculo relacionado foi encontrada para o mes selecionado.</p>
+                ) : null}
+
+                {isDashboardBancadaExpanded && dashboardData ? (
+                  <div className="dashboard-person-summary">
+                    <div className="dashboard-person-summary-table">
+                      <div className="dashboard-person-summary-row">
+                        <span>PESSOA FISICA</span>
+                        <strong>{dashboardData.personTypeTotals.pessoaFisica}</strong>
+                      </div>
+                      <div className="dashboard-person-summary-row">
+                        <span>PESSOA JURIDICA</span>
+                        <strong>{dashboardData.personTypeTotals.pessoaJuridica}</strong>
+                      </div>
+                      <div className="dashboard-person-summary-row">
+                        <span>COOPERATIVA</span>
+                        <strong>{dashboardData.personTypeTotals.cooperativa}</strong>
+                      </div>
+                    </div>
+
+                    <div className="dashboard-generated-at">
+                      <span>Data da geracao</span>
+                      <strong>{formatDashboardGeneratedAt(dashboardData.generatedAt)}</strong>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              {isDashboardDrillDownVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget) {
+                      handleCloseDashboardDrillDown()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell dashboard-drilldown-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="dashboard-drilldown-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="management-card management-modal-form-card dashboard-drilldown-card">
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Dashboard OrdemServico</p>
+                          <h2 id="dashboard-drilldown-title">
+                            {dashboardDrillDownContext
+                              ? [
+                                dashboardDrillDownContext.modalidadeDescricao || 'TOTAL GERAL',
+                                dashboardDrillDownContext.dreCodigo,
+                                dashboardDrillDownContext.tipoDeBancada || '',
+                              ].filter(Boolean).join(' x ')
+                              : 'Tipo de TEG x DRE'}
+                          </h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCloseDashboardDrillDown}
+                          aria-label="Fechar detalhe do dashboard"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {dashboardDrillDownContext
+                          ? `${dashboardDrillDownContext.dreCodigo} - ${dashboardDrillDownContext.dreDescricao}${dashboardDrillDownContext.modalidadeDescricao ? ` | ${dashboardDrillDownContext.modalidadeDescricao}` : ' | Total Geral'}${dashboardDrillDownContext.tipoDeBancada ? ` | Bancada ${dashboardDrillDownContext.tipoDeBancada}` : ''}`
+                          : 'Detalhamento das Ordens de Servico ativas.'}
+                      </p>
+
+                      <div className="dashboard-drilldown-toolbar">
+                        <label className="field-group dashboard-drilldown-filter" htmlFor="dashboard-drilldown-search">
+                          <span>Filtrar OS</span>
+                          <input
+                            id="dashboard-drilldown-search"
+                            type="text"
+                            placeholder="Buscar por OS, credenciada, condutor, CPF, CRM ou placa"
+                            value={dashboardDrillDownSearch}
+                            onChange={(event) => setDashboardDrillDownSearch(event.target.value)}
+                            disabled={isLoadingDashboardDrillDown}
+                          />
+                        </label>
+
+                        <div className="dashboard-drilldown-summary">
+                          <strong>{filteredDashboardDrillDownItems.length}</strong>
+                          <span>{filteredDashboardDrillDownItems.length === 1 ? 'registro visivel' : 'registros visiveis'}</span>
+                        </div>
+                      </div>
+
+                      <p className={`status-message status-${dashboardDrillDownStatusMessage ? 'idle' : 'idle'}`} aria-live="polite">
+                        {isLoadingDashboardDrillDown ? 'Carregando detalhe...' : dashboardDrillDownStatusMessage}
+                      </p>
+
+                      {!isLoadingDashboardDrillDown && dashboardDrillDownData ? (
+                        <div className="dashboard-drilldown-table-wrapper">
+                          <table className="dre-table dashboard-drilldown-table">
+                            <thead>
+                              <tr>
+                                <th>OS</th>
+                                <th>Credenciada</th>
+                                <th>CRM / Placa</th>
+                                <th className="dashboard-drilldown-actions-column">Acoes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredDashboardDrillDownItems.map((item: OrdemServicoDashboardDetailItem) => (
+                                <tr key={item.codigo}>
+                                  <td>
+                                    <div className="dashboard-drilldown-os-cell">
+                                      <strong>{item.osConcat || `${item.termoAdesao}/${item.numOs}`}</strong>
+                                      <span>Cod. {item.codigo}{item.revisao ? ` | Rev. ${item.revisao}` : ''}</span>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div className="dashboard-drilldown-main-cell">
+                                      <strong>{item.credenciado || 'Sem credenciada'}</strong>
+                                      <span>{item.cnpjCpf || 'Sem CNPJ/CPF'}</span>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div className="dashboard-drilldown-main-cell">
+                                      <strong>{item.crm || '-'}</strong>
+                                      <span>{item.veiculoPlacas || 'Sem placa'}</span>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="secondary-button dashboard-open-os-button"
+                                      onClick={() => handleOpenDashboardOsPopup(item.codigo)}
+                                    >
+                                      Abrir OS
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : null}
+
+                      {!isLoadingDashboardDrillDown && dashboardDrillDownData && filteredDashboardDrillDownItems.length === 0 ? (
+                        <p className="management-empty-state">Nenhuma OrdemServico corresponde ao filtro informado.</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {isDashboardOsPopupVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget) {
+                      handleCloseDashboardOsPopup()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell dashboard-os-popup-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="dashboard-os-popup-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="management-card management-modal-form-card dashboard-os-popup-card">
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Dashboard OrdemServico</p>
+                          <h2 id="dashboard-os-popup-title">Formulario de OS</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCloseDashboardOsPopup}
+                          aria-label="Fechar formulario de OS"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      {dashboardOsPopupUrl ? (
+                        <div className="access-embed-card dashboard-os-popup-embed-card">
+                          <iframe
+                            className="access-embed-frame dashboard-os-popup-frame"
+                            src={dashboardOsPopupUrl}
+                            title="Formulario de OrdemServico"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </>
         ) : activeView === 'dre' ? (

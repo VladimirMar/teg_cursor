@@ -9,6 +9,7 @@ import { Pool } from 'pg'
 import { fileURLToPath } from 'node:url'
 
 const port = Number(process.env.PORT ?? 3001)
+const skipDatabaseSchemaSetup = String(process.env.SKIP_DB_SCHEMA_SETUP ?? '').trim().toLowerCase() === 'true'
 const workspaceRoot = path.dirname(fileURLToPath(import.meta.url))
 const importXmlDirectory = path.join(workspaceRoot, 'importXML')
 const xmlParser = new XMLParser({
@@ -180,6 +181,9 @@ const legacyCredenciamentoOsCodigoSequenceName = 'credenciamento_os_codigo_seq'
 const veiculoHistoricoTableName = 'veiculo_historico'
 const veiculoOrdemServicoCollectionPath = '/api/veiculo/ordens-servico'
 const ordemServicoCollectionPath = '/api/ordem-servico'
+const ordemServicoDashboardAtivosPath = '/api/ordem-servico/dashboard-ativos'
+const ordemServicoDashboardAtivosBancadaPath = '/api/ordem-servico/dashboard-ativos-bancada'
+const ordemServicoDashboardAtivosDetalhesPath = '/api/ordem-servico/dashboard-ativos/detalhes'
 const ordemServicoDataEolPendenciasPath = '/api/ordem-servico/data-eol-pendencias'
 const ordemServicoNextNumOsPath = '/api/ordem-servico/next-num-os'
 const ordemServicoNextRevisaoPath = '/api/ordem-servico/next-revisao'
@@ -1426,6 +1430,486 @@ const buildOrdemServicoNumeroLabel = (item) => {
   }
 
   return label || codigo
+}
+
+const normalizeYearMonthInput = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!/^\d{4}-\d{2}$/.test(normalizedValue)) {
+    return ''
+  }
+
+  const [yearText, monthText] = normalizedValue.split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+
+  if (!Number.isInteger(year) || year < 1900 || year > 9999 || !Number.isInteger(month) || month < 1 || month > 12) {
+    return ''
+  }
+
+  return `${yearText}-${monthText}`
+}
+
+const buildYearMonthDateRange = (value) => {
+  const normalizedMonth = normalizeYearMonthInput(value)
+
+  if (!normalizedMonth) {
+    return null
+  }
+
+  const [yearText, monthText] = normalizedMonth.split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const monthStart = `${normalizedMonth}-01`
+  const lastDayOfMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const monthEnd = `${normalizedMonth}-${String(lastDayOfMonth).padStart(2, '0')}`
+
+  return {
+    normalizedMonth,
+    monthStart,
+    monthEnd,
+  }
+}
+
+const normalizeDashboardDreDescriptionKey = (value) => {
+  return normalizeRequestValue(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/\bTEG\s+(CRECHE|ESPECIAL|REGULAR)\b/g, ' ')
+    .replace(/\bACESSIVEL\b/g, ' ')
+    .replace(/[^A-Z0-9\s/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const buildDashboardDreLookup = async (executor = pool) => {
+  const result = await executor.query(
+    `SELECT ${dreSelectClause}
+     FROM dre`,
+  )
+
+  const byCode = new Map()
+  const byDescription = new Map()
+
+  for (const row of result.rows) {
+    const operationalCode = normalizeDreOperationalCode(row?.codigo_operacional || row?.codigo)
+    const description = normalizeRequestValue(row?.descricao)
+    const descriptionKey = normalizeDashboardDreDescriptionKey(description)
+    const item = {
+      dreCodigo: operationalCode || normalizeRequestValue(row?.codigo),
+      dreDescricao: description || operationalCode || normalizeRequestValue(row?.codigo),
+    }
+
+    if (operationalCode) {
+      byCode.set(operationalCode, item)
+    }
+
+    if (descriptionKey) {
+      byDescription.set(descriptionKey, item)
+    }
+  }
+
+  return {
+    byCode,
+    byDescription,
+  }
+}
+
+const resolveCanonicalDashboardDre = (dreCodigo, dreDescricao, dreLookup) => {
+  const normalizedCode = normalizeDreOperationalCode(dreCodigo)
+  const normalizedDescription = normalizeRequestValue(dreDescricao)
+
+  if (normalizedCode) {
+    const exactMatch = dreLookup.byCode.get(normalizedCode)
+
+    if (exactMatch) {
+      return exactMatch
+    }
+
+    for (let length = normalizedCode.length - 1; length >= 1; length -= 1) {
+      const prefixCode = normalizedCode.slice(0, length)
+      const prefixMatch = dreLookup.byCode.get(prefixCode)
+
+      if (prefixMatch) {
+        return prefixMatch
+      }
+    }
+  }
+
+  const descriptionKey = normalizeDashboardDreDescriptionKey(normalizedDescription)
+
+  if (descriptionKey) {
+    const descriptionMatch = dreLookup.byDescription.get(descriptionKey)
+
+    if (descriptionMatch) {
+      return descriptionMatch
+    }
+  }
+
+  return {
+    dreCodigo: normalizedCode || 'SEM DRE',
+    dreDescricao: normalizedDescription || normalizedCode || 'SEM DRE',
+  }
+}
+
+const listActiveOrdemServicoDashboardByMonth = async (referenceMonth, executor = pool) => {
+  const monthRange = buildYearMonthDateRange(referenceMonth)
+
+  if (!monthRange) {
+    throw new Error('Mes de referencia invalido. Use o formato yyyy-mm.')
+  }
+
+  const result = await executor.query(
+    `SELECT
+       COALESCE(NULLIF(BTRIM(dre_codigo), ''), 'SEM DRE') AS dre_codigo,
+       COALESCE(NULLIF(BTRIM(dre_descricao), ''), COALESCE(NULLIF(BTRIM(dre_codigo), ''), 'SEM DRE')) AS dre_descricao,
+       COALESCE(NULLIF(BTRIM(modalidade_descricao), ''), 'SEM MODALIDADE') AS modalidade_descricao,
+       COUNT(*)::int AS total
+     FROM ${ordemServicoTableName}
+     WHERE COALESCE(vigencia_os, data_emissao, data_inclusao::date) <= $2::date
+       AND COALESCE(
+         data_encerramento,
+         data_eol,
+         CASE
+           WHEN UPPER(BTRIM(COALESCE(situacao, ''))) = 'ATIVO' THEN 'infinity'::date
+           ELSE COALESCE(data_modificacao::date, data_inclusao::date, data_emissao, vigencia_os)
+         END
+       ) >= $1::date
+     GROUP BY 1, 2, 3
+     ORDER BY UPPER(COALESCE(NULLIF(BTRIM(dre_codigo), ''), 'SEM DRE')) ASC,
+              UPPER(COALESCE(NULLIF(BTRIM(modalidade_descricao), ''), 'SEM MODALIDADE')) ASC`,
+    [monthRange.monthStart, monthRange.monthEnd],
+  )
+
+  const personTypeResult = await executor.query(
+    `SELECT
+       COALESCE(BTRIM(cr.tipo_pessoa), '') AS tipo_pessoa,
+       COALESCE(BTRIM(cr.cnpj_cpf), '') AS cnpj_cpf,
+       COUNT(*)::int AS total
+     FROM ${ordemServicoTableName} os
+     LEFT JOIN ${credenciamentoTermoTableName} termo
+       ON termo.codigo = os.termo_codigo
+     LEFT JOIN credenciada cr
+       ON cr.codigo = termo.credenciada_codigo
+     WHERE COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date) <= $2::date
+       AND COALESCE(
+         os.data_encerramento,
+         os.data_eol,
+         CASE
+           WHEN UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO' THEN 'infinity'::date
+           ELSE COALESCE(os.data_modificacao::date, os.data_inclusao::date, os.data_emissao, os.vigencia_os)
+         END
+       ) >= $1::date
+     GROUP BY 1, 2`,
+    [monthRange.monthStart, monthRange.monthEnd],
+  )
+
+  const dreLookup = await buildDashboardDreLookup(executor)
+  const modalidadeTotals = new Map()
+  const dreRows = new Map()
+  const personTypeTotals = {
+    pessoaFisica: 0,
+    pessoaJuridica: 0,
+    cooperativa: 0,
+  }
+  let totalOverall = 0
+
+  for (const row of result.rows) {
+    const canonicalDre = resolveCanonicalDashboardDre(row?.dre_codigo, row?.dre_descricao, dreLookup)
+    const dreCodigo = canonicalDre.dreCodigo
+    const dreDescricao = canonicalDre.dreDescricao
+    const modalidade = normalizeRequestValue(row?.modalidade_descricao) || 'SEM MODALIDADE'
+    const total = Number(row?.total ?? 0)
+
+    totalOverall += total
+    modalidadeTotals.set(modalidade, (modalidadeTotals.get(modalidade) ?? 0) + total)
+
+    if (!dreRows.has(dreCodigo)) {
+      dreRows.set(dreCodigo, {
+        dreCodigo,
+        dreDescricao,
+        totalGeral: 0,
+        countsByModalidade: {},
+      })
+    }
+
+    const currentRow = dreRows.get(dreCodigo)
+    currentRow.totalGeral += total
+    currentRow.countsByModalidade[modalidade] = total
+  }
+
+  for (const row of personTypeResult.rows) {
+    const normalizedType = normalizeCredenciadaTipoPessoaValue(row?.tipo_pessoa)
+      || (String(row?.cnpj_cpf ?? '').replace(/\D/g, '').length === 14 ? 'PJ' : 'PF')
+    const total = Number(row?.total ?? 0)
+
+    if (normalizedType === 'CO') {
+      personTypeTotals.cooperativa += total
+      continue
+    }
+
+    if (normalizedType === 'PJ') {
+      personTypeTotals.pessoaJuridica += total
+      continue
+    }
+
+    personTypeTotals.pessoaFisica += total
+  }
+
+  const modalidades = Array.from(modalidadeTotals.entries())
+    .map(([descricao, total]) => ({ descricao, total }))
+    .sort((left, right) => left.descricao.localeCompare(right.descricao, 'pt-BR'))
+
+  const rows = Array.from(dreRows.values())
+    .sort((left, right) => left.dreCodigo.localeCompare(right.dreCodigo, 'pt-BR'))
+
+  return {
+    requestedMonth: monthRange.normalizedMonth,
+    monthStart: monthRange.monthStart,
+    monthEnd: monthRange.monthEnd,
+    generatedAt: new Date().toISOString(),
+    modalidades,
+    rows,
+    personTypeTotals,
+    totals: {
+      totalOverall,
+      totalDres: rows.length,
+      totalModalidades: modalidades.length,
+    },
+  }
+}
+
+const listActiveOrdemServicoDashboardBancadaByMonth = async (referenceMonth, executor = pool) => {
+  const monthRange = buildYearMonthDateRange(referenceMonth)
+
+  if (!monthRange) {
+    throw new Error('Mes de referencia invalido. Use o formato yyyy-mm.')
+  }
+
+  const result = await executor.query(
+    `SELECT
+       COALESCE(NULLIF(BTRIM(os.dre_codigo), ''), 'SEM DRE') AS dre_codigo,
+       COALESCE(NULLIF(BTRIM(os.dre_descricao), ''), COALESCE(NULLIF(BTRIM(os.dre_codigo), ''), 'SEM DRE')) AS dre_descricao,
+       COALESCE(NULLIF(BTRIM(os.modalidade_descricao), ''), 'SEM MODALIDADE') AS modalidade_descricao,
+       COALESCE(
+         NULLIF(
+           BTRIM((
+             SELECT v.tipo_de_bancada
+             FROM veiculo v
+             WHERE BTRIM(COALESCE(v.crm, '')) <> ''
+               AND BTRIM(COALESCE(os.crm, '')) <> ''
+               AND BTRIM(v.crm) = BTRIM(os.crm)
+             ORDER BY v.codigo DESC
+             LIMIT 1
+           )),
+           ''
+         ),
+         'SEM BANCADA'
+       ) AS tipo_de_bancada,
+       COUNT(*)::int AS total
+     FROM ${ordemServicoTableName} os
+     WHERE COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date) <= $2::date
+       AND COALESCE(
+         os.data_encerramento,
+         os.data_eol,
+         CASE
+           WHEN UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO' THEN 'infinity'::date
+           ELSE COALESCE(os.data_modificacao::date, os.data_inclusao::date, os.data_emissao, os.vigencia_os)
+         END
+       ) >= $1::date
+     GROUP BY 1, 2, 3, 4
+     ORDER BY UPPER(COALESCE(NULLIF(BTRIM(os.dre_codigo), ''), 'SEM DRE')) ASC,
+              UPPER(COALESCE(NULLIF(BTRIM(os.modalidade_descricao), ''), 'SEM MODALIDADE')) ASC,
+              UPPER(COALESCE(
+                NULLIF(
+                  BTRIM((
+                    SELECT v.tipo_de_bancada
+                    FROM veiculo v
+                    WHERE BTRIM(COALESCE(v.crm, '')) <> ''
+                      AND BTRIM(COALESCE(os.crm, '')) <> ''
+                      AND BTRIM(v.crm) = BTRIM(os.crm)
+                    ORDER BY v.codigo DESC
+                    LIMIT 1
+                  )),
+                  ''
+                ),
+                'SEM BANCADA'
+              )) ASC`,
+    [monthRange.monthStart, monthRange.monthEnd],
+  )
+
+  const dreLookup = await buildDashboardDreLookup(executor)
+  const tipoBancadaTotals = new Map()
+  const dreModalidadeRows = new Map()
+  let totalOverall = 0
+
+  for (const row of result.rows) {
+    const canonicalDre = resolveCanonicalDashboardDre(row?.dre_codigo, row?.dre_descricao, dreLookup)
+    const dreCodigo = canonicalDre.dreCodigo
+    const dreDescricao = canonicalDre.dreDescricao
+    const modalidadeDescricao = normalizeRequestValue(row?.modalidade_descricao) || 'SEM MODALIDADE'
+    const tipoDeBancada = normalizeTipoDeBancada(row?.tipo_de_bancada) || 'SEM BANCADA'
+    const total = Number(row?.total ?? 0)
+    const rowKey = `${dreCodigo}__${modalidadeDescricao}`
+
+    totalOverall += total
+    tipoBancadaTotals.set(tipoDeBancada, (tipoBancadaTotals.get(tipoDeBancada) ?? 0) + total)
+
+    if (!dreModalidadeRows.has(rowKey)) {
+      dreModalidadeRows.set(rowKey, {
+        dreCodigo,
+        dreDescricao,
+        modalidadeDescricao,
+        totalGeral: 0,
+        countsByTipoBancada: {},
+      })
+    }
+
+    const currentRow = dreModalidadeRows.get(rowKey)
+    currentRow.totalGeral += total
+    currentRow.countsByTipoBancada[tipoDeBancada] = total
+  }
+
+  const tiposBancada = Array.from(tipoBancadaTotals.entries())
+    .map(([descricao, total]) => ({ descricao, total }))
+    .sort((left, right) => left.descricao.localeCompare(right.descricao, 'pt-BR'))
+
+  const rows = Array.from(dreModalidadeRows.values())
+    .sort((left, right) => {
+      const dreComparison = left.dreCodigo.localeCompare(right.dreCodigo, 'pt-BR')
+
+      if (dreComparison !== 0) {
+        return dreComparison
+      }
+
+      return left.modalidadeDescricao.localeCompare(right.modalidadeDescricao, 'pt-BR')
+    })
+
+  return {
+    requestedMonth: monthRange.normalizedMonth,
+    monthStart: monthRange.monthStart,
+    monthEnd: monthRange.monthEnd,
+    generatedAt: new Date().toISOString(),
+    tiposBancada,
+    rows,
+    totals: {
+      totalOverall,
+      totalCombinacoes: rows.length,
+      totalTiposBancada: tiposBancada.length,
+    },
+  }
+}
+
+const listActiveOrdemServicoDashboardDetails = async ({
+  referenceMonth,
+  dreCodigo,
+  modalidadeDescricao,
+  tipoDeBancada,
+}, executor = pool) => {
+  const monthRange = buildYearMonthDateRange(referenceMonth)
+
+  if (!monthRange) {
+    throw new Error('Mes de referencia invalido. Use o formato yyyy-mm.')
+  }
+
+  const normalizedDreCodigo = normalizeDreOperationalCode(dreCodigo)
+  const normalizedModalidadeDescricao = normalizeRequestValue(modalidadeDescricao)
+  const normalizedTipoDeBancada = normalizeTipoDeBancada(tipoDeBancada) || ''
+  const values = [monthRange.monthStart, monthRange.monthEnd]
+  const filters = [
+    `COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date) <= $2::date`,
+    `COALESCE(
+      os.data_encerramento,
+      os.data_eol,
+      CASE
+        WHEN UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO' THEN 'infinity'::date
+        ELSE COALESCE(os.data_modificacao::date, os.data_inclusao::date, os.data_emissao, os.vigencia_os)
+      END
+    ) >= $1::date`,
+  ]
+
+  if (normalizedModalidadeDescricao) {
+    values.push(normalizedModalidadeDescricao)
+    filters.push(`COALESCE(NULLIF(BTRIM(os.modalidade_descricao), ''), 'SEM MODALIDADE') = $${values.length}`)
+  }
+
+  const result = await executor.query(
+    `SELECT
+       os.codigo::text AS codigo,
+       COALESCE(BTRIM(os.termo_adesao), '') AS termo_adesao,
+       COALESCE(BTRIM(os.num_os), '') AS num_os,
+       COALESCE(BTRIM(os.revisao), '') AS revisao,
+       COALESCE(BTRIM(os.os_concat), '') AS os_concat,
+       TO_CHAR(os.vigencia_os::date, 'YYYY-MM-DD') AS vigencia_os,
+       TO_CHAR(os.data_emissao::date, 'YYYY-MM-DD') AS data_emissao,
+       COALESCE((SELECT credenciada_codigo::text FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo), '') AS credenciada_codigo,
+       COALESCE(BTRIM((SELECT cr.credenciado FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS credenciado,
+       COALESCE(BTRIM((SELECT cr.cnpj_cpf FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS cnpj_cpf,
+       COALESCE(BTRIM((SELECT cr.tipo_pessoa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS tipo_pessoa,
+       COALESCE(BTRIM(os.dre_codigo), '') AS dre_codigo,
+       COALESCE(BTRIM(os.dre_descricao), '') AS dre_descricao,
+       COALESCE(BTRIM(os.modalidade_descricao), '') AS modalidade_descricao,
+       COALESCE(BTRIM(os.cpf_condutor), '') AS cpf_condutor,
+       COALESCE(BTRIM(os.condutor), '') AS condutor,
+       COALESCE(BTRIM(os.crm), '') AS crm,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS veiculo_placas,
+      COALESCE(BTRIM((SELECT v.tipo_de_bancada FROM veiculo v WHERE BTRIM(COALESCE(v.crm, '')) <> '' AND BTRIM(COALESCE(os.crm, '')) <> '' AND BTRIM(v.crm) = BTRIM(os.crm) ORDER BY v.codigo DESC LIMIT 1)), '') AS veiculo_tipo_de_bancada,
+       COALESCE(BTRIM(os.situacao), '') AS situacao,
+       TO_CHAR(os.data_encerramento::date, 'YYYY-MM-DD') AS data_encerramento,
+       TO_CHAR(os.data_eol::date, 'YYYY-MM-DD') AS data_eol
+     FROM ${ordemServicoTableName} os
+     WHERE ${filters.join('\n       AND ')}
+     ORDER BY UPPER(BTRIM(COALESCE(os.termo_adesao, ''))) ASC,
+              UPPER(BTRIM(COALESCE(os.num_os, ''))) ASC,
+              UPPER(BTRIM(COALESCE(os.revisao, ''))) ASC,
+              os.codigo ASC`,
+    values,
+  )
+
+  const dreLookup = await buildDashboardDreLookup(executor)
+  const items = result.rows
+    .map((row) => {
+      const canonicalDre = resolveCanonicalDashboardDre(row?.dre_codigo, row?.dre_descricao, dreLookup)
+      const normalizedTipoPessoa = normalizeCredenciadaTipoPessoaValue(row?.tipo_pessoa)
+        || (String(row?.cnpj_cpf ?? '').replace(/\D/g, '').length === 14 ? 'PJ' : 'PF')
+
+      return {
+        codigo: normalizeRequestValue(row?.codigo),
+        termoAdesao: normalizeRequestValue(row?.termo_adesao),
+        numOs: normalizeRequestValue(row?.num_os),
+        revisao: normalizeRequestValue(row?.revisao),
+        osConcat: normalizeRequestValue(row?.os_concat),
+        vigenciaOs: normalizeRequestValue(row?.vigencia_os),
+        dataEmissao: normalizeRequestValue(row?.data_emissao),
+        credenciadaCodigo: normalizeRequestValue(row?.credenciada_codigo),
+        credenciado: normalizeRequestValue(row?.credenciado),
+        cnpjCpf: normalizeRequestValue(row?.cnpj_cpf),
+        tipoPessoa: normalizedTipoPessoa === 'CO' ? 'COOPERATIVA' : normalizedTipoPessoa || 'PF',
+        dreCodigo: canonicalDre.dreCodigo,
+        dreDescricao: canonicalDre.dreDescricao,
+        modalidadeDescricao: normalizeRequestValue(row?.modalidade_descricao) || 'SEM MODALIDADE',
+        cpfCondutor: normalizeRequestValue(row?.cpf_condutor),
+        condutor: normalizeRequestValue(row?.condutor),
+        crm: normalizeRequestValue(row?.crm),
+        veiculoPlacas: normalizeRequestValue(row?.veiculo_placas),
+        veiculoTipoDeBancada: normalizeTipoDeBancada(row?.veiculo_tipo_de_bancada) || 'SEM BANCADA',
+        situacao: normalizeRequestValue(row?.situacao),
+        dataEncerramento: normalizeRequestValue(row?.data_encerramento),
+        dataEol: normalizeRequestValue(row?.data_eol),
+      }
+    })
+    .filter((item) => !normalizedDreCodigo || item.dreCodigo === normalizedDreCodigo)
+    .filter((item) => !normalizedTipoDeBancada || item.veiculoTipoDeBancada === normalizedTipoDeBancada)
+
+  return {
+    requestedMonth: monthRange.normalizedMonth,
+    dreCodigo: normalizedDreCodigo,
+    modalidadeDescricao: normalizedModalidadeDescricao,
+    tipoDeBancada: normalizedTipoDeBancada,
+    total: items.length,
+    items,
+  }
 }
 
 const findActiveOrdemServicoByCpf = async (cpfValue, { excludeCodigo = null } = {}, executor = pool) => {
@@ -11083,6 +11567,103 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === ordemServicoDashboardAtivosPath) {
+    try {
+      const requestedMonth = normalizeYearMonthInput(requestUrl.searchParams.get('month') ?? '')
+
+      if (!requestedMonth) {
+        sendJson(response, 400, { message: 'Mes de referencia invalido. Use o formato yyyy-mm.' })
+        return
+      }
+
+      const dashboard = await listActiveOrdemServicoDashboardByMonth(requestedMonth)
+      sendJson(response, 200, dashboard)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar dashboard mensal de OrdemServico.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === ordemServicoDashboardAtivosBancadaPath) {
+    try {
+      const requestedMonth = normalizeYearMonthInput(requestUrl.searchParams.get('month') ?? '')
+
+      if (!requestedMonth) {
+        sendJson(response, 400, { message: 'Mes de referencia invalido. Use o formato yyyy-mm.' })
+        return
+      }
+
+      const dashboard = await listActiveOrdemServicoDashboardBancadaByMonth(requestedMonth)
+      sendJson(response, 200, dashboard)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar dashboard mensal de OrdemServico por tipo de bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === ordemServicoDashboardAtivosDetalhesPath) {
+    try {
+      const requestedMonth = normalizeYearMonthInput(requestUrl.searchParams.get('month') ?? '')
+
+      if (!requestedMonth) {
+        sendJson(response, 400, { message: 'Mes de referencia invalido. Use o formato yyyy-mm.' })
+        return
+      }
+
+      const dashboardDetail = await listActiveOrdemServicoDashboardDetails({
+        referenceMonth: requestedMonth,
+        dreCodigo: requestUrl.searchParams.get('dreCodigo') ?? '',
+        modalidadeDescricao: requestUrl.searchParams.get('modalidade') ?? '',
+        tipoDeBancada: requestUrl.searchParams.get('tipoDeBancada') ?? '',
+      })
+
+      sendJson(response, 200, dashboardDetail)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao carregar o detalhe do dashboard de OrdemServico.'
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && getOrdemServicoCodigoFromUrl(pathname)) {
+    try {
+      const codigo = Number(getOrdemServicoCodigoFromUrl(pathname))
+
+      if (!Number.isInteger(codigo) || codigo <= 0) {
+        sendJson(response, 400, { message: 'Codigo invalido.' })
+        return
+      }
+
+      const item = await fetchOrdemServicoItemByCodigo(pool, codigo)
+
+      if (!item) {
+        sendJson(response, 404, { message: 'OrdemServico nao encontrada.' })
+        return
+      }
+
+      sendJson(response, 200, item)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar OrdemServico.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'GET' && pathname === ordemServicoDataEolPendenciasPath) {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
@@ -18201,7 +18782,15 @@ server.on('error', async (error) => {
   process.exit(1)
 })
 
-ensureDatabaseSchema()
+Promise.resolve()
+  .then(() => {
+    if (skipDatabaseSchemaSetup) {
+      console.warn('Inicializacao com SKIP_DB_SCHEMA_SETUP=true: pulando preparacao de schema.')
+      return null
+    }
+
+    return ensureDatabaseSchema()
+  })
   .then(() => {
     return seedTrocaTableFromXmlIfEmpty()
   })

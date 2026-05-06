@@ -7,6 +7,53 @@
     <title>ORDEM DE SERVICO</title>
 
     <link rel="stylesheet" href="css/login.css?v=20260504-resumo-os-single-panel-30" />
+    <style>
+      body.dsc-dashboard-popup-mode .dsc-access-toolbar,
+      body.dsc-dashboard-popup-mode .dsc-access-grid-card {
+        display: none !important;
+      }
+
+      body.dsc-dashboard-popup-mode .dsc-container,
+      body.dsc-dashboard-popup-mode .dsc-access-layout,
+      body.dsc-dashboard-popup-mode .dsc-access-management-layout {
+        max-width: none;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        gap: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      body.dsc-dashboard-popup-mode .dsc-access-page {
+        padding: 0;
+      }
+
+      body.dsc-dashboard-popup-mode #ordem-servico-form-modal {
+        padding: 2px;
+      }
+
+      body.dsc-dashboard-popup-mode #ordem-servico-form-modal .dsc-popup-overlay {
+        padding: 4px;
+      }
+
+      body.dsc-dashboard-popup-mode #ordem-servico-form-modal .dsc-popup-shell-ordem-servico {
+        width: min(100%, 1880px);
+        max-height: calc(100vh - 8px);
+      }
+
+      body.dsc-dashboard-popup-mode #ordem-servico-form-modal .dsc-access-form {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        height: calc(100vh - 8px);
+        max-height: calc(100vh - 8px);
+      }
+
+      body.dsc-dashboard-popup-mode #ordem-servico-form-modal .dsc-card {
+        border-radius: 16px;
+      }
+    </style>
   </head>
   <body>
     <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
@@ -716,7 +763,16 @@
       let monitorPopupWindow = null;
       const pageSearchParams = new URLSearchParams(window.location.search);
       const isCredenciamentoTermoPopup = pageSearchParams.get('popupMode') === 'credenciamento-termo';
+      const isDashboardPopup = pageSearchParams.get('popupMode') === 'dashboard-ordem-servico';
+      const dashboardPopupCodigoParam = pageSearchParams.get('codigo') || '';
+      const dashboardPopupMode = pageSearchParams.get('mode') === 'edit' ? 'edit' : 'view';
+
+      if (isDashboardPopup) {
+        document.body.classList.add('dsc-dashboard-popup-mode');
+      }
+
       let termoPopupBootstrapDone = false;
+      let dashboardPopupBootstrapDone = false;
       const activeConflictValidationState = {
         cnpjCpf: { requestId: 0, timeoutId: null },
         condutor: { requestId: 0, timeoutId: null },
@@ -3293,6 +3349,14 @@
       };
 
       const hideForm = () => {
+        if (isDashboardPopup) {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'teg-dashboard-close-os-popup' }, window.location.origin);
+          }
+
+          return;
+        }
+
         form.classList.add('dsc-hidden');
         setPopupVisibility(formModal, false);
         syncPopupPageState();
@@ -5110,6 +5174,40 @@
         populateFormFromItem(item, 'view');
       };
 
+      const bootstrapDashboardPopup = async () => {
+        const dashboardPopupCodigo = normalizeCodigo(dashboardPopupCodigoParam);
+
+        if (dashboardPopupBootstrapDone || !isDashboardPopup || !dashboardPopupCodigo) {
+          return;
+        }
+
+        try {
+          setGridMessage('Carregando OrdemServico selecionada...');
+          const response = await fetch(`/api/ordem-servico/${encodeURIComponent(dashboardPopupCodigo)}`, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+          });
+          const payload = await readJsonResponse(response);
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao carregar OrdemServico para o popup do dashboard.');
+          }
+
+          if (dashboardPopupMode === 'edit') {
+            startEdit(payload);
+          } else {
+            startView(payload);
+          }
+
+          dashboardPopupBootstrapDone = true;
+          setGridMessage('');
+        } catch (error) {
+          const message = getRequestErrorMessage(error, 'Falha ao abrir OrdemServico selecionada.');
+          setGridMessage(message, 'error');
+          showBanner(message, 'error');
+        }
+      };
+
       const startActivation = async (item) => {
         const normalizedDre = normalizeOrdemServicoDre(item.dre_codigo || '', item.dre_descricao || '');
 
@@ -6104,8 +6202,12 @@
       renderModalidadeOptions('');
       renderTipoTrocaOptions('');
       void readPendingPopupReturnPayload();
-      void loadItems();
+      if (!isDashboardPopup) {
+        void loadItems();
+      }
+
       void bootstrapInsertFromTermoPopup();
+      void bootstrapDashboardPopup();
     </script>
   </body>
 </html>
