@@ -3,7 +3,7 @@ import { dirname } from 'node:path'
 
 const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:3001'
 const reportPath = process.env.SMOKE_REPORT_PATH ?? ''
-const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'veiculo', 'marca-modelo'])
+const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo'])
 const suite = (process.argv[2] ?? process.env.SMOKE_SUITE ?? 'all').trim().toLowerCase()
 
 const report = {
@@ -535,6 +535,46 @@ const runCredenciadaSmoke = async () => {
   }
 }
 
+const runOrdemServicoSmoke = async () => {
+  console.log('Smoke test da API OrdemServico')
+  const suiteReport = recordSuite('ordem-servico')
+
+  try {
+    const listResponse = await requestJson('/api/ordem-servico?page=1&pageSize=5&sortBy=codigo&sortDirection=desc')
+    assert(Array.isArray(listResponse.items), 'Listagem de OrdemServico nao retornou items.')
+    assert(listResponse.total > 0, 'Listagem de OrdemServico retornou total zerado.')
+
+    const baseItem = listResponse.items.find((item) => {
+      return Boolean(String(item.codigo ?? '').trim())
+        && Boolean(String(item.termo_adesao ?? '').trim())
+        && Boolean(String(item.num_os ?? '').trim())
+    })
+
+    assert(Boolean(baseItem), 'Nenhum fixture estavel foi encontrado para OrdemServico.')
+    logStep(`fixture selecionado: OS ${baseItem.codigo} (${baseItem.termo_adesao}/${baseItem.num_os}${baseItem.revisao || ''})`)
+
+    const itemResponse = await requestJson(`/api/ordem-servico/${encodeURIComponent(String(baseItem.codigo))}`)
+    assert(String(itemResponse.codigo ?? '').trim() === String(baseItem.codigo).trim(), 'Consulta detalhada da OrdemServico retornou codigo inesperado.')
+    logStep(`consulta detalhada da OS ${baseItem.codigo} ok`)
+
+    const nextRevisaoResponse = await requestJson(
+      `/api/ordem-servico/next-revisao?termoAdesao=${encodeURIComponent(String(baseItem.termo_adesao ?? ''))}&numOs=${encodeURIComponent(String(baseItem.num_os ?? ''))}`,
+    )
+
+    assert(nextRevisaoResponse.codigoBase !== undefined, 'next-revisao nao retornou codigoBase.')
+    assert(String(nextRevisaoResponse.termoAdesao ?? '').trim() === String(baseItem.termo_adesao ?? '').trim(), 'next-revisao nao retornou o termo esperado.')
+    assert(String(nextRevisaoResponse.numOs ?? '').trim() === String(baseItem.num_os ?? '').trim(), 'next-revisao nao retornou o Num OS esperado.')
+    assert(typeof nextRevisaoResponse.nextRevisao === 'string' && nextRevisaoResponse.nextRevisao.trim().length > 0, 'next-revisao nao retornou a proxima revisao.')
+    assert(nextRevisaoResponse.nextRevisao !== 'Codigo invalido.', 'next-revisao colidiu com a rota generica de codigo.')
+    logStep(`next-revisao ok para ${baseItem.termo_adesao}/${baseItem.num_os}: atual ${nextRevisaoResponse.revisaoAtual || '-'} -> proxima ${nextRevisaoResponse.nextRevisao}`)
+
+    finalizeSuite(suiteReport, 'passed')
+  } catch (error) {
+    finalizeSuite(suiteReport, 'failed')
+    throw error
+  }
+}
+
 const runVeiculoSmoke = async () => {
   console.log('Smoke test da API Veiculo')
   const suiteReport = recordSuite('veiculo')
@@ -757,6 +797,14 @@ try {
 
   if (suite === 'all' || suite === 'credenciada') {
     await runCredenciadaSmoke()
+  }
+
+  if (suite === 'all') {
+    console.log('')
+  }
+
+  if (suite === 'all' || suite === 'ordem-servico') {
+    await runOrdemServicoSmoke()
   }
 
   if (suite === 'all') {

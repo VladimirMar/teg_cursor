@@ -67,6 +67,14 @@
                 <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-ordem-servico-import-button">Importar XML</button>
                 <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-ordem-servico-rejections-button">Recusas XML</button>
                 <input class="dsc-form-control dsc-access-filter-input" id="ordem-servico-search" type="text" placeholder="Filtrar por termo, num OS, revisao, OS, credenciado, DRE, condutor, monitor, placa ou CRM" />
+                <select class="dsc-form-control" id="ordem-servico-filter-situacao" aria-label="Filtrar por situacao">
+                  <option value="">Todas as situacoes</option>
+                  <option value="Ativo">Ativo</option>
+                  <option value="Rascunho">Rascunho</option>
+                  <option value="Inativo">Inativo</option>
+                  <option value="Cancelado">Cancelado</option>
+                  <option value="Substituido">Substituido</option>
+                </select>
                 <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="clear-ordem-servico-filter-button">Limpar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="open-ordem-servico-eol-button">Pendências EOL</button>
@@ -189,7 +197,7 @@
                   </label>
                 </div>
 
-                <div class="dsc-form-row dsc-form-row-ordem-servico-codigo">
+                <div class="dsc-form-row dsc-form-row-ordem-servico-identificacao-meta">
                   <label class="dsc-field-group" for="ordem-servico-vigencia-os">
                     <span>Inicio Vigencia</span>
                     <input class="dsc-form-control" id="ordem-servico-vigencia-os" type="date" />
@@ -207,6 +215,32 @@
                     <input class="dsc-form-control dsc-form-control-os-concat" id="ordem-servico-os-concat" type="text" placeholder="OS" readonly />
                     <div class="dsc-form-error"></div>
                   </label>
+
+                  <fieldset class="dsc-field-group dsc-radio-field-group dsc-radio-field-group-ordem-servico-identificacao">
+                    <span>Situacao</span>
+                    <div class="dsc-radio-group" id="ordem-servico-situacao-group">
+                      <label class="dsc-radio-option" for="ordem-servico-situacao-ativo">
+                        <input id="ordem-servico-situacao-ativo" type="radio" name="ordem-servico-situacao" value="Ativo" checked />
+                        <span>Ativo</span>
+                      </label>
+                        <label class="dsc-radio-option" for="ordem-servico-situacao-rascunho">
+                          <input id="ordem-servico-situacao-rascunho" type="radio" name="ordem-servico-situacao" value="Rascunho" />
+                          <span>Rascunho</span>
+                        </label>
+                      <label class="dsc-radio-option" for="ordem-servico-situacao-inativo">
+                        <input id="ordem-servico-situacao-inativo" type="radio" name="ordem-servico-situacao" value="Inativo" />
+                        <span>Inativo</span>
+                      </label>
+                      <label class="dsc-radio-option" for="ordem-servico-situacao-cancelado">
+                        <input id="ordem-servico-situacao-cancelado" type="radio" name="ordem-servico-situacao" value="Cancelado" />
+                        <span>Cancelado</span>
+                      </label>
+                      <label class="dsc-radio-option" for="ordem-servico-situacao-substituido">
+                        <input id="ordem-servico-situacao-substituido" type="radio" name="ordem-servico-situacao" value="Substituido" />
+                        <span>Substituido</span>
+                      </label>
+                    </div>
+                  </fieldset>
                 </div>
               </section>
 
@@ -380,31 +414,9 @@
               </section>
 
               <section class="dsc-form-section-card dsc-form-section-card-ordem-servico-anotacao">
-                <h3 class="dsc-form-section-title">Situacao e anotacao</h3>
+                <h3 class="dsc-form-section-title">Anotacao e controle</h3>
 
-                <div class="dsc-form-row dsc-form-row-ordem-servico-situacao">
-                  <fieldset class="dsc-field-group dsc-radio-field-group">
-                    <span>Situacao</span>
-                    <div class="dsc-radio-group" id="ordem-servico-situacao-group">
-                      <label class="dsc-radio-option" for="ordem-servico-situacao-ativo">
-                        <input id="ordem-servico-situacao-ativo" type="radio" name="ordem-servico-situacao" value="Ativo" checked />
-                        <span>Ativo</span>
-                      </label>
-                      <label class="dsc-radio-option" for="ordem-servico-situacao-inativo">
-                        <input id="ordem-servico-situacao-inativo" type="radio" name="ordem-servico-situacao" value="Inativo" />
-                        <span>Inativo</span>
-                      </label>
-                      <label class="dsc-radio-option" for="ordem-servico-situacao-cancelado">
-                        <input id="ordem-servico-situacao-cancelado" type="radio" name="ordem-servico-situacao" value="Cancelado" />
-                        <span>Cancelado</span>
-                      </label>
-                      <label class="dsc-radio-option" for="ordem-servico-situacao-substituido">
-                        <input id="ordem-servico-situacao-substituido" type="radio" name="ordem-servico-situacao" value="Substituido" />
-                        <span>Substituido</span>
-                      </label>
-                    </div>
-                  </fieldset>
-
+                <div class="dsc-form-row dsc-form-row-ordem-servico-status-meta">
                   <label class="dsc-field-group" for="ordem-servico-data-encerramento">
                     <span>Encerramento</span>
                     <input class="dsc-form-control" id="ordem-servico-data-encerramento" type="date" />
@@ -634,6 +646,7 @@
       const clearFilterButton = document.getElementById('clear-ordem-servico-filter-button');
       const openEolButton = document.getElementById('open-ordem-servico-eol-button');
       const searchInput = document.getElementById('ordem-servico-search');
+      const situacaoFilterInput = document.getElementById('ordem-servico-filter-situacao');
       const gridBody = document.getElementById('ordem-servico-grid-body');
       const gridWrapper = document.getElementById('ordem-servico-grid-wrapper');
       const gridTable = document.getElementById('ordem-servico-grid-table');
@@ -713,6 +726,7 @@
       let currentPage = 1;
       let totalPages = 1;
       let currentSearch = '';
+      let currentSituacaoFilter = '';
       let currentSortBy = 'chave';
       let currentSortDirection = 'asc';
       let useTailPageFetch = false;
@@ -730,8 +744,14 @@
       let isActivationInsertion = false;
       let substitutionSourceCodigo = null;
       let activationSourceEncerramento = null;
+      let isDraftSubstitutionReadOnly = false;
+      let originalSituacaoValue = '';
+      let currentSituacaoValue = 'Ativo';
+      let originalCnpjCpfValue = '';
       let originalCpfCondutorValue = '';
+      let originalCpfPrepostoValue = '';
       let originalCpfMonitorValue = '';
+      let originalCrmValue = '';
       let originalVeiculoPlacaValue = '';
       let initialTrackedFormState = null;
       let requireFormChangeToSave = false;
@@ -1403,7 +1423,18 @@
         closeDadosOsButton.focus({ preventScroll: true });
       };
 
+      const isDraftSituacao = (value = getSelectedSituacao()) => normalizeKey(value) === 'rascunho';
+      const shouldSkipRelationshipValidation = (value = getSelectedSituacao()) => isDraftSituacao(value);
       const isDadosOsEditAllowed = () => formMode === 'edit' && normalizeKey(getSelectedSituacao()) === 'ativo';
+
+      const syncEmissaoActionAvailability = () => {
+        const isDraft = isDraftSituacao();
+
+        showEmissaoButton.disabled = isDraft;
+        showEmissaoButton.title = isDraft
+          ? 'A emissao de documentos fica indisponivel enquanto a OrdemServico estiver em rascunho.'
+          : '';
+      };
 
       const renderOrdemServicoDadosOs = (termoItem, condutorItem = null, monitorItem = null, veiculoItem = null) => {
         dadosOsState = {
@@ -2528,6 +2559,13 @@
       };
 
       const handleShowOrdemServicoEmissao = async () => {
+        if (isDraftSituacao()) {
+          showBanner('A emissao de documentos nao e permitida para OrdemServico em rascunho.', 'error');
+          feedback.textContent = 'A emissao de documentos nao e permitida para OrdemServico em rascunho.';
+          feedback.className = 'dsc-feedback dsc-feedback-error';
+          return;
+        }
+
         const termoAdesao = normalizeTermoAdesao(termoAdesaoInput.value);
         const cpfCondutor = normalizeCpf(cpfCondutorInput.value);
         const cpfMonitor = normalizeCpf(cpfMonitorInput.value);
@@ -2923,15 +2961,72 @@
 
       const getSelectedSituacao = () => {
         const selectedRadio = situacaoRadios.find((radio) => radio.checked);
-        return selectedRadio ? selectedRadio.value : 'Ativo';
+
+        if (selectedRadio?.value) {
+          currentSituacaoValue = selectedRadio.value;
+          return selectedRadio.value;
+        }
+
+        if (currentSituacaoValue) {
+          return currentSituacaoValue;
+        }
+
+        return originalSituacaoValue || 'Ativo';
       };
 
       const setSelectedSituacao = (value) => {
         const selectedRadio = situacaoRadios.find((radio) => normalizeKey(radio.value) === normalizeKey(value)) || situacaoRadios[0];
+        currentSituacaoValue = selectedRadio?.value || originalSituacaoValue || 'Ativo';
         situacaoRadios.forEach((radio) => {
           radio.checked = radio === selectedRadio;
         });
         syncDataEncerramentoState();
+        syncEmissaoActionAvailability();
+      };
+
+      const syncSituacaoRadioAvailability = ({
+        allowAtivo = true,
+        allowRascunho = false,
+        allowSubstituido = false,
+        allowInativo = true,
+        allowCancelado = true,
+        lockAll = false,
+      } = {}) => {
+        situacaoRadios.forEach((radio) => {
+          const normalizedValue = normalizeKey(radio.value);
+
+          if (lockAll) {
+            radio.disabled = true;
+            return;
+          }
+
+          if (normalizedValue === 'substituido') {
+            radio.disabled = !allowSubstituido;
+            return;
+          }
+
+          if (normalizedValue === 'ativo') {
+            radio.disabled = !allowAtivo;
+            return;
+          }
+
+          if (normalizedValue === 'rascunho') {
+            radio.disabled = !allowRascunho;
+            return;
+          }
+
+          if (normalizedValue === 'inativo') {
+            radio.disabled = !allowInativo;
+            return;
+          }
+
+          if (normalizedValue === 'cancelado') {
+            radio.disabled = !allowCancelado;
+            return;
+          }
+
+          radio.disabled = false;
+        });
       };
 
       const readJsonResponse = async (response) => {
@@ -3117,6 +3212,11 @@
         return JSON.stringify(serializeTrackedFormState()) !== JSON.stringify(initialTrackedFormState);
       };
 
+      const hasDraftIdentityChanges = (payload) => normalizeCpf(payload.cpfCondutor) !== originalCpfCondutorValue
+        || normalizeCpf(payload.cpfPreposto) !== originalCpfPrepostoValue
+        || normalizeCpf(payload.cpfMonitor) !== originalCpfMonitorValue
+        || normalizeCrm(payload.crm) !== originalCrmValue;
+
       const hasPendingRequiredValidation = () => !normalizeText(tipoTrocaInput.value, 255);
 
       const updateSaveButtonAvailability = () => {
@@ -3183,6 +3283,27 @@
         });
         cancelButton.disabled = false;
         closeFormModalButton.disabled = false;
+        saveButton.classList.remove('dsc-hidden');
+      };
+
+      const applyDraftSubstitutionLock = () => {
+        if (!isDraftSubstitutionReadOnly) {
+          return;
+        }
+
+        getFormControls().forEach((element) => {
+          element.disabled = element !== saveButton
+            && element !== cancelButton
+            && element !== closeFormModalButton
+            && element !== showTermoButton
+            && element !== showDadosOsButton;
+        });
+
+        saveButton.disabled = false;
+        cancelButton.disabled = false;
+        closeFormModalButton.disabled = false;
+        showTermoButton.disabled = false;
+        showDadosOsButton.disabled = false;
         saveButton.classList.remove('dsc-hidden');
       };
 
@@ -3368,8 +3489,13 @@
         isActivationInsertion = false;
         substitutionSourceCodigo = null;
         activationSourceEncerramento = null;
+        isDraftSubstitutionReadOnly = false;
+        originalSituacaoValue = '';
+        originalCnpjCpfValue = '';
         originalCpfCondutorValue = '';
+        originalCpfPrepostoValue = '';
         originalCpfMonitorValue = '';
+        originalCrmValue = '';
         originalVeiculoPlacaValue = '';
         shouldHideFormAfterEmissao = false;
         suppressTermoBlurValidation = false;
@@ -3382,6 +3508,7 @@
         syncPrepostoState({ clearValues: true });
         tipoTrocaInput.value = '';
         setSelectedSituacao('Ativo');
+        syncSituacaoRadioAvailability({ allowRascunho: false, lockAll: false });
         resetMessages();
         clearOrdemServicoTermo();
         clearOrdemServicoDadosOs();
@@ -3431,6 +3558,10 @@
 
         if (currentSearch) {
           params.set('search', currentSearch);
+        }
+
+        if (currentSituacaoFilter) {
+          params.set('situacao', currentSituacaoFilter);
         }
 
         if (useTailPageFetch) {
@@ -3969,7 +4100,7 @@
                 <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Corrigir</button>
                 <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="substitute" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Substituir</button>
                 <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Cancelar</button>
-                <button type="button" class="dsc-grid-action-button" data-action="activate" data-codigo="${item.codigo}"${(item.situacao !== 'Cancelado' && item.situacao !== 'Inativo') ? ' disabled' : ''}>Ativar</button>
+                <button type="button" class="dsc-grid-action-button" data-action="activate" data-codigo="${item.codigo}"${(item.situacao !== 'Cancelado' && item.situacao !== 'Inativo' && item.situacao !== 'Rascunho') ? ' disabled' : ''}>Ativar</button>
               </div>
             </td>
           `;
@@ -4133,7 +4264,7 @@
           return false;
         }
 
-        errorElement.textContent = `CPF do ${roleLabel} ja utilizado na OrdemServico ativa ${activeItem.codigo} como ${activeItem.papel}.`;
+        errorElement.textContent = `CPF do ${roleLabel} ja utilizado na OrdemServico ativa num. ${buildOrdemServicoNumeroLabel(activeItem)} como ${activeItem.papel}.`;
         return false;
       };
 
@@ -4207,9 +4338,10 @@
               return;
             }
 
+            const activeOsLabel = buildOrdemServicoNumeroLabel(activeItem);
             errorElement.textContent = roleLabel === 'preposto'
-              ? `CPF registrada na OS num.: ${buildOrdemServicoNumeroLabel(activeItem)}`
-              : `CPF do ${roleLabel} ja utilizado na OrdemServico ativa ${activeItem.codigo} como ${activeItem.papel}.`;
+              ? `CPF registrada na OS num.: ${activeOsLabel}`
+              : `CPF do ${roleLabel} ja utilizado na OrdemServico ativa num. ${activeOsLabel} como ${activeItem.papel}.`;
           } catch (error) {
             if (requestId !== state.requestId) {
               return;
@@ -4276,14 +4408,11 @@
           return true;
         }
 
-        const activeOsLabel = [activeItem.termo_adesao, activeItem.num_os, activeItem.revisao]
-          .filter(Boolean)
-          .join('-');
+        const activeOsLabel = buildOrdemServicoNumeroLabel(activeItem);
         const activePlaca = String(activeItem.veiculo_placas || placa || '').trim();
-        const codigoLabel = String(activeItem.codigo || '').trim();
         errorElement.textContent = activeOsLabel
-          ? `Placa ${activePlaca} ja utilizada na OrdemServico ativa ${codigoLabel} (${activeOsLabel}).`
-          : `Placa ${activePlaca} ja utilizada na OrdemServico ativa ${codigoLabel}.`;
+          ? `Placa ${activePlaca} ja utilizada na OrdemServico ativa num. ${activeOsLabel}.`
+          : `Placa ${activePlaca} ja utilizada em outra OrdemServico ativa.`;
         return false;
       };
 
@@ -4453,6 +4582,11 @@
           const payload = await readJsonResponse(response);
 
           if (!response.ok) {
+            if (response.status === 404 && shouldSkipRelationshipValidation()) {
+              errorElement.textContent = '';
+              return;
+            }
+
             if (response.status === 404 && roleLabel === 'condutor') {
               if (openMissingPopup) {
                 openCondutorCadastroPopup({ cpf });
@@ -4583,6 +4717,11 @@
           const payload = await readJsonResponse(response);
 
           if (!response.ok) {
+            if (response.status === 404 && shouldSkipRelationshipValidation()) {
+              cpfMonitorError.textContent = '';
+              return;
+            }
+
             if (response.status === 404) {
               monitorInput.value = '';
               cpfMonitorError.textContent = 'Monitor nao encontrado. Cadastre o monitor e retorne a Ordem de Servico.';
@@ -4622,6 +4761,12 @@
           const payload = await readJsonResponse(response);
 
           if (!response.ok) {
+            if (response.status === 404 && shouldSkipRelationshipValidation()) {
+              crmError.textContent = '';
+              veiculoPlacasError.textContent = '';
+              return;
+            }
+
             if (response.status === 404) {
               veiculoPlacasInput.value = '';
               veiculoPlacasError.textContent = '';
@@ -4656,7 +4801,7 @@
         crmError.textContent = '';
         veiculoPlacasError.textContent = '';
 
-        if (placas) {
+        if (placas && !shouldSkipRelationshipValidation()) {
           await validateActiveOrdemServicoPlaca({ placa: placas, errorElement: veiculoPlacasError });
         }
       };
@@ -4709,14 +4854,18 @@
         cpfCondutorInput.value = normalizeCpf(String(item?.cpf_condutor || item?.cpfCondutor || ''));
         condutorInput.value = normalizeText(String(item?.condutor || ''), 255);
         cpfCondutorError.textContent = '';
-        await validateActiveOrdemServicoCpf({ cpf: cpfCondutorInput.value, roleLabel: 'condutor', errorElement: cpfCondutorError });
+        if (!shouldSkipRelationshipValidation()) {
+          await validateActiveOrdemServicoCpf({ cpf: cpfCondutorInput.value, roleLabel: 'condutor', errorElement: cpfCondutorError });
+        }
       };
 
       const applyMonitorPopupItem = async (item) => {
         cpfMonitorInput.value = normalizeCpf(String(item?.cpf_monitor || item?.cpfMonitor || ''));
         monitorInput.value = normalizeText(String(item?.monitor || ''), 255);
         cpfMonitorError.textContent = '';
-        await validateActiveOrdemServicoCpf({ cpf: cpfMonitorInput.value, roleLabel: 'monitor', errorElement: cpfMonitorError });
+        if (!shouldSkipRelationshipValidation()) {
+          await validateActiveOrdemServicoCpf({ cpf: cpfMonitorInput.value, roleLabel: 'monitor', errorElement: cpfMonitorError });
+        }
       };
 
       const consumePendingPopupReturnPayload = async (payload) => {
@@ -4897,6 +5046,8 @@
         isActivationInsertion = false;
         substitutionSourceCodigo = null;
         activationSourceEncerramento = null;
+        isDraftSubstitutionReadOnly = false;
+        originalSituacaoValue = '';
         originalCpfCondutorValue = '';
         originalCpfMonitorValue = '';
         originalVeiculoPlacaValue = '';
@@ -4911,15 +5062,16 @@
         dataAdmissaoCondutorInput.max = getCurrentDateInputValue();
         dataAdmissaoMonitorInput.max = getCurrentDateInputValue();
         setSelectedSituacao('Ativo');
+        syncSituacaoRadioAvailability({ allowRascunho: false, lockAll: false });
         resetMessages();
         setGridMessage('');
         renderModalidadeOptions('');
-        situacaoRadios.forEach((radio) => { radio.disabled = false; });
         possuiPrepostoInput.checked = false;
         showForm('insert');
         updateInsertTermGuard({ showMissingError: false });
         applyInsertSpecificRules();
         applyIdentityFieldLock();
+        syncSituacaoRadioAvailability({ allowRascunho: false, lockAll: false });
         syncPrepostoState({ clearValues: true });
         termoAdesaoInput.focus();
         void ensureDreOptionsLoaded('');
@@ -5050,6 +5202,8 @@
         isActivationInsertion = false;
         substitutionSourceCodigo = Number(item.codigo) || null;
         activationSourceEncerramento = null;
+        isDraftSubstitutionReadOnly = normalizeKey(item.situacao || '') === 'rascunho' || normalizeKey(item.situacao || '') === 'substituido';
+        originalSituacaoValue = item.situacao || '';
         originalCpfCondutorValue = normalizeCpf(String(item.cpf_condutor || ''));
         originalCpfMonitorValue = normalizeCpf(String(item.cpf_monitor || ''));
         originalVeiculoPlacaValue = normalizePlaca(String(item.veiculo_placas || ''));
@@ -5080,7 +5234,7 @@
         vigenciaOsInput.min = getCurrentDateInputValue();
         dataEncerramentoInput.value = '';
         anotacaoInput.value = item.anotacao || '';
-        setSelectedSituacao(item.situacao || 'Ativo');
+        setSelectedSituacao('Ativo');
         codigoAccessInput.value = item.codigo_access || '';
         renderDreOptions(dreCodigoInput.value);
         renderModalidadeOptions(modalidadeDescricaoInput.value || deriveModalidadeFromDreDescricao(dreDescricaoInput.value));
@@ -5093,13 +5247,18 @@
         applyInsertSpecificRules();
         applyIdentityFieldLock();
         syncPrepostoState();
-        situacaoRadios.forEach((radio) => { radio.disabled = true; });
+        syncSituacaoRadioAvailability({ allowRascunho: false, lockAll: true });
         void refreshRelatedFieldsOnFormEntry();
         void ensureDreOptionsLoaded(dreCodigoInput.value);
         void ensureModalidadeOptionsLoaded(modalidadeDescricaoInput.value || deriveModalidadeFromDreDescricao(dreDescricaoInput.value));
         void ensureTipoTrocaOptionsLoaded(tipoTrocaInput.value);
         await handleAddRevisao();
-        armSaveChangeRequirement();
+        if (isDraftSubstitutionReadOnly) {
+          clearSaveChangeRequirement();
+          applyDraftSubstitutionLock();
+        } else {
+          armSaveChangeRequirement();
+        }
         revisaoInput.focus();
         revisaoInput.select();
       };
@@ -5114,8 +5273,13 @@
         isActivationInsertion = false;
         substitutionSourceCodigo = null;
         activationSourceEncerramento = null;
+        isDraftSubstitutionReadOnly = false;
+        originalSituacaoValue = item.situacao || '';
+        originalCnpjCpfValue = normalizeCnpjCpf(String(item.cnpj_cpf || ''));
         originalCpfCondutorValue = normalizeCpf(String(item.cpf_condutor || ''));
+        originalCpfPrepostoValue = normalizeCpf(String(item.cpf_preposto || ''));
         originalCpfMonitorValue = normalizeCpf(String(item.cpf_monitor || ''));
+        originalCrmValue = normalizeCrm(String(item.crm || ''));
         originalVeiculoPlacaValue = normalizePlaca(String(item.veiculo_placas || ''));
         termoAdesaoInput.value = normalizeTermoAdesao(String(item.termo_adesao || ''));
         numOsInput.value = normalizeNumOs(String(item.num_os || ''));
@@ -5151,11 +5315,20 @@
         renderTipoTrocaOptions(tipoTrocaInput.value);
         syncOsConcatInput();
         resetMessages();
-        situacaoRadios.forEach((radio) => { radio.disabled = false; });
         showForm(mode);
         updateInsertTermGuard();
         applyInsertSpecificRules();
         applyIdentityFieldLock();
+        const normalizedOriginalSituacao = normalizeKey(originalSituacaoValue);
+        const isDraftEdit = mode === 'edit' && (normalizedOriginalSituacao === 'rascunho' || normalizedOriginalSituacao === 'substituido');
+        syncSituacaoRadioAvailability({
+          allowAtivo: !isDraftEdit,
+          allowRascunho: normalizedOriginalSituacao === 'ativo' || normalizedOriginalSituacao === 'rascunho' || normalizedOriginalSituacao === 'substituido',
+          allowSubstituido: normalizedOriginalSituacao === 'substituido',
+          allowInativo: !isDraftEdit,
+          allowCancelado: !isDraftEdit,
+          lockAll: mode !== 'edit',
+        });
         syncPrepostoState();
         void refreshRelatedFieldsOnFormEntry();
         void ensureDreOptionsLoaded(dreCodigoInput.value);
@@ -5165,8 +5338,6 @@
 
       const startEdit = (item) => {
         populateFormFromItem(item, 'edit');
-        const substituidoRadio = document.getElementById('ordem-servico-situacao-substituido');
-        if (substituidoRadio) substituidoRadio.disabled = true;
         armSaveChangeRequirement();
       };
 
@@ -5221,8 +5392,13 @@
         isActivationInsertion = true;
         substitutionSourceCodigo = Number(item.codigo) || null;
         activationSourceEncerramento = item.data_encerramento || null;
+        isDraftSubstitutionReadOnly = false;
+        originalSituacaoValue = item.situacao || '';
+        originalCnpjCpfValue = normalizeCnpjCpf(String(item.cnpj_cpf || ''));
         originalCpfCondutorValue = normalizeCpf(String(item.cpf_condutor || ''));
+        originalCpfPrepostoValue = normalizeCpf(String(item.cpf_preposto || ''));
         originalCpfMonitorValue = normalizeCpf(String(item.cpf_monitor || ''));
+        originalCrmValue = normalizeCrm(String(item.crm || ''));
         originalVeiculoPlacaValue = normalizePlaca(String(item.veiculo_placas || ''));
         termoAdesaoInput.value = normalizeTermoAdesao(String(item.termo_adesao || ''));
         numOsInput.value = normalizeNumOs(String(item.num_os || ''));
@@ -5264,7 +5440,7 @@
         applyInsertSpecificRules();
         applyIdentityFieldLock();
         syncPrepostoState();
-        situacaoRadios.forEach((radio) => { radio.disabled = false; });
+        syncSituacaoRadioAvailability({ allowRascunho: false, lockAll: false });
         void refreshRelatedFieldsOnFormEntry();
         void ensureDreOptionsLoaded(dreCodigoInput.value);
         void ensureModalidadeOptionsLoaded(modalidadeDescricaoInput.value || deriveModalidadeFromDreDescricao(dreDescricaoInput.value));
@@ -5562,8 +5738,10 @@
 
       situacaoRadios.forEach((radio) => {
         radio.addEventListener('change', () => {
+          currentSituacaoValue = radio.value;
           syncDataEncerramentoState({ clearWhenDisabled: true });
           validateDataEncerramentoField(false);
+          syncEmissaoActionAvailability();
         });
       });
 
@@ -5617,12 +5795,16 @@
           dreCodigo: normalizeText(dreCodigoInput.value, 30),
           modalidadeDescricao: normalizeText(modalidadeDescricaoInput.value, 255),
           cpfCondutor: normalizeCpf(cpfCondutorInput.value),
+          condutor: normalizeText(condutorInput.value, 255),
           dataAdmissaoCondutor: dataAdmissaoCondutorInput.value,
           cpfPreposto: normalizeCpf(cpfPrepostoInput.value),
+          prepostoCondutor: normalizeText(prepostoCondutorInput.value, 255),
           prepostoInicio: prepostoInicioInput.value,
           prepostoDias: normalizeIntegerInput(prepostoDiasInput.value, 2),
           crm: normalizeCrm(crmInput.value),
+          veiculoPlacas: normalizeText(veiculoPlacasInput.value, 20),
           cpfMonitor: normalizeCpf(cpfMonitorInput.value),
+          monitor: normalizeText(monitorInput.value, 255),
           dataAdmissaoMonitor: dataAdmissaoMonitorInput.value,
           situacao: getSelectedSituacao(),
           tipoTroca: normalizeText(tipoTrocaInput.value, 255),
@@ -5631,15 +5813,28 @@
           activationSourceCodigo: isActivationInsertion ? substitutionSourceCodigo : null,
           anotacao: normalizeAnnotation(anotacaoInput.value),
         };
+
+        if (isDraftSubstitutionReadOnly) {
+          payload.situacao = 'Ativo';
+        }
         const hasPrepostoEnabled = Boolean(possuiPrepostoInput.checked);
 
         if (!hasPrepostoEnabled) {
           payload.cpfPreposto = '';
+          payload.prepostoCondutor = '';
           payload.prepostoInicio = '';
           payload.prepostoDias = '';
         }
+
+        if (formMode === 'edit' && payload.situacao === 'Rascunho' && !hasDraftIdentityChanges(payload)) {
+          feedback.textContent = 'Ao salvar como Rascunho pelo botao Corrigir, altere ao menos um dos campos CRM ou CPF(s).';
+          feedback.className = 'dsc-feedback dsc-feedback-error';
+          return;
+        }
+
         let hasError = false;
         const shouldSkipVigenciaValidation = formMode === 'substitute' || isSubstitutionInsertion || isActivationInsertion;
+        const shouldRelaxRelationshipValidation = shouldSkipRelationshipValidation(payload.situacao);
 
         resetMessages();
 
@@ -5653,12 +5848,16 @@
         dreCodigoInput.value = payload.dreCodigo;
         modalidadeDescricaoInput.value = payload.modalidadeDescricao;
         cpfCondutorInput.value = payload.cpfCondutor;
+        condutorInput.value = payload.condutor;
         dataAdmissaoCondutorInput.value = payload.dataAdmissaoCondutor;
         possuiPrepostoInput.checked = hasPrepostoEnabled;
         cpfPrepostoInput.value = payload.cpfPreposto;
+        prepostoCondutorInput.value = payload.prepostoCondutor;
         prepostoDiasInput.value = payload.prepostoDias;
         crmInput.value = payload.crm;
+        veiculoPlacasInput.value = payload.veiculoPlacas;
         cpfMonitorInput.value = payload.cpfMonitor;
+        monitorInput.value = payload.monitor;
         dataAdmissaoMonitorInput.value = payload.dataAdmissaoMonitor;
         tipoTrocaInput.value = payload.tipoTroca;
         anotacaoInput.value = payload.anotacao;
@@ -5684,21 +5883,33 @@
         }
 
 
-        if (validateDataAdmissaoCondutorField()) {
+        if (!shouldRelaxRelationshipValidation && validateDataAdmissaoCondutorField()) {
           hasError = true;
         }
 
-        if (validateDataAdmissaoMonitorField()) {
+        if (!shouldRelaxRelationshipValidation && validateDataAdmissaoMonitorField()) {
           hasError = true;
         }
 
         // Validação: CPF do preposto não pode ser igual ao do condutor
-        if (payload.cpfCondutor && payload.cpfPreposto && payload.cpfCondutor === payload.cpfPreposto) {
+        if (!shouldRelaxRelationshipValidation && payload.cpfCondutor && payload.cpfPreposto && payload.cpfCondutor === payload.cpfPreposto) {
           cpfPrepostoError.textContent = 'O CPF do preposto não pode ser igual ao do condutor.';
           hasError = true;
         }
 
-        if (hasPrepostoEnabled) {
+        if (shouldRelaxRelationshipValidation) {
+          cpfCondutorError.textContent = '';
+          cpfPrepostoError.textContent = '';
+          crmError.textContent = '';
+          veiculoPlacasError.textContent = '';
+          cpfMonitorError.textContent = '';
+          dataAdmissaoCondutorError.textContent = '';
+          dataAdmissaoMonitorError.textContent = '';
+          prepostoInicioError.textContent = '';
+          prepostoDiasError.textContent = '';
+        }
+
+        if (!shouldRelaxRelationshipValidation && hasPrepostoEnabled) {
           if (!payload.cpfPreposto || !getDocumentDigits(payload.cpfPreposto).length) {
             cpfPrepostoError.textContent = 'Informe o CPF do preposto.';
             hasError = true;
@@ -5714,7 +5925,7 @@
           }
         }
 
-        if (!payload.crm) {
+        if (!shouldRelaxRelationshipValidation && !payload.crm) {
           crmError.textContent = 'Informe o CRM do veiculo.';
           hasError = true;
         }
@@ -5735,25 +5946,27 @@
         }
 
         try {
-          const isActiveCnpjCpfValid = await validateActiveOrdemServicoCnpjCpf({ cnpjCpf: payload.cnpjCpf, errorElement: cnpjCpfError });
+          if (!shouldRelaxRelationshipValidation) {
+            const isActiveCnpjCpfValid = await validateActiveOrdemServicoCnpjCpf({ cnpjCpf: payload.cnpjCpf, errorElement: cnpjCpfError });
 
-          if (!isActiveCnpjCpfValid) {
-            feedback.textContent = 'Corrija os campos para continuar.';
-            feedback.classList.add('dsc-feedback-error');
-            return;
-          }
-
-          if (hasPrepostoEnabled) {
-            const activePrepostoItem = await fetchActiveOrdemServicoByCpf(payload.cpfPreposto, getActiveOrdemServicoExcludeCodigo());
-
-            if (activePrepostoItem) {
-              cpfPrepostoError.textContent = `CPF registrada na OS num.: ${buildOrdemServicoNumeroLabel(activePrepostoItem)}`;
+            if (!isActiveCnpjCpfValid) {
               feedback.textContent = 'Corrija os campos para continuar.';
               feedback.classList.add('dsc-feedback-error');
               return;
             }
 
-            cpfPrepostoError.textContent = '';
+            if (hasPrepostoEnabled) {
+              const activePrepostoItem = await fetchActiveOrdemServicoByCpf(payload.cpfPreposto, getActiveOrdemServicoExcludeCodigo());
+
+              if (activePrepostoItem) {
+                cpfPrepostoError.textContent = `CPF registrada na OS num.: ${buildOrdemServicoNumeroLabel(activePrepostoItem)}`;
+                feedback.textContent = 'Corrija os campos para continuar.';
+                feedback.classList.add('dsc-feedback-error');
+                return;
+              }
+
+              cpfPrepostoError.textContent = '';
+            }
           }
         } catch (error) {
           const message = getRequestErrorMessage(error, 'Falha ao validar dados em OrdemServico ativa.');
@@ -5873,6 +6086,7 @@
       filterForm.addEventListener('submit', (event) => {
         event.preventDefault();
         currentSearch = searchInput.value.trim();
+        currentSituacaoFilter = situacaoFilterInput.value;
         currentPage = 1;
         useTailPageFetch = false;
         previousPageCursor = null;
@@ -5882,7 +6096,9 @@
 
       clearFilterButton.addEventListener('click', () => {
         searchInput.value = '';
+        situacaoFilterInput.value = '';
         currentSearch = '';
+        currentSituacaoFilter = '';
         currentPage = 1;
         useTailPageFetch = false;
         previousPageCursor = null;
@@ -6193,6 +6409,7 @@
       importFileNameInput.value = defaultImportFileName;
       syncOrdemServicoCodigoRowLayout();
       setSelectedSituacao('Ativo');
+      syncSituacaoRadioAvailability({ allowRascunho: false, lockAll: false });
       renderEntitySuggestions(cnpjCpfOptionsList, [], () => '', () => '');
       renderEntitySuggestions(cpfCondutorOptionsList, [], () => '', () => '');
       renderEntitySuggestions(cpfPrepostoOptionsList, [], () => '', () => '');

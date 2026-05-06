@@ -83,6 +83,24 @@ body:has(#ordem-servico-grid-body) .dsc-access-toolbar {
   gap: 8px;
 }
 
+body:has(#ordem-servico-grid-body) #ordem-servico-filter-form {
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+body:has(#ordem-servico-grid-body) #ordem-servico-filter-form .dsc-access-insert-button {
+  min-width: 138px;
+}
+
+body:has(#ordem-servico-grid-body) #ordem-servico-filter-form .dsc-access-import-button {
+  min-width: 118px;
+}
+
+body:has(#ordem-servico-grid-body) #ordem-servico-filter-form .dsc-btn {
+  min-width: 96px;
+}
+
 .dsc-status-banner {
   position: sticky;
   top: 0;
@@ -230,9 +248,17 @@ body:has(#credenciada-search) #credenciada-search {
 }
 
 body:has(#ordem-servico-search) #ordem-servico-search {
-  flex: 0 1 220px;
-  min-width: 220px;
-  max-width: 280px;
+  flex: 1 1 220px;
+  min-width: 180px;
+  max-width: none;
+}
+
+body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
+  flex: 0 0 190px;
+  min-width: 190px;
+  min-height: 52px;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .dsc-access-filter-form .dsc-btn {
@@ -675,6 +701,25 @@ body:has(#ordem-servico-search) #ordem-servico-search {
   justify-content: stretch;
 }
 
+.dsc-form-row-ordem-servico-identificacao-meta {
+  grid-template-columns: minmax(180px, 0.7fr) minmax(180px, 0.7fr) minmax(220px, 0.9fr) minmax(320px, 1.45fr);
+  width: 100%;
+  align-items: end;
+}
+
+.dsc-form-row-ordem-servico-identificacao-meta .dsc-radio-field-group {
+  align-self: stretch;
+}
+
+.dsc-form-row-ordem-servico-identificacao-meta .dsc-radio-group {
+  gap: 8px 12px;
+}
+
+.dsc-form-row-ordem-servico-identificacao-meta .dsc-radio-option {
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
 .dsc-form-row-ordem-servico-codigo .dsc-field-group {
   width: 100%;
   justify-self: start;
@@ -1011,6 +1056,12 @@ body:has(#ordem-servico-search) #ordem-servico-search {
 
 .dsc-form-row-ordem-servico-situacao {
   grid-template-columns: minmax(360px, 1.45fr) minmax(150px, 0.55fr) minmax(170px, 0.65fr);
+  align-items: end;
+  column-gap: 10px;
+}
+
+.dsc-form-row-ordem-servico-status-meta {
+  grid-template-columns: minmax(150px, 0.7fr) minmax(170px, 0.8fr);
   align-items: end;
   column-gap: 10px;
 }
@@ -2892,6 +2943,7 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   .dsc-form-row-veiculo-seguradora,
   .dsc-form-row-veiculo-classificacao,
   .dsc-form-row-ordem-servico-identificacao,
+  .dsc-form-row-ordem-servico-identificacao-meta,
   .dsc-form-row-ordem-servico-codigo,
   .dsc-form-row-ordem-servico-vigencia,
   .dsc-form-row-ordem-servico-vinculos-top,
@@ -2901,6 +2953,7 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   .dsc-form-row-ordem-servico-vinculos-final,
   .dsc-form-row-ordem-servico-operacional,
   .dsc-form-row-ordem-servico-situacao,
+  .dsc-form-row-ordem-servico-status-meta,
   .dsc-form-row-contact,
   .dsc-form-row-address {
     grid-template-columns: 1fr;
@@ -3067,6 +3120,15 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
     flex-wrap: wrap;
   }
 
+  body:has(#ordem-servico-grid-body) #ordem-servico-filter-form {
+    flex-wrap: wrap;
+  }
+
+  body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
   .dsc-access-filter-form .dsc-btn {
     width: 100%;
   }
@@ -3086,6 +3148,11 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   .dsc-form-row-ordem-servico-situacao {
     grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
     align-items: end;
+  }
+
+  .dsc-form-row-ordem-servico-identificacao-meta,
+  .dsc-form-row-ordem-servico-status-meta {
+    grid-template-columns: 1fr;
   }
 
   .dsc-form-row-credenciada-top,

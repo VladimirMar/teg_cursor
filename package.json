@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "api": "node server.js",
+    "api:fresh": "node scripts/start-local-api.mjs",
     "dev": "vite",
     "dev:full": "concurrently \"npm run api\" \"npm run dev -- --host 0.0.0.0\"",
     "build": "tsc -b && vite build",
@@ -29,6 +30,7 @@
     "smoke:api:condutor": "node scripts/smoke-api.mjs condutor",
     "smoke:api:monitor": "node scripts/smoke-api.mjs monitor",
     "smoke:api:credenciada": "node scripts/smoke-api.mjs credenciada",
+    "smoke:api:ordem-servico": "node scripts/smoke-api.mjs ordem-servico",
     "smoke:api:veiculo": "node scripts/smoke-api.mjs veiculo",
     "smoke:api:marca-modelo": "node scripts/smoke-api.mjs marca-modelo"
   },

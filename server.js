@@ -396,7 +396,7 @@ const getVinculoMonitorIdFromUrl = (url) => {
 }
 
 const getOrdemServicoCodigoFromUrl = (url) => {
-  const match = url.match(/^\/api\/ordem-servico\/([^/]+)$/)
+  const match = url.match(/^\/api\/ordem-servico\/(\d+)$/)
   return match ? decodeURIComponent(match[1]) : null
 }
 
@@ -625,6 +625,10 @@ const normalizeCredenciamentoSituacao = (value) => {
     return 'Ativo'
   }
 
+  if (normalizedKey === 'rascunho') {
+    return 'Rascunho'
+  }
+
   if (normalizedKey === 'inativo') {
     return 'Inativo'
   }
@@ -846,7 +850,7 @@ const findCredenciadaByName = async (credenciado, executor = pool) => {
   return result.rows[0] ?? null
 }
 
-const syncCredenciadaTpOptante = async (executor, credenciadaCodigo, tpOptante) => {
+const syncCredenciadaTpOptante = async (credenciadaCodigo, tpOptante, executor = pool) => {
   const normalizedCodigo = normalizeCondutorCodigo(credenciadaCodigo)
   const normalizedTpOptante = normalizeTpOptanteValue(tpOptante)
 
@@ -1432,6 +1436,49 @@ const buildOrdemServicoNumeroLabel = (item) => {
   return label || codigo
 }
 
+const normalizeOrdemServicoExcludeCodigos = (excludeCodigo = null, excludeCodigos = []) => {
+  const normalizedCodigos = new Set()
+  const appendCodigo = (value) => {
+    const normalizedCodigo = normalizeCondutorCodigo(value)
+
+    if (Number.isInteger(normalizedCodigo) && normalizedCodigo > 0) {
+      normalizedCodigos.add(normalizedCodigo)
+    }
+  }
+
+  appendCodigo(excludeCodigo)
+
+  if (Array.isArray(excludeCodigos)) {
+    excludeCodigos.forEach(appendCodigo)
+  }
+
+  return [...normalizedCodigos]
+}
+
+const findLatestActiveOrdemServicoByChave = async (termoAdesaoValue, numOsValue, { excludeCodigos = [] } = {}, executor = pool) => {
+  const normalizedTermoAdesao = normalizeOrdemServicoTermoAdesao(termoAdesaoValue)
+  const normalizedNumOs = normalizeOperationalCode(numOsValue, 10)
+  const normalizedExcludeCodigos = normalizeOrdemServicoExcludeCodigos(null, excludeCodigos)
+
+  if (!normalizedTermoAdesao || !normalizedNumOs) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT codigo, termo_adesao, num_os, revisao, situacao
+     FROM ${ordemServicoTableName}
+     WHERE UPPER(BTRIM(COALESCE(situacao, ''))) = 'ATIVO'
+       AND UPPER(BTRIM(COALESCE(termo_adesao, ''))) = UPPER($1)
+       AND UPPER(BTRIM(COALESCE(num_os, ''))) = UPPER($2)
+       AND NOT (codigo = ANY($3::int[]))
+     ORDER BY data_modificacao DESC NULLS LAST, data_inclusao DESC NULLS LAST, codigo DESC
+     LIMIT 1`,
+    [normalizedTermoAdesao, normalizedNumOs, normalizedExcludeCodigos],
+  )
+
+  return result.rows[0] ?? null
+}
+
 const normalizeYearMonthInput = (value) => {
   const normalizedValue = normalizeRequestValue(value)
 
@@ -1912,9 +1959,9 @@ const listActiveOrdemServicoDashboardDetails = async ({
   }
 }
 
-const findActiveOrdemServicoByCpf = async (cpfValue, { excludeCodigo = null } = {}, executor = pool) => {
+const findActiveOrdemServicoByCpf = async (cpfValue, { excludeCodigo = null, excludeCodigos = [] } = {}, executor = pool) => {
   const digits = extractDocumentDigits(cpfValue)
-  const normalizedExcludeCodigo = normalizeCondutorCodigo(excludeCodigo)
+  const normalizedExcludeCodigos = normalizeOrdemServicoExcludeCodigos(excludeCodigo, excludeCodigos)
 
   if (!digits) {
     return null
@@ -1935,7 +1982,7 @@ const findActiveOrdemServicoByCpf = async (cpfValue, { excludeCodigo = null } = 
        END AS papel
      FROM ${ordemServicoTableName}
      WHERE UPPER(BTRIM(COALESCE(situacao, ''))) = 'ATIVO'
-       AND ($2::int IS NULL OR codigo <> $2)
+       AND NOT (codigo = ANY($2::int[]))
        AND (
          regexp_replace(COALESCE(cpf_condutor, ''), '[^0-9]', '', 'g') = $1
          OR regexp_replace(COALESCE(cpf_preposto, ''), '[^0-9]', '', 'g') = $1
@@ -1943,15 +1990,15 @@ const findActiveOrdemServicoByCpf = async (cpfValue, { excludeCodigo = null } = 
        )
      ORDER BY codigo ASC
      LIMIT 1`,
-    [digits, Number.isInteger(normalizedExcludeCodigo) && normalizedExcludeCodigo > 0 ? normalizedExcludeCodigo : null],
+    [digits, normalizedExcludeCodigos],
   )
 
   return result.rows[0] ?? null
 }
 
-const findActiveOrdemServicoByCnpjCpf = async (cnpjCpfValue, { excludeCodigo = null } = {}, executor = pool) => {
+const findActiveOrdemServicoByCnpjCpf = async (cnpjCpfValue, { excludeCodigo = null, excludeCodigos = [] } = {}, executor = pool) => {
   const digits = extractDocumentDigits(cnpjCpfValue)
-  const normalizedExcludeCodigo = normalizeCondutorCodigo(excludeCodigo)
+  const normalizedExcludeCodigos = normalizeOrdemServicoExcludeCodigos(excludeCodigo, excludeCodigos)
 
   if (!digits || ![11, 14].includes(digits.length)) {
     return null
@@ -1967,19 +2014,19 @@ const findActiveOrdemServicoByCnpjCpf = async (cnpjCpfValue, { excludeCodigo = n
        COALESCE(BTRIM((SELECT cr.cnpj_cpf FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = ${ordemServicoTableName}.termo_codigo))), '') AS cnpj_cpf
      FROM ${ordemServicoTableName}
      WHERE UPPER(BTRIM(COALESCE(situacao, ''))) = 'ATIVO'
-       AND ($2::int IS NULL OR codigo <> $2)
+       AND NOT (codigo = ANY($2::int[]))
        AND regexp_replace(COALESCE((SELECT cr.cnpj_cpf FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = ${ordemServicoTableName}.termo_codigo)), ''), '[^0-9]', '', 'g') = $1
      ORDER BY codigo ASC
      LIMIT 1`,
-    [digits, Number.isInteger(normalizedExcludeCodigo) && normalizedExcludeCodigo > 0 ? normalizedExcludeCodigo : null],
+    [digits, normalizedExcludeCodigos],
   )
 
   return result.rows[0] ?? null
 }
 
-const findActiveOrdemServicoByPlaca = async (placaValue, { excludeCodigo = null } = {}, executor = pool) => {
+const findActiveOrdemServicoByPlaca = async (placaValue, { excludeCodigo = null, excludeCodigos = [] } = {}, executor = pool) => {
   const normalizedPlaca = normalizeVehiclePlaca(placaValue)
-  const normalizedExcludeCodigo = normalizeCondutorCodigo(excludeCodigo)
+  const normalizedExcludeCodigos = normalizeOrdemServicoExcludeCodigos(excludeCodigo, excludeCodigos)
 
   if (!normalizedPlaca) {
     return null
@@ -1995,11 +2042,11 @@ const findActiveOrdemServicoByPlaca = async (placaValue, { excludeCodigo = null 
        veiculo_placas
      FROM ${ordemServicoTableName}
      WHERE UPPER(BTRIM(COALESCE(situacao, ''))) = 'ATIVO'
-       AND ($2::int IS NULL OR codigo <> $2)
+       AND NOT (codigo = ANY($2::int[]))
        AND regexp_replace(UPPER(COALESCE(veiculo_placas, '')), '[^A-Z0-9]', '', 'g') = $1
      ORDER BY codigo ASC
      LIMIT 1`,
-    [normalizedPlaca, Number.isInteger(normalizedExcludeCodigo) && normalizedExcludeCodigo > 0 ? normalizedExcludeCodigo : null],
+    [normalizedPlaca, normalizedExcludeCodigos],
   )
 
   return result.rows[0] ?? null
@@ -5460,7 +5507,7 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
         continue
       }
 
-      await syncCredenciadaTpOptante(client, credenciadaItem.codigo, record.tpOptante)
+      await syncCredenciadaTpOptante(credenciadaItem.codigo, record.tpOptante, client)
 
       const existingResult = await client.query(
         `SELECT codigo
@@ -9012,12 +9059,16 @@ const validateOrdemServicoPayload = async ({
   dreCodigo,
   modalidadeDescricao,
   cpfCondutor,
+  condutor,
   dataAdmissaoCondutor,
   cpfPreposto,
+  prepostoCondutor,
   prepostoInicio,
   prepostoDias,
   crm,
+  veiculoPlacas,
   cpfMonitor,
+  monitor,
   dataAdmissaoMonitor,
   situacao,
   tipoTroca,
@@ -9027,7 +9078,9 @@ const validateOrdemServicoPayload = async ({
   anotacao,
   uniaoTermos,
   substitutionSourceCodigo = null,
+  activationSourceCodigo = null,
   originalCodigo = null,
+  originalSituacao = '',
   importMode = false,
   skipVigenciaValidation = false,
   requireCodigo = !importMode,
@@ -9042,12 +9095,16 @@ const validateOrdemServicoPayload = async ({
   const normalizedDreCodigo = normalizeRequestValue(dreCodigo).toUpperCase().slice(0, 30)
   const normalizedModalidadeDescricao = normalizeModalidadeDescriptionKey(modalidadeDescricao)
   const normalizedCpfCondutor = normalizeCpf(cpfCondutor)
+  const normalizedCondutor = normalizeCondutorName(condutor)
   const normalizedDataAdmissaoCondutor = normalizeRequestValue(dataAdmissaoCondutor)
   const normalizedCpfPreposto = normalizeCpf(cpfPreposto)
+  const normalizedPrepostoCondutor = normalizeCondutorName(prepostoCondutor)
   const normalizedPrepostoInicio = normalizeRequestValue(prepostoInicio)
   const normalizedPrepostoDias = normalizeVehicleInteger(prepostoDias, 3)
   const normalizedCrm = normalizeVehicleCrm(crm)
+  const normalizedVeiculoPlacas = normalizeOperationalCode(veiculoPlacas, 20)
   const normalizedCpfMonitor = normalizeCpf(cpfMonitor)
+  const normalizedMonitor = normalizeCondutorName(monitor)
   const normalizedDataAdmissaoMonitor = normalizeRequestValue(dataAdmissaoMonitor)
   const normalizedSituacao = normalizeCredenciamentoSituacao(situacao)
   const normalizedTipoTroca = normalizeTrocaText(tipoTroca, 255)
@@ -9057,8 +9114,12 @@ const validateOrdemServicoPayload = async ({
   const normalizedAnotacao = normalizeCredenciamentoAnnotation(anotacao)
   const normalizedUniaoTermos = normalizeOperationalCode(uniaoTermos, 255)
   const normalizedSubstitutionSourceCodigo = normalizeCondutorCodigo(substitutionSourceCodigo)
+  const normalizedActivationSourceCodigo = normalizeCondutorCodigo(activationSourceCodigo)
+  const normalizedOriginalSituacao = normalizeCredenciamentoSituacao(originalSituacao)
+  const queryExecutor = conexao && typeof conexao.query === 'function' ? conexao : pool
   const hasValidCpfCondutor = normalizedCpfCondutor && isCpfValid(normalizedCpfCondutor)
   const hasValidCrm = normalizedCrm && isVehicleCrmValid(normalizedCrm)
+  const shouldSkipRelationshipValidation = normalizedSituacao === 'Rascunho'
 
   if (requireCodigo && normalizedCodigo === null) {
     return { status: 400, payload: { message: 'Codigo e obrigatorio.' } }
@@ -9092,48 +9153,62 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
     return { status: 400, payload: { message: 'DRE e obrigatoria.' } }
   }
 
-  if (!importMode && !hasValidCpfCondutor) {
+  if (!importMode && !shouldSkipRelationshipValidation && !hasValidCpfCondutor) {
     return { status: 400, payload: { message: 'CPF do condutor deve conter 11 digitos.' } }
   }
 
-  if (normalizedDataAdmissaoCondutor && !isDateInputValid(normalizedDataAdmissaoCondutor)) {
+  if (!shouldSkipRelationshipValidation && normalizedDataAdmissaoCondutor && !isDateInputValid(normalizedDataAdmissaoCondutor)) {
     return { status: 400, payload: { message: 'Data de admissao do condutor invalida.' } }
   }
 
-  if (normalizedDataAdmissaoCondutor && isDateAfterToday(normalizedDataAdmissaoCondutor)) {
+  if (!shouldSkipRelationshipValidation && normalizedDataAdmissaoCondutor && isDateAfterToday(normalizedDataAdmissaoCondutor)) {
     return { status: 400, payload: { message: 'Data de admissao do condutor nao pode ser futura.' } }
   }
 
-  if (normalizedCpfPreposto && !isCpfValid(normalizedCpfPreposto)) {
+  if (!shouldSkipRelationshipValidation && normalizedCpfPreposto && !isCpfValid(normalizedCpfPreposto)) {
     return { status: 400, payload: { message: 'CPF do preposto invalido.' } }
   }
 
-  if (normalizedPrepostoInicio && !isDateInputValid(normalizedPrepostoInicio)) {
+  if (!shouldSkipRelationshipValidation && normalizedPrepostoInicio && !isDateInputValid(normalizedPrepostoInicio)) {
     return { status: 400, payload: { message: 'Inicio do preposto invalido.' } }
   }
 
-  if (normalizedPrepostoDias !== null && Number.isNaN(normalizedPrepostoDias)) {
+  if (!shouldSkipRelationshipValidation && normalizedPrepostoDias !== null && Number.isNaN(normalizedPrepostoDias)) {
     return { status: 400, payload: { message: 'Dias de preposto invalido.' } }
   }
 
-  if (!importMode && !hasValidCrm) {
+  if (!importMode && !shouldSkipRelationshipValidation && !hasValidCrm) {
     return { status: 400, payload: { message: 'CRM do veiculo invalido.' } }
   }
 
-  if (normalizedCpfMonitor && !isCpfValid(normalizedCpfMonitor)) {
+  if (!shouldSkipRelationshipValidation && normalizedCpfMonitor && !isCpfValid(normalizedCpfMonitor)) {
     return { status: 400, payload: { message: 'CPF do monitor invalido.' } }
   }
 
-  if (normalizedDataAdmissaoMonitor && !isDateInputValid(normalizedDataAdmissaoMonitor)) {
+  if (!shouldSkipRelationshipValidation && normalizedDataAdmissaoMonitor && !isDateInputValid(normalizedDataAdmissaoMonitor)) {
     return { status: 400, payload: { message: 'Data de admissao do monitor invalida.' } }
   }
 
-  if (normalizedDataAdmissaoMonitor && isDateAfterToday(normalizedDataAdmissaoMonitor)) {
+  if (!shouldSkipRelationshipValidation && normalizedDataAdmissaoMonitor && isDateAfterToday(normalizedDataAdmissaoMonitor)) {
     return { status: 400, payload: { message: 'Data de admissao do monitor nao pode ser futura.' } }
   }
 
   if (!normalizedSituacao) {
     return { status: 400, payload: { message: 'Situacao da OS invalida.' } }
+  }
+
+  if (Number.isInteger(normalizedSubstitutionSourceCodigo) && normalizedSubstitutionSourceCodigo > 0 && normalizedSituacao !== 'Ativo') {
+    return { status: 400, payload: { message: 'Substituicao deve ser gravada como OrdemServico ativa.' } }
+  }
+
+  if (!importMode && normalizedSituacao === 'Rascunho') {
+    if (!normalizedOriginalSituacao) {
+      return { status: 400, payload: { message: 'Situacao Rascunho so pode ser definida para OrdemServico ativa ou substituida.' } }
+    }
+
+    if (normalizedOriginalSituacao !== 'Ativo' && normalizedOriginalSituacao !== 'Rascunho' && normalizedOriginalSituacao !== 'Substituido') {
+      return { status: 400, payload: { message: 'Situacao Rascunho so pode ser definida para OrdemServico ativa ou substituida.' } }
+    }
   }
 
   if (normalizedDataEncerramento && !isDateInputValid(normalizedDataEncerramento)) {
@@ -9159,6 +9234,21 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
         : Number.isInteger(normalizedCodigo) && normalizedCodigo > 0
           ? normalizedCodigo
           : null
+    const activeCpfExcludeCodigos = normalizeOrdemServicoExcludeCodigos(activeCpfExcludeCodigo, [normalizedActivationSourceCodigo])
+
+    if ((Number.isInteger(normalizedSubstitutionSourceCodigo) && normalizedSubstitutionSourceCodigo > 0)
+      || (Number.isInteger(normalizedActivationSourceCodigo) && normalizedActivationSourceCodigo > 0)) {
+      const previousActiveSibling = await findLatestActiveOrdemServicoByChave(
+        normalizedTermoAdesao,
+        normalizedNumOs,
+        { excludeCodigos: activeCpfExcludeCodigos },
+        queryExecutor,
+      )
+
+      if (previousActiveSibling) {
+        activeCpfExcludeCodigos.push(Number(previousActiveSibling.codigo))
+      }
+    }
 
     const cpfChecks = [
       { cpf: normalizedCpfCondutor, label: 'condutor' },
@@ -9173,8 +9263,8 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
 
       const activeOrdemServico = await findActiveOrdemServicoByCpf(
         cpfCheck.cpf,
-        { excludeCodigo: activeCpfExcludeCodigo },
-        conexao ?? pool,
+        { excludeCodigo: activeCpfExcludeCodigo, excludeCodigos: activeCpfExcludeCodigos },
+        queryExecutor,
       )
 
       if (activeOrdemServico) {
@@ -9190,10 +9280,12 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
           }
         }
 
+        const activeOsLabel = buildOrdemServicoNumeroLabel(activeOrdemServico)
+
         return {
           status: 409,
           payload: {
-            message: `CPF do ${cpfCheck.label} ja esta vinculado a OrdemServico ativa ${activeOrdemServico.codigo} como ${activeOrdemServico.papel}.`,
+            message: `CPF do ${cpfCheck.label} ja esta vinculado a OrdemServico ativa num. ${activeOsLabel} como ${activeOrdemServico.papel}.`,
           },
         }
       }
@@ -9204,23 +9296,19 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
     if (activeVehiclePlaca) {
       const activeOrdemServicoByPlaca = await findActiveOrdemServicoByPlaca(
         activeVehiclePlaca,
-        { excludeCodigo: activeCpfExcludeCodigo },
-        conexao ?? pool,
+        { excludeCodigo: activeCpfExcludeCodigo, excludeCodigos: activeCpfExcludeCodigos },
+        queryExecutor,
       )
 
       if (activeOrdemServicoByPlaca) {
-        const activeOsLabel = [
-          activeOrdemServicoByPlaca.termo_adesao,
-          activeOrdemServicoByPlaca.num_os,
-          activeOrdemServicoByPlaca.revisao,
-        ].filter(Boolean).join('-')
+        const activeOsLabel = buildOrdemServicoNumeroLabel(activeOrdemServicoByPlaca)
         const activePlacaLabel = normalizeOperationalCode(activeOrdemServicoByPlaca.veiculo_placas, 20)
         return {
           status: 409,
           payload: {
             message: activeOsLabel
-              ? `Placa ${activePlacaLabel} ja utilizada na OrdemServico ativa ${activeOrdemServicoByPlaca.codigo} (${activeOsLabel}).`
-              : `Placa ${activePlacaLabel} ja utilizada na OrdemServico ativa ${activeOrdemServicoByPlaca.codigo}.`,
+              ? `Placa ${activePlacaLabel} ja utilizada na OrdemServico ativa num. ${activeOsLabel}.`
+              : `Placa ${activePlacaLabel} ja utilizada em outra OrdemServico ativa.`,
           },
         }
       }
@@ -9289,23 +9377,23 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
 
   const condutorItem = hasValidCpfCondutor ? await findCondutorByCpf(normalizedCpfCondutor) : null
 
-  if (!condutorItem && hasValidCpfCondutor && !importMode) {
+  if (!condutorItem && hasValidCpfCondutor && !importMode && !shouldSkipRelationshipValidation) {
     return { status: 400, payload: { message: 'CPF do condutor nao encontrado na tabela condutor.' } }
   }
 
   const prepostoItem = normalizedCpfPreposto ? await findCondutorByCpf(normalizedCpfPreposto) : null
 
-  if (normalizedCpfPreposto && !prepostoItem) {
+  if (normalizedCpfPreposto && !prepostoItem && !shouldSkipRelationshipValidation) {
     return { status: 400, payload: { message: 'CPF do preposto nao encontrado na tabela condutor.' } }
   }
 
-  if (!veiculoItem && hasValidCrm && !importMode) {
+  if (!veiculoItem && hasValidCrm && !importMode && !shouldSkipRelationshipValidation) {
     return { status: 400, payload: { message: 'CRM nao encontrado na tabela veiculo.' } }
   }
 
   const monitorItem = normalizedCpfMonitor ? await findMonitorByCpf(normalizedCpfMonitor) : null
 
-  if (normalizedCpfMonitor && !monitorItem) {
+  if (normalizedCpfMonitor && !monitorItem && !shouldSkipRelationshipValidation) {
     return { status: 400, payload: { message: 'CPF do monitor nao encontrado na tabela monitor.' } }
   }
 
@@ -9334,17 +9422,17 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
       dreDescricao: normalizeOperationalCode(canonicalDreItem.descricao, 255),
       modalidadeCodigo: modalidadeItem ? Number(modalidadeItem.codigo) : null,
       modalidadeDescricao: modalidadeItem ? normalizeOperationalCode(derivedModalidadeDescricao, 255) : normalizedModalidadeDescricao,
-      cpfCondutor: condutorItem ? normalizeCpf(condutorItem.cpf_condutor) : hasValidCpfCondutor ? normalizedCpfCondutor : '',
-      condutor: condutorItem ? normalizeCondutorName(condutorItem.condutor) : '',
+      cpfCondutor: condutorItem ? normalizeCpf(condutorItem.cpf_condutor) : hasValidCpfCondutor || shouldSkipRelationshipValidation ? normalizedCpfCondutor : '',
+      condutor: condutorItem ? normalizeCondutorName(condutorItem.condutor) : shouldSkipRelationshipValidation ? normalizedCondutor : '',
       dataAdmissaoCondutor: normalizedDataAdmissaoCondutor,
-      cpfPreposto: prepostoItem ? normalizeCpf(prepostoItem.cpf_condutor) : '',
-      prepostoCondutor: prepostoItem ? normalizeCondutorName(prepostoItem.condutor) : '',
+      cpfPreposto: prepostoItem ? normalizeCpf(prepostoItem.cpf_condutor) : shouldSkipRelationshipValidation ? normalizedCpfPreposto : '',
+      prepostoCondutor: prepostoItem ? normalizeCondutorName(prepostoItem.condutor) : shouldSkipRelationshipValidation ? normalizedPrepostoCondutor : '',
       prepostoInicio: normalizedPrepostoInicio,
       prepostoDias: normalizedPrepostoDias,
-      crm: veiculoItem ? normalizeVehicleCrm(veiculoItem.crm) : hasValidCrm ? normalizedCrm : '',
-      veiculoPlacas: veiculoItem ? normalizeOperationalCode(veiculoItem.placas, 20) : '',
-      cpfMonitor: monitorItem ? normalizeCpf(monitorItem.cpf_monitor) : '',
-      monitor: monitorItem ? normalizeCondutorName(monitorItem.monitor) : '',
+      crm: veiculoItem ? normalizeVehicleCrm(veiculoItem.crm) : hasValidCrm || shouldSkipRelationshipValidation ? normalizedCrm : '',
+      veiculoPlacas: veiculoItem ? normalizeOperationalCode(veiculoItem.placas, 20) : shouldSkipRelationshipValidation ? normalizedVeiculoPlacas : '',
+      cpfMonitor: monitorItem ? normalizeCpf(monitorItem.cpf_monitor) : shouldSkipRelationshipValidation ? normalizedCpfMonitor : '',
+      monitor: monitorItem ? normalizeCondutorName(monitorItem.monitor) : shouldSkipRelationshipValidation ? normalizedMonitor : '',
       dataAdmissaoMonitor: normalizedDataAdmissaoMonitor,
       situacao: normalizedSituacao,
       tipoTrocaCodigo: tipoTrocaItem ? Number(tipoTrocaItem.codigo) : null,
@@ -9650,6 +9738,140 @@ const createAccess = async (nome, email, password) => {
       item: insertResult.rows[0],
       user: insertResult.rows[0],
     },
+  }
+}
+
+const repackCredenciamentoTermoTableIfNeeded = async () => {
+  const slotResult = await pool.query(
+    `SELECT
+       COUNT(*) FILTER (WHERE a.attnum > 0)::int AS physical_slots,
+       COUNT(*) FILTER (WHERE a.attnum > 0 AND a.attisdropped)::int AS dropped_columns
+     FROM pg_class c
+     JOIN pg_namespace n
+       ON n.oid = c.relnamespace
+     JOIN pg_attribute a
+       ON a.attrelid = c.oid
+     WHERE n.nspname = 'public'
+       AND c.relkind = 'r'
+       AND c.relname = $1`,
+    [credenciamentoTermoTableName],
+  )
+
+  const slotStats = slotResult.rows[0]
+  const physicalSlots = Number(slotStats?.physical_slots ?? 0)
+  const droppedColumns = Number(slotStats?.dropped_columns ?? 0)
+
+  if (physicalSlots < 1500 || droppedColumns === 0) {
+    return
+  }
+
+  const legacyTableName = `${credenciamentoTermoTableName}_legacy_repack_${Date.now()}`
+  const currentColumns = [
+    'codigo',
+    'codigo_xml',
+    'credenciada_codigo',
+    'credenciado',
+    'cnpj_cpf',
+    'termo_adesao',
+    'sei',
+    'aditivo',
+    'situacao_publicacao',
+    'situacao_emissao',
+    'inicio_vigencia',
+    'termino_vigencia',
+    'comp_data_aditivo',
+    'data_rescisao',
+    'status_aditivo',
+    'data_pub_aditivo',
+    'check_aditivo',
+    'status_termo',
+    'tipo_termo',
+    'representante',
+    'cpf_representante',
+    'rg_representante',
+    'especificacao_sei',
+    'valor_contrato',
+    'objeto',
+    'data_assinatura',
+    'data_publicacao',
+    'info_sei',
+    'valor_contrato_atualizado',
+    'vencimento_geral',
+    'mes_renovacao',
+    'data_inclusao',
+    'data_modificacao',
+  ]
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+    await client.query(`ALTER TABLE ${credenciamentoTermoTableName} RENAME TO ${legacyTableName}`)
+    await client.query(`
+      CREATE TABLE ${credenciamentoTermoTableName} (
+        codigo integer PRIMARY KEY DEFAULT nextval('${credenciamentoTermoCodigoSequenceName}'),
+        codigo_xml integer,
+        credenciada_codigo integer REFERENCES credenciada(codigo),
+        credenciado varchar(255),
+        cnpj_cpf varchar(20),
+        termo_adesao varchar(255),
+        sei varchar(255),
+        aditivo integer,
+        situacao_publicacao varchar(100),
+        situacao_emissao varchar(100),
+        inicio_vigencia date,
+        termino_vigencia date,
+        comp_data_aditivo date,
+        data_rescisao date,
+        status_aditivo varchar(100),
+        data_pub_aditivo date,
+        check_aditivo integer DEFAULT 0,
+        status_termo varchar(100),
+        tipo_termo varchar(100),
+        representante varchar(255),
+        cpf_representante varchar(20),
+        rg_representante varchar(30),
+        especificacao_sei varchar(255),
+        valor_contrato numeric(14, 2),
+        objeto text,
+        data_assinatura date,
+        data_publicacao date,
+        info_sei varchar(100),
+        valor_contrato_atualizado numeric(14, 2),
+        vencimento_geral date,
+        mes_renovacao varchar(50),
+        data_inclusao timestamp without time zone DEFAULT NOW(),
+        data_modificacao timestamp without time zone DEFAULT NOW()
+      )
+    `)
+
+    const legacyColumnsResult = await client.query(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = $1`,
+      [legacyTableName],
+    )
+    const legacyColumns = new Set(legacyColumnsResult.rows.map((row) => row.column_name))
+    const copyColumns = currentColumns.filter((columnName) => legacyColumns.has(columnName))
+
+    if (copyColumns.length > 0) {
+      const projection = copyColumns.join(', ')
+      await client.query(
+        `INSERT INTO ${credenciamentoTermoTableName} (${projection})
+         SELECT ${projection}
+         FROM ${legacyTableName}`,
+      )
+    }
+
+    await client.query(`ALTER SEQUENCE ${credenciamentoTermoCodigoSequenceName} OWNED BY ${credenciamentoTermoTableName}.codigo`)
+    await client.query(`DROP TABLE ${legacyTableName}`)
+    await client.query('COMMIT')
+    console.warn(`Tabela ${credenciamentoTermoTableName} compactada apos atingir ${physicalSlots} slots fisicos de coluna.`)
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
   }
 }
 
@@ -10170,10 +10392,7 @@ const ensureDatabaseSchema = async () => {
       tipo_pessoa varchar(20) NOT NULL,
       credenciado varchar(255) NOT NULL,
       cnpj_cpf varchar(20) NOT NULL,
-      logradouro varchar(255),
-      bairro varchar(120),
       cep varchar(10),
-      municipio varchar(120),
       tp_optante varchar(20),
       email varchar(255),
       telefone_01 varchar(20),
@@ -10191,10 +10410,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS tipo_pessoa varchar(20)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS credenciado varchar(255)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS cnpj_cpf varchar(20)')
-  await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS logradouro varchar(255)')
-  await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS bairro varchar(120)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS cep varchar(10)')
-  await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS municipio varchar(120)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS tp_optante varchar(20)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS email varchar(255)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS telefone_01 varchar(20)')
@@ -10239,6 +10455,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query(`ALTER TABLE IF EXISTS credenciamento_termo_import_recusa RENAME TO ${credenciamentoTermoImportRecusaTableName}`)
   await pool.query(`DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'credenciamento_termo_codigo_seq' AND relkind = 'S') THEN ALTER SEQUENCE credenciamento_termo_codigo_seq RENAME TO ${credenciamentoTermoCodigoSequenceName}; END IF; END $$`)
   await pool.query(`CREATE SEQUENCE IF NOT EXISTS ${credenciamentoTermoCodigoSequenceName} START WITH 1 INCREMENT BY 1`)
+  await repackCredenciamentoTermoTableIfNeeded()
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ${credenciamentoTermoTableName} (
       codigo integer PRIMARY KEY DEFAULT nextval('${credenciamentoTermoCodigoSequenceName}'),
@@ -10263,9 +10480,6 @@ const ensureDatabaseSchema = async () => {
       representante varchar(255),
       cpf_representante varchar(20),
       rg_representante varchar(30),
-      logradouro varchar(255),
-      bairro varchar(120),
-      municipio varchar(120),
       especificacao_sei varchar(255),
       valor_contrato numeric(14, 2),
       objeto text,
@@ -10300,9 +10514,6 @@ const ensureDatabaseSchema = async () => {
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS representante varchar(255)`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS cpf_representante varchar(20)`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS rg_representante varchar(30)`)
-  await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS logradouro varchar(255)`)
-  await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS bairro varchar(120)`)
-  await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS municipio varchar(120)`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS especificacao_sei varchar(255)`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS valor_contrato numeric(14, 2)`)
   await pool.query(`ALTER TABLE ${credenciamentoTermoTableName} ADD COLUMN IF NOT EXISTS objeto text`)
@@ -11371,6 +11582,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === ordemServicoCollectionPath) {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const situacao = normalizeCredenciamentoSituacao(requestUrl.searchParams.get('situacao') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
       const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
       const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'chave').toLowerCase()
@@ -11415,6 +11627,11 @@ const server = createServer(async (request, response) => {
           OR COALESCE(BTRIM(veiculo_placas), '') ILIKE UPPER($${values.length})
           OR COALESCE(BTRIM(crm), '') ILIKE UPPER($${values.length})
         )`)
+      }
+
+      if (situacao) {
+        values.push(situacao)
+        filters.push(`UPPER(BTRIM(COALESCE(situacao, ''))) = UPPER($${values.length})`)
       }
 
       const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
@@ -15651,7 +15868,7 @@ const server = createServer(async (request, response) => {
         }
 
         const createPayload = buildCredenciamentoTermoCreatePayload(validationResult.payload, latestTermoItem)
-        await syncCredenciadaTpOptante(client, createPayload.credenciadaCodigo, createPayload.tpOptante)
+        await syncCredenciadaTpOptante(createPayload.credenciadaCodigo, createPayload.tpOptante, client)
         let nextAditivo = 0
 
         if (latestTermo) {
@@ -16227,12 +16444,16 @@ const server = createServer(async (request, response) => {
         dreCodigo: body.dreCodigo,
         modalidadeDescricao: body.modalidadeDescricao,
         cpfCondutor: body.cpfCondutor,
+        condutor: body.condutor,
         dataAdmissaoCondutor: body.dataAdmissaoCondutor,
         cpfPreposto: body.cpfPreposto,
+        prepostoCondutor: body.prepostoCondutor,
         prepostoInicio: body.prepostoInicio,
         prepostoDias: body.prepostoDias,
         crm: body.crm,
+        veiculoPlacas: body.veiculoPlacas,
         cpfMonitor: body.cpfMonitor,
+        monitor: body.monitor,
         dataAdmissaoMonitor: body.dataAdmissaoMonitor,
         situacao: body.situacao,
         tipoTroca: body.tipoTroca,
@@ -16241,6 +16462,7 @@ const server = createServer(async (request, response) => {
         anotacao: body.anotacao,
         uniaoTermos: body.uniaoTermos,
         substitutionSourceCodigo,
+        activationSourceCodigo,
         skipVigenciaValidation: shouldSkipVigenciaValidation,
         requireCodigo: false,
       })
@@ -16328,7 +16550,26 @@ const server = createServer(async (request, response) => {
         )
 
         const insertedCodigo = Number(insertResult.rows[0].codigo)
-        if (activationSourceCodigo === null || Number.isNaN(activationSourceCodigo)) {
+        if ((Number.isInteger(substitutionSourceCodigo) && substitutionSourceCodigo > 0)
+          || (Number.isInteger(activationSourceCodigo) && activationSourceCodigo > 0)) {
+          const replacedActiveItem = await findLatestActiveOrdemServicoByChave(
+            validationResult.payload.termoAdesao,
+            validationResult.payload.numOs,
+            { excludeCodigos: [insertedCodigo] },
+            client,
+          )
+
+          if (replacedActiveItem && !Number.isNaN(Number(replacedActiveItem.codigo))) {
+            await client.query(
+              `UPDATE ${ordemServicoTableName}
+               SET data_encerramento = (CURRENT_DATE - INTERVAL '1 day')::date,
+                   situacao = 'Substituido',
+                   data_modificacao = NOW()
+               WHERE codigo = $1`,
+              [Number(replacedActiveItem.codigo)],
+            )
+          }
+        } else {
           let previousCodigo = substitutionSourceCodigo
 
           if (previousCodigo === null || Number.isNaN(previousCodigo)) {
@@ -17449,9 +17690,9 @@ const server = createServer(async (request, response) => {
           : pickCredenciamentoTermoIntegerValue(existingItem.check_aditivo, 0) ?? 0
 
         await syncCredenciadaTpOptante(
-          client,
           validationResult.payload.credenciadaCodigo,
           validationResult.payload.tpOptante,
+          client,
         )
 
         const updateResult = await client.query(
@@ -17897,6 +18138,11 @@ const server = createServer(async (request, response) => {
       const existingResult = await pool.query(
         `SELECT TO_CHAR(data_inclusao::date, 'YYYY-MM-DD') AS data_inclusao,
                 TO_CHAR(vigencia_os::date, 'YYYY-MM-DD') AS vigencia_os
+          , situacao
+          , cpf_condutor
+          , cpf_preposto
+          , cpf_monitor
+          , crm
          FROM ${ordemServicoTableName}
          WHERE codigo = $1
          LIMIT 1`,
@@ -17909,6 +18155,29 @@ const server = createServer(async (request, response) => {
       }
 
       const existingItem = existingResult.rows[0]
+      const requestedSituacao = normalizeCredenciamentoSituacao(body.situacao)
+
+      if (existingItem.situacao === 'Rascunho' && requestedSituacao === 'Ativo') {
+        sendJson(response, 400, { message: 'OrdemServico em Rascunho deve ser reativada pelo botao Ativar.' })
+        return
+      }
+
+      if (existingItem.situacao === 'Rascunho' && requestedSituacao === 'Substituido') {
+        sendJson(response, 400, { message: 'OrdemServico em Rascunho deve ser substituida pelo botao Substituir.' })
+        return
+      }
+
+      if (requestedSituacao === 'Rascunho') {
+        const hasDraftIdentityChanges = normalizeCpf(body.cpfCondutor) !== normalizeCpf(existingItem.cpf_condutor)
+          || normalizeCpf(body.cpfPreposto) !== normalizeCpf(existingItem.cpf_preposto)
+          || normalizeCpf(body.cpfMonitor) !== normalizeCpf(existingItem.cpf_monitor)
+          || normalizeCrmc(body.crm) !== normalizeCrmc(existingItem.crm)
+
+        if (!hasDraftIdentityChanges) {
+          sendJson(response, 400, { message: 'Ao salvar como Rascunho pelo botao Corrigir, altere ao menos um dos campos CRM ou CPF(s).' })
+          return
+        }
+      }
 
       const validationResult = await validateOrdemServicoPayload({
         codigo: body.codigo ?? originalCodigo,
@@ -17922,12 +18191,16 @@ const server = createServer(async (request, response) => {
         dreCodigo: body.dreCodigo,
         modalidadeDescricao: body.modalidadeDescricao,
         cpfCondutor: body.cpfCondutor,
+        condutor: body.condutor,
         dataAdmissaoCondutor: body.dataAdmissaoCondutor,
         cpfPreposto: body.cpfPreposto,
+        prepostoCondutor: body.prepostoCondutor,
         prepostoInicio: body.prepostoInicio,
         prepostoDias: body.prepostoDias,
         crm: body.crm,
+        veiculoPlacas: body.veiculoPlacas,
         cpfMonitor: body.cpfMonitor,
+        monitor: body.monitor,
         dataAdmissaoMonitor: body.dataAdmissaoMonitor,
         situacao: body.situacao,
         tipoTroca: body.tipoTroca,
@@ -17936,6 +18209,7 @@ const server = createServer(async (request, response) => {
         anotacao: body.anotacao,
         uniaoTermos: body.uniaoTermos,
         originalCodigo,
+        originalSituacao: existingItem.situacao,
         skipVigenciaValidation: true,
       })
 
