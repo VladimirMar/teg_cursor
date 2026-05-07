@@ -210,11 +210,11 @@
   min-width: 0;
   padding: 28px;
   border-radius: 32px;
-  color: #eef7f4;
+  color: #102a43;
   background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.14), transparent 28%),
-    linear-gradient(180deg, #183a51, #0e2434 58%, #102d26);
-  box-shadow: 0 24px 50px rgba(10, 24, 38, 0.26);
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 28%),
+    linear-gradient(180deg, #b8e0ff, #8cc7ff 65%, #71b3ff);
+  box-shadow: 0 24px 50px rgba(15, 45, 80, 0.18);
 }
 
 .sidebar-brand {

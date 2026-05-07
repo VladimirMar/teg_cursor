@@ -134,6 +134,16 @@ type StoredSession = {
 
 const SESSION_STORAGE_KEY = 'tegfinanc.auth'
 const DRE_PAGE_SIZE = 20
+const ASSOCIATIONS_STORAGE_KEY = 'tegfinanc.modalidadeTipoBancadaAssociations'
+
+type ModalidadeTipoBancadaAssociationItem = {
+  id: string
+  modalidadeCodigo: string
+  modalidadeDescricao: string
+  tipoBancadaCodigo: string
+  tipoBancadaDescricao: string
+}
+
 const normalizeDreSiglaInput = (value: string) => value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2)
 
 function getCurrentMonthInputValue() {
@@ -734,6 +744,14 @@ function App() {
   const [tipoBancadaSortBy, setTipoBancadaSortBy] = useState<DreSortField>('codigo')
   const [tipoBancadaSortDirection, setTipoBancadaSortDirection] = useState<DreSortDirection>('asc')
   const deferredTipoBancadaSearch = useDeferredValue(tipoBancadaSearch)
+  const [tipoBancadaAssociationItems, setTipoBancadaAssociationItems] = useState<ModalidadeTipoBancadaAssociationItem[]>([])
+  const [associationModalidadeCodigo, setAssociationModalidadeCodigo] = useState('')
+  const [associationTipoBancadaCodigo, setAssociationTipoBancadaCodigo] = useState('')
+  const [associationStatusMessage, setAssociationStatusMessage] = useState('')
+  const [associationStatusTone, setAssociationStatusTone] = useState<StatusTone>('idle')
+  const [associationModalidadeOptions, setAssociationModalidadeOptions] = useState<ModalidadeItem[]>([])
+  const [associationTipoBancadaOptions, setAssociationTipoBancadaOptions] = useState<TipoBancadaItem[]>([])
+  const [isLoadingAssociationOptions, setIsLoadingAssociationOptions] = useState(false)
   const [titularItems, setTitularItems] = useState<TitularItem[]>([])
   const [titularCnpjCpf, setTitularCnpjCpf] = useState('')
   const [titularNome, setTitularNome] = useState('')
@@ -796,6 +814,23 @@ function App() {
 
   useEffect(() => {
     setSession(getStoredSession())
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      const storedValue = window.localStorage.getItem(ASSOCIATIONS_STORAGE_KEY)
+
+      if (storedValue) {
+        const parsed = JSON.parse(storedValue) as ModalidadeTipoBancadaAssociationItem[]
+        setTipoBancadaAssociationItems(Array.isArray(parsed) ? parsed : [])
+      }
+    } catch {
+      setTipoBancadaAssociationItems([])
+    }
   }, [])
 
   const loadDashboardAtivos = useCallback(async (monthToLoad: string) => {
@@ -975,6 +1010,112 @@ function App() {
     }
   }, [deferredTipoBancadaSearch, tipoBancadaSortBy, tipoBancadaSortDirection])
 
+  const loadAssociationOptions = useCallback(async () => {
+    setIsLoadingAssociationOptions(true)
+    setAssociationStatusTone('idle')
+    setAssociationStatusMessage('Carregando opções de modalidade e tipo de bancada...')
+
+    try {
+      const [modalidadeResult, tipoBancadaResult] = await Promise.all([
+        listModalidadeItemsPaginated({
+          page: 1,
+          pageSize: 100,
+          sortBy: 'descricao',
+          sortDirection: 'asc',
+        }),
+        listTipoBancadaItemsPaginated({
+          page: 1,
+          pageSize: 100,
+          sortBy: 'descricao',
+          sortDirection: 'asc',
+        }),
+      ])
+
+      setAssociationModalidadeOptions(modalidadeResult.items)
+      setAssociationTipoBancadaOptions(tipoBancadaResult.items)
+      setAssociationStatusMessage('')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar as opções de associação.'
+
+      setAssociationStatusTone('error')
+      setAssociationStatusMessage(message)
+    } finally {
+      setIsLoadingAssociationOptions(false)
+    }
+  }, [])
+
+  const saveTipoBancadaAssociationItems = (nextItems: ModalidadeTipoBancadaAssociationItem[]) => {
+    setTipoBancadaAssociationItems(nextItems)
+
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      window.localStorage.setItem(ASSOCIATIONS_STORAGE_KEY, JSON.stringify(nextItems))
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const handleAddTipoBancadaAssociation = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    setAssociationStatusTone('idle')
+    setAssociationStatusMessage('')
+
+    if (!associationModalidadeCodigo || !associationTipoBancadaCodigo) {
+      setAssociationStatusTone('error')
+      setAssociationStatusMessage('Selecione Modalidade e Tipo de Bancada.')
+      return
+    }
+
+    const modalidade = associationModalidadeOptions.find((item) => item.codigo === associationModalidadeCodigo)
+    const tipoBancada = associationTipoBancadaOptions.find((item) => item.codigo === associationTipoBancadaCodigo)
+
+    if (!modalidade || !tipoBancada) {
+      setAssociationStatusTone('error')
+      setAssociationStatusMessage('Selecao invalida.')
+      return
+    }
+
+    const alreadyExists = tipoBancadaAssociationItems.some(
+      (item) => item.modalidadeCodigo === associationModalidadeCodigo && item.tipoBancadaCodigo === associationTipoBancadaCodigo,
+    )
+
+    if (alreadyExists) {
+      setAssociationStatusTone('error')
+      setAssociationStatusMessage('A associacao ja existe.')
+      return
+    }
+
+    const nextItems = [
+      ...tipoBancadaAssociationItems,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        modalidadeCodigo: modalidade.codigo,
+        modalidadeDescricao: modalidade.descricao,
+        tipoBancadaCodigo: tipoBancada.codigo,
+        tipoBancadaDescricao: tipoBancada.descricao,
+      },
+    ]
+
+    saveTipoBancadaAssociationItems(nextItems)
+    setAssociationModalidadeCodigo('')
+    setAssociationTipoBancadaCodigo('')
+    setAssociationStatusTone('success')
+    setAssociationStatusMessage('Associacao criada com sucesso.')
+  }
+
+  const handleDeleteTipoBancadaAssociation = (id: string) => {
+    const nextItems = tipoBancadaAssociationItems.filter((item) => item.id !== id)
+    saveTipoBancadaAssociationItems(nextItems)
+    setAssociationStatusTone('success')
+    setAssociationStatusMessage('Associacao removida.')
+  }
+
   const loadSeguradoraItems = useCallback(async (pageToLoad: number) => {
     setIsLoadingSeguradora(true)
     setSeguradoraStatusMessage('Carregando registros de seguradoras...')
@@ -1096,7 +1237,8 @@ function App() {
     }
 
     void loadTipoBancadaItems(tipoBancadaPage)
-  }, [activeView, loadTipoBancadaItems, session, tipoBancadaPage])
+    void loadAssociationOptions()
+  }, [activeView, loadTipoBancadaItems, loadAssociationOptions, session, tipoBancadaPage])
 
   useEffect(() => {
     if (!session || activeView !== 'seguradora') {
@@ -4127,6 +4269,90 @@ function App() {
                     ▶|
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <div className="management-card management-grid-card dre-list-card">
+              <div className="management-grid-header">
+                <h2>Associações Modalidade x Tipo de Bancada</h2>
+                <span>{tipoBancadaAssociationItems.length} associação(ões) cadastrada(s)</span>
+              </div>
+
+              <div className="management-toolbar">
+                <form className="management-filter-form" onSubmit={handleAddTipoBancadaAssociation}>
+                  <label className="field-group" htmlFor="association-modalidade">
+                    <span>Modalidade</span>
+                    <select
+                      id="association-modalidade"
+                      value={associationModalidadeCodigo}
+                      onChange={(event) => setAssociationModalidadeCodigo(event.target.value)}
+                      disabled={isLoadingAssociationOptions}
+                    >
+                      <option value="">Selecione a modalidade</option>
+                      {associationModalidadeOptions.map((item) => (
+                        <option key={item.codigo} value={item.codigo}>
+                          {item.codigo} - {item.descricao}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field-group" htmlFor="association-tipo-bancada">
+                    <span>Tipo de Bancada</span>
+                    <select
+                      id="association-tipo-bancada"
+                      value={associationTipoBancadaCodigo}
+                      onChange={(event) => setAssociationTipoBancadaCodigo(event.target.value)}
+                      disabled={isLoadingAssociationOptions}
+                    >
+                      <option value="">Selecione o tipo de bancada</option>
+                      {associationTipoBancadaOptions.map((item) => (
+                        <option key={item.codigo} value={item.codigo}>
+                          {item.codigo} - {item.descricao}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <button type="submit" className="primary-button" disabled={isLoadingAssociationOptions}>
+                    {isLoadingAssociationOptions ? 'Carregando...' : 'Criar associação'}
+                  </button>
+                </form>
+              </div>
+
+              <p className={`status-message status-${associationStatusTone}`} aria-live="polite">
+                {associationStatusMessage}
+              </p>
+
+              <div className="management-grid-wrapper">
+                <table className="dre-table">
+                  <thead>
+                    <tr>
+                      <th>Modalidade</th>
+                      <th>Tipo de Bancada</th>
+                      <th className="dre-actions-column">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tipoBancadaAssociationItems.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.modalidadeCodigo} - {item.modalidadeDescricao}</td>
+                        <td>{item.tipoBancadaCodigo} - {item.tipoBancadaDescricao}</td>
+                        <td>
+                          <div className="dre-row-actions">
+                            <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoBancadaAssociation(item.id)}>
+                              Excluir
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {!tipoBancadaAssociationItems.length ? (
+                  <p className="management-empty-state">Nenhuma associação cadastrada.</p>
+                ) : null}
               </div>
             </div>
           </>

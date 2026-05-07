@@ -4,7 +4,7 @@ const fixtures = [
   {
     codigo: '3789',
     cep: '05861-260',
-    logradouro: 'RUA COMENDADOR ANTUNES DOS SANTOS, 1809 CASA 189',
+    logradouro: 'RUA COMENDADOR ANTUNES DOS SANTOS',
     bairro: 'CAPAO REDONDO',
     municipio: 'SÃO PAULO',
     uf: 'SP',
@@ -12,7 +12,7 @@ const fixtures = [
   {
     codigo: '3434',
     cep: '05892-370',
-    logradouro: 'R ENG FELIPE GUITON, 162 LOTE 5 QUADRA A',
+    logradouro: 'R ENG FELIPE GUITON',
     bairro: 'JD AMALIA',
     municipio: 'SÃO PAULO',
     uf: 'SP',

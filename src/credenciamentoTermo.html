@@ -1831,6 +1831,21 @@
 
         return Number(digits) / 100;
       };
+      const ensurePositiveValorContratoForEmission = (documentLabel) => {
+        if (getValorContratoAmount() > 0) {
+          return true;
+        }
+
+        const fieldMessage = 'O valor do termo esta zerado. O valor e calculado pela soma dos veiculos nas OrdensServico ativas vinculadas ao termo.';
+        const feedbackMessage = `Nao e possivel emitir ${documentLabel} com o valor do termo zerado.`;
+
+        errors.valorContrato.textContent = fieldMessage;
+        feedback.textContent = feedbackMessage;
+        feedback.className = 'dsc-feedback dsc-feedback-error';
+        showBanner(feedbackMessage, 'error');
+        revealFirstFormError({ valorContrato: fieldMessage });
+        return false;
+      };
       const syncEmitContratoButtonState = () => {
         const isBusy = emitContratoButton.textContent === 'Gerando contrato...';
 
@@ -1838,7 +1853,7 @@
           return;
         }
 
-        emitContratoButton.disabled = getValorContratoAmount() <= 0;
+        emitContratoButton.disabled = false;
       };
       const syncEmitRescisaoButtonState = () => {
         const isBusy = emitRescisaoButton.textContent === 'Gerando termo de rescisao...';
@@ -3636,6 +3651,12 @@
         printFrame.srcdoc = buildTermoContratoDocumentHtml(lastTermoDespachoRescisaoPrintMarkup || lastTermoDespachoRescisaoMarkup);
       };
       const handleShowAditivo = async () => {
+        resetMessages();
+
+        if (!ensurePositiveValorContratoForEmission('o termo aditivo')) {
+          return;
+        }
+
         aditivoModal.classList.remove('dsc-hidden');
         aditivoModal.setAttribute('aria-hidden', 'false');
         aditivoPanel.classList.remove('dsc-hidden');
@@ -3750,14 +3771,10 @@
       const handleEmitContrato = async () => {
         const requestedDate = normalizeReportDateKey(inicioVigenciaInput.value || dataPublicacaoInput.value);
         const termoAdesao = normalizeTermoAdesao(termoAdesaoInput.value);
-        const valorContrato = getValorContratoAmount();
 
         resetMessages();
 
-        if (valorContrato <= 0) {
-          errors.valorContrato.textContent = 'Informe um valor de contrato maior que zero para emitir o contrato.';
-          feedback.textContent = 'Corrija os campos do credenciamento termo para continuar.';
-          revealFirstFormError({ valorContrato: errors.valorContrato.textContent });
+        if (!ensurePositiveValorContratoForEmission('o contrato')) {
           return;
         }
 

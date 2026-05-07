@@ -121,10 +121,42 @@
                     <p class="dsc-empty-state dsc-hidden" id="ordem-servico-rejection-empty-state">Nenhum registro recusado encontrado.</p>
                   </div>
 
+
+                      .dsc-processing-popup-overlay {
+                        position: fixed;
+                        inset: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 24px;
+                        background: rgba(15, 23, 42, 0.38);
+                        backdrop-filter: blur(2px);
+                        z-index: 1200;
+                      }
+
+                      .dsc-processing-popup {
+                        width: min(100%, 320px);
+                        padding: 20px 24px;
+                        border-radius: 18px;
+                        background: #ffffff;
+                        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
+                        text-align: center;
+                      }
+
+                      .dsc-processing-popup strong {
+                        display: block;
+                        font-size: 18px;
+                        color: #0f172a;
+                      }
                   <p class="dsc-feedback" id="ordem-servico-rejection-grid-feedback"></p>
 
                   <div class="dsc-access-pagination">
                     <button type="button" class="dsc-btn dsc-btn-white" id="first-ordem-servico-rejection-page-button" title="Primeiro registro">|◀</button>
+                    <div class="dsc-processing-popup-overlay dsc-hidden" id="ordem-servico-processing-overlay" aria-hidden="true">
+                      <div class="dsc-processing-popup" role="alertdialog" aria-modal="true" aria-live="polite" aria-label="Processamento em andamento">
+                        <strong>Aguarde em processamento...</strong>
+                      </div>
+                    </div>
                     <button type="button" class="dsc-btn dsc-btn-white" id="previous-ordem-servico-rejection-page-button" title="Registro anterior">◀</button>
                     <span id="ordem-servico-rejection-pagination-info">Pagina 1 de 1</span>
                     <button type="button" class="dsc-btn dsc-btn-white" id="next-ordem-servico-rejection-page-button" title="Proximo registro">▶</button>
@@ -698,6 +730,7 @@
         veiculoItem: null,
       };
       const statusBanner = document.getElementById('status-banner');
+      const processingOverlay = document.getElementById('ordem-servico-processing-overlay');
       const closeFormModalButton = document.getElementById('close-ordem-servico-form-modal-button');
       const importButton = document.getElementById('open-ordem-servico-import-button');
       const closeImportModalButton = document.getElementById('close-ordem-servico-import-modal-button');
@@ -757,6 +790,8 @@
       let requireFormChangeToSave = false;
       let suppressTermoBlurValidation = false;
       let bannerTimeoutId = null;
+      let processingOverlayPendingCount = 0;
+      let processingOverlayTimerId = null;
       let credenciadaSuggestionRequestId = 0;
       let credenciadaSuggestionTimeoutId = null;
       let condutorSuggestionRequestId = 0;
@@ -1854,7 +1889,7 @@
               ? fetchSummaryLookup(`/api/monitor/lookup?cpf=${encodeURIComponent(cpfMonitor)}`, 'Falha ao localizar monitor.')
               : Promise.resolve({ item: null, error: '' }),
             crm
-              ? fetchSummaryLookup(`/api/veiculo/lookup?crm=${encodeURIComponent(crm)}`, 'Falha ao localizar veiculo.')
+              ? fetchSummaryLookup(buildVeiculoLookupUrl(crm), 'Falha ao localizar veiculo.')
               : Promise.resolve({ item: null, error: '' }),
           ]);
 
@@ -2613,7 +2648,7 @@
               ? fetchSummaryLookup(`/api/monitor/lookup?cpf=${encodeURIComponent(cpfMonitor)}`, 'Falha ao localizar monitor.')
               : Promise.resolve({ item: null, error: '' }),
             crm
-              ? fetchSummaryLookup(`/api/veiculo/lookup?crm=${encodeURIComponent(crm)}`, 'Falha ao localizar veiculo.')
+              ? fetchSummaryLookup(buildVeiculoLookupUrl(crm), 'Falha ao localizar veiculo.')
               : Promise.resolve({ item: null, error: '' }),
           ]);
 
@@ -3042,6 +3077,56 @@
           throw new Error('Resposta invalida do servidor.');
         }
       };
+
+      const showProcessingOverlay = () => {
+        if (!(processingOverlay instanceof HTMLElement)) {
+          return;
+        }
+
+        processingOverlay.classList.remove('dsc-hidden');
+        processingOverlay.setAttribute('aria-hidden', 'false');
+      };
+
+      const hideProcessingOverlay = () => {
+        if (!(processingOverlay instanceof HTMLElement)) {
+          return;
+        }
+
+        processingOverlay.classList.add('dsc-hidden');
+        processingOverlay.setAttribute('aria-hidden', 'true');
+      };
+
+      const trackProcessingPromise = async (promise) => {
+        processingOverlayPendingCount += 1;
+
+        if (!processingOverlayTimerId) {
+          processingOverlayTimerId = window.setTimeout(() => {
+            processingOverlayTimerId = null;
+
+            if (processingOverlayPendingCount > 0) {
+              showProcessingOverlay();
+            }
+          }, 250);
+        }
+
+        try {
+          return await promise;
+        } finally {
+          processingOverlayPendingCount = Math.max(0, processingOverlayPendingCount - 1);
+
+          if (processingOverlayPendingCount === 0) {
+            if (processingOverlayTimerId) {
+              window.clearTimeout(processingOverlayTimerId);
+              processingOverlayTimerId = null;
+            }
+
+            hideProcessingOverlay();
+          }
+        }
+      };
+
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = (...args) => trackProcessingPromise(nativeFetch(...args));
 
       const getAuditHeaders = () => {
         try {
@@ -3910,7 +3995,7 @@
         }
 
         try {
-          const response = await fetch(`/api/veiculo?page=1&pageSize=8&sortBy=placas&sortDirection=asc&search=${encodeURIComponent(normalizedSearch)}`, {
+          const response = await fetch(buildVeiculoListUrl(normalizedSearch), {
             headers: { Accept: 'application/json' },
           });
           const payload = await readJsonResponse(response);
@@ -3946,6 +4031,49 @@
         setTimeoutId(window.setTimeout(() => {
           void loader(value());
         }, 180));
+      };
+
+      const getSelectedModalidadeOption = () => {
+        const normalizedDescription = normalizeText(String(modalidadeDescricaoInput.value || ''), 255);
+
+        if (!normalizedDescription) {
+          return null;
+        }
+
+        return modalidadeOptions.find((item) => normalizeText(String(item?.descricao || ''), 255) === normalizedDescription) || null;
+      };
+
+      const getSelectedModalidadeCodigo = () => {
+        const selectedModalidade = getSelectedModalidadeOption();
+        return String(selectedModalidade?.codigo || '').trim();
+      };
+
+      const buildVeiculoListUrl = (searchValue) => {
+        const params = new URLSearchParams({
+          page: '1',
+          pageSize: '8',
+          sortBy: 'placas',
+          sortDirection: 'asc',
+          search: searchValue,
+        });
+        const modalidadeCodigo = getSelectedModalidadeCodigo();
+
+        if (modalidadeCodigo) {
+          params.set('modalidadeCodigo', modalidadeCodigo);
+        }
+
+        return `/api/veiculo?${params.toString()}`;
+      };
+
+      const buildVeiculoLookupUrl = (crm) => {
+        const params = new URLSearchParams({ crm });
+        const modalidadeCodigo = getSelectedModalidadeCodigo();
+
+        if (modalidadeCodigo) {
+          params.set('modalidadeCodigo', modalidadeCodigo);
+        }
+
+        return `/api/veiculo/lookup?${params.toString()}`;
       };
 
       const getTipoTrocaInclusaoOption = () => tipoTrocaOptions.find((item) => normalizeKey(String(item.lista || '')) === 'inclusaodeveiculo');
@@ -4099,8 +4227,6 @@
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}">Consulta</button>
                 <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Corrigir</button>
                 <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="substitute" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Substituir</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Cancelar</button>
-                <button type="button" class="dsc-grid-action-button" data-action="activate" data-codigo="${item.codigo}"${(item.situacao !== 'Cancelado' && item.situacao !== 'Inativo' && item.situacao !== 'Rascunho') ? ' disabled' : ''}>Ativar</button>
               </div>
             </td>
           `;
@@ -4755,7 +4881,7 @@
         }
 
         try {
-          const response = await fetch(`/api/veiculo/lookup?crm=${encodeURIComponent(crm)}`, {
+          const response = await fetch(buildVeiculoLookupUrl(crm), {
             headers: { Accept: 'application/json' },
           });
           const payload = await readJsonResponse(response);
@@ -5606,6 +5732,11 @@
       modalidadeDescricaoInput.addEventListener('change', () => {
         modalidadeDescricaoInput.value = normalizeText(modalidadeDescricaoInput.value, 255);
         modalidadeDescricaoError.textContent = '';
+        crmInput.value = '';
+        veiculoPlacasInput.value = '';
+        crmError.textContent = '';
+        veiculoPlacasError.textContent = '';
+        renderEntitySuggestions(crmOptionsList, [], () => '', () => '');
       });
 
       cpfCondutorInput.addEventListener('input', () => {

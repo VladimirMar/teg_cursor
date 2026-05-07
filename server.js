@@ -335,6 +335,11 @@ const getTipoBancadaCodigoFromUrl = (url) => {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+const getModalidadeTipoBancadaAssociationCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/modalidade-tipo-bancada\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const getMarcaModeloCodigoFromUrl = (url) => {
   const match = url.match(/^\/api\/marca-modelo\/([^/]+)$/)
   return match ? decodeURIComponent(match[1]) : null
@@ -559,6 +564,12 @@ const normalizeCredenciadaText = (value, maxLength = 255) => {
     .replace(/\s+/g, ' ')
     .toUpperCase()
     .slice(0, maxLength)
+}
+
+const normalizeCepImportLogradouro = (value, maxLength = 255) => {
+  const normalizedValue = normalizeCredenciadaText(value, maxLength)
+
+  return normalizedValue.replace(/,\s*\d.*$/, '').trim()
 }
 
 const normalizeCredenciadaStatusValue = (value) => {
@@ -885,6 +896,33 @@ const modalidadeSelectClause = `
 const tipoBancadaSelectClause = `
   CAST(codigo AS text) AS codigo,
   BTRIM(CAST(descricao AS text)) AS descricao`
+
+const modalidadeTipoBancadaAssociationSelectClause = `
+  CAST(associacao.codigo AS text) AS codigo,
+  CAST(associacao.modalidade_codigo AS text) AS modalidade_codigo,
+  BTRIM(CAST(modalidade_item.descricao AS text)) AS modalidade_descricao,
+  CAST(associacao.tipo_bancada_codigo AS text) AS tipo_bancada_codigo,
+  BTRIM(CAST(tipo_bancada_item.descricao AS text)) AS tipo_bancada_descricao`
+
+const findModalidadeTipoBancadaAssociationByCodigo = async (codigo, executor = pool) => {
+  const normalizedCodigo = normalizeRequestValue(codigo)
+
+  if (!normalizedCodigo) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${modalidadeTipoBancadaAssociationSelectClause}
+     FROM modalidade_tipo_bancada associacao
+     INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+     INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+     WHERE CAST(associacao.codigo AS text) = $1
+     LIMIT 1`,
+    [normalizedCodigo],
+  )
+
+  return result.rows[0] ?? null
+}
 
 const normalizeModalidadeDescriptionKey = (value) => normalizeRequestValue(value)
   .toUpperCase()
@@ -2141,11 +2179,27 @@ const getNextMonitorCodigo = async (executor = pool) => {
   return Number(result.rows[0]?.next_codigo || 1)
 }
 
-const findVeiculoByCrm = async (crm) => {
+const findVeiculoByCrm = async (crm, options = {}) => {
   const normalizedCrm = normalizeVehicleCrm(crm)
+  const normalizedModalidadeCodigo = normalizeRequestValue(options.modalidadeCodigo)
 
   if (!normalizedCrm) {
     return null
+  }
+
+  const values = [normalizedCrm]
+  let modalidadeFilterClause = ''
+
+  if (normalizedModalidadeCodigo) {
+    values.push(normalizedModalidadeCodigo)
+    modalidadeFilterClause = `
+     AND EXISTS (
+       SELECT 1
+       FROM modalidade_tipo_bancada associacao
+       INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+       WHERE CAST(associacao.modalidade_codigo AS text) = $2
+         AND UPPER(BTRIM(CAST(tipo_bancada_item.descricao AS text))) = UPPER(COALESCE(BTRIM(veiculo.tipo_de_bancada), ''))
+     )`
   }
 
   const result = await pool.query(
@@ -2153,9 +2207,10 @@ const findVeiculoByCrm = async (crm) => {
        ${veiculoSelectClause}
      FROM veiculo
      WHERE UPPER(BTRIM(COALESCE(crm, ''))) = UPPER($1)
+     ${modalidadeFilterClause}
      ORDER BY codigo ASC
      LIMIT 1`,
-    [normalizedCrm],
+    values,
   )
 
   return result.rows[0] ?? null
@@ -5158,7 +5213,7 @@ const parseCepsXml = (xmlContent) => {
 
 const normalizeImportedCepRecord = (record, index) => {
   const cep = normalizeCep(record.cep)
-  const logradouro = normalizeCredenciadaText(record.logradouro, 255)
+  const logradouro = normalizeCepImportLogradouro(record.logradouro, 255)
   const complemento = normalizeCredenciadaText(record.complemento, 255)
   const bairro = normalizeCredenciadaText(record.bairro, 120)
   const municipio = normalizeCredenciadaText(record.municipio, 120)
@@ -6595,6 +6650,8 @@ const upsertCredenciadaImportCep = async (client, record, importedCepSet = null)
     return null
   }
 
+  const normalizedLogradouro = normalizeCepImportLogradouro(record.logradouro, 255)
+
   if (importedCepSet?.has(record.cep)) {
     return record.cep
   }
@@ -6619,7 +6676,7 @@ const upsertCredenciadaImportCep = async (client, record, importedCepSet = null)
            uf = NULLIF($4, ''),
            data_modificacao = NOW()
        WHERE BTRIM(cep) = $5`,
-      [record.logradouro, record.bairro, record.municipio, uf || persistedUf, record.cep],
+      [normalizedLogradouro, record.bairro, record.municipio, uf || persistedUf, record.cep],
     )
 
     return record.cep
@@ -6640,7 +6697,7 @@ const upsertCredenciadaImportCep = async (client, record, importedCepSet = null)
        data_modificacao
      )
      VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), NOW(), NOW())`,
-    [record.cep, record.logradouro, record.bairro, record.municipio, uf],
+    [record.cep, normalizedLogradouro, record.bairro, record.municipio, uf],
   )
 
   return record.cep
@@ -8577,6 +8634,91 @@ const findLatestCredenciamentoTermoByTermoAdesao = async (termoAdesao, executor 
   return result.rows[0] ?? null
 }
 
+const calculateCredenciamentoTermoValorContratoByTermoAdesao = async (termoAdesao, executor = pool) => {
+  const normalizedTermo = normalizeOrdemServicoTermoAdesao(termoAdesao)
+
+  if (!normalizedTermo) {
+    return 0
+  }
+
+  const result = await executor.query(
+    `SELECT COALESCE(SUM(COALESCE(v.valor_veiculo, 0)), 0)::numeric(14, 2)::text AS total
+       FROM ${ordemServicoTableName} os
+       LEFT JOIN veiculo v
+         ON UPPER(BTRIM(COALESCE(v.crm, ''))) = UPPER(BTRIM(COALESCE(os.crm, '')))
+      WHERE REGEXP_REPLACE(COALESCE(BTRIM(os.termo_adesao), ''), '\\D', '', 'g') = REGEXP_REPLACE($1, '\\D', '', 'g')
+        AND UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO'`,
+    [normalizedTermo],
+  )
+
+  const normalizedTotal = normalizeDecimalValue(result.rows[0]?.total)
+  return typeof normalizedTotal === 'number' && !Number.isNaN(normalizedTotal)
+    ? normalizedTotal
+    : 0
+}
+
+const syncCredenciamentoTermoValorContratoByTermoAdesao = async (termoAdesao, executor = pool) => {
+  const normalizedTermo = normalizeOrdemServicoTermoAdesao(termoAdesao)
+
+  if (!normalizedTermo) {
+    return 0
+  }
+
+  const total = await calculateCredenciamentoTermoValorContratoByTermoAdesao(normalizedTermo, executor)
+
+  await executor.query(
+    `UPDATE ${credenciamentoTermoTableName}
+        SET valor_contrato = $2,
+            valor_contrato_atualizado = $2,
+            data_modificacao = NOW()
+      WHERE ${credenciamentoTermoNormalizedTermoExpression} = REGEXP_REPLACE($1, '\\D', '', 'g')`,
+    [normalizedTermo, total],
+  )
+
+  return total
+}
+
+const syncCredenciamentoTermoValoresByTermos = async (termos, executor = pool) => {
+  const normalizedTermos = Array.from(new Set((Array.isArray(termos) ? termos : [termos])
+    .map((termo) => normalizeOrdemServicoTermoAdesao(termo))
+    .filter(Boolean)))
+
+  for (const termoAdesao of normalizedTermos) {
+    await syncCredenciamentoTermoValorContratoByTermoAdesao(termoAdesao, executor)
+  }
+
+  return normalizedTermos
+}
+
+const listActiveCredenciamentoTermosByVehicleCrms = async (crms, executor = pool) => {
+  const normalizedCrms = Array.from(new Set((Array.isArray(crms) ? crms : [crms])
+    .map((crm) => normalizeVehicleCrm(crm))
+    .filter(Boolean)
+    .map((crm) => crm.toUpperCase())))
+
+  if (!normalizedCrms.length) {
+    return []
+  }
+
+  const result = await executor.query(
+    `SELECT DISTINCT COALESCE(BTRIM(termo_adesao), '') AS termo_adesao
+       FROM ${ordemServicoTableName}
+      WHERE UPPER(BTRIM(COALESCE(crm, ''))) = ANY($1::text[])
+        AND UPPER(BTRIM(COALESCE(situacao, ''))) = 'ATIVO'
+        AND COALESCE(BTRIM(termo_adesao), '') <> ''`,
+    [normalizedCrms],
+  )
+
+  return result.rows
+    .map((row) => normalizeOrdemServicoTermoAdesao(row?.termo_adesao))
+    .filter(Boolean)
+}
+
+const syncCredenciamentoTermoValoresByVehicleCrms = async (crms, executor = pool) => {
+  const termos = await listActiveCredenciamentoTermosByVehicleCrms(crms, executor)
+  return syncCredenciamentoTermoValoresByTermos(termos, executor)
+}
+
 const findEmissaoDocumentoParametroByDate = async (dataReferencia, executor = pool) => {
   const normalizedDateKey = normalizeEmissaoDocumentoDateKey(dataReferencia) || buildCurrentEmissaoDocumentoDateKey()
 
@@ -10109,6 +10251,26 @@ const ensureDatabaseSchema = async () => {
   await pool.query('SELECT setval(\'tipo_bancada_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM tipo_bancada), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_bancada_codigo_unique_idx ON tipo_bancada (codigo)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_bancada_descricao_unique_idx ON tipo_bancada (UPPER(BTRIM(descricao)))')
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS modalidade_tipo_bancada_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS modalidade_tipo_bancada (
+      codigo integer PRIMARY KEY DEFAULT nextval('modalidade_tipo_bancada_codigo_seq'),
+      modalidade_codigo integer NOT NULL REFERENCES modalidade(codigo) ON DELETE CASCADE,
+      tipo_bancada_codigo integer NOT NULL REFERENCES tipo_bancada(codigo) ON DELETE CASCADE
+    )
+  `)
+  await pool.query('ALTER TABLE modalidade_tipo_bancada ADD COLUMN IF NOT EXISTS modalidade_codigo integer')
+  await pool.query('ALTER TABLE modalidade_tipo_bancada ADD COLUMN IF NOT EXISTS tipo_bancada_codigo integer')
+  await pool.query('ALTER TABLE modalidade_tipo_bancada ALTER COLUMN codigo SET DEFAULT nextval(\'modalidade_tipo_bancada_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE modalidade_tipo_bancada_codigo_seq OWNED BY modalidade_tipo_bancada.codigo')
+  await pool.query('ALTER TABLE modalidade_tipo_bancada ALTER COLUMN modalidade_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE modalidade_tipo_bancada ALTER COLUMN tipo_bancada_codigo SET NOT NULL')
+  await pool.query('SELECT setval(\'modalidade_tipo_bancada_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM modalidade_tipo_bancada), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS modalidade_tipo_bancada_codigo_unique_idx ON modalidade_tipo_bancada (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS modalidade_tipo_bancada_unique_idx
+    ON modalidade_tipo_bancada (modalidade_codigo, tipo_bancada_codigo)
+  `)
   await pool.query('CREATE SEQUENCE IF NOT EXISTS condutor_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query('ALTER TABLE condutor ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
   await pool.query('ALTER TABLE condutor ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
@@ -11610,6 +11772,32 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === '/api/modalidade-tipo-bancada') {
+    try {
+      const result = await pool.query(
+        `SELECT ${modalidadeTipoBancadaAssociationSelectClause}
+         FROM modalidade_tipo_bancada associacao
+         INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+         INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+         ORDER BY BTRIM(CAST(modalidade_item.descricao AS text)) ASC,
+                  BTRIM(CAST(tipo_bancada_item.descricao AS text)) ASC,
+                  associacao.codigo ASC`,
+      )
+
+      sendJson(response, 200, {
+        items: result.rows,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar as associacoes de modalidade x tipo de bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'GET' && pathname === '/api/marca-modelo') {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
@@ -12760,16 +12948,17 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === '/api/veiculo/lookup') {
     try {
       const crm = normalizeVehicleCrm(requestUrl.searchParams.get('crm') ?? '')
+      const modalidadeCodigo = normalizeRequestValue(requestUrl.searchParams.get('modalidadeCodigo') ?? '')
 
       if (!crm) {
         sendJson(response, 400, { message: 'CRM e obrigatorio.' })
         return
       }
 
-      const item = await findVeiculoByCrm(crm)
+      const item = await findVeiculoByCrm(crm, { modalidadeCodigo })
 
       if (!item) {
-        sendJson(response, 404, { message: 'Veiculo nao encontrado.' })
+        sendJson(response, 404, { message: modalidadeCodigo ? 'Veiculo nao encontrado para a modalidade selecionada.' : 'Veiculo nao encontrado.' })
         return
       }
 
@@ -13278,6 +13467,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === '/api/veiculo') {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const modalidadeCodigo = normalizeRequestValue(requestUrl.searchParams.get('modalidadeCodigo') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
       const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
       const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'codigo')
@@ -13304,6 +13494,17 @@ const server = createServer(async (request, response) => {
           OR COALESCE(BTRIM(crm), '') ILIKE UPPER($${values.length})
           OR COALESCE(BTRIM(marca_modelo), '') ILIKE UPPER($${values.length})
           OR COALESCE(BTRIM(titular), '') ILIKE UPPER($${values.length})
+        )`)
+      }
+
+      if (modalidadeCodigo) {
+        values.push(modalidadeCodigo)
+        filters.push(`EXISTS (
+          SELECT 1
+          FROM modalidade_tipo_bancada associacao
+          INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+          WHERE CAST(associacao.modalidade_codigo AS text) = $${values.length}
+            AND UPPER(BTRIM(CAST(tipo_bancada_item.descricao AS text))) = UPPER(COALESCE(BTRIM(veiculo.tipo_de_bancada), ''))
         )`)
       }
 
@@ -15425,6 +15626,74 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'POST' && pathname === '/api/modalidade-tipo-bancada') {
+    try {
+      const body = await readJsonBody(request)
+      const modalidadeCodigo = normalizeRequestValue(body.modalidadeCodigo)
+      const tipoBancadaCodigo = normalizeRequestValue(body.tipoBancadaCodigo)
+
+      if (!modalidadeCodigo || !tipoBancadaCodigo) {
+        sendJson(response, 400, { message: 'Modalidade e tipo de bancada sao obrigatorios.' })
+        return
+      }
+
+      const modalidadeResult = await pool.query(
+        'SELECT 1 FROM modalidade WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [modalidadeCodigo],
+      )
+
+      if (modalidadeResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro da modalidade nao encontrado.' })
+        return
+      }
+
+      const tipoBancadaResult = await pool.query(
+        'SELECT 1 FROM tipo_bancada WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [tipoBancadaCodigo],
+      )
+
+      if (tipoBancadaResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro do tipo de bancada nao encontrado.' })
+        return
+      }
+
+      const duplicateAssociationResult = await pool.query(
+        `SELECT 1
+         FROM modalidade_tipo_bancada
+         WHERE CAST(modalidade_codigo AS text) = $1
+           AND CAST(tipo_bancada_codigo AS text) = $2
+         LIMIT 1`,
+        [modalidadeCodigo, tipoBancadaCodigo],
+      )
+
+      if (duplicateAssociationResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'A associacao ja existe.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO modalidade_tipo_bancada (modalidade_codigo, tipo_bancada_codigo)
+         VALUES ($1, $2)
+         RETURNING CAST(codigo AS text) AS codigo`,
+        [modalidadeCodigo, tipoBancadaCodigo],
+      )
+
+      const item = await findModalidadeTipoBancadaAssociationByCodigo(insertResult.rows[0]?.codigo)
+
+      sendJson(response, 201, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar a associacao de modalidade x tipo de bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'POST' && pathname === '/api/troca') {
     try {
       const body = await readJsonBody(request)
@@ -16221,6 +16490,8 @@ const server = createServer(async (request, response) => {
           )
         }
 
+        await syncCredenciamentoTermoValoresByTermos([createPayload.termoAdesao], client)
+
         await client.query('COMMIT')
 
         const item = await fetchCredenciamentoTermoItemByCodigo(pool, insertResult.rows[0].codigo)
@@ -16874,6 +17145,7 @@ const server = createServer(async (request, response) => {
         await rebalanceOrdemServicoRevisions(client)
         await syncCondutorVinculosFromOrdemServico(client)
         await syncMonitorVinculosFromOrdemServico(client)
+        await syncCredenciamentoTermoValoresByTermos([validationResult.payload.termoAdesao], client)
 
         const item = await fetchOrdemServicoItemByCodigo(client, insertedCodigo)
 
@@ -17981,6 +18253,7 @@ const server = createServer(async (request, response) => {
         }
 
         const updatedItem = await updateVeiculoByCodigo(client, originalCodigo, validationResult.payload)
+        await syncCredenciamentoTermoValoresByVehicleCrms([existingItem.crm, updatedItem?.crm], client)
         await client.query('COMMIT')
 
         sendJson(response, 200, {
@@ -18126,6 +18399,11 @@ const server = createServer(async (request, response) => {
           sendJson(response, 404, { message: 'Credenciamento termo nao encontrado.' })
           return
         }
+
+        await syncCredenciamentoTermoValoresByTermos([
+          existingItem.termo_adesao,
+          validationResult.payload.termoAdesao,
+        ], client)
 
         await client.query('COMMIT')
 
@@ -18498,6 +18776,7 @@ const server = createServer(async (request, response) => {
       const existingResult = await pool.query(
         `SELECT TO_CHAR(data_inclusao::date, 'YYYY-MM-DD') AS data_inclusao,
                 TO_CHAR(vigencia_os::date, 'YYYY-MM-DD') AS vigencia_os
+          , termo_adesao
           , situacao
           , cpf_condutor
           , cpf_preposto
@@ -18664,6 +18943,10 @@ const server = createServer(async (request, response) => {
         await rebalanceOrdemServicoRevisions(client)
         await syncCondutorVinculosFromOrdemServico(client)
         await syncMonitorVinculosFromOrdemServico(client)
+        await syncCredenciamentoTermoValoresByTermos([
+          existingItem.termo_adesao,
+          validationResult.payload.termoAdesao,
+        ], client)
 
         const item = await fetchOrdemServicoItemByCodigo(client, validationResult.payload.codigo)
 
@@ -18775,6 +19058,39 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao excluir o registro tipo_bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getModalidadeTipoBancadaAssociationCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getModalidadeTipoBancadaAssociationCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM modalidade_tipo_bancada WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao de modalidade x tipo de bancada nao encontrada.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir a associacao de modalidade x tipo de bancada.'
 
       sendJson(response, 500, { message })
     }
@@ -19050,19 +19366,37 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const deleteResult = await pool.query(
-        'DELETE FROM veiculo WHERE codigo = $1 RETURNING codigo::text AS codigo',
-        [codigo],
-      )
+      const client = await pool.connect()
 
-      if (deleteResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Veiculo nao encontrado.' })
-        return
+      try {
+        await client.query('BEGIN')
+
+        const existingItem = await fetchVeiculoAuditItemByCodigo(client, codigo)
+
+        if (!existingItem) {
+          await client.query('ROLLBACK')
+          sendJson(response, 404, { message: 'Veiculo nao encontrado.' })
+          return
+        }
+
+        const deleteResult = await client.query(
+          'DELETE FROM veiculo WHERE codigo = $1 RETURNING codigo::text AS codigo',
+          [codigo],
+        )
+
+        await syncCredenciamentoTermoValoresByVehicleCrms([existingItem.crm], client)
+
+        await client.query('COMMIT')
+
+        sendJson(response, 200, {
+          deletedCodigo: deleteResult.rows[0].codigo,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
       }
-
-      sendJson(response, 200, {
-        deletedCodigo: deleteResult.rows[0].codigo,
-      })
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -19317,7 +19651,8 @@ const server = createServer(async (request, response) => {
                data_encerramento = $3,
                data_modificacao = NOW()
            WHERE codigo = $1
-           RETURNING codigo::text AS codigo`,
+           RETURNING codigo::text AS codigo,
+                     termo_adesao`,
           [codigo, situacao, dataEncerramento || null],
         )
 
@@ -19326,6 +19661,8 @@ const server = createServer(async (request, response) => {
           sendJson(response, 404, { message: 'OrdemServico nao encontrada.' })
           return
         }
+
+        await syncCredenciamentoTermoValoresByTermos([updateResult.rows[0].termo_adesao], client)
 
         await client.query('COMMIT')
         sendJson(response, 200, { codigo: updateResult.rows[0].codigo })
@@ -19402,10 +19739,25 @@ const server = createServer(async (request, response) => {
       try {
         await client.query('BEGIN')
 
+        const existingResult = await client.query(
+          `SELECT termo_adesao
+             FROM ${ordemServicoTableName}
+            WHERE codigo = $1
+            LIMIT 1`,
+          [codigo],
+        )
+
+        if (existingResult.rowCount === 0) {
+          await client.query('ROLLBACK')
+          sendJson(response, 404, { message: 'OrdemServico nao encontrada.' })
+          return
+        }
+
         const deleteResult = await client.query(
           `DELETE FROM ${ordemServicoTableName}
            WHERE codigo = $1
-           RETURNING codigo::text AS codigo`,
+           RETURNING codigo::text AS codigo,
+                     termo_adesao`,
           [codigo],
         )
 
@@ -19418,6 +19770,10 @@ const server = createServer(async (request, response) => {
         await rebalanceOrdemServicoRevisions(client)
         await syncCondutorVinculosFromOrdemServico(client)
         await syncMonitorVinculosFromOrdemServico(client)
+        await syncCredenciamentoTermoValoresByTermos([
+          existingResult.rows[0]?.termo_adesao,
+          deleteResult.rows[0]?.termo_adesao,
+        ], client)
 
         await client.query('COMMIT')
         sendJson(response, 200, { deletedCodigo: deleteResult.rows[0].codigo })
