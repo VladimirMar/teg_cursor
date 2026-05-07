@@ -243,13 +243,9 @@
 
                   <label class="dsc-field-group" for="veiculo-tipo-de-bancada">
                     <span>Tipo de bancada</span>
-                    <input class="dsc-form-control" id="veiculo-tipo-de-bancada" type="text" list="veiculo-tipo-de-bancada-options" placeholder="DIGITE PARA FILTRAR A BANCADA" maxlength="50" />
-                    <datalist id="veiculo-tipo-de-bancada-options">
+                    <select class="dsc-form-control" id="veiculo-tipo-de-bancada">
                       <option value=""></option>
-                      <option value="Convencional"></option>
-                      <option value="Creche"></option>
-                      <option value="Acessível"></option>
-                    </datalist>
+                    </select>
                     <div class="dsc-form-error" id="veiculo-tipo-de-bancada-error"></div>
                   </label>
                   <fieldset class="dsc-field-group dsc-radio-field-group dsc-field-group-veiculo-os-especial">
@@ -385,7 +381,6 @@
       const seguradoraOptionsList = document.getElementById('veiculo-seguradora-options');
       const seguroTerminoInput = document.getElementById('veiculo-seguro-termino');
       const tipoDeBancadaInput = document.getElementById('veiculo-tipo-de-bancada');
-      const tipoDeBancadaOptionsList = document.getElementById('veiculo-tipo-de-bancada-options');
       const tipoDeVeiculoInput = document.getElementById('veiculo-tipo-de-veiculo');
       const tipoDeVeiculoOptionsList = document.getElementById('veiculo-tipo-de-veiculo-options');
       const marcaModeloInput = document.getElementById('veiculo-marca-modelo');
@@ -473,6 +468,8 @@
       let totalRejectionPages = 1;
       let currentRejectionSearch = '';
       let editingCodigo = null;
+      let originalCrmValue = '';
+      let originalPlacasValue = '';
       let bannerTimeoutId = null;
       let titularLookupRequestId = 0;
       let titularSuggestionRequestId = 0;
@@ -483,8 +480,8 @@
       let titularSuggestionOptions = [];
       let seguradoraOptions = [];
       let marcaModeloOptions = [];
+      let tipoDeBancadaOptions = [];
       const tipoDeVeiculoOptions = ['Ônibus', 'Micro-Ônibus'];
-      const tipoDeBancadaOptions = ['Convencional', 'Creche', 'Acessível'];
       const currencyFormatter = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL',
@@ -754,6 +751,20 @@
         return Array.from(uniqueValues.values()).sort((left, right) => left.localeCompare(right, 'pt-BR'));
       };
 
+      const buildTipoDeBancadaOptionList = (items = []) => {
+        const uniqueValues = new Map();
+
+        items.forEach((item) => {
+          const descricao = normalizeComboInput(String(item?.descricao || ''), 50);
+
+          if (descricao && !uniqueValues.has(normalizeKey(descricao))) {
+            uniqueValues.set(normalizeKey(descricao), descricao);
+          }
+        });
+
+        return Array.from(uniqueValues.values()).sort((left, right) => left.localeCompare(right, 'pt-BR'));
+      };
+
       const resolveOptionValue = (value, options, normalizer = normalizeComboInput) => {
         const normalizedValue = normalizer(String(value || ''));
 
@@ -814,12 +825,36 @@
       };
 
       const renderTipoDeBancadaOptions = (selectedValue = tipoDeBancadaInput.value || '') => {
-        renderDatalistOptions({
-          inputElement: tipoDeBancadaInput,
-          listElement: tipoDeBancadaOptionsList,
-          options: tipoDeBancadaOptions,
-          selectedValue,
+        const normalizedSelectedValue = normalizeComboInput(String(selectedValue || ''), 50);
+        const resolvedValue = resolveOptionValue(normalizedSelectedValue, tipoDeBancadaOptions, (value) => normalizeComboInput(value, 50));
+        const hasExactOption = tipoDeBancadaOptions.some((option) => normalizeKey(option) === normalizeKey(normalizedSelectedValue));
+        const optionValues = normalizedSelectedValue && !hasExactOption
+          ? [normalizedSelectedValue, ...tipoDeBancadaOptions]
+          : [...tipoDeBancadaOptions];
+        const renderedKeys = new Set();
+
+        tipoDeBancadaInput.innerHTML = '';
+
+        const blankOption = document.createElement('option');
+        blankOption.value = '';
+        blankOption.textContent = '';
+        tipoDeBancadaInput.appendChild(blankOption);
+
+        optionValues.forEach((optionValue) => {
+          const optionKey = normalizeKey(optionValue);
+
+          if (!optionValue || renderedKeys.has(optionKey)) {
+            return;
+          }
+
+          renderedKeys.add(optionKey);
+          const option = document.createElement('option');
+          option.value = optionValue;
+          option.textContent = optionValue;
+          tipoDeBancadaInput.appendChild(option);
         });
+
+        tipoDeBancadaInput.value = resolvedValue || (normalizedSelectedValue && !hasExactOption ? normalizedSelectedValue : '');
       };
 
       const renderTitularSuggestions = (items = []) => {
@@ -916,6 +951,26 @@
           marcaModeloOptions = [];
           renderMarcaModeloOptions();
           showBanner(getRequestErrorMessage(error, 'Falha ao carregar marcas/modelos.'), 'error');
+        }
+      };
+
+      const loadTipoDeBancadaOptions = async () => {
+        try {
+          const response = await fetch('/api/tipo-bancada?page=1&pageSize=50&sortBy=descricao&sortDirection=asc', {
+            headers: { Accept: 'application/json' },
+          });
+          const payload = await readJsonResponse(response);
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao carregar tipos de bancada.');
+          }
+
+          tipoDeBancadaOptions = buildTipoDeBancadaOptionList(payload.items || []);
+          renderTipoDeBancadaOptions();
+        } catch (error) {
+          tipoDeBancadaOptions = [];
+          renderTipoDeBancadaOptions();
+          showBanner(getRequestErrorMessage(error, 'Falha ao carregar tipos de bancada.'), 'error');
         }
       };
 
@@ -1296,7 +1351,26 @@
         return label || codigo;
       };
 
+      const shouldValidateActiveOrdemServicoConflict = ({
+        crmValue = crmInput.value,
+        placaValue = placasInput.value,
+      } = {}) => {
+        if (!editingCodigo) {
+          return true;
+        }
+
+        const normalizedCrm = normalizeCrm(crmValue);
+        const normalizedPlaca = normalizePlaca(placaValue);
+
+        return normalizedCrm !== originalCrmValue || normalizedPlaca !== originalPlacasValue;
+      };
+
       const validateActiveOrdemServicoPlaca = async (placaValue = placasInput.value, { showFormatError = false } = {}) => {
+        if (!shouldValidateActiveOrdemServicoConflict({ placaValue })) {
+          placasError.textContent = '';
+          return true;
+        }
+
         const normalizedPlaca = normalizePlaca(placaValue);
 
         if (!normalizedPlaca) {
@@ -1323,6 +1397,12 @@
       };
 
       const scheduleActiveOrdemServicoPlacaValidation = (placaValue = placasInput.value) => {
+        if (!shouldValidateActiveOrdemServicoConflict({ placaValue })) {
+          placaValidationRequestId += 1;
+          placasError.textContent = '';
+          return;
+        }
+
         const normalizedPlaca = normalizePlaca(placaValue);
 
         if (placaValidationTimeoutId) {
@@ -1705,6 +1785,8 @@
 
       const startInsert = ({ crm = '', placa = '' } = {}) => {
         editingCodigo = null;
+        originalCrmValue = '';
+        originalPlacasValue = '';
         form.reset();
         renderSeguradoraOptions('');
         renderMarcaModeloOptions('');
@@ -1721,8 +1803,10 @@
 
       const startEdit = (item) => {
         editingCodigo = item.codigo;
-        crmInput.value = normalizeCrm(item.crm || '');
-        placasInput.value = formatPlacaDisplay(item.placas || '');
+        originalCrmValue = normalizeCrm(item.crm || '');
+        originalPlacasValue = normalizePlaca(item.placas || '');
+        crmInput.value = originalCrmValue;
+        placasInput.value = formatPlacaDisplay(originalPlacasValue);
         anoInput.value = item.ano || '';
         capDetranInput.value = item.cap_detran || '';
         capTegInput.value = item.cap_teg || '';
@@ -1745,8 +1829,10 @@
 
       const startView = (item) => {
         editingCodigo = item.codigo;
-        crmInput.value = normalizeCrm(item.crm || '');
-        placasInput.value = formatPlacaDisplay(item.placas || '');
+        originalCrmValue = normalizeCrm(item.crm || '');
+        originalPlacasValue = normalizePlaca(item.placas || '');
+        crmInput.value = originalCrmValue;
+        placasInput.value = formatPlacaDisplay(originalPlacasValue);
         anoInput.value = item.ano || '';
         capDetranInput.value = item.cap_detran || '';
         capTegInput.value = item.cap_teg || '';
@@ -1868,6 +1954,10 @@
 
       crmInput.addEventListener('input', () => {
         crmInput.value = normalizeCrm(crmInput.value);
+
+        if (!shouldValidateActiveOrdemServicoConflict()) {
+          placasError.textContent = '';
+        }
       });
 
       placasInput.addEventListener('input', () => {
@@ -1939,9 +2029,8 @@
         renderTipoDeVeiculoOptions(tipoDeVeiculoInput.value);
       });
 
-      tipoDeBancadaInput.addEventListener('input', () => {
-        tipoDeBancadaInput.value = normalizeComboInput(tipoDeBancadaInput.value, 50);
-        renderTipoDeBancadaOptions(tipoDeBancadaInput.value);
+      tipoDeBancadaInput.addEventListener('change', () => {
+        tipoDeBancadaInput.value = resolveOptionValue(tipoDeBancadaInput.value, tipoDeBancadaOptions, (value) => normalizeComboInput(value, 50));
       });
 
       cnpjCpfInput.addEventListener('input', () => {
@@ -2385,6 +2474,7 @@
       [valCrmInput, seguroTerminoInput].forEach(enableFullDateSelection);
       void loadSeguradoraOptions();
       void loadMarcaModeloOptions();
+      void loadTipoDeBancadaOptions();
 
       hideForm();
 

@@ -6,6 +6,8 @@ import { createDreItem, deleteDreItem, listDreItemsPaginated, updateDreItem } fr
 import type { DreItem } from './services/dre'
 import { createModalidadeItem, deleteModalidadeItem, listModalidadeItemsPaginated, updateModalidadeItem } from './services/modalidade'
 import type { ModalidadeItem } from './services/modalidade'
+import { createTipoBancadaItem, deleteTipoBancadaItem, listTipoBancadaItemsPaginated, updateTipoBancadaItem } from './services/tipoBancada'
+import type { TipoBancadaItem } from './services/tipoBancada'
 import { createTitularItem, deleteTitularItem, listTitularItemsPaginated, updateTitularItem } from './services/titular'
 import type { TitularItem } from './services/titular'
 import { createMarcaModeloItem, deleteMarcaModeloItem, listMarcaModeloItemsPaginated, updateMarcaModeloItem } from './services/marcaModelo'
@@ -29,7 +31,7 @@ type DashboardBancadaMatrixRow = {
 }
 
 type StatusTone = 'idle' | 'error' | 'success'
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -714,6 +716,24 @@ function App() {
   const [modalidadeSortBy, setModalidadeSortBy] = useState<DreSortField>('codigo')
   const [modalidadeSortDirection, setModalidadeSortDirection] = useState<DreSortDirection>('asc')
   const deferredModalidadeSearch = useDeferredValue(modalidadeSearch)
+  const [tipoBancadaItems, setTipoBancadaItems] = useState<TipoBancadaItem[]>([])
+  const [tipoBancadaDescricao, setTipoBancadaDescricao] = useState('')
+  const [tipoBancadaDescricaoError, setTipoBancadaDescricaoError] = useState('')
+  const [tipoBancadaStatusMessage, setTipoBancadaStatusMessage] = useState('')
+  const [tipoBancadaStatusTone, setTipoBancadaStatusTone] = useState<StatusTone>('idle')
+  const [isLoadingTipoBancada, setIsLoadingTipoBancada] = useState(false)
+  const [isSavingTipoBancada, setIsSavingTipoBancada] = useState(false)
+  const [isDeletingTipoBancada, setIsDeletingTipoBancada] = useState(false)
+  const [isTipoBancadaFormVisible, setIsTipoBancadaFormVisible] = useState(false)
+  const [editingTipoBancadaCodigo, setEditingTipoBancadaCodigo] = useState<string | null>(null)
+  const [tipoBancadaFormMode, setTipoBancadaFormMode] = useState<FormMode>('create')
+  const [tipoBancadaSearch, setTipoBancadaSearch] = useState('')
+  const [tipoBancadaPage, setTipoBancadaPage] = useState(1)
+  const [tipoBancadaTotalItems, setTipoBancadaTotalItems] = useState(0)
+  const [tipoBancadaTotalPages, setTipoBancadaTotalPages] = useState(1)
+  const [tipoBancadaSortBy, setTipoBancadaSortBy] = useState<DreSortField>('codigo')
+  const [tipoBancadaSortDirection, setTipoBancadaSortDirection] = useState<DreSortDirection>('asc')
+  const deferredTipoBancadaSearch = useDeferredValue(tipoBancadaSearch)
   const [titularItems, setTitularItems] = useState<TitularItem[]>([])
   const [titularCnpjCpf, setTitularCnpjCpf] = useState('')
   const [titularNome, setTitularNome] = useState('')
@@ -922,6 +942,39 @@ function App() {
     }
   }, [deferredModalidadeSearch, modalidadeSortBy, modalidadeSortDirection])
 
+  const loadTipoBancadaItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingTipoBancada(true)
+    setTipoBancadaStatusMessage('Carregando registros de tipo de bancada...')
+    setTipoBancadaStatusTone('idle')
+
+    try {
+      const result = await listTipoBancadaItemsPaginated({
+        search: deferredTipoBancadaSearch,
+        page: pageToLoad,
+        pageSize: DRE_PAGE_SIZE,
+        sortBy: tipoBancadaSortBy,
+        sortDirection: tipoBancadaSortDirection,
+      })
+
+      setTipoBancadaItems(result.items)
+      setTipoBancadaTotalItems(result.total)
+      setTipoBancadaTotalPages(result.totalPages)
+      setTipoBancadaPage(result.page)
+      setTipoBancadaSortBy(result.sortBy)
+      setTipoBancadaSortDirection(result.sortDirection)
+      setTipoBancadaStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Tipo de Bancada.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de tipo de bancada.'
+
+      setTipoBancadaStatusTone('error')
+      setTipoBancadaStatusMessage(message)
+    } finally {
+      setIsLoadingTipoBancada(false)
+    }
+  }, [deferredTipoBancadaSearch, tipoBancadaSortBy, tipoBancadaSortDirection])
+
   const loadSeguradoraItems = useCallback(async (pageToLoad: number) => {
     setIsLoadingSeguradora(true)
     setSeguradoraStatusMessage('Carregando registros de seguradoras...')
@@ -1038,6 +1091,14 @@ function App() {
   }, [activeView, loadModalidadeItems, modalidadePage, session])
 
   useEffect(() => {
+    if (!session || activeView !== 'tipoBancada') {
+      return
+    }
+
+    void loadTipoBancadaItems(tipoBancadaPage)
+  }, [activeView, loadTipoBancadaItems, session, tipoBancadaPage])
+
+  useEffect(() => {
     if (!session || activeView !== 'seguradora') {
       return
     }
@@ -1060,6 +1121,10 @@ function App() {
   useEffect(() => {
     setModalidadePage(1)
   }, [deferredModalidadeSearch])
+
+  useEffect(() => {
+    setTipoBancadaPage(1)
+  }, [deferredTipoBancadaSearch])
 
   useEffect(() => {
     if (!session || activeView !== 'titular') {
@@ -1279,6 +1344,13 @@ function App() {
     setModalidadeFormMode('create')
   }
 
+  const resetTipoBancadaForm = () => {
+    setTipoBancadaDescricao('')
+    setTipoBancadaDescricaoError('')
+    setEditingTipoBancadaCodigo(null)
+    setTipoBancadaFormMode('create')
+  }
+
   const handleStartInsertDre = () => {
     resetDreForm()
     setDreFormMode('create')
@@ -1293,6 +1365,14 @@ function App() {
     setModalidadeStatusTone('idle')
     setModalidadeStatusMessage('')
     setIsModalidadeFormVisible(true)
+  }
+
+  const handleStartInsertTipoBancada = () => {
+    resetTipoBancadaForm()
+    setTipoBancadaFormMode('create')
+    setTipoBancadaStatusTone('idle')
+    setTipoBancadaStatusMessage('')
+    setIsTipoBancadaFormVisible(true)
   }
 
   const handleFilterDreSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -1317,6 +1397,18 @@ function App() {
   const handleClearModalidadeFilter = () => {
     setModalidadeSearch('')
     setModalidadePage(1)
+  }
+
+  const handleFilterTipoBancadaSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setTipoBancadaPage(1)
+    setTipoBancadaStatusMessage('Aplicando filtro de tipo de bancada...')
+    setTipoBancadaStatusTone('idle')
+  }
+
+  const handleClearTipoBancadaFilter = () => {
+    setTipoBancadaSearch('')
+    setTipoBancadaPage(1)
   }
 
   const handleSortDre = (field: DreSortField) => {
@@ -1359,6 +1451,27 @@ function App() {
     }
 
     return modalidadeSortDirection === 'asc' ? '↑' : '↓'
+  }
+
+  const handleSortTipoBancada = (field: DreSortField) => {
+    setTipoBancadaPage(1)
+    setTipoBancadaSortBy((currentField) => {
+      if (currentField === field) {
+        setTipoBancadaSortDirection((currentDirection) => currentDirection === 'asc' ? 'desc' : 'asc')
+        return currentField
+      }
+
+      setTipoBancadaSortDirection('asc')
+      return field
+    })
+  }
+
+  const getTipoBancadaSortIndicator = (field: DreSortField) => {
+    if (tipoBancadaSortBy !== field) {
+      return '↕'
+    }
+
+    return tipoBancadaSortDirection === 'asc' ? '↑' : '↓'
   }
 
   const handleStartEditDre = (item: DreItem) => {
@@ -1419,6 +1532,33 @@ function App() {
     setModalidadeStatusMessage('')
   }
 
+  const handleStartEditTipoBancada = (item: TipoBancadaItem) => {
+    setEditingTipoBancadaCodigo(item.codigo)
+    setTipoBancadaFormMode('edit')
+    setTipoBancadaDescricao(item.descricao)
+    setTipoBancadaDescricaoError('')
+    setTipoBancadaStatusTone('idle')
+    setTipoBancadaStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsTipoBancadaFormVisible(true)
+  }
+
+  const handleStartViewTipoBancada = (item: TipoBancadaItem) => {
+    setEditingTipoBancadaCodigo(item.codigo)
+    setTipoBancadaFormMode('view')
+    setTipoBancadaDescricao(item.descricao)
+    setTipoBancadaDescricaoError('')
+    setTipoBancadaStatusTone('idle')
+    setTipoBancadaStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsTipoBancadaFormVisible(true)
+  }
+
+  const handleCancelTipoBancadaForm = () => {
+    resetTipoBancadaForm()
+    setIsTipoBancadaFormVisible(false)
+    setTipoBancadaStatusTone('idle')
+    setTipoBancadaStatusMessage('')
+  }
+
   useEffect(() => {
     if (!isModalidadeFormVisible) {
       return
@@ -1439,6 +1579,27 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [handleCancelModalidadeForm, isModalidadeFormVisible, isSavingModalidade])
+
+  useEffect(() => {
+    if (!isTipoBancadaFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingTipoBancada) {
+        handleCancelTipoBancadaForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelTipoBancadaForm, isSavingTipoBancada, isTipoBancadaFormVisible])
 
   const handleCreateDre = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -1563,6 +1724,63 @@ function App() {
     }
   }
 
+  const handleCreateTipoBancada = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (tipoBancadaFormMode === 'view') {
+      setTipoBancadaStatusTone('idle')
+      setTipoBancadaStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    const normalizedDescricao = tipoBancadaDescricao.trim()
+    const editingCodigo = editingTipoBancadaCodigo
+    let hasError = false
+
+    setTipoBancadaDescricaoError('')
+
+    if (!normalizedDescricao) {
+      setTipoBancadaDescricaoError('Descricao e obrigatoria.')
+      hasError = true
+    }
+
+    if (hasError) {
+      setTipoBancadaStatusTone('error')
+      setTipoBancadaStatusMessage('Corrija os campos do tipo de bancada para continuar.')
+      return
+    }
+
+    setIsSavingTipoBancada(true)
+    setTipoBancadaStatusTone('idle')
+    setTipoBancadaStatusMessage(editingCodigo ? 'Alterando registro do tipo de bancada...' : 'Gravando registro do tipo de bancada...')
+
+    try {
+      const savedItem = editingCodigo
+        ? await updateTipoBancadaItem(editingCodigo, {
+            descricao: normalizedDescricao,
+          })
+        : await createTipoBancadaItem({
+            descricao: normalizedDescricao,
+          })
+
+      void savedItem
+      resetTipoBancadaForm()
+      setIsTipoBancadaFormVisible(false)
+      setTipoBancadaStatusTone('success')
+      setTipoBancadaStatusMessage(editingCodigo ? 'Registro do tipo de bancada alterado com sucesso.' : 'Registro do tipo de bancada cadastrado com sucesso.')
+      await loadTipoBancadaItems(editingCodigo ? tipoBancadaPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao cadastrar registro do tipo de bancada.'
+
+      setTipoBancadaStatusTone('error')
+      setTipoBancadaStatusMessage(message)
+    } finally {
+      setIsSavingTipoBancada(false)
+    }
+  }
+
   const handleDeleteDre = async (item: DreItem) => {
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
@@ -1632,6 +1850,42 @@ function App() {
       setModalidadeStatusMessage(message)
     } finally {
       setIsDeletingModalidade(false)
+    }
+  }
+
+  const handleDeleteTipoBancada = async (item: TipoBancadaItem) => {
+    const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingTipoBancada(true)
+    setTipoBancadaStatusTone('idle')
+    setTipoBancadaStatusMessage(`Excluindo registro ${item.codigo}...`)
+
+    try {
+      const deletedCodigo = await deleteTipoBancadaItem(item.codigo)
+      setTipoBancadaItems((currentItems) => currentItems.filter((currentItem) => currentItem.codigo !== deletedCodigo))
+
+      if (editingTipoBancadaCodigo === item.codigo) {
+        resetTipoBancadaForm()
+        setIsTipoBancadaFormVisible(false)
+      }
+
+      setTipoBancadaStatusTone('success')
+      setTipoBancadaStatusMessage('Registro do tipo de bancada excluido com sucesso.')
+      const nextPage = tipoBancadaItems.length === 1 && tipoBancadaPage > 1 ? tipoBancadaPage - 1 : tipoBancadaPage
+      await loadTipoBancadaItems(nextPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir registro do tipo de bancada.'
+
+      setTipoBancadaStatusTone('error')
+      setTipoBancadaStatusMessage(message)
+    } finally {
+      setIsDeletingTipoBancada(false)
     }
   }
 
@@ -2070,6 +2324,7 @@ function App() {
   useEffect(() => {
     const hasOpenManagementModal = isDreFormVisible
       || isModalidadeFormVisible
+      || isTipoBancadaFormVisible
       || isTitularFormVisible
       || isMarcaModeloFormVisible
       || isSeguradoraFormVisible
@@ -2095,6 +2350,11 @@ function App() {
 
       if (isModalidadeFormVisible && !isSavingModalidade) {
         handleCancelModalidadeForm()
+        return
+      }
+
+      if (isTipoBancadaFormVisible && !isSavingTipoBancada) {
+        handleCancelTipoBancadaForm()
         return
       }
 
@@ -2134,6 +2394,7 @@ function App() {
     handleCancelMarcaModeloForm,
     handleCancelModalidadeForm,
     handleCancelSeguradoraForm,
+    handleCancelTipoBancadaForm,
     handleCancelTitularForm,
     handleCloseDashboardDrillDown,
     handleCloseDashboardOsPopup,
@@ -2142,10 +2403,12 @@ function App() {
     isDreFormVisible,
     isMarcaModeloFormVisible,
     isModalidadeFormVisible,
+    isTipoBancadaFormVisible,
     isSavingDre,
     isSavingMarcaModelo,
     isSavingModalidade,
     isSavingSeguradora,
+    isSavingTipoBancada,
     isSavingTitular,
     isSeguradoraFormVisible,
     isTitularFormVisible,
@@ -2338,6 +2601,8 @@ function App() {
   const canGoToNextDrePage = drePage < dreTotalPages
   const canGoToPreviousModalidadePage = modalidadePage > 1
   const canGoToNextModalidadePage = modalidadePage < modalidadeTotalPages
+  const canGoToPreviousTipoBancadaPage = tipoBancadaPage > 1
+  const canGoToNextTipoBancadaPage = tipoBancadaPage < tipoBancadaTotalPages
   const canGoToPreviousTitularPage = titularPage > 1
   const canGoToNextTitularPage = titularPage < titularTotalPages
   const canGoToPreviousMarcaModeloPage = marcaModeloPage > 1
@@ -2653,6 +2918,12 @@ function App() {
                   onClick={() => setActiveView('modalidade')}
                 >
                   Modalidade
+                </li>
+                <li
+                  className={`menu-subitem ${activeView === 'tipoBancada' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('tipoBancada')}
+                >
+                  Tipo de Bancada
                 </li>
                 <li
                   className={`menu-subitem ${activeView === 'marcaModelo' ? 'menu-subitem-active' : ''}`}
@@ -3635,6 +3906,221 @@ function App() {
                     className="secondary-button management-pagination-button management-pagination-button-icon"
                     onClick={() => setModalidadePage(modalidadeTotalPages)}
                     disabled={!canGoToNextModalidadePage || isLoadingModalidade}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'tipoBancada' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro administrativo</p>
+              <h2 id="content-title">Tabela Tipo de Bancada</h2>
+              <p className="content-description">
+                Cadastre e consulte os registros da tabela Tipo de Bancada. O codigo e gerado
+                automaticamente e a descricao nao pode se repetir.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertTipoBancada}
+                  disabled={isSavingTipoBancada || isDeletingTipoBancada}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterTipoBancadaSubmit}>
+                  <input
+                    className="management-filter-input"
+                    type="text"
+                    placeholder="Filtrar por codigo ou descricao"
+                    value={tipoBancadaSearch}
+                    onChange={(event) => setTipoBancadaSearch(event.target.value)}
+                  />
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearTipoBancadaFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isTipoBancadaFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingTipoBancada) {
+                      handleCancelTipoBancadaForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="tipo-bancada-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateTipoBancada} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <h2 id="tipo-bancada-modal-title">TIPO DE BANCADA</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelTipoBancadaForm}
+                          disabled={isSavingTipoBancada}
+                          aria-label="Fechar formulario de tipo de bancada"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {tipoBancadaFormMode === 'view' ? 'Consulta de registro' : editingTipoBancadaCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="tipo-bancada-descricao">
+                        <span>Descricao</span>
+                        <input
+                          id="tipo-bancada-descricao"
+                          name="descricao"
+                          type="text"
+                          value={tipoBancadaDescricao}
+                          onChange={(event) => setTipoBancadaDescricao(event.target.value)}
+                          disabled={isSavingTipoBancada || tipoBancadaFormMode === 'view'}
+                          aria-invalid={Boolean(tipoBancadaDescricaoError)}
+                        />
+                        {tipoBancadaDescricaoError ? <strong className="field-error">{tipoBancadaDescricaoError}</strong> : null}
+                      </label>
+
+                      <p className={`status-message status-${tipoBancadaStatusTone}`} aria-live="polite">
+                        {tipoBancadaStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {tipoBancadaFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingTipoBancada}>
+                            {isSavingTipoBancada ? 'Salvando...' : editingTipoBancadaCodigo ? 'Salvar alteracao' : 'Salvar Tipo de Bancada'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelTipoBancadaForm} disabled={isSavingTipoBancada}>
+                          {tipoBancadaFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingTipoBancada ? 'Atualizando...' : `${tipoBancadaTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortTipoBancada('codigo')}>
+                            Codigo <span>{getTipoBancadaSortIndicator('codigo')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortTipoBancada('descricao')}>
+                            Descricao <span>{getTipoBancadaSortIndicator('descricao')}</span>
+                          </button>
+                        </th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tipoBancadaItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.codigo}</td>
+                          <td>{item.descricao}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button type="button" className="row-action-button" onClick={() => handleStartViewTipoBancada(item)}>
+                                Consulta
+                              </button>
+                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoBancada(item)}>
+                                Alterar
+                              </button>
+                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoBancada(item)}>
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {!isLoadingTipoBancada && tipoBancadaItems.length === 0 ? (
+                    <p className="management-empty-state">Nenhum registro de tipo de bancada encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${tipoBancadaStatusTone}`} aria-live="polite">
+                  {isTipoBancadaFormVisible ? '' : tipoBancadaStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoBancadaPage(1)}
+                    disabled={!canGoToPreviousTipoBancadaPage || isLoadingTipoBancada}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoBancadaPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousTipoBancadaPage || isLoadingTipoBancada}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {tipoBancadaPage} de {tipoBancadaTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoBancadaPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextTipoBancadaPage || isLoadingTipoBancada}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoBancadaPage(tipoBancadaTotalPages)}
+                    disabled={!canGoToNextTipoBancadaPage || isLoadingTipoBancada}
                     title="Ultimo registro"
                     aria-label="Ultimo registro"
                   >

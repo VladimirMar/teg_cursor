@@ -330,6 +330,11 @@ const getModalidadeCodigoFromUrl = (url) => {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+const getTipoBancadaCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/tipo-bancada\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const getMarcaModeloCodigoFromUrl = (url) => {
   const match = url.match(/^\/api\/marca-modelo\/([^/]+)$/)
   return match ? decodeURIComponent(match[1]) : null
@@ -535,11 +540,11 @@ const normalizeTipoVinculo = (value) => {
   }
 
   if (normalizedKey === 'socio') {
-    return 'S\u00f3cio'
+    return 'Socio'
   }
 
   if (normalizedKey === 'funcionario') {
-    return 'Funcion\u00e1rio'
+    return 'Funcionario'
   }
 
   return null
@@ -877,6 +882,10 @@ const modalidadeSelectClause = `
   CAST(codigo AS text) AS codigo,
   BTRIM(CAST(descricao AS text)) AS descricao`
 
+const tipoBancadaSelectClause = `
+  CAST(codigo AS text) AS codigo,
+  BTRIM(CAST(descricao AS text)) AS descricao`
+
 const normalizeModalidadeDescriptionKey = (value) => normalizeRequestValue(value)
   .toUpperCase()
   .replace(/\s+/g, '_')
@@ -914,6 +923,58 @@ const findModalidadeByCodigoOrDescription = async ({ codigo, descricao }) => {
   )
 
   return result.rows[0] ?? null
+}
+
+const normalizeTipoBancadaDescription = (value) => {
+  return normalizeRequestValue(value)
+    .replace(/\s+/g, ' ')
+    .slice(0, 255)
+}
+
+const findTipoBancadaByDescription = async (descricao, executor = pool) => {
+  const normalizedDescricao = normalizeTipoBancadaDescription(descricao)
+
+  if (!normalizedDescricao) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${tipoBancadaSelectClause}
+     FROM tipo_bancada
+     WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1)
+     LIMIT 1`,
+    [normalizedDescricao],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const ensureTipoBancadaEntriesFromVeiculo = async (executor = pool) => {
+  const existingValuesResult = await executor.query(`
+    SELECT DISTINCT BTRIM(COALESCE(tipo_de_bancada, '')) AS descricao
+    FROM veiculo
+    WHERE BTRIM(COALESCE(tipo_de_bancada, '')) <> ''
+    ORDER BY 1
+  `)
+
+  for (const row of existingValuesResult.rows) {
+    const descricao = normalizeTipoBancadaDescription(row.descricao)
+
+    if (!descricao) {
+      continue
+    }
+
+    await executor.query(
+      `INSERT INTO tipo_bancada (descricao)
+       SELECT CAST($1 AS varchar(255))
+       WHERE NOT EXISTS (
+         SELECT 1
+         FROM tipo_bancada
+         WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER(CAST($1 AS text))
+       )`,
+      [descricao],
+    )
+  }
 }
 
 const deriveModalidadeDescricaoFromDreDescricao = (dreDescricao) => {
@@ -2654,25 +2715,9 @@ const normalizeTipoDeBancada = (value) => {
     return ''
   }
 
-  const normalizedKey = normalizedValue
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z]/g, '')
-
-  if (normalizedKey === 'convencional') {
-    return 'Convencional'
-  }
-
-  if (normalizedKey === 'creche') {
-    return 'Creche'
-  }
-
-  if (normalizedKey === 'acessivel') {
-    return 'Acess\u00edvel'
-  }
-
-  return null
+  return normalizedValue
+    .replace(/\s+/g, ' ')
+    .slice(0, 50)
 }
 
 const normalizeOsEspecial = (value) => {
@@ -3019,7 +3064,7 @@ const normalizeImportedVeiculoRecord = (record, index) => {
     throw new Error(`${itemLabel}: termino do seguro deve ser maior ou igual ao inicio no XML.`)
   }
 
-  if (tipoDeBancada === null) {
+  if (!tipoDeBancada) {
     throw new Error(`${itemLabel}: tipo de bancada invalido no XML.`)
   }
 
@@ -4860,6 +4905,30 @@ const importMonitorXmlFile = async (fileName) => {
     await client.query('TRUNCATE TABLE monitor_import_recusa RESTART IDENTITY')
     let inserted = 0
     let updated = 0
+    const existingMonitorRowsResult = await client.query(
+      `SELECT
+         codigo::int AS codigo,
+         regexp_replace(COALESCE(cpf_monitor, ''), '[^0-9]', '', 'g') AS cpf_digits
+       FROM monitor`,
+    )
+    const existingMonitorCodeMap = new Map()
+    const existingMonitorCpfMap = new Map()
+    const pendingMonitorInsertMap = new Map()
+    const pendingMonitorUpdateMap = new Map()
+
+    for (const row of existingMonitorRowsResult.rows) {
+      const codigo = Number(row.codigo)
+
+      if (codigo > 0) {
+        existingMonitorCodeMap.set(codigo, codigo)
+      }
+
+      const cpfDigits = normalizeRequestValue(row.cpf_digits)
+
+      if (codigo > 0 && cpfDigits && !existingMonitorCpfMap.has(cpfDigits)) {
+        existingMonitorCpfMap.set(cpfDigits, codigo)
+      }
+    }
 
     for (const skippedRecord of skippedRecords) {
       await client.query(
@@ -4889,10 +4958,9 @@ const importMonitorXmlFile = async (fileName) => {
     }
 
     for (const record of normalizedRecords) {
-      const existingByCodeResult = await client.query('SELECT codigo::text AS codigo FROM monitor WHERE codigo = $1 LIMIT 1', [record.codigo])
-      const existingByCpfItem = await findMonitorByCpf(record.cpfMonitor, client)
-      const existingByCodeCodigo = Number(existingByCodeResult.rows[0]?.codigo || 0)
-      const existingByCpfCodigo = Number(existingByCpfItem?.codigo || 0)
+      const existingByCodeCodigo = Number(existingMonitorCodeMap.get(record.codigo) || 0)
+      const cpfDigits = extractDocumentDigits(record.cpfMonitor)
+      const existingByCpfCodigo = Number((cpfDigits && existingMonitorCpfMap.get(cpfDigits)) || 0)
 
       if (existingByCodeCodigo > 0 && existingByCpfCodigo > 0 && existingByCodeCodigo !== existingByCpfCodigo) {
         const skippedRecord = {
@@ -4936,31 +5004,79 @@ const importMonitorXmlFile = async (fileName) => {
       const targetCodigo = existingByCodeCodigo > 0 ? existingByCodeCodigo : existingByCpfCodigo
 
       if (targetCodigo > 0) {
-        await client.query(
-          `UPDATE monitor
-           SET monitor = $1,
-               rg_monitor = NULL,
-               cpf_monitor = $2,
-               curso_monitor = NULLIF($3, '')::date,
-               validade_curso = NULLIF($4, '')::date,
-               tipo_vinculo = NULLIF($5, ''),
-               nascimento = NULLIF($6, '')::date,
-               data_modificacao = NOW()
-           WHERE codigo = $7`,
-          [
-            record.monitor,
-            record.cpfMonitor,
-            record.cursoMonitor,
-            record.validadeCurso,
-            record.tipoVinculo,
-            record.nascimento,
-            targetCodigo,
-          ],
-        )
+        const nextRecord = {
+          codigo: targetCodigo,
+          monitor: record.monitor,
+          cpf_monitor: record.cpfMonitor,
+          curso_monitor: record.cursoMonitor,
+          validade_curso: record.validadeCurso,
+          tipo_vinculo: record.tipoVinculo,
+          nascimento: record.nascimento,
+        }
+
+        if (pendingMonitorInsertMap.has(targetCodigo)) {
+          pendingMonitorInsertMap.set(targetCodigo, nextRecord)
+        } else {
+          pendingMonitorUpdateMap.set(targetCodigo, nextRecord)
+        }
         updated += 1
+        if (cpfDigits) {
+          existingMonitorCpfMap.set(cpfDigits, targetCodigo)
+        }
+        existingMonitorCodeMap.set(targetCodigo, targetCodigo)
         continue
       }
 
+      pendingMonitorInsertMap.set(record.codigo, {
+        codigo: record.codigo,
+        monitor: record.monitor,
+        cpf_monitor: record.cpfMonitor,
+        curso_monitor: record.cursoMonitor,
+        validade_curso: record.validadeCurso,
+        tipo_vinculo: record.tipoVinculo,
+        nascimento: record.nascimento,
+      })
+      existingMonitorCodeMap.set(record.codigo, record.codigo)
+      if (cpfDigits) {
+        existingMonitorCpfMap.set(cpfDigits, record.codigo)
+      }
+      inserted += 1
+    }
+
+    const pendingMonitorUpdateRecords = Array.from(pendingMonitorUpdateMap.values())
+
+    if (pendingMonitorUpdateRecords.length) {
+      await client.query(
+        `WITH import_records AS (
+           SELECT *
+           FROM jsonb_to_recordset($1::jsonb) AS record(
+             codigo int,
+             monitor text,
+             cpf_monitor text,
+             curso_monitor text,
+             validade_curso text,
+             tipo_vinculo text,
+             nascimento text
+           )
+         )
+         UPDATE monitor AS target
+            SET monitor = import_records.monitor,
+                rg_monitor = NULL,
+                cpf_monitor = import_records.cpf_monitor,
+                curso_monitor = NULLIF(import_records.curso_monitor, '')::date,
+                validade_curso = NULLIF(import_records.validade_curso, '')::date,
+                tipo_vinculo = NULLIF(import_records.tipo_vinculo, ''),
+                nascimento = NULLIF(import_records.nascimento, '')::date,
+                data_modificacao = NOW()
+           FROM import_records
+          WHERE target.codigo = import_records.codigo`,
+        [JSON.stringify(pendingMonitorUpdateRecords)],
+      )
+    }
+
+    const pendingMonitorInsertRecords = Array.from(pendingMonitorInsertMap.values())
+
+    if (pendingMonitorInsertRecords.length) {
       await client.query(
         `INSERT INTO monitor (
            codigo,
@@ -4973,18 +5089,27 @@ const importMonitorXmlFile = async (fileName) => {
            data_inclusao,
            data_modificacao
          )
-         VALUES ($1, $2, $3, NULLIF($4, '')::date, NULLIF($5, '')::date, NULLIF($6, ''), NULLIF($7, '')::date, NOW(), NOW())`,
-        [
-          record.codigo,
-          record.monitor,
-          record.cpfMonitor,
-          record.cursoMonitor,
-          record.validadeCurso,
-          record.tipoVinculo,
-          record.nascimento,
-        ],
+         SELECT
+           record.codigo,
+           record.monitor,
+           record.cpf_monitor,
+           NULLIF(record.curso_monitor, '')::date,
+           NULLIF(record.validade_curso, '')::date,
+           NULLIF(record.tipo_vinculo, ''),
+           NULLIF(record.nascimento, '')::date,
+           NOW(),
+           NOW()
+         FROM jsonb_to_recordset($1::jsonb) AS record(
+           codigo int,
+           monitor text,
+           cpf_monitor text,
+           curso_monitor text,
+           validade_curso text,
+           tipo_vinculo text,
+           nascimento text
+         )`,
+        [JSON.stringify(pendingMonitorInsertRecords)],
       )
-      inserted += 1
     }
 
     if (normalizedRecords.length) {
@@ -7694,13 +7819,14 @@ const validateVeiculoPayload = async ({
   const normalizedSeguradora = normalizeCredenciadaText(seguradora, 255)
   const normalizedSeguroInicio = normalizeRequestValue(seguroInicio)
   const normalizedSeguroTermino = normalizeRequestValue(seguroTermino)
-  const normalizedTipoDeBancada = normalizeTipoDeBancada(tipoDeBancada)
+  const requestedTipoDeBancada = normalizeTipoDeBancada(tipoDeBancada)
   const normalizedTipoDeVeiculo = normalizeTipoDeVeiculo(tipoDeVeiculo)
   const normalizedMarcaModelo = normalizeCredenciadaText(marcaModelo, 255)
   let normalizedTitular = normalizeCredenciadaText(titular, 255)
   const normalizedCnpjCpf = normalizeCnpjCpf(cnpjCpf)
   const normalizedValorVeiculo = normalizeVehicleMoney(valorVeiculo)
   const normalizedOsEspecial = normalizeOsEspecial(osEspecial)
+  let normalizedTipoDeBancada = ''
 
   if (normalizedCodigo !== null && Number.isNaN(normalizedCodigo)) {
     return { status: 400, payload: { message: 'Codigo deve ser um numero inteiro positivo.' } }
@@ -7742,8 +7868,14 @@ const validateVeiculoPayload = async ({
     return { status: 400, payload: { message: 'Validade do CRM nao pode ser passada.' } }
   }
 
-  if (normalizedTipoDeBancada === null) {
-    return { status: 400, payload: { message: 'Tipo de bancada invalido.' } }
+  if (requestedTipoDeBancada) {
+    const tipoBancadaItem = await findTipoBancadaByDescription(requestedTipoDeBancada)
+
+    if (!tipoBancadaItem) {
+      return { status: 400, payload: { message: 'Tipo de bancada invalido.' } }
+    }
+
+    normalizedTipoDeBancada = tipoBancadaItem.descricao
   }
 
   if (normalizedTipoDeVeiculo === null) {
@@ -9960,6 +10092,23 @@ const ensureDatabaseSchema = async () => {
   await pool.query('SELECT setval(\'modalidade_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM modalidade), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS modalidade_codigo_unique_idx ON modalidade (codigo)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS modalidade_descricao_unique_idx ON modalidade (UPPER(BTRIM(descricao)))')
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS tipo_bancada_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tipo_bancada (
+      codigo integer PRIMARY KEY DEFAULT nextval('tipo_bancada_codigo_seq'),
+      descricao varchar(255) NOT NULL
+    )
+  `)
+  await pool.query('ALTER TABLE tipo_bancada ADD COLUMN IF NOT EXISTS descricao varchar(255)')
+  await pool.query('ALTER TABLE tipo_bancada ALTER COLUMN codigo SET DEFAULT nextval(\'tipo_bancada_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE tipo_bancada_codigo_seq OWNED BY tipo_bancada.codigo')
+  await pool.query('ALTER TABLE tipo_bancada ALTER COLUMN descricao TYPE varchar(255)')
+  await pool.query('UPDATE tipo_bancada SET descricao = BTRIM(CAST(descricao AS text)) WHERE descricao IS NOT NULL')
+  await pool.query('ALTER TABLE tipo_bancada ALTER COLUMN descricao SET NOT NULL')
+  await ensureTipoBancadaEntriesFromVeiculo()
+  await pool.query('SELECT setval(\'tipo_bancada_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM tipo_bancada), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_bancada_codigo_unique_idx ON tipo_bancada (codigo)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_bancada_descricao_unique_idx ON tipo_bancada (UPPER(BTRIM(descricao)))')
   await pool.query('CREATE SEQUENCE IF NOT EXISTS condutor_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query('ALTER TABLE condutor ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
   await pool.query('ALTER TABLE condutor ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
@@ -11386,6 +11535,74 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao consultar a tabela modalidade.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/tipo-bancada') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'codigo')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'asc').toLowerCase() === 'desc'
+        ? 'DESC'
+        : 'ASC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const numericCodigoOrderClause = `
+        CASE WHEN CAST(codigo AS text) ~ '^[0-9]+$' THEN 0 ELSE 1 END ASC,
+        CASE WHEN CAST(codigo AS text) ~ '^[0-9]+$' THEN CAST(codigo AS bigint) END ${sortDirection},
+        CAST(codigo AS text) ${sortDirection}
+      `
+      const orderByClause = sortBy === 'descricao'
+        ? `BTRIM(CAST(descricao AS text)) ${sortDirection}, ${numericCodigoOrderClause}`
+        : numericCodigoOrderClause
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(codigo AS text) ILIKE $${values.length}
+          OR BTRIM(CAST(descricao AS text)) ILIKE $${values.length}
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM tipo_bancada ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${tipoBancadaSelectClause}
+         FROM tipo_bancada
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: sortBy === 'descricao' ? 'descricao' : 'codigo',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a tabela tipo_bancada.'
 
       sendJson(response, 500, { message })
     }
@@ -15167,6 +15384,47 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'POST' && pathname === '/api/tipo-bancada') {
+    try {
+      const body = await readJsonBody(request)
+      const descricao = normalizeRequestValue(body.descricao)
+
+      if (!descricao) {
+        sendJson(response, 400, { message: 'Descricao e obrigatoria.' })
+        return
+      }
+
+      const duplicateDescriptionResult = await pool.query(
+        'SELECT 1 FROM tipo_bancada WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1) LIMIT 1',
+        [descricao],
+      )
+
+      if (duplicateDescriptionResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Descricao ja cadastrada.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO tipo_bancada (descricao)
+         VALUES ($1)
+         RETURNING ${tipoBancadaSelectClause}`,
+        [descricao],
+      )
+
+      sendJson(response, 201, {
+        item: insertResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar o registro tipo_bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'POST' && pathname === '/api/troca') {
     try {
       const body = await readJsonBody(request)
@@ -16552,21 +16810,35 @@ const server = createServer(async (request, response) => {
         const insertedCodigo = Number(insertResult.rows[0].codigo)
         if ((Number.isInteger(substitutionSourceCodigo) && substitutionSourceCodigo > 0)
           || (Number.isInteger(activationSourceCodigo) && activationSourceCodigo > 0)) {
-          const replacedActiveItem = await findLatestActiveOrdemServicoByChave(
-            validationResult.payload.termoAdesao,
-            validationResult.payload.numOs,
-            { excludeCodigos: [insertedCodigo] },
-            client,
-          )
+          const replacementSourceCodigo = Number.isInteger(substitutionSourceCodigo) && substitutionSourceCodigo > 0
+            ? substitutionSourceCodigo
+            : Number.isInteger(activationSourceCodigo) && activationSourceCodigo > 0
+              ? activationSourceCodigo
+              : null
+          const replacementTargetCodigo = replacementSourceCodigo && replacementSourceCodigo !== insertedCodigo
+            ? replacementSourceCodigo
+            : null
+          const replacedActiveItem = replacementTargetCodigo === null
+            ? await findLatestActiveOrdemServicoByChave(
+              validationResult.payload.termoAdesao,
+              validationResult.payload.numOs,
+              { excludeCodigos: [insertedCodigo] },
+              client,
+            )
+            : null
+          const replacedCodigo = replacementTargetCodigo
+            ?? (replacedActiveItem && !Number.isNaN(Number(replacedActiveItem.codigo))
+              ? Number(replacedActiveItem.codigo)
+              : null)
 
-          if (replacedActiveItem && !Number.isNaN(Number(replacedActiveItem.codigo))) {
+          if (replacedCodigo !== null) {
             await client.query(
               `UPDATE ${ordemServicoTableName}
                SET data_encerramento = (CURRENT_DATE - INTERVAL '1 day')::date,
                    situacao = 'Substituido',
                    data_modificacao = NOW()
                WHERE codigo = $1`,
-              [Number(replacedActiveItem.codigo)],
+              [replacedCodigo],
             )
           }
         } else {
@@ -16923,6 +17195,64 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao alterar modalidade.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getTipoBancadaCodigoFromUrl(pathname)) {
+    try {
+      const originalCodigo = getTipoBancadaCodigoFromUrl(pathname)
+      const body = await readJsonBody(request)
+      const descricao = normalizeRequestValue(body.descricao)
+
+      if (!originalCodigo) {
+        sendJson(response, 400, { message: 'Codigo original invalido.' })
+        return
+      }
+
+      if (!descricao) {
+        sendJson(response, 400, { message: 'Descricao e obrigatoria.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM tipo_bancada WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [originalCodigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro do tipo de bancada nao encontrado.' })
+        return
+      }
+
+      const duplicateDescriptionResult = await pool.query(
+        'SELECT 1 FROM tipo_bancada WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1) AND CAST(codigo AS text) <> $2 LIMIT 1',
+        [descricao, originalCodigo],
+      )
+
+      if (duplicateDescriptionResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Descricao ja cadastrada.' })
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE tipo_bancada
+         SET descricao = $1
+         WHERE CAST(codigo AS text) = $2
+         RETURNING ${tipoBancadaSelectClause}`,
+        [descricao, originalCodigo],
+      )
+
+      sendJson(response, 200, {
+        item: updateResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar tipo_bancada.'
 
       sendJson(response, 500, { message })
     }
@@ -18382,6 +18712,39 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao excluir o registro modalidade.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getTipoBancadaCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getTipoBancadaCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM tipo_bancada WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro do tipo de bancada nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir o registro tipo_bancada.'
 
       sendJson(response, 500, { message })
     }
