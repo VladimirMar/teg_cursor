@@ -8,6 +8,12 @@ import { createModalidadeItem, deleteModalidadeItem, listModalidadeItemsPaginate
 import type { ModalidadeItem } from './services/modalidade'
 import { createTipoBancadaItem, deleteTipoBancadaItem, listTipoBancadaItemsPaginated, updateTipoBancadaItem } from './services/tipoBancada'
 import type { TipoBancadaItem } from './services/tipoBancada'
+import {
+  createModalidadeTipoBancadaAssociationItem,
+  deleteModalidadeTipoBancadaAssociationItem,
+  listModalidadeTipoBancadaAssociationItems,
+} from './services/modalidadeTipoBancadaAssociacao'
+import type { ModalidadeTipoBancadaAssociationItem } from './services/modalidadeTipoBancadaAssociacao'
 import { createTitularItem, deleteTitularItem, listTitularItemsPaginated, updateTitularItem } from './services/titular'
 import type { TitularItem } from './services/titular'
 import { createMarcaModeloItem, deleteMarcaModeloItem, listMarcaModeloItemsPaginated, updateMarcaModeloItem } from './services/marcaModelo'
@@ -31,6 +37,49 @@ type DashboardBancadaMatrixRow = {
 }
 
 type StatusTone = 'idle' | 'error' | 'success'
+
+async function getTermoCountByStatus(statusTermo: string): Promise<number> {
+  const params = new URLSearchParams({
+    statusTermo,
+    page: '1',
+    pageSize: '1',
+  })
+  const response = await fetch(`/api/termo?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+  const payload = await response.json()
+
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Falha ao carregar a contagem de termos.')
+  }
+
+  return typeof payload.total === 'number' ? payload.total : 0
+}
+
+async function getOrdemServicoCountBySituacao(situacao: string): Promise<number> {
+  const params = new URLSearchParams({
+    situacao,
+    page: '1',
+    pageSize: '1',
+  })
+  const response = await fetch(`/api/ordem-servico?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+  const payload = await response.json()
+
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Falha ao carregar a contagem de Ordens de Serviço.')
+  }
+
+  return typeof payload.total === 'number' ? payload.total : 0
+}
+
 type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
@@ -134,15 +183,6 @@ type StoredSession = {
 
 const SESSION_STORAGE_KEY = 'tegfinanc.auth'
 const DRE_PAGE_SIZE = 20
-const ASSOCIATIONS_STORAGE_KEY = 'tegfinanc.modalidadeTipoBancadaAssociations'
-
-type ModalidadeTipoBancadaAssociationItem = {
-  id: string
-  modalidadeCodigo: string
-  modalidadeDescricao: string
-  tipoBancadaCodigo: string
-  tipoBancadaDescricao: string
-}
 
 const normalizeDreSiglaInput = (value: string) => value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2)
 
@@ -677,6 +717,9 @@ function App() {
   const [dashboardBancadaData, setDashboardBancadaData] = useState<OrdemServicoDashboardBancadaData | null>(null)
   const [dashboardStatusMessage, setDashboardStatusMessage] = useState('')
   const [dashboardStatusTone, setDashboardStatusTone] = useState<StatusTone>('idle')
+  const [termoAtivosCount, setTermoAtivosCount] = useState(0)
+  const [termoRescindidosCount, setTermoRescindidosCount] = useState(0)
+  const [osCanceladasCount, setOsCanceladasCount] = useState(0)
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
   const [isDashboardResumoExpanded, setIsDashboardResumoExpanded] = useState(false)
   const [isDashboardBancadaExpanded, setIsDashboardBancadaExpanded] = useState(false)
@@ -685,6 +728,7 @@ function App() {
   const [dashboardDrillDownContext, setDashboardDrillDownContext] = useState<DashboardDrillDownContext | null>(null)
   const [dashboardDrillDownData, setDashboardDrillDownData] = useState<OrdemServicoDashboardDetailData | null>(null)
   const [dashboardDrillDownSearch, setDashboardDrillDownSearch] = useState('')
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true)
   const [dashboardDrillDownStatusMessage, setDashboardDrillDownStatusMessage] = useState('')
   const [isDashboardOsPopupVisible, setIsDashboardOsPopupVisible] = useState(false)
   const [dashboardOsPopupUrl, setDashboardOsPopupUrl] = useState('')
@@ -752,6 +796,9 @@ function App() {
   const [associationModalidadeOptions, setAssociationModalidadeOptions] = useState<ModalidadeItem[]>([])
   const [associationTipoBancadaOptions, setAssociationTipoBancadaOptions] = useState<TipoBancadaItem[]>([])
   const [isLoadingAssociationOptions, setIsLoadingAssociationOptions] = useState(false)
+  const [isLoadingTipoBancadaAssociations, setIsLoadingTipoBancadaAssociations] = useState(false)
+  const [isSavingTipoBancadaAssociation, setIsSavingTipoBancadaAssociation] = useState(false)
+  const [isDeletingTipoBancadaAssociation, setIsDeletingTipoBancadaAssociation] = useState(false)
   const [titularItems, setTitularItems] = useState<TitularItem[]>([])
   const [titularCnpjCpf, setTitularCnpjCpf] = useState('')
   const [titularNome, setTitularNome] = useState('')
@@ -816,27 +863,13 @@ function App() {
     setSession(getStoredSession())
   }, [])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    try {
-      const storedValue = window.localStorage.getItem(ASSOCIATIONS_STORAGE_KEY)
-
-      if (storedValue) {
-        const parsed = JSON.parse(storedValue) as ModalidadeTipoBancadaAssociationItem[]
-        setTipoBancadaAssociationItems(Array.isArray(parsed) ? parsed : [])
-      }
-    } catch {
-      setTipoBancadaAssociationItems([])
-    }
-  }, [])
-
   const loadDashboardAtivos = useCallback(async (monthToLoad: string) => {
     setIsLoadingDashboard(true)
     setDashboardStatusTone('idle')
     setDashboardStatusMessage('Carregando painel mensal de OrdemServico...')
+    setTermoAtivosCount(0)
+    setTermoRescindidosCount(0)
+    setOsCanceladasCount(0)
     setIsDashboardDrillDownVisible(false)
     setDashboardDrillDownContext(null)
     setDashboardDrillDownData(null)
@@ -846,13 +879,19 @@ function App() {
     setDashboardOsPopupUrl('')
 
     try {
-      const [result, bancadaResult] = await Promise.all([
+      const [result, bancadaResult, termoAtivos, termoRescindidos, osCanceladas] = await Promise.all([
         getOrdemServicoDashboardAtivos(monthToLoad),
         getOrdemServicoDashboardAtivosBancada(monthToLoad),
+        getTermoCountByStatus('ATIVO').catch(() => 0),
+        getTermoCountByStatus('RESCINDIDO').catch(() => 0),
+        getOrdemServicoCountBySituacao('Cancelado').catch(() => 0),
       ])
 
       setDashboardData(result)
       setDashboardBancadaData(bancadaResult)
+      setTermoAtivosCount(termoAtivos)
+      setTermoRescindidosCount(termoRescindidos)
+      setOsCanceladasCount(osCanceladas)
       setDashboardStatusMessage(result.rows.length ? '' : 'Nenhuma OrdemServico esteve ativa no mes selecionado.')
       setDashboardStatusTone('idle')
     } catch (error) {
@@ -878,6 +917,14 @@ function App() {
     setIsDashboardOsPopupVisible(false)
     setDashboardOsPopupUrl('')
   }
+
+  const openDashboardTab = (relativePath: string) => {
+    const url = `${window.location.origin}${relativePath}`
+    window.open(url, '_blank')
+  }
+
+  const handleOpenTermosGrid = () => openDashboardTab('/src/credenciamentoTermo.html')
+  const handleOpenOrdemServicoGrid = () => openDashboardTab('/src/ordemServico.html')
 
   useEffect(() => {
     const handleDashboardOsPopupMessage = (event: MessageEvent) => {
@@ -1019,13 +1066,13 @@ function App() {
       const [modalidadeResult, tipoBancadaResult] = await Promise.all([
         listModalidadeItemsPaginated({
           page: 1,
-          pageSize: 100,
+          pageSize: 500,
           sortBy: 'descricao',
           sortDirection: 'asc',
         }),
         listTipoBancadaItemsPaginated({
           page: 1,
-          pageSize: 100,
+          pageSize: 500,
           sortBy: 'descricao',
           sortDirection: 'asc',
         }),
@@ -1046,21 +1093,25 @@ function App() {
     }
   }, [])
 
-  const saveTipoBancadaAssociationItems = (nextItems: ModalidadeTipoBancadaAssociationItem[]) => {
-    setTipoBancadaAssociationItems(nextItems)
-
-    if (typeof window === 'undefined') {
-      return
-    }
+  const loadTipoBancadaAssociationItems = useCallback(async () => {
+    setIsLoadingTipoBancadaAssociations(true)
 
     try {
-      window.localStorage.setItem(ASSOCIATIONS_STORAGE_KEY, JSON.stringify(nextItems))
-    } catch {
-      // ignore storage errors
-    }
-  }
+      const items = await listModalidadeTipoBancadaAssociationItems()
+      setTipoBancadaAssociationItems(items)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar as associacoes de modalidade x tipo de bancada.'
 
-  const handleAddTipoBancadaAssociation = (event: FormEvent<HTMLFormElement>) => {
+      setAssociationStatusTone('error')
+      setAssociationStatusMessage(message)
+    } finally {
+      setIsLoadingTipoBancadaAssociations(false)
+    }
+  }, [])
+
+  const handleAddTipoBancadaAssociation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     setAssociationStatusTone('idle')
@@ -1081,39 +1132,55 @@ function App() {
       return
     }
 
-    const alreadyExists = tipoBancadaAssociationItems.some(
-      (item) => item.modalidadeCodigo === associationModalidadeCodigo && item.tipoBancadaCodigo === associationTipoBancadaCodigo,
-    )
+    setIsSavingTipoBancadaAssociation(true)
 
-    if (alreadyExists) {
+    try {
+      await createModalidadeTipoBancadaAssociationItem({
+        modalidadeCodigo: modalidade.codigo,
+        tipoBancadaCodigo: tipoBancada.codigo,
+      })
+
+      setAssociationModalidadeCodigo('')
+      setAssociationTipoBancadaCodigo('')
+      setAssociationStatusTone('success')
+      setAssociationStatusMessage('Associacao criada com sucesso.')
+      await loadTipoBancadaAssociationItems()
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao criar a associacao.'
+
       setAssociationStatusTone('error')
-      setAssociationStatusMessage('A associacao ja existe.')
+      setAssociationStatusMessage(message)
+    } finally {
+      setIsSavingTipoBancadaAssociation(false)
+    }
+  }
+
+  const handleDeleteTipoBancadaAssociation = async (item: ModalidadeTipoBancadaAssociationItem) => {
+    const confirmed = window.confirm(`Excluir a associacao ${item.modalidadeDescricao} x ${item.tipoBancadaDescricao}?`)
+
+    if (!confirmed) {
       return
     }
 
-    const nextItems = [
-      ...tipoBancadaAssociationItems,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        modalidadeCodigo: modalidade.codigo,
-        modalidadeDescricao: modalidade.descricao,
-        tipoBancadaCodigo: tipoBancada.codigo,
-        tipoBancadaDescricao: tipoBancada.descricao,
-      },
-    ]
+    setIsDeletingTipoBancadaAssociation(true)
 
-    saveTipoBancadaAssociationItems(nextItems)
-    setAssociationModalidadeCodigo('')
-    setAssociationTipoBancadaCodigo('')
-    setAssociationStatusTone('success')
-    setAssociationStatusMessage('Associacao criada com sucesso.')
-  }
+    try {
+      await deleteModalidadeTipoBancadaAssociationItem(item.codigo)
+      setAssociationStatusTone('success')
+      setAssociationStatusMessage('Associacao removida.')
+      await loadTipoBancadaAssociationItems()
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir a associacao.'
 
-  const handleDeleteTipoBancadaAssociation = (id: string) => {
-    const nextItems = tipoBancadaAssociationItems.filter((item) => item.id !== id)
-    saveTipoBancadaAssociationItems(nextItems)
-    setAssociationStatusTone('success')
-    setAssociationStatusMessage('Associacao removida.')
+      setAssociationStatusTone('error')
+      setAssociationStatusMessage(message)
+    } finally {
+      setIsDeletingTipoBancadaAssociation(false)
+    }
   }
 
   const loadSeguradoraItems = useCallback(async (pageToLoad: number) => {
@@ -1238,7 +1305,8 @@ function App() {
 
     void loadTipoBancadaItems(tipoBancadaPage)
     void loadAssociationOptions()
-  }, [activeView, loadTipoBancadaItems, loadAssociationOptions, session, tipoBancadaPage])
+    void loadTipoBancadaAssociationItems()
+  }, [activeView, loadTipoBancadaItems, loadAssociationOptions, loadTipoBancadaAssociationItems, session, tipoBancadaPage])
 
   useEffect(() => {
     if (!session || activeView !== 'seguradora') {
@@ -1911,6 +1979,10 @@ function App() {
       setTipoBancadaStatusTone('success')
       setTipoBancadaStatusMessage(editingCodigo ? 'Registro do tipo de bancada alterado com sucesso.' : 'Registro do tipo de bancada cadastrado com sucesso.')
       await loadTipoBancadaItems(editingCodigo ? tipoBancadaPage : 1)
+      await Promise.all([
+        loadAssociationOptions(),
+        loadTipoBancadaAssociationItems(),
+      ])
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -2019,6 +2091,10 @@ function App() {
       setTipoBancadaStatusMessage('Registro do tipo de bancada excluido com sucesso.')
       const nextPage = tipoBancadaItems.length === 1 && tipoBancadaPage > 1 ? tipoBancadaPage - 1 : tipoBancadaPage
       await loadTipoBancadaItems(nextPage)
+      await Promise.all([
+        loadAssociationOptions(),
+        loadTipoBancadaAssociationItems(),
+      ])
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -2936,14 +3012,34 @@ function App() {
     }))
   }
 
+  const toggleSidebar = () => {
+    setIsSidebarVisible((current) => !current)
+  }
+
   return (
-    <main className="dashboard-page">
-      <aside className="sidebar-menu" aria-label="Menu principal">
-        <div>
-          <p className="sidebar-brand">TEG Financ</p>
-          {environmentName ? <p className="environment-pill environment-pill-sidebar">{environmentName}</p> : null}
-          <h1 className="sidebar-title">Menu TEG</h1>
-        </div>
+    <div className="app-layout">
+      <header className="navbar">
+        <button 
+          type="button" 
+          className="navbar-toggle" 
+          onClick={toggleSidebar}
+          aria-label={isSidebarVisible ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
+        >
+          {isSidebarVisible ? '☰' : '☰'}
+        </button>
+        <h1 className="navbar-title" onClick={() => setActiveView('inicio')} style={{ cursor: 'pointer' }}>
+          Menu TEG
+        </h1>
+      </header>
+      
+      <main className={`dashboard-page ${isSidebarVisible ? '' : 'dashboard-page--sidebar-hidden'}`}>
+        {isSidebarVisible && (
+          <aside className="sidebar-menu" aria-label="Menu principal">
+            <div>
+              <p className="sidebar-brand">TEG Financ</p>
+              {environmentName ? <p className="environment-pill environment-pill-sidebar">{environmentName}</p> : null}
+              <h1 className="sidebar-title">Menu TEG</h1>
+            </div>
 
         <nav>
           <ul className="menu-list">
@@ -3132,6 +3228,7 @@ function App() {
           </button>
         </div>
       </aside>
+        )}
 
       <section className="content-panel" aria-labelledby="content-title">
         {activeView === 'inicio' ? (
@@ -3172,21 +3269,73 @@ function App() {
               </div>
 
               <div className="dashboard-summary-grid">
-                <article className="dashboard-summary-card">
-                  <span className="dashboard-summary-label">Mes carregado</span>
-                  <strong>{formatDashboardMonthLabel(dashboardData?.requestedMonth ?? dashboardMonth)}</strong>
+                <article
+                  className="dashboard-summary-card clickable dashboard-summary-card--positive"
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleOpenTermosGrid}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      handleOpenTermosGrid()
+                    }
+                  }}
+                >
+                  <span className="dashboard-summary-label">Termos ativos</span>
+                  <strong className="dashboard-summary-value dashboard-summary-value--positive">{termoAtivosCount}</strong>
                 </article>
-                <article className="dashboard-summary-card">
+                <article
+                  className="dashboard-summary-card clickable dashboard-summary-card--negative"
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleOpenTermosGrid}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      handleOpenTermosGrid()
+                    }
+                  }}
+                >
+                  <span className="dashboard-summary-label">Termos rescindidos</span>
+                  <strong className="dashboard-summary-value dashboard-summary-value--negative">{termoRescindidosCount}</strong>
+                </article>
+                <article
+                  className="dashboard-summary-card clickable dashboard-summary-card--positive"
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleOpenOrdemServicoGrid}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      handleOpenOrdemServicoGrid()
+                    }
+                  }}
+                >
                   <span className="dashboard-summary-label">OS ativas</span>
-                  <strong>{dashboardData?.totals.totalOverall ?? 0}</strong>
+                  <strong className="dashboard-summary-value dashboard-summary-value--positive">{dashboardData?.totals.totalOverall ?? 0}</strong>
                 </article>
-                <article className="dashboard-summary-card">
+                <article
+                  className="dashboard-summary-card clickable dashboard-summary-card--negative"
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleOpenOrdemServicoGrid}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      handleOpenOrdemServicoGrid()
+                    }
+                  }}
+                >
+                  <span className="dashboard-summary-label">OS canceladas</span>
+                  <strong className="dashboard-summary-value dashboard-summary-value--negative">{osCanceladasCount}</strong>
+                </article>
+                <article className="dashboard-summary-card dashboard-summary-card--positive">
                   <span className="dashboard-summary-label">DREs com atividade</span>
-                  <strong>{dashboardData?.totals.totalDres ?? 0}</strong>
+                  <strong className="dashboard-summary-value dashboard-summary-value--positive">{dashboardData?.totals.totalDres ?? 0}</strong>
                 </article>
-                <article className="dashboard-summary-card">
+                <article className="dashboard-summary-card dashboard-summary-card--positive">
                   <span className="dashboard-summary-label">Modalidades no mes</span>
-                  <strong>{dashboardData?.totals.totalModalidades ?? 0}</strong>
+                  <strong className="dashboard-summary-value dashboard-summary-value--positive">{dashboardData?.totals.totalModalidades ?? 0}</strong>
                 </article>
               </div>
 
@@ -4286,7 +4435,7 @@ function App() {
                       id="association-modalidade"
                       value={associationModalidadeCodigo}
                       onChange={(event) => setAssociationModalidadeCodigo(event.target.value)}
-                      disabled={isLoadingAssociationOptions}
+                      disabled={isLoadingAssociationOptions || isSavingTipoBancadaAssociation}
                     >
                       <option value="">Selecione a modalidade</option>
                       {associationModalidadeOptions.map((item) => (
@@ -4303,7 +4452,7 @@ function App() {
                       id="association-tipo-bancada"
                       value={associationTipoBancadaCodigo}
                       onChange={(event) => setAssociationTipoBancadaCodigo(event.target.value)}
-                      disabled={isLoadingAssociationOptions}
+                      disabled={isLoadingAssociationOptions || isSavingTipoBancadaAssociation}
                     >
                       <option value="">Selecione o tipo de bancada</option>
                       {associationTipoBancadaOptions.map((item) => (
@@ -4314,8 +4463,8 @@ function App() {
                     </select>
                   </label>
 
-                  <button type="submit" className="primary-button" disabled={isLoadingAssociationOptions}>
-                    {isLoadingAssociationOptions ? 'Carregando...' : 'Criar associação'}
+                  <button type="submit" className="primary-button" disabled={isLoadingAssociationOptions || isSavingTipoBancadaAssociation}>
+                    {isLoadingAssociationOptions ? 'Carregando...' : isSavingTipoBancadaAssociation ? 'Criando...' : 'Criar associação'}
                   </button>
                 </form>
               </div>
@@ -4335,12 +4484,17 @@ function App() {
                   </thead>
                   <tbody>
                     {tipoBancadaAssociationItems.map((item) => (
-                      <tr key={item.id}>
+                      <tr key={item.codigo}>
                         <td>{item.modalidadeCodigo} - {item.modalidadeDescricao}</td>
                         <td>{item.tipoBancadaCodigo} - {item.tipoBancadaDescricao}</td>
                         <td>
                           <div className="dre-row-actions">
-                            <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoBancadaAssociation(item.id)}>
+                            <button
+                              type="button"
+                              className="row-action-button row-action-delete"
+                              onClick={() => handleDeleteTipoBancadaAssociation(item)}
+                              disabled={isDeletingTipoBancadaAssociation}
+                            >
                               Excluir
                             </button>
                           </div>
@@ -4349,6 +4503,10 @@ function App() {
                     ))}
                   </tbody>
                 </table>
+
+                {isLoadingTipoBancadaAssociations ? (
+                  <p className="management-empty-state">Carregando associações...</p>
+                ) : null}
 
                 {!tipoBancadaAssociationItems.length ? (
                   <p className="management-empty-state">Nenhuma associação cadastrada.</p>
@@ -5564,6 +5722,7 @@ function App() {
         )}
       </section>
     </main>
+    </div>
   )
 }
 

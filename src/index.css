@@ -1,6 +1,6 @@
 :root {
-  --page-bg: #f2e8d8;
-  --page-bg-deep: #d7e6df;
+  --page-bg: #ffffff;
+  --page-bg-deep: #ffffff;
   --surface: rgba(255, 250, 242, 0.94);
   --text-strong: #1f2930;
   --text-soft: #5f6b67;
@@ -12,10 +12,7 @@
   line-height: 1.5;
   font-weight: 400;
   color: var(--text-strong);
-  background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.78), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(21, 83, 91, 0.18), transparent 28%),
-    linear-gradient(135deg, var(--page-bg), var(--page-bg-deep));
+  background: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
