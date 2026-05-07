@@ -16568,6 +16568,26 @@ const server = createServer(async (request, response) => {
         return
       }
 
+      const latestTermo = await findLatestCredenciamentoTermoByTermoAdesao(termoAdesao)
+      const latestTermoItem = latestTermo
+        ? await fetchCredenciamentoTermoItemByCodigo(pool, latestTermo.codigo)
+        : null
+
+      if (!latestTermoItem) {
+        sendJson(response, 404, { message: 'Termo nao encontrado para emissao do contrato.' })
+        return
+      }
+
+      const valorContratoAtual = pickCredenciamentoTermoDecimalValue(
+        latestTermoItem.valor_contrato_atualizado,
+        latestTermoItem.valor_contrato,
+      )
+
+      if (typeof valorContratoAtual !== 'number' || Number.isNaN(valorContratoAtual) || valorContratoAtual <= 0) {
+        sendJson(response, 400, { message: 'Nao e possivel emitir o contrato com o valor do termo zerado.' })
+        return
+      }
+
       const parametroItem = await findEmissaoDocumentoParametroByDate(requestedDate)
 
       if (!parametroItem) {
