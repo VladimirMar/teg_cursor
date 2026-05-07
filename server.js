@@ -17203,6 +17203,8 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'PUT' && getTipoBancadaCodigoFromUrl(pathname)) {
+    let client = null
+
     try {
       const originalCodigo = getTipoBancadaCodigoFromUrl(pathname)
       const body = await readJsonBody(request)
@@ -17218,27 +17220,34 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const existingResult = await pool.query(
-        'SELECT 1 FROM tipo_bancada WHERE CAST(codigo AS text) = $1 LIMIT 1',
+      client = await pool.connect()
+      await client.query('BEGIN')
+
+      const existingResult = await client.query(
+        'SELECT descricao FROM tipo_bancada WHERE CAST(codigo AS text) = $1 LIMIT 1 FOR UPDATE',
         [originalCodigo],
       )
 
       if (existingResult.rowCount === 0) {
+        await client.query('ROLLBACK')
         sendJson(response, 404, { message: 'Registro do tipo de bancada nao encontrado.' })
         return
       }
 
-      const duplicateDescriptionResult = await pool.query(
+      const previousDescricao = normalizeTipoBancadaDescription(existingResult.rows[0]?.descricao)
+
+      const duplicateDescriptionResult = await client.query(
         'SELECT 1 FROM tipo_bancada WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1) AND CAST(codigo AS text) <> $2 LIMIT 1',
         [descricao, originalCodigo],
       )
 
       if (duplicateDescriptionResult.rowCount > 0) {
+        await client.query('ROLLBACK')
         sendJson(response, 409, { message: 'Descricao ja cadastrada.' })
         return
       }
 
-      const updateResult = await pool.query(
+      const updateResult = await client.query(
         `UPDATE tipo_bancada
          SET descricao = $1
          WHERE CAST(codigo AS text) = $2
@@ -17246,15 +17255,36 @@ const server = createServer(async (request, response) => {
         [descricao, originalCodigo],
       )
 
+      if (previousDescricao && previousDescricao.toUpperCase() !== descricao.toUpperCase()) {
+        await client.query(
+          `UPDATE veiculo
+           SET tipo_de_bancada = $1,
+               data_modificacao = NOW()
+           WHERE UPPER(BTRIM(COALESCE(tipo_de_bancada, ''))) = UPPER($2)`,
+          [descricao, previousDescricao],
+        )
+      }
+
+      await client.query('COMMIT')
+
       sendJson(response, 200, {
         item: updateResult.rows[0],
       })
     } catch (error) {
+      if (client) {
+        try {
+          await client.query('ROLLBACK')
+        } catch {
+        }
+      }
+
       const message = error instanceof Error
         ? error.message
         : 'Erro ao alterar tipo_bancada.'
 
       sendJson(response, 500, { message })
+    } finally {
+      client?.release()
     }
 
     return
