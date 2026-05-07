@@ -11,6 +11,16 @@ async function requestJson(path, options) {
   return payload;
 }
 
+function buildTemporaryDescricao(originalDescricao) {
+  if (!originalDescricao) {
+    return 'TMP';
+  }
+  if (originalDescricao.length >= 20) {
+    return `${originalDescricao.slice(0, 19)}X`;
+  }
+  return `${originalDescricao}X`;
+}
+
 (async () => {
   const beforeItem = (await requestJson('/api/tipo-bancada?page=1&pageSize=20&sortBy=codigo&sortDirection=asc')).items.find((item) => String(item.codigo) === '2');
   if (!beforeItem) {
@@ -18,7 +28,7 @@ async function requestJson(path, options) {
   }
 
   const originalDescricao = String(beforeItem.descricao || '').trim();
-  const temporaryDescricao = `${originalDescricao}_TMP_FIX`;
+  const temporaryDescricao = buildTemporaryDescricao(originalDescricao);
 
   const beforeCountResult = await pool.query(
     `SELECT COUNT(*)::int AS total
