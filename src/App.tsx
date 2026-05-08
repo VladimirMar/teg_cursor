@@ -1,19 +1,51 @@
-import { useCallback, useDeferredValue, useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react'
+import type { FormEvent, MouseEvent } from 'react'
 import './App.css'
 import { authenticate } from './services/auth'
 import { createDreItem, deleteDreItem, listDreItemsPaginated, updateDreItem } from './services/dre'
 import type { DreItem } from './services/dre'
 import { createModalidadeItem, deleteModalidadeItem, listModalidadeItemsPaginated, updateModalidadeItem } from './services/modalidade'
 import type { ModalidadeItem } from './services/modalidade'
+import { createCondicaoItem, deleteCondicaoItem, listCondicaoItemsPaginated, updateCondicaoItem } from './services/condicao'
+import type { CondicaoItem, CondicaoSortField } from './services/condicao'
 import { createTipoBancadaItem, deleteTipoBancadaItem, listTipoBancadaItemsPaginated, updateTipoBancadaItem } from './services/tipoBancada'
 import type { TipoBancadaItem } from './services/tipoBancada'
+import { createTipoPgtoItem, deleteTipoPgtoItem, listTipoPgtoItemsPaginated, updateTipoPgtoItem } from './services/tipoPgto'
+import type { TipoPgtoItem } from './services/tipoPgto'
 import {
   createModalidadeTipoBancadaAssociationItem,
   deleteModalidadeTipoBancadaAssociationItem,
   listModalidadeTipoBancadaAssociationItems,
 } from './services/modalidadeTipoBancadaAssociacao'
 import type { ModalidadeTipoBancadaAssociationItem } from './services/modalidadeTipoBancadaAssociacao'
+import {
+  createModalBancadaTpPagtoCondicaoItem,
+  deleteModalBancadaTpPagtoCondicaoItem,
+  listModalBancadaTpPagtoCondicaoItems,
+  updateModalBancadaTpPagtoCondicaoItem,
+} from './services/modalBancadaTpPagtoCondicao'
+import type { ModalBancadaTpPagtoCondicaoItem } from './services/modalBancadaTpPagtoCondicao'
+import {
+  createModalBancadaTpPagtoCondicaoValorItem,
+  deleteModalBancadaTpPagtoCondicaoValorItem,
+  listModalBancadaTpPagtoCondicaoValorItems,
+  updateModalBancadaTpPagtoCondicaoValorItem,
+} from './services/modalBancadaTpPagtoCondicaoValor'
+import type { ModalBancadaTpPagtoCondicaoValorItem } from './services/modalBancadaTpPagtoCondicaoValor'
+import {
+  createKmValorItem,
+  deleteKmValorItem,
+  listKmValorItems,
+  updateKmValorItem,
+} from './services/kmValor'
+import type { KmValorItem } from './services/kmValor'
+import {
+  createContinuaValorItem,
+  deleteContinuaValorItem,
+  listContinuaValorItems,
+  updateContinuaValorItem,
+} from './services/continuaValor'
+import type { ContinuaValorItem, ContinuaValorTipo } from './services/continuaValor'
 import { createTitularItem, deleteTitularItem, listTitularItemsPaginated, updateTitularItem } from './services/titular'
 import type { TitularItem } from './services/titular'
 import { createMarcaModeloItem, deleteMarcaModeloItem, listMarcaModeloItemsPaginated, updateMarcaModeloItem } from './services/marcaModelo'
@@ -74,13 +106,13 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   const payload = await response.json()
 
   if (!response.ok) {
-    throw new Error(payload?.message || 'Falha ao carregar a contagem de Ordens de Serviço.')
+    throw new Error(payload?.message || 'Falha ao carregar a contagem de Ordens de Servico.')
   }
 
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -89,6 +121,7 @@ type TitularSortField = 'codigo' | 'cnpj_cpf' | 'titular'
 type MarcaModeloSortField = 'codigo' | 'descricao'
 type SeguradoraSortField = 'codigo' | 'controle' | 'descricao'
 type FormMode = 'create' | 'edit' | 'view'
+type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'condutor' | 'monitor' | 'veiculo' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
 
 type DashboardDrillDownContext = {
   dreCodigo: string
@@ -96,6 +129,66 @@ type DashboardDrillDownContext = {
   modalidadeDescricao: string
   tipoDeBancada?: string
   total: number
+}
+
+const formatModalBancadaTpPagtoCondicaoLabel = (
+  item: Pick<ModalBancadaTpPagtoCondicaoItem, 'modalidadeDescricao' | 'tipoBancadaDescricao' | 'tipoPgtoDescricao' | 'condicaoDescricao'>,
+) => {
+  return `${item.modalidadeDescricao} / ${item.tipoBancadaDescricao} / ${item.tipoPgtoDescricao} / ${item.condicaoDescricao}`
+}
+
+const CONTINUA_TIPO_OPTIONS: ContinuaValorTipo[] = ['Regular', 'Cadeirante']
+
+const getDefaultCollapsedMenuGroups = (): Record<CollapsedMenuGroup, boolean> => ({
+  cadastros: true,
+  operacional: true,
+  condutor: true,
+  monitor: true,
+  veiculo: true,
+  acesso: true,
+  cadastrosOperacional: true,
+  cadastrosFinanceiro: true,
+})
+
+const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
+  switch (view) {
+    case 'titular':
+    case 'credenciada':
+    case 'credenciamentoTermo':
+    case 'ordemServico':
+      return ['operacional']
+    case 'condutor':
+    case 'vinculoCondutor':
+      return ['operacional', 'condutor']
+    case 'monitor':
+    case 'vinculoMonitor':
+      return ['operacional', 'monitor']
+    case 'veiculo':
+    case 'veiculoHistorico':
+      return ['operacional', 'veiculo']
+    case 'dre':
+    case 'modalidade':
+    case 'tipoBancada':
+    case 'marcaModelo':
+    case 'seguradora':
+    case 'troca':
+    case 'emissaoDocumentoParametro':
+    case 'cep':
+    case 'smoke':
+      return ['cadastros', 'cadastrosOperacional']
+    case 'condicao':
+    case 'tipoPgto':
+    case 'modalBancadaTpPagtoCondicao':
+    case 'modalBancadaTpPagtoCondicaoValor':
+    case 'kmValor':
+    case 'continuaValor':
+      return ['cadastros', 'cadastrosFinanceiro']
+    case 'acesso':
+    case 'loginDre':
+      return ['acesso']
+    default:
+      return []
+  }
 }
 
 type SmokeSkippedRecord = {
@@ -183,6 +276,7 @@ type StoredSession = {
 
 const SESSION_STORAGE_KEY = 'tegfinanc.auth'
 const DRE_PAGE_SIZE = 20
+const SIDEBAR_AUTO_HIDE_DELAY_MS = 4000
 
 const normalizeDreSiglaInput = (value: string) => value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2)
 
@@ -699,10 +793,7 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [session, setSession] = useState<StoredSession | null>(null)
   const [activeView, setActiveView] = useState<ActiveView>('inicio')
-  const [collapsedMenuGroups, setCollapsedMenuGroups] = useState({
-    cadastros: true,
-    operacional: true,
-  })
+  const [collapsedMenuGroups, setCollapsedMenuGroups] = useState<Record<CollapsedMenuGroup, boolean>>(getDefaultCollapsedMenuGroups)
   const [isRunningSmoke, setIsRunningSmoke] = useState(false)
   const [selectedSmokeSuite, setSelectedSmokeSuite] = useState<SmokeSuite>('all')
   const [smokeStatusMessage, setSmokeStatusMessage] = useState('')
@@ -732,6 +823,8 @@ function App() {
   const [dashboardDrillDownStatusMessage, setDashboardDrillDownStatusMessage] = useState('')
   const [isDashboardOsPopupVisible, setIsDashboardOsPopupVisible] = useState(false)
   const [dashboardOsPopupUrl, setDashboardOsPopupUrl] = useState('')
+  const sidebarAutoHideTimeoutRef = useRef<number | null>(null)
+  const isSidebarHoveredRef = useRef(false)
   const [dreItems, setDreItems] = useState<DreItem[]>([])
   const [dreSigla, setDreSigla] = useState('')
   const [dreSiglaError, setDreSiglaError] = useState('')
@@ -770,6 +863,28 @@ function App() {
   const [modalidadeSortBy, setModalidadeSortBy] = useState<DreSortField>('codigo')
   const [modalidadeSortDirection, setModalidadeSortDirection] = useState<DreSortDirection>('asc')
   const deferredModalidadeSearch = useDeferredValue(modalidadeSearch)
+  const [condicaoItems, setCondicaoItems] = useState<CondicaoItem[]>([])
+  const [condicaoDescricao, setCondicaoDescricao] = useState('')
+  const [condicaoDescricaoError, setCondicaoDescricaoError] = useState('')
+  const [condicaoQtdeIni, setCondicaoQtdeIni] = useState('')
+  const [condicaoQtdeIniError, setCondicaoQtdeIniError] = useState('')
+  const [condicaoQtdeFim, setCondicaoQtdeFim] = useState('')
+  const [condicaoQtdeFimError, setCondicaoQtdeFimError] = useState('')
+  const [condicaoStatusMessage, setCondicaoStatusMessage] = useState('')
+  const [condicaoStatusTone, setCondicaoStatusTone] = useState<StatusTone>('idle')
+  const [isLoadingCondicao, setIsLoadingCondicao] = useState(false)
+  const [isSavingCondicao, setIsSavingCondicao] = useState(false)
+  const [isDeletingCondicao, setIsDeletingCondicao] = useState(false)
+  const [isCondicaoFormVisible, setIsCondicaoFormVisible] = useState(false)
+  const [editingCondicaoCodigo, setEditingCondicaoCodigo] = useState<string | null>(null)
+  const [condicaoFormMode, setCondicaoFormMode] = useState<FormMode>('create')
+  const [condicaoSearch, setCondicaoSearch] = useState('')
+  const [condicaoPage, setCondicaoPage] = useState(1)
+  const [condicaoTotalItems, setCondicaoTotalItems] = useState(0)
+  const [condicaoTotalPages, setCondicaoTotalPages] = useState(1)
+  const [condicaoSortBy, setCondicaoSortBy] = useState<CondicaoSortField>('codigo')
+  const [condicaoSortDirection, setCondicaoSortDirection] = useState<DreSortDirection>('asc')
+  const deferredCondicaoSearch = useDeferredValue(condicaoSearch)
   const [tipoBancadaItems, setTipoBancadaItems] = useState<TipoBancadaItem[]>([])
   const [tipoBancadaDescricao, setTipoBancadaDescricao] = useState('')
   const [tipoBancadaDescricaoError, setTipoBancadaDescricaoError] = useState('')
@@ -788,6 +903,24 @@ function App() {
   const [tipoBancadaSortBy, setTipoBancadaSortBy] = useState<DreSortField>('codigo')
   const [tipoBancadaSortDirection, setTipoBancadaSortDirection] = useState<DreSortDirection>('asc')
   const deferredTipoBancadaSearch = useDeferredValue(tipoBancadaSearch)
+  const [tipoPgtoItems, setTipoPgtoItems] = useState<TipoPgtoItem[]>([])
+  const [tipoPgtoDescricao, setTipoPgtoDescricao] = useState('')
+  const [tipoPgtoDescricaoError, setTipoPgtoDescricaoError] = useState('')
+  const [tipoPgtoStatusMessage, setTipoPgtoStatusMessage] = useState('')
+  const [tipoPgtoStatusTone, setTipoPgtoStatusTone] = useState<StatusTone>('idle')
+  const [isLoadingTipoPgto, setIsLoadingTipoPgto] = useState(false)
+  const [isSavingTipoPgto, setIsSavingTipoPgto] = useState(false)
+  const [isDeletingTipoPgto, setIsDeletingTipoPgto] = useState(false)
+  const [isTipoPgtoFormVisible, setIsTipoPgtoFormVisible] = useState(false)
+  const [editingTipoPgtoCodigo, setEditingTipoPgtoCodigo] = useState<string | null>(null)
+  const [tipoPgtoFormMode, setTipoPgtoFormMode] = useState<FormMode>('create')
+  const [tipoPgtoSearch, setTipoPgtoSearch] = useState('')
+  const [tipoPgtoPage, setTipoPgtoPage] = useState(1)
+  const [tipoPgtoTotalItems, setTipoPgtoTotalItems] = useState(0)
+  const [tipoPgtoTotalPages, setTipoPgtoTotalPages] = useState(1)
+  const [tipoPgtoSortBy, setTipoPgtoSortBy] = useState<DreSortField>('codigo')
+  const [tipoPgtoSortDirection, setTipoPgtoSortDirection] = useState<DreSortDirection>('asc')
+  const deferredTipoPgtoSearch = useDeferredValue(tipoPgtoSearch)
   const [tipoBancadaAssociationItems, setTipoBancadaAssociationItems] = useState<ModalidadeTipoBancadaAssociationItem[]>([])
   const [associationModalidadeCodigo, setAssociationModalidadeCodigo] = useState('')
   const [associationTipoBancadaCodigo, setAssociationTipoBancadaCodigo] = useState('')
@@ -799,6 +932,92 @@ function App() {
   const [isLoadingTipoBancadaAssociations, setIsLoadingTipoBancadaAssociations] = useState(false)
   const [isSavingTipoBancadaAssociation, setIsSavingTipoBancadaAssociation] = useState(false)
   const [isDeletingTipoBancadaAssociation, setIsDeletingTipoBancadaAssociation] = useState(false)
+  const [modalBancadaTpPagtoCondicaoItems, setModalBancadaTpPagtoCondicaoItems] = useState<ModalBancadaTpPagtoCondicaoItem[]>([])
+  const [modalBancadaTpPagtoCondicaoAssociationCodigo, setModalBancadaTpPagtoCondicaoAssociationCodigo] = useState('')
+  const [modalBancadaTpPagtoCondicaoTipoPgtoCodigo, setModalBancadaTpPagtoCondicaoTipoPgtoCodigo] = useState('')
+  const [modalBancadaTpPagtoCondicaoCondicaoCodigo, setModalBancadaTpPagtoCondicaoCondicaoCodigo] = useState('')
+  const [modalBancadaTpPagtoCondicaoStatusMessage, setModalBancadaTpPagtoCondicaoStatusMessage] = useState('')
+  const [modalBancadaTpPagtoCondicaoStatusTone, setModalBancadaTpPagtoCondicaoStatusTone] = useState<StatusTone>('idle')
+  const [modalBancadaTpPagtoCondicaoAssociationOptions, setModalBancadaTpPagtoCondicaoAssociationOptions] = useState<ModalidadeTipoBancadaAssociationItem[]>([])
+  const [modalBancadaTpPagtoCondicaoTipoPgtoOptions, setModalBancadaTpPagtoCondicaoTipoPgtoOptions] = useState<TipoPgtoItem[]>([])
+  const [modalBancadaTpPagtoCondicaoCondicaoOptions, setModalBancadaTpPagtoCondicaoCondicaoOptions] = useState<CondicaoItem[]>([])
+  const [isLoadingModalBancadaTpPagtoCondicaoOptions, setIsLoadingModalBancadaTpPagtoCondicaoOptions] = useState(false)
+  const [isLoadingModalBancadaTpPagtoCondicaoItems, setIsLoadingModalBancadaTpPagtoCondicaoItems] = useState(false)
+  const [isSavingModalBancadaTpPagtoCondicao, setIsSavingModalBancadaTpPagtoCondicao] = useState(false)
+  const [isDeletingModalBancadaTpPagtoCondicao, setIsDeletingModalBancadaTpPagtoCondicao] = useState(false)
+  const [isModalBancadaTpPagtoCondicaoFormVisible, setIsModalBancadaTpPagtoCondicaoFormVisible] = useState(false)
+  const [editingModalBancadaTpPagtoCondicaoCodigo, setEditingModalBancadaTpPagtoCondicaoCodigo] = useState<string | null>(null)
+  const [modalBancadaTpPagtoCondicaoFormMode, setModalBancadaTpPagtoCondicaoFormMode] = useState<FormMode>('create')
+  const [modalBancadaTpPagtoCondicaoFilterAssociationCodigo, setModalBancadaTpPagtoCondicaoFilterAssociationCodigo] = useState('')
+  const [modalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo, setModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo] = useState('')
+  const [modalBancadaTpPagtoCondicaoFilterCondicaoCodigo, setModalBancadaTpPagtoCondicaoFilterCondicaoCodigo] = useState('')
+  const [appliedModalBancadaTpPagtoCondicaoFilterAssociationCodigo, setAppliedModalBancadaTpPagtoCondicaoFilterAssociationCodigo] = useState('')
+  const [appliedModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo, setAppliedModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo] = useState('')
+  const [appliedModalBancadaTpPagtoCondicaoFilterCondicaoCodigo, setAppliedModalBancadaTpPagtoCondicaoFilterCondicaoCodigo] = useState('')
+  const [modalBancadaTpPagtoCondicaoPage, setModalBancadaTpPagtoCondicaoPage] = useState(1)
+  const [modalBancadaTpPagtoCondicaoTotalItems, setModalBancadaTpPagtoCondicaoTotalItems] = useState(0)
+  const [modalBancadaTpPagtoCondicaoTotalPages, setModalBancadaTpPagtoCondicaoTotalPages] = useState(1)
+  const [modalBancadaTpPagtoCondicaoValorItems, setModalBancadaTpPagtoCondicaoValorItems] = useState<ModalBancadaTpPagtoCondicaoValorItem[]>([])
+  const [modalBancadaTpPagtoCondicaoValorAssociationCodigo, setModalBancadaTpPagtoCondicaoValorAssociationCodigo] = useState('')
+  const [modalBancadaTpPagtoCondicaoValorData, setModalBancadaTpPagtoCondicaoValorData] = useState('')
+  const [modalBancadaTpPagtoCondicaoValorValor, setModalBancadaTpPagtoCondicaoValorValor] = useState('')
+  const [modalBancadaTpPagtoCondicaoValorStatusMessage, setModalBancadaTpPagtoCondicaoValorStatusMessage] = useState('')
+  const [modalBancadaTpPagtoCondicaoValorStatusTone, setModalBancadaTpPagtoCondicaoValorStatusTone] = useState<StatusTone>('idle')
+  const [modalBancadaTpPagtoCondicaoValorOptions, setModalBancadaTpPagtoCondicaoValorOptions] = useState<ModalBancadaTpPagtoCondicaoItem[]>([])
+  const [isLoadingModalBancadaTpPagtoCondicaoValorOptions, setIsLoadingModalBancadaTpPagtoCondicaoValorOptions] = useState(false)
+  const [isLoadingModalBancadaTpPagtoCondicaoValorItems, setIsLoadingModalBancadaTpPagtoCondicaoValorItems] = useState(false)
+  const [isSavingModalBancadaTpPagtoCondicaoValor, setIsSavingModalBancadaTpPagtoCondicaoValor] = useState(false)
+  const [isDeletingModalBancadaTpPagtoCondicaoValor, setIsDeletingModalBancadaTpPagtoCondicaoValor] = useState(false)
+  const [isModalBancadaTpPagtoCondicaoValorFormVisible, setIsModalBancadaTpPagtoCondicaoValorFormVisible] = useState(false)
+  const [editingModalBancadaTpPagtoCondicaoValorCodigo, setEditingModalBancadaTpPagtoCondicaoValorCodigo] = useState<string | null>(null)
+  const [modalBancadaTpPagtoCondicaoValorFormMode, setModalBancadaTpPagtoCondicaoValorFormMode] = useState<FormMode>('create')
+  const [modalBancadaTpPagtoCondicaoValorFilterAssociationCodigo, setModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo] = useState('')
+  const [modalBancadaTpPagtoCondicaoValorFilterData, setModalBancadaTpPagtoCondicaoValorFilterData] = useState('')
+  const [appliedModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo, setAppliedModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo] = useState('')
+  const [appliedModalBancadaTpPagtoCondicaoValorFilterData, setAppliedModalBancadaTpPagtoCondicaoValorFilterData] = useState('')
+  const [modalBancadaTpPagtoCondicaoValorPage, setModalBancadaTpPagtoCondicaoValorPage] = useState(1)
+  const [modalBancadaTpPagtoCondicaoValorTotalItems, setModalBancadaTpPagtoCondicaoValorTotalItems] = useState(0)
+  const [modalBancadaTpPagtoCondicaoValorTotalPages, setModalBancadaTpPagtoCondicaoValorTotalPages] = useState(1)
+  const [kmValorItems, setKmValorItems] = useState<KmValorItem[]>([])
+  const [kmValorCondicaoCodigo, setKmValorCondicaoCodigo] = useState('')
+  const [kmValorData, setKmValorData] = useState('')
+  const [kmValorValor, setKmValorValor] = useState('')
+  const [kmValorStatusMessage, setKmValorStatusMessage] = useState('')
+  const [kmValorStatusTone, setKmValorStatusTone] = useState<StatusTone>('idle')
+  const [kmValorCondicaoOptions, setKmValorCondicaoOptions] = useState<CondicaoItem[]>([])
+  const [isLoadingKmValorOptions, setIsLoadingKmValorOptions] = useState(false)
+  const [isLoadingKmValorItems, setIsLoadingKmValorItems] = useState(false)
+  const [isSavingKmValor, setIsSavingKmValor] = useState(false)
+  const [isDeletingKmValor, setIsDeletingKmValor] = useState(false)
+  const [isKmValorFormVisible, setIsKmValorFormVisible] = useState(false)
+  const [editingKmValorCodigo, setEditingKmValorCodigo] = useState<string | null>(null)
+  const [kmValorFormMode, setKmValorFormMode] = useState<FormMode>('create')
+  const [kmValorFilterCondicaoCodigo, setKmValorFilterCondicaoCodigo] = useState('')
+  const [kmValorFilterData, setKmValorFilterData] = useState('')
+  const [appliedKmValorFilterCondicaoCodigo, setAppliedKmValorFilterCondicaoCodigo] = useState('')
+  const [appliedKmValorFilterData, setAppliedKmValorFilterData] = useState('')
+  const [kmValorPage, setKmValorPage] = useState(1)
+  const [kmValorTotalItems, setKmValorTotalItems] = useState(0)
+  const [kmValorTotalPages, setKmValorTotalPages] = useState(1)
+  const [continuaValorItems, setContinuaValorItems] = useState<ContinuaValorItem[]>([])
+  const [continuaValorTipo, setContinuaValorTipo] = useState<ContinuaValorTipo | ''>('')
+  const [continuaValorData, setContinuaValorData] = useState('')
+  const [continuaValorValor, setContinuaValorValor] = useState('')
+  const [continuaValorStatusMessage, setContinuaValorStatusMessage] = useState('')
+  const [continuaValorStatusTone, setContinuaValorStatusTone] = useState<StatusTone>('idle')
+  const [isLoadingContinuaValorItems, setIsLoadingContinuaValorItems] = useState(false)
+  const [isSavingContinuaValor, setIsSavingContinuaValor] = useState(false)
+  const [isDeletingContinuaValor, setIsDeletingContinuaValor] = useState(false)
+  const [isContinuaValorFormVisible, setIsContinuaValorFormVisible] = useState(false)
+  const [editingContinuaValorCodigo, setEditingContinuaValorCodigo] = useState<string | null>(null)
+  const [continuaValorFormMode, setContinuaValorFormMode] = useState<FormMode>('create')
+  const [continuaValorFilterTipo, setContinuaValorFilterTipo] = useState<ContinuaValorTipo | ''>('')
+  const [continuaValorFilterData, setContinuaValorFilterData] = useState('')
+  const [appliedContinuaValorFilterTipo, setAppliedContinuaValorFilterTipo] = useState<ContinuaValorTipo | ''>('')
+  const [appliedContinuaValorFilterData, setAppliedContinuaValorFilterData] = useState('')
+  const [continuaValorPage, setContinuaValorPage] = useState(1)
+  const [continuaValorTotalItems, setContinuaValorTotalItems] = useState(0)
+  const [continuaValorTotalPages, setContinuaValorTotalPages] = useState(1)
   const [titularItems, setTitularItems] = useState<TitularItem[]>([])
   const [titularCnpjCpf, setTitularCnpjCpf] = useState('')
   const [titularNome, setTitularNome] = useState('')
@@ -862,6 +1081,73 @@ function App() {
   useEffect(() => {
     setSession(getStoredSession())
   }, [])
+
+  const clearSidebarAutoHideTimeout = useCallback(() => {
+    if (sidebarAutoHideTimeoutRef.current !== null) {
+      window.clearTimeout(sidebarAutoHideTimeoutRef.current)
+      sidebarAutoHideTimeoutRef.current = null
+    }
+  }, [])
+
+  const scheduleSidebarAutoHide = useCallback(() => {
+    clearSidebarAutoHideTimeout()
+
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const canAutoHideSidebar = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+
+    if (!canAutoHideSidebar || isSidebarHoveredRef.current) {
+      return
+    }
+
+    sidebarAutoHideTimeoutRef.current = window.setTimeout(() => {
+      if (!isSidebarHoveredRef.current) {
+        setIsSidebarVisible(false)
+      }
+    }, SIDEBAR_AUTO_HIDE_DELAY_MS)
+  }, [clearSidebarAutoHideTimeout])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+
+    const canAutoHideSidebar = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+
+    if (!canAutoHideSidebar) {
+      clearSidebarAutoHideTimeout()
+      setIsSidebarVisible(true)
+      return undefined
+    }
+
+    if (!isSidebarVisible) {
+      clearSidebarAutoHideTimeout()
+      return undefined
+    }
+
+    const handleInteraction = () => {
+      if (!isSidebarHoveredRef.current) {
+        scheduleSidebarAutoHide()
+      }
+    }
+
+    scheduleSidebarAutoHide()
+
+    window.addEventListener('mousemove', handleInteraction)
+    window.addEventListener('mousedown', handleInteraction)
+    window.addEventListener('keydown', handleInteraction)
+    window.addEventListener('scroll', handleInteraction)
+
+    return () => {
+      window.removeEventListener('mousemove', handleInteraction)
+      window.removeEventListener('mousedown', handleInteraction)
+      window.removeEventListener('keydown', handleInteraction)
+      window.removeEventListener('scroll', handleInteraction)
+      clearSidebarAutoHideTimeout()
+    }
+  }, [clearSidebarAutoHideTimeout, isSidebarVisible, scheduleSidebarAutoHide])
 
   const loadDashboardAtivos = useCallback(async (monthToLoad: string) => {
     setIsLoadingDashboard(true)
@@ -1024,6 +1310,56 @@ function App() {
     }
   }, [deferredModalidadeSearch, modalidadeSortBy, modalidadeSortDirection])
 
+  const loadCondicaoItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingCondicao(true)
+    setCondicaoStatusMessage('Carregando registros de condicao...')
+    setCondicaoStatusTone('idle')
+
+    try {
+      const result = await listCondicaoItemsPaginated({
+        search: deferredCondicaoSearch,
+        page: pageToLoad,
+        pageSize: DRE_PAGE_SIZE,
+        sortBy: condicaoSortBy,
+        sortDirection: condicaoSortDirection,
+      })
+
+      const normalizedCondicaoItems = result.sortBy === 'codigo'
+        ? [...result.items].sort((left, right) => {
+            const leftCodigo = Number(left.codigo)
+            const rightCodigo = Number(right.codigo)
+
+            if (!Number.isNaN(leftCodigo) && !Number.isNaN(rightCodigo)) {
+              return result.sortDirection === 'asc'
+                ? leftCodigo - rightCodigo
+                : rightCodigo - leftCodigo
+            }
+
+            return result.sortDirection === 'asc'
+              ? left.codigo.localeCompare(right.codigo, 'pt-BR', { numeric: true })
+              : right.codigo.localeCompare(left.codigo, 'pt-BR', { numeric: true })
+          })
+        : result.items
+
+      setCondicaoItems(normalizedCondicaoItems)
+      setCondicaoTotalItems(result.total)
+      setCondicaoTotalPages(result.totalPages)
+      setCondicaoPage(result.page)
+      setCondicaoSortBy(result.sortBy)
+      setCondicaoSortDirection(result.sortDirection)
+      setCondicaoStatusMessage(normalizedCondicaoItems.length ? '' : 'Nenhum registro encontrado na tabela Condicao.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de condicao.'
+
+      setCondicaoStatusTone('error')
+      setCondicaoStatusMessage(message)
+    } finally {
+      setIsLoadingCondicao(false)
+    }
+  }, [condicaoSortBy, condicaoSortDirection, deferredCondicaoSearch])
+
   const loadTipoBancadaItems = useCallback(async (pageToLoad: number) => {
     setIsLoadingTipoBancada(true)
     setTipoBancadaStatusMessage('Carregando registros de tipo de bancada...')
@@ -1056,6 +1392,39 @@ function App() {
       setIsLoadingTipoBancada(false)
     }
   }, [deferredTipoBancadaSearch, tipoBancadaSortBy, tipoBancadaSortDirection])
+
+  const loadTipoPgtoItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingTipoPgto(true)
+    setTipoPgtoStatusMessage('Carregando registros de tipo de pagamento...')
+    setTipoPgtoStatusTone('idle')
+
+    try {
+      const result = await listTipoPgtoItemsPaginated({
+        search: deferredTipoPgtoSearch,
+        page: pageToLoad,
+        pageSize: 20,
+        sortBy: tipoPgtoSortBy,
+        sortDirection: tipoPgtoSortDirection,
+      })
+
+      setTipoPgtoItems(result.items)
+      setTipoPgtoTotalItems(result.total)
+      setTipoPgtoTotalPages(result.totalPages)
+      setTipoPgtoPage(result.page)
+      setTipoPgtoSortBy(result.sortBy)
+      setTipoPgtoSortDirection(result.sortDirection)
+      setTipoPgtoStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Tipo_pgto.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de tipo de pagamento.'
+
+      setTipoPgtoStatusTone('error')
+      setTipoPgtoStatusMessage(message)
+    } finally {
+      setIsLoadingTipoPgto(false)
+    }
+  }, [deferredTipoPgtoSearch, tipoPgtoSortBy, tipoPgtoSortDirection])
 
   const loadAssociationOptions = useCallback(async () => {
     setIsLoadingAssociationOptions(true)
@@ -1183,6 +1552,577 @@ function App() {
     }
   }
 
+  const loadModalBancadaTpPagtoCondicaoOptions = useCallback(async () => {
+    setIsLoadingModalBancadaTpPagtoCondicaoOptions(true)
+    setModalBancadaTpPagtoCondicaoStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoStatusMessage('Carregando opcoes de Modalidade x Tipo de Bancada, Tipo de Pagamento e Condicao...')
+
+    try {
+      const [associationItems, tipoPgtoResult, condicaoResult] = await Promise.all([
+        listModalidadeTipoBancadaAssociationItems(),
+        listTipoPgtoItemsPaginated({
+          page: 1,
+          pageSize: 500,
+          sortBy: 'codigo',
+          sortDirection: 'asc',
+        }),
+        listCondicaoItemsPaginated({
+          page: 1,
+          pageSize: 500,
+          sortBy: 'codigo',
+          sortDirection: 'asc',
+        }),
+      ])
+
+      setModalBancadaTpPagtoCondicaoAssociationOptions(associationItems)
+      setModalBancadaTpPagtoCondicaoTipoPgtoOptions(tipoPgtoResult.items)
+      setModalBancadaTpPagtoCondicaoCondicaoOptions(condicaoResult.items)
+      setModalBancadaTpPagtoCondicaoStatusMessage('')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar as opcoes da associacao de modalidade, bancada, pagamento e condicao.'
+
+      setModalBancadaTpPagtoCondicaoStatusTone('error')
+      setModalBancadaTpPagtoCondicaoStatusMessage(message)
+    } finally {
+      setIsLoadingModalBancadaTpPagtoCondicaoOptions(false)
+    }
+  }, [])
+
+  const loadModalBancadaTpPagtoCondicaoItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingModalBancadaTpPagtoCondicaoItems(true)
+    setModalBancadaTpPagtoCondicaoStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoStatusMessage('Carregando registros da associacao de modalidade, bancada, pagamento e condicao...')
+
+    try {
+      const result = await listModalBancadaTpPagtoCondicaoItems({
+        modalidadeTipoBancadaCodigo: appliedModalBancadaTpPagtoCondicaoFilterAssociationCodigo,
+        tipoPgtoCodigo: appliedModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo,
+        condicaoCodigo: appliedModalBancadaTpPagtoCondicaoFilterCondicaoCodigo,
+        page: pageToLoad,
+        pageSize: DRE_PAGE_SIZE,
+      })
+      setModalBancadaTpPagtoCondicaoItems(result.items)
+      setModalBancadaTpPagtoCondicaoTotalItems(result.total)
+      setModalBancadaTpPagtoCondicaoTotalPages(result.totalPages)
+      setModalBancadaTpPagtoCondicaoPage(result.page)
+      setModalBancadaTpPagtoCondicaoStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na associacao de modalidade, bancada, pagamento e condicao.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros da associacao de modalidade, bancada, pagamento e condicao.'
+
+      setModalBancadaTpPagtoCondicaoStatusTone('error')
+      setModalBancadaTpPagtoCondicaoStatusMessage(message)
+    } finally {
+      setIsLoadingModalBancadaTpPagtoCondicaoItems(false)
+    }
+  }, [
+    appliedModalBancadaTpPagtoCondicaoFilterAssociationCodigo,
+    appliedModalBancadaTpPagtoCondicaoFilterCondicaoCodigo,
+    appliedModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo,
+  ])
+
+  const loadModalBancadaTpPagtoCondicaoValorOptions = useCallback(async () => {
+    setIsLoadingModalBancadaTpPagtoCondicaoValorOptions(true)
+    setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoValorStatusMessage('Carregando opcoes da associacao de modalidade, bancada, pagamento e condicao...')
+
+    try {
+      const result = await listModalBancadaTpPagtoCondicaoItems({
+        page: 1,
+        pageSize: 500,
+      })
+
+      setModalBancadaTpPagtoCondicaoValorOptions(result.items)
+      setModalBancadaTpPagtoCondicaoValorStatusMessage('')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar as opcoes do valor da associacao de modalidade, bancada, pagamento e condicao.'
+
+      setModalBancadaTpPagtoCondicaoValorStatusTone('error')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage(message)
+    } finally {
+      setIsLoadingModalBancadaTpPagtoCondicaoValorOptions(false)
+    }
+  }, [])
+
+  const loadModalBancadaTpPagtoCondicaoValorItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingModalBancadaTpPagtoCondicaoValorItems(true)
+    setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoValorStatusMessage('Carregando registros de valor da associacao de modalidade, bancada, pagamento e condicao...')
+
+    try {
+      const result = await listModalBancadaTpPagtoCondicaoValorItems({
+        modalBancadaTpPagtoCondicaoCodigo: appliedModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo,
+        data: appliedModalBancadaTpPagtoCondicaoValorFilterData,
+        page: pageToLoad,
+        pageSize: DRE_PAGE_SIZE,
+      })
+
+      setModalBancadaTpPagtoCondicaoValorItems(result.items)
+      setModalBancadaTpPagtoCondicaoValorTotalItems(result.total)
+      setModalBancadaTpPagtoCondicaoValorTotalPages(result.totalPages)
+      setModalBancadaTpPagtoCondicaoValorPage(result.page)
+      setModalBancadaTpPagtoCondicaoValorStatusMessage(result.items.length ? '' : 'Nenhum registro de valor encontrado.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de valor da associacao de modalidade, bancada, pagamento e condicao.'
+
+      setModalBancadaTpPagtoCondicaoValorStatusTone('error')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage(message)
+    } finally {
+      setIsLoadingModalBancadaTpPagtoCondicaoValorItems(false)
+    }
+  }, [
+    appliedModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo,
+    appliedModalBancadaTpPagtoCondicaoValorFilterData,
+  ])
+
+  const loadKmValorOptions = useCallback(async () => {
+    setIsLoadingKmValorOptions(true)
+    setKmValorStatusTone('idle')
+    setKmValorStatusMessage('Carregando opcoes de condicao...')
+
+    try {
+      const result = await listCondicaoItemsPaginated({
+        page: 1,
+        pageSize: 500,
+        sortBy: 'descricao',
+        sortDirection: 'asc',
+      })
+
+      setKmValorCondicaoOptions(result.items.filter((item) => item.exibirKmValor))
+      setKmValorStatusMessage('')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar as opcoes de condicao para km valor.'
+
+      setKmValorStatusTone('error')
+      setKmValorStatusMessage(message)
+    } finally {
+      setIsLoadingKmValorOptions(false)
+    }
+  }, [])
+
+  const loadKmValorItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingKmValorItems(true)
+    setKmValorStatusTone('idle')
+    setKmValorStatusMessage('Carregando registros de km valor...')
+
+    try {
+      const result = await listKmValorItems({
+        condicaoCodigo: appliedKmValorFilterCondicaoCodigo,
+        data: appliedKmValorFilterData,
+        page: pageToLoad,
+        pageSize: DRE_PAGE_SIZE,
+      })
+
+      setKmValorItems(result.items)
+      setKmValorTotalItems(result.total)
+      setKmValorTotalPages(result.totalPages)
+      setKmValorPage(result.page)
+      setKmValorStatusMessage(result.items.length ? '' : 'Nenhum registro de km valor encontrado.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de km valor.'
+
+      setKmValorStatusTone('error')
+      setKmValorStatusMessage(message)
+    } finally {
+      setIsLoadingKmValorItems(false)
+    }
+  }, [
+    appliedKmValorFilterCondicaoCodigo,
+    appliedKmValorFilterData,
+  ])
+
+  const loadContinuaValorItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingContinuaValorItems(true)
+    setContinuaValorStatusTone('idle')
+    setContinuaValorStatusMessage('Carregando registros de continua valor...')
+
+    try {
+      const result = await listContinuaValorItems({
+        tipoContinua: appliedContinuaValorFilterTipo,
+        data: appliedContinuaValorFilterData,
+        page: pageToLoad,
+        pageSize: DRE_PAGE_SIZE,
+      })
+
+      setContinuaValorItems(result.items)
+      setContinuaValorTotalItems(result.total)
+      setContinuaValorTotalPages(result.totalPages)
+      setContinuaValorPage(result.page)
+      setContinuaValorStatusMessage(result.items.length ? '' : 'Nenhum registro de continua valor encontrado.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de continua valor.'
+
+      setContinuaValorStatusTone('error')
+      setContinuaValorStatusMessage(message)
+    } finally {
+      setIsLoadingContinuaValorItems(false)
+    }
+  }, [
+    appliedContinuaValorFilterData,
+    appliedContinuaValorFilterTipo,
+  ])
+
+  const handleCreateModalBancadaTpPagtoCondicao = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (modalBancadaTpPagtoCondicaoFormMode === 'view') {
+      setModalBancadaTpPagtoCondicaoStatusTone('idle')
+      setModalBancadaTpPagtoCondicaoStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    setModalBancadaTpPagtoCondicaoStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoStatusMessage('')
+
+    if (!modalBancadaTpPagtoCondicaoAssociationCodigo || !modalBancadaTpPagtoCondicaoTipoPgtoCodigo || !modalBancadaTpPagtoCondicaoCondicaoCodigo) {
+      setModalBancadaTpPagtoCondicaoStatusTone('error')
+      setModalBancadaTpPagtoCondicaoStatusMessage('Selecione Modalidade x Tipo de Bancada, Tipo de Pagamento e Condicao.')
+      return
+    }
+
+    const association = modalBancadaTpPagtoCondicaoAssociationOptions.find(
+      (item) => item.codigo === modalBancadaTpPagtoCondicaoAssociationCodigo,
+    )
+    const tipoPgto = modalBancadaTpPagtoCondicaoTipoPgtoOptions.find(
+      (item) => item.codigo === modalBancadaTpPagtoCondicaoTipoPgtoCodigo,
+    )
+    const condicao = modalBancadaTpPagtoCondicaoCondicaoOptions.find(
+      (item) => item.codigo === modalBancadaTpPagtoCondicaoCondicaoCodigo,
+    )
+
+    if (!association || !tipoPgto || !condicao) {
+      setModalBancadaTpPagtoCondicaoStatusTone('error')
+      setModalBancadaTpPagtoCondicaoStatusMessage('Selecao invalida.')
+      return
+    }
+
+    const editingCodigo = editingModalBancadaTpPagtoCondicaoCodigo
+
+    setIsSavingModalBancadaTpPagtoCondicao(true)
+    setModalBancadaTpPagtoCondicaoStatusMessage(editingCodigo ? 'Alterando associacao...' : 'Gravando associacao...')
+
+    try {
+      await (editingCodigo
+        ? updateModalBancadaTpPagtoCondicaoItem(editingCodigo, {
+            modalidadeTipoBancadaCodigo: association.codigo,
+            tipoPgtoCodigo: tipoPgto.codigo,
+            condicaoCodigo: condicao.codigo,
+          })
+        : createModalBancadaTpPagtoCondicaoItem({
+            modalidadeTipoBancadaCodigo: association.codigo,
+            tipoPgtoCodigo: tipoPgto.codigo,
+            condicaoCodigo: condicao.codigo,
+          }))
+
+      resetModalBancadaTpPagtoCondicaoForm()
+      setIsModalBancadaTpPagtoCondicaoFormVisible(false)
+      setModalBancadaTpPagtoCondicaoStatusTone('success')
+      setModalBancadaTpPagtoCondicaoStatusMessage(editingCodigo
+        ? 'Registro da associacao de modalidade, bancada, pagamento e condicao alterado com sucesso.'
+        : 'Registro da associacao de modalidade, bancada, pagamento e condicao criado com sucesso.')
+      await loadModalBancadaTpPagtoCondicaoItems(editingCodigo ? modalBancadaTpPagtoCondicaoPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao salvar o registro da associacao de modalidade, bancada, pagamento e condicao.'
+
+      setModalBancadaTpPagtoCondicaoStatusTone('error')
+      setModalBancadaTpPagtoCondicaoStatusMessage(message)
+    } finally {
+      setIsSavingModalBancadaTpPagtoCondicao(false)
+    }
+  }
+
+  const handleDeleteModalBancadaTpPagtoCondicao = async (item: ModalBancadaTpPagtoCondicaoItem) => {
+    const confirmed = window.confirm(
+      `Excluir a associacao ${item.modalidadeDescricao} x ${item.tipoBancadaDescricao} x ${item.tipoPgtoDescricao} x ${item.condicaoDescricao}?`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingModalBancadaTpPagtoCondicao(true)
+
+    try {
+      await deleteModalBancadaTpPagtoCondicaoItem(item.codigo)
+      setModalBancadaTpPagtoCondicaoStatusTone('success')
+      setModalBancadaTpPagtoCondicaoStatusMessage('Registro da associacao de modalidade, bancada, pagamento e condicao removido.')
+      await loadModalBancadaTpPagtoCondicaoItems(modalBancadaTpPagtoCondicaoPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir o registro da associacao de modalidade, bancada, pagamento e condicao.'
+
+      setModalBancadaTpPagtoCondicaoStatusTone('error')
+      setModalBancadaTpPagtoCondicaoStatusMessage(message)
+    } finally {
+      setIsDeletingModalBancadaTpPagtoCondicao(false)
+    }
+  }
+
+  const handleCreateModalBancadaTpPagtoCondicaoValor = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (modalBancadaTpPagtoCondicaoValorFormMode === 'view') {
+      setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoValorStatusMessage('')
+
+    if (!modalBancadaTpPagtoCondicaoValorAssociationCodigo || !modalBancadaTpPagtoCondicaoValorData || modalBancadaTpPagtoCondicaoValorValor.trim() === '') {
+      setModalBancadaTpPagtoCondicaoValorStatusTone('error')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage('Selecione a associacao e informe data e valor.')
+      return
+    }
+
+    const editingCodigo = editingModalBancadaTpPagtoCondicaoValorCodigo
+
+    setIsSavingModalBancadaTpPagtoCondicaoValor(true)
+    setModalBancadaTpPagtoCondicaoValorStatusMessage(editingCodigo ? 'Alterando registro de valor...' : 'Gravando registro de valor...')
+
+    try {
+      await (editingCodigo
+        ? updateModalBancadaTpPagtoCondicaoValorItem(editingCodigo, {
+            modalBancadaTpPagtoCondicaoCodigo: modalBancadaTpPagtoCondicaoValorAssociationCodigo,
+            data: modalBancadaTpPagtoCondicaoValorData,
+            valor: modalBancadaTpPagtoCondicaoValorValor,
+          })
+        : createModalBancadaTpPagtoCondicaoValorItem({
+            modalBancadaTpPagtoCondicaoCodigo: modalBancadaTpPagtoCondicaoValorAssociationCodigo,
+            data: modalBancadaTpPagtoCondicaoValorData,
+            valor: modalBancadaTpPagtoCondicaoValorValor,
+          }))
+
+      resetModalBancadaTpPagtoCondicaoValorForm()
+      setIsModalBancadaTpPagtoCondicaoValorFormVisible(false)
+      setModalBancadaTpPagtoCondicaoValorStatusTone('success')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage(editingCodigo
+        ? 'Registro de valor alterado com sucesso.'
+        : 'Registro de valor criado com sucesso.')
+      await loadModalBancadaTpPagtoCondicaoValorItems(editingCodigo ? modalBancadaTpPagtoCondicaoValorPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao salvar o registro de valor da associacao de modalidade, bancada, pagamento e condicao.'
+
+      setModalBancadaTpPagtoCondicaoValorStatusTone('error')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage(message)
+    } finally {
+      setIsSavingModalBancadaTpPagtoCondicaoValor(false)
+    }
+  }
+
+  const handleDeleteModalBancadaTpPagtoCondicaoValor = async (item: ModalBancadaTpPagtoCondicaoValorItem) => {
+    const confirmed = window.confirm(
+      `Excluir o valor ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)} da data ${item.data}?`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingModalBancadaTpPagtoCondicaoValor(true)
+
+    try {
+      await deleteModalBancadaTpPagtoCondicaoValorItem(item.codigo)
+      setModalBancadaTpPagtoCondicaoValorStatusTone('success')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage('Registro de valor removido.')
+      await loadModalBancadaTpPagtoCondicaoValorItems(modalBancadaTpPagtoCondicaoValorPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir o registro de valor.'
+
+      setModalBancadaTpPagtoCondicaoValorStatusTone('error')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage(message)
+    } finally {
+      setIsDeletingModalBancadaTpPagtoCondicaoValor(false)
+    }
+  }
+
+  const handleCreateKmValor = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (kmValorFormMode === 'view') {
+      setKmValorStatusTone('idle')
+      setKmValorStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    setKmValorStatusTone('idle')
+    setKmValorStatusMessage('')
+
+    if (!kmValorCondicaoCodigo || !kmValorData || kmValorValor.trim() === '') {
+      setKmValorStatusTone('error')
+      setKmValorStatusMessage('Selecione a condicao e informe data e valor.')
+      return
+    }
+
+    const editingCodigo = editingKmValorCodigo
+
+    setIsSavingKmValor(true)
+    setKmValorStatusMessage(editingCodigo ? 'Alterando registro de km valor...' : 'Gravando registro de km valor...')
+
+    try {
+      await (editingCodigo
+        ? updateKmValorItem(editingCodigo, {
+            condicaoCodigo: kmValorCondicaoCodigo,
+            data: kmValorData,
+            valor: kmValorValor,
+          })
+        : createKmValorItem({
+            condicaoCodigo: kmValorCondicaoCodigo,
+            data: kmValorData,
+            valor: kmValorValor,
+          }))
+
+      resetKmValorForm()
+      setIsKmValorFormVisible(false)
+      setKmValorStatusTone('success')
+      setKmValorStatusMessage(editingCodigo
+        ? 'Registro de km valor alterado com sucesso.'
+        : 'Registro de km valor criado com sucesso.')
+      await loadKmValorItems(editingCodigo ? kmValorPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao salvar o registro de km valor.'
+
+      setKmValorStatusTone('error')
+      setKmValorStatusMessage(message)
+    } finally {
+      setIsSavingKmValor(false)
+    }
+  }
+
+  const handleDeleteKmValor = async (item: KmValorItem) => {
+    const confirmed = window.confirm(
+      `Excluir o km valor ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)} da data ${item.data} para a condicao ${item.condicaoDescricao}?`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingKmValor(true)
+
+    try {
+      await deleteKmValorItem(item.codigo)
+      setKmValorStatusTone('success')
+      setKmValorStatusMessage('Registro de km valor removido.')
+      await loadKmValorItems(kmValorPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir o registro de km valor.'
+
+      setKmValorStatusTone('error')
+      setKmValorStatusMessage(message)
+    } finally {
+      setIsDeletingKmValor(false)
+    }
+  }
+
+  const handleCreateContinuaValor = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (continuaValorFormMode === 'view') {
+      setContinuaValorStatusTone('idle')
+      setContinuaValorStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    setContinuaValorStatusTone('idle')
+    setContinuaValorStatusMessage('')
+
+    if (!continuaValorTipo || !continuaValorData || continuaValorValor.trim() === '') {
+      setContinuaValorStatusTone('error')
+      setContinuaValorStatusMessage('Selecione o tipo continua e informe data e valor.')
+      return
+    }
+
+    const editingCodigo = editingContinuaValorCodigo
+
+    setIsSavingContinuaValor(true)
+    setContinuaValorStatusMessage(editingCodigo ? 'Alterando registro de continua valor...' : 'Gravando registro de continua valor...')
+
+    try {
+      await (editingCodigo
+        ? updateContinuaValorItem(editingCodigo, {
+            tipoContinua: continuaValorTipo,
+            data: continuaValorData,
+            valor: continuaValorValor,
+          })
+        : createContinuaValorItem({
+            tipoContinua: continuaValorTipo,
+            data: continuaValorData,
+            valor: continuaValorValor,
+          }))
+
+      resetContinuaValorForm()
+      setIsContinuaValorFormVisible(false)
+      setContinuaValorStatusTone('success')
+      setContinuaValorStatusMessage(editingCodigo
+        ? 'Registro de continua valor alterado com sucesso.'
+        : 'Registro de continua valor criado com sucesso.')
+      await loadContinuaValorItems(editingCodigo ? continuaValorPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao salvar o registro de continua valor.'
+
+      setContinuaValorStatusTone('error')
+      setContinuaValorStatusMessage(message)
+    } finally {
+      setIsSavingContinuaValor(false)
+    }
+  }
+
+  const handleDeleteContinuaValor = async (item: ContinuaValorItem) => {
+    const confirmed = window.confirm(
+      `Excluir o continua valor ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)} da data ${item.data} para o tipo ${item.tipoContinua}?`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingContinuaValor(true)
+
+    try {
+      await deleteContinuaValorItem(item.codigo)
+      setContinuaValorStatusTone('success')
+      setContinuaValorStatusMessage('Registro de continua valor removido.')
+      await loadContinuaValorItems(continuaValorPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir o registro de continua valor.'
+
+      setContinuaValorStatusTone('error')
+      setContinuaValorStatusMessage(message)
+    } finally {
+      setIsDeletingContinuaValor(false)
+    }
+  }
+
   const loadSeguradoraItems = useCallback(async (pageToLoad: number) => {
     setIsLoadingSeguradora(true)
     setSeguradoraStatusMessage('Carregando registros de seguradoras...')
@@ -1299,6 +2239,14 @@ function App() {
   }, [activeView, loadModalidadeItems, modalidadePage, session])
 
   useEffect(() => {
+    if (!session || activeView !== 'condicao') {
+      return
+    }
+
+    void loadCondicaoItems(condicaoPage)
+  }, [activeView, condicaoPage, loadCondicaoItems, session])
+
+  useEffect(() => {
     if (!session || activeView !== 'tipoBancada') {
       return
     }
@@ -1307,6 +2255,55 @@ function App() {
     void loadAssociationOptions()
     void loadTipoBancadaAssociationItems()
   }, [activeView, loadTipoBancadaItems, loadAssociationOptions, loadTipoBancadaAssociationItems, session, tipoBancadaPage])
+
+  useEffect(() => {
+    if (!session || activeView !== 'tipoPgto') {
+      return
+    }
+
+    void loadTipoPgtoItems(tipoPgtoPage)
+  }, [activeView, loadTipoPgtoItems, session, tipoPgtoPage])
+
+  useEffect(() => {
+    if (!session || activeView !== 'modalBancadaTpPagtoCondicao') {
+      return
+    }
+
+    void loadModalBancadaTpPagtoCondicaoOptions()
+    void loadModalBancadaTpPagtoCondicaoItems(modalBancadaTpPagtoCondicaoPage)
+  }, [activeView, loadModalBancadaTpPagtoCondicaoItems, loadModalBancadaTpPagtoCondicaoOptions, modalBancadaTpPagtoCondicaoPage, session])
+
+  useEffect(() => {
+    if (!session || activeView !== 'modalBancadaTpPagtoCondicaoValor') {
+      return
+    }
+
+    void loadModalBancadaTpPagtoCondicaoValorOptions()
+    void loadModalBancadaTpPagtoCondicaoValorItems(modalBancadaTpPagtoCondicaoValorPage)
+  }, [
+    activeView,
+    loadModalBancadaTpPagtoCondicaoValorItems,
+    loadModalBancadaTpPagtoCondicaoValorOptions,
+    modalBancadaTpPagtoCondicaoValorPage,
+    session,
+  ])
+
+  useEffect(() => {
+    if (!session || activeView !== 'kmValor') {
+      return
+    }
+
+    void loadKmValorOptions()
+    void loadKmValorItems(kmValorPage)
+  }, [activeView, kmValorPage, loadKmValorItems, loadKmValorOptions, session])
+
+  useEffect(() => {
+    if (!session || activeView !== 'continuaValor') {
+      return
+    }
+
+    void loadContinuaValorItems(continuaValorPage)
+  }, [activeView, continuaValorPage, loadContinuaValorItems, session])
 
   useEffect(() => {
     if (!session || activeView !== 'seguradora') {
@@ -1554,11 +2551,61 @@ function App() {
     setModalidadeFormMode('create')
   }
 
+  const resetCondicaoForm = () => {
+    setCondicaoDescricao('')
+    setCondicaoDescricaoError('')
+    setCondicaoQtdeIni('')
+    setCondicaoQtdeIniError('')
+    setCondicaoQtdeFim('')
+    setCondicaoQtdeFimError('')
+    setEditingCondicaoCodigo(null)
+    setCondicaoFormMode('create')
+  }
+
   const resetTipoBancadaForm = () => {
     setTipoBancadaDescricao('')
     setTipoBancadaDescricaoError('')
     setEditingTipoBancadaCodigo(null)
     setTipoBancadaFormMode('create')
+  }
+
+  const resetTipoPgtoForm = () => {
+    setTipoPgtoDescricao('')
+    setTipoPgtoDescricaoError('')
+    setEditingTipoPgtoCodigo(null)
+    setTipoPgtoFormMode('create')
+  }
+
+  const resetModalBancadaTpPagtoCondicaoForm = () => {
+    setModalBancadaTpPagtoCondicaoAssociationCodigo('')
+    setModalBancadaTpPagtoCondicaoTipoPgtoCodigo('')
+    setModalBancadaTpPagtoCondicaoCondicaoCodigo('')
+    setEditingModalBancadaTpPagtoCondicaoCodigo(null)
+    setModalBancadaTpPagtoCondicaoFormMode('create')
+  }
+
+  const resetModalBancadaTpPagtoCondicaoValorForm = () => {
+    setModalBancadaTpPagtoCondicaoValorAssociationCodigo('')
+    setModalBancadaTpPagtoCondicaoValorData('')
+    setModalBancadaTpPagtoCondicaoValorValor('')
+    setEditingModalBancadaTpPagtoCondicaoValorCodigo(null)
+    setModalBancadaTpPagtoCondicaoValorFormMode('create')
+  }
+
+  const resetKmValorForm = () => {
+    setKmValorCondicaoCodigo('')
+    setKmValorData('')
+    setKmValorValor('')
+    setEditingKmValorCodigo(null)
+    setKmValorFormMode('create')
+  }
+
+  const resetContinuaValorForm = () => {
+    setContinuaValorTipo('')
+    setContinuaValorData('')
+    setContinuaValorValor('')
+    setEditingContinuaValorCodigo(null)
+    setContinuaValorFormMode('create')
   }
 
   const handleStartInsertDre = () => {
@@ -1577,12 +2624,60 @@ function App() {
     setIsModalidadeFormVisible(true)
   }
 
+  const handleStartInsertCondicao = () => {
+    resetCondicaoForm()
+    setCondicaoFormMode('create')
+    setCondicaoStatusTone('idle')
+    setCondicaoStatusMessage('')
+    setIsCondicaoFormVisible(true)
+  }
+
   const handleStartInsertTipoBancada = () => {
     resetTipoBancadaForm()
     setTipoBancadaFormMode('create')
     setTipoBancadaStatusTone('idle')
     setTipoBancadaStatusMessage('')
     setIsTipoBancadaFormVisible(true)
+  }
+
+  const handleStartInsertTipoPgto = () => {
+    resetTipoPgtoForm()
+    setTipoPgtoFormMode('create')
+    setTipoPgtoStatusTone('idle')
+    setTipoPgtoStatusMessage('')
+    setIsTipoPgtoFormVisible(true)
+  }
+
+  const handleStartInsertModalBancadaTpPagtoCondicao = () => {
+    resetModalBancadaTpPagtoCondicaoForm()
+    setModalBancadaTpPagtoCondicaoFormMode('create')
+    setModalBancadaTpPagtoCondicaoStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoStatusMessage('')
+    setIsModalBancadaTpPagtoCondicaoFormVisible(true)
+  }
+
+  const handleStartInsertModalBancadaTpPagtoCondicaoValor = () => {
+    resetModalBancadaTpPagtoCondicaoValorForm()
+    setModalBancadaTpPagtoCondicaoValorFormMode('create')
+    setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoValorStatusMessage('')
+    setIsModalBancadaTpPagtoCondicaoValorFormVisible(true)
+  }
+
+  const handleStartInsertKmValor = () => {
+    resetKmValorForm()
+    setKmValorFormMode('create')
+    setKmValorStatusTone('idle')
+    setKmValorStatusMessage('')
+    setIsKmValorFormVisible(true)
+  }
+
+  const handleStartInsertContinuaValor = () => {
+    resetContinuaValorForm()
+    setContinuaValorFormMode('create')
+    setContinuaValorStatusTone('idle')
+    setContinuaValorStatusMessage('')
+    setIsContinuaValorFormVisible(true)
   }
 
   const handleFilterDreSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -1609,6 +2704,18 @@ function App() {
     setModalidadePage(1)
   }
 
+  const handleFilterCondicaoSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setCondicaoPage(1)
+    setCondicaoStatusMessage('Aplicando filtro de condicao...')
+    setCondicaoStatusTone('idle')
+  }
+
+  const handleClearCondicaoFilter = () => {
+    setCondicaoSearch('')
+    setCondicaoPage(1)
+  }
+
   const handleFilterTipoBancadaSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setTipoBancadaPage(1)
@@ -1619,6 +2726,89 @@ function App() {
   const handleClearTipoBancadaFilter = () => {
     setTipoBancadaSearch('')
     setTipoBancadaPage(1)
+  }
+
+  const handleFilterTipoPgtoSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setTipoPgtoPage(1)
+    setTipoPgtoStatusMessage('Aplicando filtro de tipo de pagamento...')
+    setTipoPgtoStatusTone('idle')
+  }
+
+  const handleClearTipoPgtoFilter = () => {
+    setTipoPgtoSearch('')
+    setTipoPgtoPage(1)
+  }
+
+  const handleFilterModalBancadaTpPagtoCondicaoSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAppliedModalBancadaTpPagtoCondicaoFilterAssociationCodigo(modalBancadaTpPagtoCondicaoFilterAssociationCodigo)
+    setAppliedModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo(modalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo)
+    setAppliedModalBancadaTpPagtoCondicaoFilterCondicaoCodigo(modalBancadaTpPagtoCondicaoFilterCondicaoCodigo)
+    setModalBancadaTpPagtoCondicaoPage(1)
+    setModalBancadaTpPagtoCondicaoStatusMessage('Aplicando filtro da associacao de modalidade, bancada, pagamento e condicao...')
+    setModalBancadaTpPagtoCondicaoStatusTone('idle')
+  }
+
+  const handleClearModalBancadaTpPagtoCondicaoFilter = () => {
+    setModalBancadaTpPagtoCondicaoFilterAssociationCodigo('')
+    setModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo('')
+    setModalBancadaTpPagtoCondicaoFilterCondicaoCodigo('')
+    setAppliedModalBancadaTpPagtoCondicaoFilterAssociationCodigo('')
+    setAppliedModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo('')
+    setAppliedModalBancadaTpPagtoCondicaoFilterCondicaoCodigo('')
+    setModalBancadaTpPagtoCondicaoPage(1)
+  }
+
+  const handleFilterModalBancadaTpPagtoCondicaoValorSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAppliedModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo(modalBancadaTpPagtoCondicaoValorFilterAssociationCodigo)
+    setAppliedModalBancadaTpPagtoCondicaoValorFilterData(modalBancadaTpPagtoCondicaoValorFilterData)
+    setModalBancadaTpPagtoCondicaoValorPage(1)
+    setModalBancadaTpPagtoCondicaoValorStatusMessage('Aplicando filtro de valor da associacao de modalidade, bancada, pagamento e condicao...')
+    setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+  }
+
+  const handleClearModalBancadaTpPagtoCondicaoValorFilter = () => {
+    setModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo('')
+    setModalBancadaTpPagtoCondicaoValorFilterData('')
+    setAppliedModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo('')
+    setAppliedModalBancadaTpPagtoCondicaoValorFilterData('')
+    setModalBancadaTpPagtoCondicaoValorPage(1)
+  }
+
+  const handleFilterKmValorSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAppliedKmValorFilterCondicaoCodigo(kmValorFilterCondicaoCodigo)
+    setAppliedKmValorFilterData(kmValorFilterData)
+    setKmValorPage(1)
+    setKmValorStatusMessage('Aplicando filtro de km valor...')
+    setKmValorStatusTone('idle')
+  }
+
+  const handleClearKmValorFilter = () => {
+    setKmValorFilterCondicaoCodigo('')
+    setKmValorFilterData('')
+    setAppliedKmValorFilterCondicaoCodigo('')
+    setAppliedKmValorFilterData('')
+    setKmValorPage(1)
+  }
+
+  const handleFilterContinuaValorSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAppliedContinuaValorFilterTipo(continuaValorFilterTipo)
+    setAppliedContinuaValorFilterData(continuaValorFilterData)
+    setContinuaValorPage(1)
+    setContinuaValorStatusMessage('Aplicando filtro de continua valor...')
+    setContinuaValorStatusTone('idle')
+  }
+
+  const handleClearContinuaValorFilter = () => {
+    setContinuaValorFilterTipo('')
+    setContinuaValorFilterData('')
+    setAppliedContinuaValorFilterTipo('')
+    setAppliedContinuaValorFilterData('')
+    setContinuaValorPage(1)
   }
 
   const handleSortDre = (field: DreSortField) => {
@@ -1661,6 +2851,48 @@ function App() {
     }
 
     return modalidadeSortDirection === 'asc' ? '↑' : '↓'
+  }
+
+  const handleSortCondicao = (field: CondicaoSortField) => {
+    setCondicaoPage(1)
+    setCondicaoSortBy((currentField) => {
+      if (currentField === field) {
+        setCondicaoSortDirection((currentDirection) => currentDirection === 'asc' ? 'desc' : 'asc')
+        return currentField
+      }
+
+      setCondicaoSortDirection('asc')
+      return field
+    })
+  }
+
+  const getCondicaoSortIndicator = (field: CondicaoSortField) => {
+    if (condicaoSortBy !== field) {
+      return '↕'
+    }
+
+    return condicaoSortDirection === 'asc' ? '↑' : '↓'
+  }
+
+  const handleSortTipoPgto = (field: DreSortField) => {
+    setTipoPgtoPage(1)
+    setTipoPgtoSortBy((currentField) => {
+      if (currentField === field) {
+        setTipoPgtoSortDirection((currentDirection) => currentDirection === 'asc' ? 'desc' : 'asc')
+        return currentField
+      }
+
+      setTipoPgtoSortDirection('asc')
+      return field
+    })
+  }
+
+  const getTipoPgtoSortIndicator = (field: DreSortField) => {
+    if (tipoPgtoSortBy !== field) {
+      return '↕'
+    }
+
+    return tipoPgtoSortDirection === 'asc' ? '↑' : '↓'
   }
 
   const handleSortTipoBancada = (field: DreSortField) => {
@@ -1735,11 +2967,162 @@ function App() {
     setIsModalidadeFormVisible(true)
   }
 
+  const handleStartEditCondicao = (item: CondicaoItem) => {
+    setEditingCondicaoCodigo(item.codigo)
+    setCondicaoFormMode('edit')
+    setCondicaoDescricao(item.descricao)
+    setCondicaoDescricaoError('')
+    setCondicaoQtdeIni(String(item.qtdeIni))
+    setCondicaoQtdeIniError('')
+    setCondicaoQtdeFim(String(item.qtdeFim))
+    setCondicaoQtdeFimError('')
+    setCondicaoStatusTone('idle')
+    setCondicaoStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsCondicaoFormVisible(true)
+  }
+
+  const handleStartViewCondicao = (item: CondicaoItem) => {
+    setEditingCondicaoCodigo(item.codigo)
+    setCondicaoFormMode('view')
+    setCondicaoDescricao(item.descricao)
+    setCondicaoDescricaoError('')
+    setCondicaoQtdeIni(String(item.qtdeIni))
+    setCondicaoQtdeIniError('')
+    setCondicaoQtdeFim(String(item.qtdeFim))
+    setCondicaoQtdeFimError('')
+    setCondicaoStatusTone('idle')
+    setCondicaoStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsCondicaoFormVisible(true)
+  }
+
+  const handleStartEditModalBancadaTpPagtoCondicao = (item: ModalBancadaTpPagtoCondicaoItem) => {
+    setEditingModalBancadaTpPagtoCondicaoCodigo(item.codigo)
+    setModalBancadaTpPagtoCondicaoFormMode('edit')
+    setModalBancadaTpPagtoCondicaoAssociationCodigo(item.modalidadeTipoBancadaCodigo)
+    setModalBancadaTpPagtoCondicaoTipoPgtoCodigo(item.tipoPgtoCodigo)
+    setModalBancadaTpPagtoCondicaoCondicaoCodigo(item.condicaoCodigo)
+    setModalBancadaTpPagtoCondicaoStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsModalBancadaTpPagtoCondicaoFormVisible(true)
+  }
+
+  const handleStartViewModalBancadaTpPagtoCondicao = (item: ModalBancadaTpPagtoCondicaoItem) => {
+    setEditingModalBancadaTpPagtoCondicaoCodigo(item.codigo)
+    setModalBancadaTpPagtoCondicaoFormMode('view')
+    setModalBancadaTpPagtoCondicaoAssociationCodigo(item.modalidadeTipoBancadaCodigo)
+    setModalBancadaTpPagtoCondicaoTipoPgtoCodigo(item.tipoPgtoCodigo)
+    setModalBancadaTpPagtoCondicaoCondicaoCodigo(item.condicaoCodigo)
+    setModalBancadaTpPagtoCondicaoStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsModalBancadaTpPagtoCondicaoFormVisible(true)
+  }
+
+  const handleStartEditModalBancadaTpPagtoCondicaoValor = (item: ModalBancadaTpPagtoCondicaoValorItem) => {
+    setEditingModalBancadaTpPagtoCondicaoValorCodigo(item.codigo)
+    setModalBancadaTpPagtoCondicaoValorFormMode('edit')
+    setModalBancadaTpPagtoCondicaoValorAssociationCodigo(item.modalBancadaTpPagtoCondicaoCodigo)
+    setModalBancadaTpPagtoCondicaoValorData(item.data)
+    setModalBancadaTpPagtoCondicaoValorValor(String(item.valor))
+    setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoValorStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsModalBancadaTpPagtoCondicaoValorFormVisible(true)
+  }
+
+  const handleStartViewModalBancadaTpPagtoCondicaoValor = (item: ModalBancadaTpPagtoCondicaoValorItem) => {
+    setEditingModalBancadaTpPagtoCondicaoValorCodigo(item.codigo)
+    setModalBancadaTpPagtoCondicaoValorFormMode('view')
+    setModalBancadaTpPagtoCondicaoValorAssociationCodigo(item.modalBancadaTpPagtoCondicaoCodigo)
+    setModalBancadaTpPagtoCondicaoValorData(item.data)
+    setModalBancadaTpPagtoCondicaoValorValor(String(item.valor))
+    setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoValorStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsModalBancadaTpPagtoCondicaoValorFormVisible(true)
+  }
+
+  const handleStartEditKmValor = (item: KmValorItem) => {
+    setEditingKmValorCodigo(item.codigo)
+    setKmValorFormMode('edit')
+    setKmValorCondicaoCodigo(item.condicaoCodigo)
+    setKmValorData(item.data)
+    setKmValorValor(String(item.valor))
+    setKmValorStatusTone('idle')
+    setKmValorStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsKmValorFormVisible(true)
+  }
+
+  const handleStartViewKmValor = (item: KmValorItem) => {
+    setEditingKmValorCodigo(item.codigo)
+    setKmValorFormMode('view')
+    setKmValorCondicaoCodigo(item.condicaoCodigo)
+    setKmValorData(item.data)
+    setKmValorValor(String(item.valor))
+    setKmValorStatusTone('idle')
+    setKmValorStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsKmValorFormVisible(true)
+  }
+
+  const handleStartEditContinuaValor = (item: ContinuaValorItem) => {
+    setEditingContinuaValorCodigo(item.codigo)
+    setContinuaValorFormMode('edit')
+    setContinuaValorTipo(item.tipoContinua)
+    setContinuaValorData(item.data)
+    setContinuaValorValor(String(item.valor))
+    setContinuaValorStatusTone('idle')
+    setContinuaValorStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsContinuaValorFormVisible(true)
+  }
+
+  const handleStartViewContinuaValor = (item: ContinuaValorItem) => {
+    setEditingContinuaValorCodigo(item.codigo)
+    setContinuaValorFormMode('view')
+    setContinuaValorTipo(item.tipoContinua)
+    setContinuaValorData(item.data)
+    setContinuaValorValor(String(item.valor))
+    setContinuaValorStatusTone('idle')
+    setContinuaValorStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsContinuaValorFormVisible(true)
+  }
+
   const handleCancelModalidadeForm = () => {
     resetModalidadeForm()
     setIsModalidadeFormVisible(false)
     setModalidadeStatusTone('idle')
     setModalidadeStatusMessage('')
+  }
+
+  const handleCancelCondicaoForm = () => {
+    resetCondicaoForm()
+    setIsCondicaoFormVisible(false)
+    setCondicaoStatusTone('idle')
+    setCondicaoStatusMessage('')
+  }
+
+  const handleCancelModalBancadaTpPagtoCondicaoForm = () => {
+    resetModalBancadaTpPagtoCondicaoForm()
+    setIsModalBancadaTpPagtoCondicaoFormVisible(false)
+    setModalBancadaTpPagtoCondicaoStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoStatusMessage('')
+  }
+
+  const handleCancelModalBancadaTpPagtoCondicaoValorForm = () => {
+    resetModalBancadaTpPagtoCondicaoValorForm()
+    setIsModalBancadaTpPagtoCondicaoValorFormVisible(false)
+    setModalBancadaTpPagtoCondicaoValorStatusTone('idle')
+    setModalBancadaTpPagtoCondicaoValorStatusMessage('')
+  }
+
+  const handleCancelKmValorForm = () => {
+    resetKmValorForm()
+    setIsKmValorFormVisible(false)
+    setKmValorStatusTone('idle')
+    setKmValorStatusMessage('')
+  }
+
+  const handleCancelContinuaValorForm = () => {
+    resetContinuaValorForm()
+    setIsContinuaValorFormVisible(false)
+    setContinuaValorStatusTone('idle')
+    setContinuaValorStatusMessage('')
   }
 
   const handleStartEditTipoBancada = (item: TipoBancadaItem) => {
@@ -1762,11 +3145,38 @@ function App() {
     setIsTipoBancadaFormVisible(true)
   }
 
+  const handleStartEditTipoPgto = (item: TipoPgtoItem) => {
+    setEditingTipoPgtoCodigo(item.codigo)
+    setTipoPgtoFormMode('edit')
+    setTipoPgtoDescricao(item.descricao)
+    setTipoPgtoDescricaoError('')
+    setTipoPgtoStatusTone('idle')
+    setTipoPgtoStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsTipoPgtoFormVisible(true)
+  }
+
+  const handleStartViewTipoPgto = (item: TipoPgtoItem) => {
+    setEditingTipoPgtoCodigo(item.codigo)
+    setTipoPgtoFormMode('view')
+    setTipoPgtoDescricao(item.descricao)
+    setTipoPgtoDescricaoError('')
+    setTipoPgtoStatusTone('idle')
+    setTipoPgtoStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsTipoPgtoFormVisible(true)
+  }
+
   const handleCancelTipoBancadaForm = () => {
     resetTipoBancadaForm()
     setIsTipoBancadaFormVisible(false)
     setTipoBancadaStatusTone('idle')
     setTipoBancadaStatusMessage('')
+  }
+
+  const handleCancelTipoPgtoForm = () => {
+    resetTipoPgtoForm()
+    setIsTipoPgtoFormVisible(false)
+    setTipoPgtoStatusTone('idle')
+    setTipoPgtoStatusMessage('')
   }
 
   useEffect(() => {
@@ -1810,6 +3220,48 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [handleCancelTipoBancadaForm, isSavingTipoBancada, isTipoBancadaFormVisible])
+
+  useEffect(() => {
+    if (!isTipoPgtoFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingTipoPgto) {
+        handleCancelTipoPgtoForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelTipoPgtoForm, isSavingTipoPgto, isTipoPgtoFormVisible])
+
+  useEffect(() => {
+    if (!isCondicaoFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingCondicao) {
+        handleCancelCondicaoForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelCondicaoForm, isCondicaoFormVisible, isSavingCondicao])
 
   const handleCreateDre = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -1934,6 +3386,89 @@ function App() {
     }
   }
 
+  const handleCreateCondicao = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (condicaoFormMode === 'view') {
+      setCondicaoStatusTone('idle')
+      setCondicaoStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    const normalizedDescricao = condicaoDescricao.trim()
+    const normalizedQtdeIni = condicaoQtdeIni.trim()
+    const normalizedQtdeFim = condicaoQtdeFim.trim()
+    const editingCodigo = editingCondicaoCodigo
+    let hasError = false
+
+    setCondicaoDescricaoError('')
+    setCondicaoQtdeIniError('')
+    setCondicaoQtdeFimError('')
+
+    if (!normalizedDescricao) {
+      setCondicaoDescricaoError('Descricao e obrigatoria.')
+      hasError = true
+    }
+
+    if (!/^\d+$/.test(normalizedQtdeIni)) {
+      setCondicaoQtdeIniError('Qtde inicial deve ser um numero inteiro maior ou igual a zero.')
+      hasError = true
+    }
+
+    if (!/^\d+$/.test(normalizedQtdeFim)) {
+      setCondicaoQtdeFimError('Qtde final deve ser um numero inteiro maior ou igual a zero.')
+      hasError = true
+    }
+
+    const parsedQtdeIni = /^\d+$/.test(normalizedQtdeIni) ? Number(normalizedQtdeIni) : Number.NaN
+    const parsedQtdeFim = /^\d+$/.test(normalizedQtdeFim) ? Number(normalizedQtdeFim) : Number.NaN
+
+    if (!Number.isNaN(parsedQtdeIni) && !Number.isNaN(parsedQtdeFim) && parsedQtdeFim < parsedQtdeIni) {
+      setCondicaoQtdeFimError('Qtde final deve ser maior ou igual a qtde inicial.')
+      hasError = true
+    }
+
+    if (hasError) {
+      setCondicaoStatusTone('error')
+      setCondicaoStatusMessage('Corrija os campos da condicao para continuar.')
+      return
+    }
+
+    setIsSavingCondicao(true)
+    setCondicaoStatusTone('idle')
+    setCondicaoStatusMessage(editingCodigo ? 'Alterando registro da condicao...' : 'Gravando registro da condicao...')
+
+    try {
+      const savedItem = editingCodigo
+        ? await updateCondicaoItem(editingCodigo, {
+            descricao: normalizedDescricao,
+            qtdeIni: parsedQtdeIni,
+            qtdeFim: parsedQtdeFim,
+          })
+        : await createCondicaoItem({
+            descricao: normalizedDescricao,
+            qtdeIni: parsedQtdeIni,
+            qtdeFim: parsedQtdeFim,
+          })
+
+      void savedItem
+      resetCondicaoForm()
+      setIsCondicaoFormVisible(false)
+      setCondicaoStatusTone('success')
+      setCondicaoStatusMessage(editingCodigo ? 'Registro da condicao alterado com sucesso.' : 'Registro da condicao cadastrado com sucesso.')
+      await loadCondicaoItems(editingCodigo ? condicaoPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao cadastrar registro da condicao.'
+
+      setCondicaoStatusTone('error')
+      setCondicaoStatusMessage(message)
+    } finally {
+      setIsSavingCondicao(false)
+    }
+  }
+
   const handleCreateTipoBancada = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -1992,6 +3527,63 @@ function App() {
       setTipoBancadaStatusMessage(message)
     } finally {
       setIsSavingTipoBancada(false)
+    }
+  }
+
+  const handleCreateTipoPgto = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (tipoPgtoFormMode === 'view') {
+      setTipoPgtoStatusTone('idle')
+      setTipoPgtoStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    const normalizedDescricao = tipoPgtoDescricao.trim()
+    const editingCodigo = editingTipoPgtoCodigo
+    let hasError = false
+
+    setTipoPgtoDescricaoError('')
+
+    if (!normalizedDescricao) {
+      setTipoPgtoDescricaoError('Descricao e obrigatoria.')
+      hasError = true
+    }
+
+    if (hasError) {
+      setTipoPgtoStatusTone('error')
+      setTipoPgtoStatusMessage('Corrija os campos do tipo de pagamento para continuar.')
+      return
+    }
+
+    setIsSavingTipoPgto(true)
+    setTipoPgtoStatusTone('idle')
+    setTipoPgtoStatusMessage(editingCodigo ? 'Alterando registro do tipo de pagamento...' : 'Gravando registro do tipo de pagamento...')
+
+    try {
+      const savedItem = editingCodigo
+        ? await updateTipoPgtoItem(editingCodigo, {
+            descricao: normalizedDescricao,
+          })
+        : await createTipoPgtoItem({
+            descricao: normalizedDescricao,
+          })
+
+      void savedItem
+      resetTipoPgtoForm()
+      setIsTipoPgtoFormVisible(false)
+      setTipoPgtoStatusTone('success')
+      setTipoPgtoStatusMessage(editingCodigo ? 'Registro do tipo de pagamento alterado com sucesso.' : 'Registro do tipo de pagamento cadastrado com sucesso.')
+      await loadTipoPgtoItems(editingCodigo ? tipoPgtoPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao cadastrar registro do tipo de pagamento.'
+
+      setTipoPgtoStatusTone('error')
+      setTipoPgtoStatusMessage(message)
+    } finally {
+      setIsSavingTipoPgto(false)
     }
   }
 
@@ -2067,6 +3659,42 @@ function App() {
     }
   }
 
+  const handleDeleteCondicao = async (item: CondicaoItem) => {
+    const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingCondicao(true)
+    setCondicaoStatusTone('idle')
+    setCondicaoStatusMessage(`Excluindo registro ${item.codigo}...`)
+
+    try {
+      const deletedCodigo = await deleteCondicaoItem(item.codigo)
+      setCondicaoItems((currentItems) => currentItems.filter((currentItem) => currentItem.codigo !== deletedCodigo))
+
+      if (editingCondicaoCodigo === item.codigo) {
+        resetCondicaoForm()
+        setIsCondicaoFormVisible(false)
+      }
+
+      setCondicaoStatusTone('success')
+      setCondicaoStatusMessage('Registro da condicao excluido com sucesso.')
+      const nextPage = condicaoItems.length === 1 && condicaoPage > 1 ? condicaoPage - 1 : condicaoPage
+      await loadCondicaoItems(nextPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir registro da condicao.'
+
+      setCondicaoStatusTone('error')
+      setCondicaoStatusMessage(message)
+    } finally {
+      setIsDeletingCondicao(false)
+    }
+  }
+
   const handleDeleteTipoBancada = async (item: TipoBancadaItem) => {
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
@@ -2104,6 +3732,42 @@ function App() {
       setTipoBancadaStatusMessage(message)
     } finally {
       setIsDeletingTipoBancada(false)
+    }
+  }
+
+  const handleDeleteTipoPgto = async (item: TipoPgtoItem) => {
+    const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingTipoPgto(true)
+    setTipoPgtoStatusTone('idle')
+    setTipoPgtoStatusMessage(`Excluindo registro ${item.codigo}...`)
+
+    try {
+      const deletedCodigo = await deleteTipoPgtoItem(item.codigo)
+      setTipoPgtoItems((currentItems) => currentItems.filter((currentItem) => currentItem.codigo !== deletedCodigo))
+
+      if (editingTipoPgtoCodigo === item.codigo) {
+        resetTipoPgtoForm()
+        setIsTipoPgtoFormVisible(false)
+      }
+
+      setTipoPgtoStatusTone('success')
+      setTipoPgtoStatusMessage('Registro do tipo de pagamento excluido com sucesso.')
+      const nextPage = tipoPgtoItems.length === 1 && tipoPgtoPage > 1 ? tipoPgtoPage - 1 : tipoPgtoPage
+      await loadTipoPgtoItems(nextPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir registro do tipo de pagamento.'
+
+      setTipoPgtoStatusTone('error')
+      setTipoPgtoStatusMessage(message)
+    } finally {
+      setIsDeletingTipoPgto(false)
     }
   }
 
@@ -2734,6 +4398,16 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    const nextState = getDefaultCollapsedMenuGroups()
+
+    for (const groupName of getExpandedGroupsForView(activeView)) {
+      nextState[groupName] = false
+    }
+
+    setCollapsedMenuGroups(nextState)
+  }, [activeView])
+
   if (!session) {
     return (
       <main className="login-page">
@@ -2819,8 +4493,20 @@ function App() {
   const canGoToNextDrePage = drePage < dreTotalPages
   const canGoToPreviousModalidadePage = modalidadePage > 1
   const canGoToNextModalidadePage = modalidadePage < modalidadeTotalPages
+  const canGoToPreviousCondicaoPage = condicaoPage > 1
+  const canGoToNextCondicaoPage = condicaoPage < condicaoTotalPages
   const canGoToPreviousTipoBancadaPage = tipoBancadaPage > 1
   const canGoToNextTipoBancadaPage = tipoBancadaPage < tipoBancadaTotalPages
+  const canGoToPreviousTipoPgtoPage = tipoPgtoPage > 1
+  const canGoToNextTipoPgtoPage = tipoPgtoPage < tipoPgtoTotalPages
+  const canGoToPreviousModalBancadaTpPagtoCondicaoPage = modalBancadaTpPagtoCondicaoPage > 1
+  const canGoToNextModalBancadaTpPagtoCondicaoPage = modalBancadaTpPagtoCondicaoPage < modalBancadaTpPagtoCondicaoTotalPages
+  const canGoToPreviousModalBancadaTpPagtoCondicaoValorPage = modalBancadaTpPagtoCondicaoValorPage > 1
+  const canGoToNextModalBancadaTpPagtoCondicaoValorPage = modalBancadaTpPagtoCondicaoValorPage < modalBancadaTpPagtoCondicaoValorTotalPages
+  const canGoToPreviousKmValorPage = kmValorPage > 1
+  const canGoToNextKmValorPage = kmValorPage < kmValorTotalPages
+  const canGoToPreviousContinuaValorPage = continuaValorPage > 1
+  const canGoToNextContinuaValorPage = continuaValorPage < continuaValorTotalPages
   const canGoToPreviousTitularPage = titularPage > 1
   const canGoToNextTitularPage = titularPage < titularTotalPages
   const canGoToPreviousMarcaModeloPage = marcaModeloPage > 1
@@ -3005,20 +4691,60 @@ function App() {
     printWindow.document.close()
   }
 
-  const toggleMenuGroup = (groupName: 'cadastros' | 'operacional') => {
+  const toggleMenuGroup = (groupName: CollapsedMenuGroup) => {
     setCollapsedMenuGroups((current) => ({
       ...current,
       [groupName]: !current[groupName],
     }))
   }
 
+  const handleSidebarMouseEnter = () => {
+    isSidebarHoveredRef.current = true
+    clearSidebarAutoHideTimeout()
+    setIsSidebarVisible(true)
+  }
+
+  const handleSidebarMouseLeave = () => {
+    isSidebarHoveredRef.current = false
+    scheduleSidebarAutoHide()
+  }
+
+  const handleSidebarHoverZoneEnter = () => {
+    setIsSidebarVisible(true)
+    scheduleSidebarAutoHide()
+  }
+
   const toggleSidebar = () => {
-    setIsSidebarVisible((current) => !current)
+    if (isSidebarVisible) {
+      isSidebarHoveredRef.current = false
+      clearSidebarAutoHideTimeout()
+      setIsSidebarVisible(false)
+      return
+    }
+
+    setIsSidebarVisible(true)
+    scheduleSidebarAutoHide()
+  }
+
+  const handleContentPanelClick = (event: MouseEvent<HTMLElement>) => {
+    if (!isSidebarVisible) {
+      return
+    }
+
+    const target = event.target instanceof HTMLElement ? event.target : null
+
+    if (target?.closest('.management-modal-shell, input, select, textarea, button, a, label')) {
+      return
+    }
+
+    isSidebarHoveredRef.current = false
+    clearSidebarAutoHideTimeout()
+    setIsSidebarVisible(false)
   }
 
   return (
     <div className="app-layout">
-      <header className="navbar">
+      <header className={`navbar ${isSidebarVisible ? '' : 'navbar-hidden'}`}>
         <button 
           type="button" 
           className="navbar-toggle" 
@@ -3028,13 +4754,39 @@ function App() {
           {isSidebarVisible ? '☰' : '☰'}
         </button>
         <h1 className="navbar-title" onClick={() => setActiveView('inicio')} style={{ cursor: 'pointer' }}>
-          Menu TEG
+          Sistema TEG
         </h1>
       </header>
       
       <main className={`dashboard-page ${isSidebarVisible ? '' : 'dashboard-page--sidebar-hidden'}`}>
+        {!isSidebarVisible ? (
+          <button
+            type="button"
+            className="sidebar-hover-zone"
+            onMouseEnter={handleSidebarHoverZoneEnter}
+            onFocus={handleSidebarHoverZoneEnter}
+            onClick={handleSidebarHoverZoneEnter}
+            aria-label="Mostrar menu lateral"
+          >
+            <span className="sidebar-hover-zone-label" aria-hidden="true">
+              <span>M</span>
+              <span>E</span>
+              <span>N</span>
+              <span>U</span>
+              <span className="sidebar-hover-zone-gap">&nbsp;</span>
+              <span>T</span>
+              <span>E</span>
+              <span>G</span>
+            </span>
+          </button>
+        ) : null}
         {isSidebarVisible && (
-          <aside className="sidebar-menu" aria-label="Menu principal">
+          <aside
+            className="sidebar-menu"
+            aria-label="Menu principal"
+            onMouseEnter={handleSidebarMouseEnter}
+            onMouseLeave={handleSidebarMouseLeave}
+          >
             <div>
               <p className="sidebar-brand">TEG Financ</p>
               {environmentName ? <p className="environment-pill environment-pill-sidebar">{environmentName}</p> : null}
@@ -3068,12 +4820,30 @@ function App() {
                 </li>
                 <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem ${activeView === 'condutor' ? 'menu-subitem-active' : ''}`}
-                    onClick={() => setActiveView('condutor')}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'condutor' ? 'menu-subitem-active' : ''}`}
+                    onClick={() => toggleMenuGroup('condutor')}
+                    role="button"
+                    aria-expanded={!collapsedMenuGroups.condutor}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toggleMenuGroup('condutor')
+                      }
+                    }}
                   >
-                    Condutor
+                    <span
+                      className="menu-subitem-label"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setActiveView('condutor')
+                      }}
+                    >
+                      Condutor
+                    </span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.condutor ? '▸' : '▾'}</span>
                   </div>
-                  <ul className="menu-sublist menu-sublist-nested">
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.condutor ? 'menu-sublist-hidden' : ''}`}>
                     <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'vinculoCondutor' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('vinculoCondutor')}
@@ -3084,12 +4854,30 @@ function App() {
                 </li>
                 <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem ${activeView === 'monitor' ? 'menu-subitem-active' : ''}`}
-                    onClick={() => setActiveView('monitor')}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'monitor' ? 'menu-subitem-active' : ''}`}
+                    onClick={() => toggleMenuGroup('monitor')}
+                    role="button"
+                    aria-expanded={!collapsedMenuGroups.monitor}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toggleMenuGroup('monitor')
+                      }
+                    }}
                   >
-                    Monitor
+                    <span
+                      className="menu-subitem-label"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setActiveView('monitor')
+                      }}
+                    >
+                      Monitor
+                    </span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.monitor ? '▸' : '▾'}</span>
                   </div>
-                  <ul className="menu-sublist menu-sublist-nested">
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.monitor ? 'menu-sublist-hidden' : ''}`}>
                     <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'vinculoMonitor' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('vinculoMonitor')}
@@ -3118,12 +4906,30 @@ function App() {
                 </li>
                 <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem ${activeView === 'veiculo' ? 'menu-subitem-active' : ''}`}
-                    onClick={() => setActiveView('veiculo')}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'veiculo' ? 'menu-subitem-active' : ''}`}
+                    onClick={() => toggleMenuGroup('veiculo')}
+                    role="button"
+                    aria-expanded={!collapsedMenuGroups.veiculo}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toggleMenuGroup('veiculo')
+                      }
+                    }}
                   >
-                    Veiculo
+                    <span
+                      className="menu-subitem-label"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setActiveView('veiculo')
+                      }}
+                    >
+                      Veiculo
+                    </span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.veiculo ? '▸' : '▾'}</span>
                   </div>
-                  <ul className="menu-sublist menu-sublist-nested">
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.veiculo ? 'menu-sublist-hidden' : ''}`}>
                     <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'veiculoHistorico' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('veiculoHistorico')}
@@ -3145,70 +4951,150 @@ function App() {
                 <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.cadastros ? '▸' : '▾'}</span>
               </button>
               <ul className={`menu-sublist ${collapsedMenuGroups.cadastros ? 'menu-sublist-hidden' : ''}`}>
-                <li
-                  className={`menu-subitem ${activeView === 'dre' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('dre')}
-                >
-                  DRE
+                <li className="menu-group menu-subgroup">
+                  <button
+                    type="button"
+                    className="menu-subitem menu-item-static menu-item-toggle"
+                    onClick={() => toggleMenuGroup('cadastrosOperacional')}
+                    aria-expanded={!collapsedMenuGroups.cadastrosOperacional}
+                  >
+                    <span>Operacional</span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.cadastrosOperacional ? '▸' : '▾'}</span>
+                  </button>
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.cadastrosOperacional ? 'menu-sublist-hidden' : ''}`}>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'dre' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('dre')}
+                    >
+                      DRE
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'modalidade' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('modalidade')}
+                    >
+                      Modalidade
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'tipoBancada' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('tipoBancada')}
+                    >
+                      Tipo de Bancada
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'marcaModelo' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('marcaModelo')}
+                    >
+                      Marca/Modelo
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'seguradora' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('seguradora')}
+                    >
+                      Seguradoras
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'troca' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('troca')}
+                    >
+                      Tipo de Troca
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'emissaoDocumentoParametro' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('emissaoDocumentoParametro')}
+                    >
+                      Param. Emissao
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'cep' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('cep')}
+                    >
+                      CEP
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'smoke' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('smoke')}
+                    >
+                      Smoke Test
+                    </li>
+                  </ul>
                 </li>
-                <li
-                  className={`menu-subitem ${activeView === 'modalidade' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('modalidade')}
-                >
-                  Modalidade
-                </li>
-                <li
-                  className={`menu-subitem ${activeView === 'tipoBancada' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('tipoBancada')}
-                >
-                  Tipo de Bancada
-                </li>
-                <li
-                  className={`menu-subitem ${activeView === 'marcaModelo' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('marcaModelo')}
-                >
-                  Marca/Modelo
-                </li>
-                <li
-                  className={`menu-subitem ${activeView === 'seguradora' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('seguradora')}
-                >
-                  Seguradoras
-                </li>
-                <li
-                  className={`menu-subitem ${activeView === 'troca' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('troca')}
-                >
-                  Tipo de Troca
-                </li>
-                <li
-                  className={`menu-subitem ${activeView === 'emissaoDocumentoParametro' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('emissaoDocumentoParametro')}
-                >
-                  Param. Emissao
-                </li>
-                <li
-                  className={`menu-subitem ${activeView === 'cep' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('cep')}
-                >
-                  CEP
-                </li>
-                <li
-                  className={`menu-subitem ${activeView === 'smoke' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('smoke')}
-                >
-                  Smoke Test
+                <li className="menu-group menu-subgroup">
+                  <button
+                    type="button"
+                    className="menu-subitem menu-item-static menu-item-toggle"
+                    onClick={() => toggleMenuGroup('cadastrosFinanceiro')}
+                    aria-expanded={!collapsedMenuGroups.cadastrosFinanceiro}
+                  >
+                    <span>Financeiro</span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.cadastrosFinanceiro ? '▸' : '▾'}</span>
+                  </button>
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.cadastrosFinanceiro ? 'menu-sublist-hidden' : ''}`}>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'condicao' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('condicao')}
+                    >
+                      Condicao
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'tipoPgto' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('tipoPgto')}
+                    >
+                      Tipo_pgto
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'modalBancadaTpPagtoCondicao' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('modalBancadaTpPagtoCondicao')}
+                    >
+                      Modalidade x Bancada x Pagamento x Condicao
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'modalBancadaTpPagtoCondicaoValor' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('modalBancadaTpPagtoCondicaoValor')}
+                    >
+                      Modalidade x Bancada x Pagamento x Condicao Valor
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'kmValor' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('kmValor')}
+                    >
+                      Km_Valor
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'continuaValor' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('continuaValor')}
+                    >
+                      Continua_Valor
+                    </li>
+                  </ul>
                 </li>
               </ul>
             </li>
             <li className="menu-group">
               <div
-                className={`menu-item ${activeView === 'acesso' ? 'menu-item-active' : ''}`}
-                onClick={() => setActiveView('acesso')}
+                className={`menu-item menu-item-toggle ${activeView === 'acesso' ? 'menu-item-active' : ''}`}
+                onClick={() => toggleMenuGroup('acesso')}
+                role="button"
+                aria-expanded={!collapsedMenuGroups.acesso}
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    toggleMenuGroup('acesso')
+                  }
+                }}
               >
-                Controle de acesso
+                <span
+                  className="menu-subitem-label"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setActiveView('acesso')
+                  }}
+                >
+                  Controle de acesso
+                </span>
+                <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.acesso ? '▸' : '▾'}</span>
               </div>
-              <ul className="menu-sublist">
+              <ul className={`menu-sublist ${collapsedMenuGroups.acesso ? 'menu-sublist-hidden' : ''}`}>
                 <li
                   className={`menu-subitem ${activeView === 'loginDre' ? 'menu-subitem-active' : ''}`}
                   onClick={() => setActiveView('loginDre')}
@@ -3230,7 +5116,7 @@ function App() {
       </aside>
         )}
 
-      <section className="content-panel" aria-labelledby="content-title">
+      <section className="content-panel" aria-labelledby="content-title" onClickCapture={handleContentPanelClick}>
         {activeView === 'inicio' ? (
           <>
             <div className="content-copy">
@@ -4197,6 +6083,1612 @@ function App() {
                     className="secondary-button management-pagination-button management-pagination-button-icon"
                     onClick={() => setModalidadePage(modalidadeTotalPages)}
                     disabled={!canGoToNextModalidadePage || isLoadingModalidade}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'condicao' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro administrativo</p>
+              <h2 id="content-title">Tabela Condicao</h2>
+              <p className="content-description">
+                Cadastre e consulte os registros da tabela Condicao. O codigo e gerado
+                automaticamente e os campos descricao, Qtde Ini e Qtde Fim sao obrigatorios.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertCondicao}
+                  disabled={isSavingCondicao || isDeletingCondicao}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterCondicaoSubmit}>
+                  <input
+                    className="management-filter-input"
+                    type="text"
+                    placeholder="Filtrar por codigo, descricao ou quantidade"
+                    value={condicaoSearch}
+                    onChange={(event) => setCondicaoSearch(event.target.value)}
+                  />
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearCondicaoFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isCondicaoFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingCondicao) {
+                      handleCancelCondicaoForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="condicao-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateCondicao} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <h2 id="condicao-modal-title">CONDICAO</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelCondicaoForm}
+                          disabled={isSavingCondicao}
+                          aria-label="Fechar formulario de condicao"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {condicaoFormMode === 'view' ? 'Consulta de registro' : editingCondicaoCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="condicao-descricao">
+                        <span>Descricao</span>
+                        <input
+                          id="condicao-descricao"
+                          name="descricao"
+                          type="text"
+                          value={condicaoDescricao}
+                          onChange={(event) => setCondicaoDescricao(event.target.value)}
+                          disabled={isSavingCondicao || condicaoFormMode === 'view'}
+                          aria-invalid={Boolean(condicaoDescricaoError)}
+                        />
+                        {condicaoDescricaoError ? <strong className="field-error">{condicaoDescricaoError}</strong> : null}
+                      </label>
+
+                      <label className="field-group" htmlFor="condicao-qtde-ini">
+                        <span>Qtde Ini</span>
+                        <input
+                          id="condicao-qtde-ini"
+                          name="qtdeIni"
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={condicaoQtdeIni}
+                          onChange={(event) => setCondicaoQtdeIni(event.target.value)}
+                          disabled={isSavingCondicao || condicaoFormMode === 'view'}
+                          aria-invalid={Boolean(condicaoQtdeIniError)}
+                        />
+                        {condicaoQtdeIniError ? <strong className="field-error">{condicaoQtdeIniError}</strong> : null}
+                      </label>
+
+                      <label className="field-group" htmlFor="condicao-qtde-fim">
+                        <span>Qtde Fim</span>
+                        <input
+                          id="condicao-qtde-fim"
+                          name="qtdeFim"
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={condicaoQtdeFim}
+                          onChange={(event) => setCondicaoQtdeFim(event.target.value)}
+                          disabled={isSavingCondicao || condicaoFormMode === 'view'}
+                          aria-invalid={Boolean(condicaoQtdeFimError)}
+                        />
+                        {condicaoQtdeFimError ? <strong className="field-error">{condicaoQtdeFimError}</strong> : null}
+                      </label>
+
+                      <p className={`status-message status-${condicaoStatusTone}`} aria-live="polite">
+                        {condicaoStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {condicaoFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingCondicao}>
+                            {isSavingCondicao ? 'Salvando...' : editingCondicaoCodigo ? 'Salvar alteracao' : 'Salvar Condicao'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelCondicaoForm} disabled={isSavingCondicao}>
+                          {condicaoFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingCondicao ? 'Atualizando...' : `${condicaoTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortCondicao('codigo')}>
+                            Codigo <span>{getCondicaoSortIndicator('codigo')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortCondicao('descricao')}>
+                            Descricao <span>{getCondicaoSortIndicator('descricao')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortCondicao('qtdeIni')}>
+                            Qtde Ini <span>{getCondicaoSortIndicator('qtdeIni')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortCondicao('qtdeFim')}>
+                            Qtde Fim <span>{getCondicaoSortIndicator('qtdeFim')}</span>
+                          </button>
+                        </th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {condicaoItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.codigo}</td>
+                          <td>{item.descricao}</td>
+                          <td>{item.qtdeIni}</td>
+                          <td>{item.qtdeFim}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button type="button" className="row-action-button" onClick={() => handleStartViewCondicao(item)}>
+                                Consulta
+                              </button>
+                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditCondicao(item)}>
+                                Alterar
+                              </button>
+                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteCondicao(item)}>
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {!isLoadingCondicao && condicaoItems.length === 0 ? (
+                    <p className="management-empty-state">Nenhum registro de condicao encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${condicaoStatusTone}`} aria-live="polite">
+                  {isCondicaoFormVisible ? '' : condicaoStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setCondicaoPage(1)}
+                    disabled={!canGoToPreviousCondicaoPage || isLoadingCondicao}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setCondicaoPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousCondicaoPage || isLoadingCondicao}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {condicaoPage} de {condicaoTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setCondicaoPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextCondicaoPage || isLoadingCondicao}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setCondicaoPage(condicaoTotalPages)}
+                    disabled={!canGoToNextCondicaoPage || isLoadingCondicao}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'tipoPgto' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Tabela Tipo_pgto</h2>
+              <p className="content-description">
+                Cadastre e consulte os registros da tabela Tipo_pgto no mesmo modelo da DRE.
+                O codigo e gerado automaticamente e a descricao nao pode se repetir.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertTipoPgto}
+                  disabled={isSavingTipoPgto || isDeletingTipoPgto}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterTipoPgtoSubmit}>
+                  <input
+                    className="management-filter-input"
+                    type="text"
+                    placeholder="Filtrar por codigo ou descricao"
+                    value={tipoPgtoSearch}
+                    onChange={(event) => setTipoPgtoSearch(event.target.value)}
+                  />
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearTipoPgtoFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isTipoPgtoFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingTipoPgto) {
+                      handleCancelTipoPgtoForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="tipo-pgto-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateTipoPgto} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="tipo-pgto-modal-title">TIPO_PGTO</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelTipoPgtoForm}
+                          disabled={isSavingTipoPgto}
+                          aria-label="Fechar formulario de tipo de pagamento"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {tipoPgtoFormMode === 'view' ? 'Consulta de registro' : editingTipoPgtoCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="tipo-pgto-descricao">
+                        <span>Descricao</span>
+                        <input
+                          id="tipo-pgto-descricao"
+                          name="descricao"
+                          type="text"
+                          value={tipoPgtoDescricao}
+                          onChange={(event) => setTipoPgtoDescricao(event.target.value)}
+                          disabled={isSavingTipoPgto || tipoPgtoFormMode === 'view'}
+                          aria-invalid={Boolean(tipoPgtoDescricaoError)}
+                        />
+                        {tipoPgtoDescricaoError ? <strong className="field-error">{tipoPgtoDescricaoError}</strong> : null}
+                      </label>
+
+                      <p className={`status-message status-${tipoPgtoStatusTone}`} aria-live="polite">
+                        {tipoPgtoStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {tipoPgtoFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingTipoPgto}>
+                            {isSavingTipoPgto ? 'Salvando...' : editingTipoPgtoCodigo ? 'Salvar alteracao' : 'Salvar Tipo_pgto'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelTipoPgtoForm} disabled={isSavingTipoPgto}>
+                          {tipoPgtoFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingTipoPgto ? 'Atualizando...' : `${tipoPgtoTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortTipoPgto('codigo')}>
+                            Codigo <span>{getTipoPgtoSortIndicator('codigo')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortTipoPgto('descricao')}>
+                            Descricao <span>{getTipoPgtoSortIndicator('descricao')}</span>
+                          </button>
+                        </th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tipoPgtoItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.codigo}</td>
+                          <td>{item.descricao}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button type="button" className="row-action-button" onClick={() => handleStartViewTipoPgto(item)}>
+                                Consulta
+                              </button>
+                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoPgto(item)}>
+                                Alterar
+                              </button>
+                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoPgto(item)}>
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {!isLoadingTipoPgto && tipoPgtoItems.length === 0 ? (
+                    <p className="management-empty-state">Nenhum registro de tipo de pagamento encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${tipoPgtoStatusTone}`} aria-live="polite">
+                  {isTipoPgtoFormVisible ? '' : tipoPgtoStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoPgtoPage(1)}
+                    disabled={!canGoToPreviousTipoPgtoPage || isLoadingTipoPgto}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoPgtoPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousTipoPgtoPage || isLoadingTipoPgto}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {tipoPgtoPage} de {tipoPgtoTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoPgtoPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextTipoPgtoPage || isLoadingTipoPgto}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoPgtoPage(tipoPgtoTotalPages)}
+                    disabled={!canGoToNextTipoPgtoPage || isLoadingTipoPgto}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'modalBancadaTpPagtoCondicao' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Tabela Modalidade x Bancada x Pagamento x Condicao</h2>
+              <p className="content-description">
+                Relacione os registros de Modalidade x Tipo de Bancada com Tipo de Pagamento e Condicao.
+                Os tres campos sao obrigatorios e a associacao nao pode se repetir.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertModalBancadaTpPagtoCondicao}
+                  disabled={isSavingModalBancadaTpPagtoCondicao || isDeletingModalBancadaTpPagtoCondicao || isLoadingModalBancadaTpPagtoCondicaoOptions}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterModalBancadaTpPagtoCondicaoSubmit}>
+                  <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-filter-associacao">
+                    <span>Modalidade x Tipo de Bancada</span>
+                    <select
+                      id="modal-bancada-tp-pagto-condicao-filter-associacao"
+                      value={modalBancadaTpPagtoCondicaoFilterAssociationCodigo}
+                      onChange={(event) => setModalBancadaTpPagtoCondicaoFilterAssociationCodigo(event.target.value)}
+                      disabled={isLoadingModalBancadaTpPagtoCondicaoItems || isLoadingModalBancadaTpPagtoCondicaoOptions}
+                    >
+                      <option value="">Todas</option>
+                      {modalBancadaTpPagtoCondicaoAssociationOptions.map((item) => (
+                        <option key={item.codigo} value={item.codigo}>
+                          {item.modalidadeDescricao} / {item.tipoBancadaDescricao}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-filter-tipo-pgto">
+                    <span>Tipo de Pagamento</span>
+                    <select
+                      id="modal-bancada-tp-pagto-condicao-filter-tipo-pgto"
+                      value={modalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo}
+                      onChange={(event) => setModalBancadaTpPagtoCondicaoFilterTipoPgtoCodigo(event.target.value)}
+                      disabled={isLoadingModalBancadaTpPagtoCondicaoItems || isLoadingModalBancadaTpPagtoCondicaoOptions}
+                    >
+                      <option value="">Todos</option>
+                      {modalBancadaTpPagtoCondicaoTipoPgtoOptions.map((item) => (
+                        <option key={item.codigo} value={item.codigo}>
+                          {item.descricao}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-filter-condicao">
+                    <span>Condicao</span>
+                    <select
+                      id="modal-bancada-tp-pagto-condicao-filter-condicao"
+                      value={modalBancadaTpPagtoCondicaoFilterCondicaoCodigo}
+                      onChange={(event) => setModalBancadaTpPagtoCondicaoFilterCondicaoCodigo(event.target.value)}
+                      disabled={isLoadingModalBancadaTpPagtoCondicaoItems || isLoadingModalBancadaTpPagtoCondicaoOptions}
+                    >
+                      <option value="">Todas</option>
+                      {modalBancadaTpPagtoCondicaoCondicaoOptions.map((item) => (
+                        <option key={item.codigo} value={item.codigo}>
+                          {item.descricao}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearModalBancadaTpPagtoCondicaoFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isModalBancadaTpPagtoCondicaoFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingModalBancadaTpPagtoCondicao) {
+                      handleCancelModalBancadaTpPagtoCondicaoForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="modal-bancada-tp-pagto-condicao-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateModalBancadaTpPagtoCondicao} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="modal-bancada-tp-pagto-condicao-modal-title">MODALIDADE X BANCADA X PAGAMENTO X CONDICAO</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelModalBancadaTpPagtoCondicaoForm}
+                          disabled={isSavingModalBancadaTpPagtoCondicao}
+                          aria-label="Fechar formulario da associacao de modalidade, bancada, pagamento e condicao"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {modalBancadaTpPagtoCondicaoFormMode === 'view' ? 'Consulta de registro' : editingModalBancadaTpPagtoCondicaoCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-associacao">
+                        <span>Modalidade x Tipo de Bancada</span>
+                        <select
+                          id="modal-bancada-tp-pagto-condicao-associacao"
+                          value={modalBancadaTpPagtoCondicaoAssociationCodigo}
+                          onChange={(event) => setModalBancadaTpPagtoCondicaoAssociationCodigo(event.target.value)}
+                          disabled={isLoadingModalBancadaTpPagtoCondicaoOptions || isSavingModalBancadaTpPagtoCondicao || modalBancadaTpPagtoCondicaoFormMode === 'view'}
+                        >
+                          <option value="">Selecione a associacao</option>
+                          {modalBancadaTpPagtoCondicaoAssociationOptions.map((item) => (
+                            <option key={item.codigo} value={item.codigo}>
+                                {item.modalidadeDescricao} / {item.tipoBancadaDescricao}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-tipo-pgto">
+                        <span>Tipo de Pagamento</span>
+                        <select
+                          id="modal-bancada-tp-pagto-condicao-tipo-pgto"
+                          value={modalBancadaTpPagtoCondicaoTipoPgtoCodigo}
+                          onChange={(event) => setModalBancadaTpPagtoCondicaoTipoPgtoCodigo(event.target.value)}
+                          disabled={isLoadingModalBancadaTpPagtoCondicaoOptions || isSavingModalBancadaTpPagtoCondicao || modalBancadaTpPagtoCondicaoFormMode === 'view'}
+                        >
+                          <option value="">Selecione o tipo de pagamento</option>
+                          {modalBancadaTpPagtoCondicaoTipoPgtoOptions.map((item) => (
+                            <option key={item.codigo} value={item.codigo}>
+                                {item.descricao}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-condicao">
+                        <span>Condicao</span>
+                        <select
+                          id="modal-bancada-tp-pagto-condicao-condicao"
+                          value={modalBancadaTpPagtoCondicaoCondicaoCodigo}
+                          onChange={(event) => setModalBancadaTpPagtoCondicaoCondicaoCodigo(event.target.value)}
+                          disabled={isLoadingModalBancadaTpPagtoCondicaoOptions || isSavingModalBancadaTpPagtoCondicao || modalBancadaTpPagtoCondicaoFormMode === 'view'}
+                        >
+                          <option value="">Selecione a condicao</option>
+                          {modalBancadaTpPagtoCondicaoCondicaoOptions.map((item) => (
+                            <option key={item.codigo} value={item.codigo}>
+                                {item.descricao}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <p className={`status-message status-${modalBancadaTpPagtoCondicaoStatusTone}`} aria-live="polite">
+                        {modalBancadaTpPagtoCondicaoStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {modalBancadaTpPagtoCondicaoFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingModalBancadaTpPagtoCondicao || isLoadingModalBancadaTpPagtoCondicaoOptions}>
+                            {isSavingModalBancadaTpPagtoCondicao ? 'Salvando...' : editingModalBancadaTpPagtoCondicaoCodigo ? 'Salvar alteracao' : 'Salvar registro'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelModalBancadaTpPagtoCondicaoForm} disabled={isSavingModalBancadaTpPagtoCondicao}>
+                          {modalBancadaTpPagtoCondicaoFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingModalBancadaTpPagtoCondicaoItems ? 'Atualizando...' : `${modalBancadaTpPagtoCondicaoTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>Modalidade</th>
+                        <th>Tipo de Bancada</th>
+                        <th>Tipo de Pagamento</th>
+                        <th>Condicao</th>
+                        <th>Faixa</th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalBancadaTpPagtoCondicaoItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.modalidadeDescricao}</td>
+                          <td>{item.tipoBancadaDescricao}</td>
+                          <td>{item.tipoPgtoDescricao}</td>
+                          <td>{item.condicaoDescricao}</td>
+                          <td>{item.condicaoQtdeIni} a {item.condicaoQtdeFim}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button
+                                type="button"
+                                className="row-action-button"
+                                onClick={() => handleStartViewModalBancadaTpPagtoCondicao(item)}
+                              >
+                                Consulta
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-edit"
+                                onClick={() => handleStartEditModalBancadaTpPagtoCondicao(item)}
+                                disabled={isDeletingModalBancadaTpPagtoCondicao}
+                              >
+                                Alterar
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-delete"
+                                onClick={() => handleDeleteModalBancadaTpPagtoCondicao(item)}
+                                disabled={isDeletingModalBancadaTpPagtoCondicao}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {isLoadingModalBancadaTpPagtoCondicaoItems ? (
+                    <p className="management-empty-state">Carregando registros...</p>
+                  ) : null}
+
+                  {!isLoadingModalBancadaTpPagtoCondicaoItems && !modalBancadaTpPagtoCondicaoItems.length ? (
+                    <p className="management-empty-state">Nenhum registro encontrado na associacao de modalidade, bancada, pagamento e condicao.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${modalBancadaTpPagtoCondicaoStatusTone}`} aria-live="polite">
+                  {isModalBancadaTpPagtoCondicaoFormVisible ? '' : modalBancadaTpPagtoCondicaoStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setModalBancadaTpPagtoCondicaoPage(1)}
+                    disabled={!canGoToPreviousModalBancadaTpPagtoCondicaoPage || isLoadingModalBancadaTpPagtoCondicaoItems}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setModalBancadaTpPagtoCondicaoPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousModalBancadaTpPagtoCondicaoPage || isLoadingModalBancadaTpPagtoCondicaoItems}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {modalBancadaTpPagtoCondicaoPage} de {modalBancadaTpPagtoCondicaoTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setModalBancadaTpPagtoCondicaoPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextModalBancadaTpPagtoCondicaoPage || isLoadingModalBancadaTpPagtoCondicaoItems}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setModalBancadaTpPagtoCondicaoPage(modalBancadaTpPagtoCondicaoTotalPages)}
+                    disabled={!canGoToNextModalBancadaTpPagtoCondicaoPage || isLoadingModalBancadaTpPagtoCondicaoItems}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'modalBancadaTpPagtoCondicaoValor' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Tabela Modalidade x Bancada x Pagamento x Condicao Valor</h2>
+              <p className="content-description">
+                Cadastre os valores por data para a associacao de Modalidade x Bancada x Pagamento x Condicao.
+                A combinacao entre associacao e data nao pode se repetir e o valor aceita zero.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertModalBancadaTpPagtoCondicaoValor}
+                  disabled={isSavingModalBancadaTpPagtoCondicaoValor || isDeletingModalBancadaTpPagtoCondicaoValor || isLoadingModalBancadaTpPagtoCondicaoValorOptions}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterModalBancadaTpPagtoCondicaoValorSubmit}>
+                  <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-valor-filter-associacao">
+                    <span>Associacao</span>
+                    <select
+                      id="modal-bancada-tp-pagto-condicao-valor-filter-associacao"
+                      value={modalBancadaTpPagtoCondicaoValorFilterAssociationCodigo}
+                      onChange={(event) => setModalBancadaTpPagtoCondicaoValorFilterAssociationCodigo(event.target.value)}
+                      disabled={isLoadingModalBancadaTpPagtoCondicaoValorItems || isLoadingModalBancadaTpPagtoCondicaoValorOptions}
+                    >
+                      <option value="">Todas</option>
+                      {modalBancadaTpPagtoCondicaoValorOptions.map((item) => (
+                        <option key={item.codigo} value={item.codigo}>
+                          {formatModalBancadaTpPagtoCondicaoLabel(item)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-valor-filter-data">
+                    <span>Data</span>
+                    <input
+                      id="modal-bancada-tp-pagto-condicao-valor-filter-data"
+                      type="date"
+                      value={modalBancadaTpPagtoCondicaoValorFilterData}
+                      onChange={(event) => setModalBancadaTpPagtoCondicaoValorFilterData(event.target.value)}
+                      disabled={isLoadingModalBancadaTpPagtoCondicaoValorItems}
+                    />
+                  </label>
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearModalBancadaTpPagtoCondicaoValorFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isModalBancadaTpPagtoCondicaoValorFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingModalBancadaTpPagtoCondicaoValor) {
+                      handleCancelModalBancadaTpPagtoCondicaoValorForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="modal-bancada-tp-pagto-condicao-valor-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateModalBancadaTpPagtoCondicaoValor} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="modal-bancada-tp-pagto-condicao-valor-modal-title">MODALIDADE X BANCADA X PAGAMENTO X CONDICAO VALOR</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelModalBancadaTpPagtoCondicaoValorForm}
+                          disabled={isSavingModalBancadaTpPagtoCondicaoValor}
+                          aria-label="Fechar formulario da associacao de modalidade, bancada, pagamento e condicao valor"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {modalBancadaTpPagtoCondicaoValorFormMode === 'view' ? 'Consulta de registro' : editingModalBancadaTpPagtoCondicaoValorCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-valor-associacao">
+                        <span>Associacao</span>
+                        <select
+                          id="modal-bancada-tp-pagto-condicao-valor-associacao"
+                          value={modalBancadaTpPagtoCondicaoValorAssociationCodigo}
+                          onChange={(event) => setModalBancadaTpPagtoCondicaoValorAssociationCodigo(event.target.value)}
+                          disabled={isLoadingModalBancadaTpPagtoCondicaoValorOptions || isSavingModalBancadaTpPagtoCondicaoValor || modalBancadaTpPagtoCondicaoValorFormMode === 'view'}
+                        >
+                          <option value="">Selecione a associacao</option>
+                          {modalBancadaTpPagtoCondicaoValorOptions.map((item) => (
+                            <option key={item.codigo} value={item.codigo}>
+                              {formatModalBancadaTpPagtoCondicaoLabel(item)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-valor-data">
+                        <span>Data</span>
+                        <input
+                          id="modal-bancada-tp-pagto-condicao-valor-data"
+                          type="date"
+                          value={modalBancadaTpPagtoCondicaoValorData}
+                          onChange={(event) => setModalBancadaTpPagtoCondicaoValorData(event.target.value)}
+                          disabled={isSavingModalBancadaTpPagtoCondicaoValor || modalBancadaTpPagtoCondicaoValorFormMode === 'view'}
+                        />
+                      </label>
+
+                      <label className="field-group" htmlFor="modal-bancada-tp-pagto-condicao-valor-valor">
+                        <span>Valor</span>
+                        <input
+                          id="modal-bancada-tp-pagto-condicao-valor-valor"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={modalBancadaTpPagtoCondicaoValorValor}
+                          onChange={(event) => setModalBancadaTpPagtoCondicaoValorValor(event.target.value)}
+                          disabled={isSavingModalBancadaTpPagtoCondicaoValor || modalBancadaTpPagtoCondicaoValorFormMode === 'view'}
+                        />
+                      </label>
+
+                      <p className={`status-message status-${modalBancadaTpPagtoCondicaoValorStatusTone}`} aria-live="polite">
+                        {modalBancadaTpPagtoCondicaoValorStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {modalBancadaTpPagtoCondicaoValorFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingModalBancadaTpPagtoCondicaoValor || isLoadingModalBancadaTpPagtoCondicaoValorOptions}>
+                            {isSavingModalBancadaTpPagtoCondicaoValor ? 'Salvando...' : editingModalBancadaTpPagtoCondicaoValorCodigo ? 'Salvar alteracao' : 'Salvar registro'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelModalBancadaTpPagtoCondicaoValorForm} disabled={isSavingModalBancadaTpPagtoCondicaoValor}>
+                          {modalBancadaTpPagtoCondicaoValorFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingModalBancadaTpPagtoCondicaoValorItems ? 'Atualizando...' : `${modalBancadaTpPagtoCondicaoValorTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>Modalidade</th>
+                        <th>Tipo de Bancada</th>
+                        <th>Tipo de Pagamento</th>
+                        <th>Condicao</th>
+                        <th>Data</th>
+                        <th>Valor</th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalBancadaTpPagtoCondicaoValorItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.modalidadeDescricao}</td>
+                          <td>{item.tipoBancadaDescricao}</td>
+                          <td>{item.tipoPgtoDescricao}</td>
+                          <td>{item.condicaoDescricao}</td>
+                          <td>{item.data}</td>
+                          <td>{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button
+                                type="button"
+                                className="row-action-button"
+                                onClick={() => handleStartViewModalBancadaTpPagtoCondicaoValor(item)}
+                              >
+                                Consulta
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-edit"
+                                onClick={() => handleStartEditModalBancadaTpPagtoCondicaoValor(item)}
+                                disabled={isDeletingModalBancadaTpPagtoCondicaoValor}
+                              >
+                                Alterar
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-delete"
+                                onClick={() => handleDeleteModalBancadaTpPagtoCondicaoValor(item)}
+                                disabled={isDeletingModalBancadaTpPagtoCondicaoValor}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {isLoadingModalBancadaTpPagtoCondicaoValorItems ? (
+                    <p className="management-empty-state">Carregando registros...</p>
+                  ) : null}
+
+                  {!isLoadingModalBancadaTpPagtoCondicaoValorItems && !modalBancadaTpPagtoCondicaoValorItems.length ? (
+                    <p className="management-empty-state">Nenhum registro de valor encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${modalBancadaTpPagtoCondicaoValorStatusTone}`} aria-live="polite">
+                  {isModalBancadaTpPagtoCondicaoValorFormVisible ? '' : modalBancadaTpPagtoCondicaoValorStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setModalBancadaTpPagtoCondicaoValorPage(1)}
+                    disabled={!canGoToPreviousModalBancadaTpPagtoCondicaoValorPage || isLoadingModalBancadaTpPagtoCondicaoValorItems}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setModalBancadaTpPagtoCondicaoValorPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousModalBancadaTpPagtoCondicaoValorPage || isLoadingModalBancadaTpPagtoCondicaoValorItems}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {modalBancadaTpPagtoCondicaoValorPage} de {modalBancadaTpPagtoCondicaoValorTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setModalBancadaTpPagtoCondicaoValorPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextModalBancadaTpPagtoCondicaoValorPage || isLoadingModalBancadaTpPagtoCondicaoValorItems}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setModalBancadaTpPagtoCondicaoValorPage(modalBancadaTpPagtoCondicaoValorTotalPages)}
+                    disabled={!canGoToNextModalBancadaTpPagtoCondicaoValorPage || isLoadingModalBancadaTpPagtoCondicaoValorItems}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'kmValor' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Tabela Km_Valor</h2>
+              <p className="content-description">
+                Cadastre os valores por data vinculados a Condicao. A combinacao entre condicao e data nao pode se repetir e o valor aceita zero.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertKmValor}
+                  disabled={isSavingKmValor || isDeletingKmValor || isLoadingKmValorOptions}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterKmValorSubmit}>
+                  <label className="field-group" htmlFor="km-valor-filter-condicao">
+                    <span>Condicao</span>
+                    <select
+                      id="km-valor-filter-condicao"
+                      value={kmValorFilterCondicaoCodigo}
+                      onChange={(event) => setKmValorFilterCondicaoCodigo(event.target.value)}
+                      disabled={isLoadingKmValorItems || isLoadingKmValorOptions}
+                    >
+                      <option value="">Todas</option>
+                      {kmValorCondicaoOptions.map((item) => (
+                        <option key={item.codigo} value={item.codigo}>
+                          {item.descricao} ({item.qtdeIni} a {item.qtdeFim})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field-group" htmlFor="km-valor-filter-data">
+                    <span>Data</span>
+                    <input
+                      id="km-valor-filter-data"
+                      type="date"
+                      value={kmValorFilterData}
+                      onChange={(event) => setKmValorFilterData(event.target.value)}
+                      disabled={isLoadingKmValorItems}
+                    />
+                  </label>
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearKmValorFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isKmValorFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingKmValor) {
+                      handleCancelKmValorForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="km-valor-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateKmValor} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="km-valor-modal-title">KM_VALOR</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelKmValorForm}
+                          disabled={isSavingKmValor}
+                          aria-label="Fechar formulario de km valor"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {kmValorFormMode === 'view' ? 'Consulta de registro' : editingKmValorCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="km-valor-condicao">
+                        <span>Condicao</span>
+                        <select
+                          id="km-valor-condicao"
+                          value={kmValorCondicaoCodigo}
+                          onChange={(event) => setKmValorCondicaoCodigo(event.target.value)}
+                          disabled={isLoadingKmValorOptions || isSavingKmValor || kmValorFormMode === 'view'}
+                        >
+                          <option value="">Selecione a condicao</option>
+                          {kmValorCondicaoOptions.map((item) => (
+                            <option key={item.codigo} value={item.codigo}>
+                              {item.descricao} ({item.qtdeIni} a {item.qtdeFim})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field-group" htmlFor="km-valor-data">
+                        <span>Data</span>
+                        <input
+                          id="km-valor-data"
+                          type="date"
+                          value={kmValorData}
+                          onChange={(event) => setKmValorData(event.target.value)}
+                          disabled={isSavingKmValor || kmValorFormMode === 'view'}
+                        />
+                      </label>
+
+                      <label className="field-group" htmlFor="km-valor-valor">
+                        <span>Valor</span>
+                        <input
+                          id="km-valor-valor"
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          value={kmValorValor}
+                          onChange={(event) => setKmValorValor(event.target.value)}
+                          disabled={isSavingKmValor || kmValorFormMode === 'view'}
+                        />
+                      </label>
+
+                      <p className={`status-message status-${kmValorStatusTone}`} aria-live="polite">
+                        {kmValorStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {kmValorFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingKmValor || isLoadingKmValorOptions}>
+                            {isSavingKmValor ? 'Salvando...' : editingKmValorCodigo ? 'Salvar alteracao' : 'Salvar registro'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelKmValorForm} disabled={isSavingKmValor}>
+                          {kmValorFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingKmValorItems ? 'Atualizando...' : `${kmValorTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>Condicao</th>
+                        <th>Data</th>
+                        <th>Valor</th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {kmValorItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.condicaoDescricao}</td>
+                          <td>{item.data}</td>
+                          <td>{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button
+                                type="button"
+                                className="row-action-button"
+                                onClick={() => handleStartViewKmValor(item)}
+                              >
+                                Consulta
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-edit"
+                                onClick={() => handleStartEditKmValor(item)}
+                                disabled={isDeletingKmValor}
+                              >
+                                Alterar
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-delete"
+                                onClick={() => handleDeleteKmValor(item)}
+                                disabled={isDeletingKmValor}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {isLoadingKmValorItems ? (
+                    <p className="management-empty-state">Carregando registros...</p>
+                  ) : null}
+
+                  {!isLoadingKmValorItems && !kmValorItems.length ? (
+                    <p className="management-empty-state">Nenhum registro de km valor encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${kmValorStatusTone}`} aria-live="polite">
+                  {isKmValorFormVisible ? '' : kmValorStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setKmValorPage(1)}
+                    disabled={!canGoToPreviousKmValorPage || isLoadingKmValorItems}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setKmValorPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousKmValorPage || isLoadingKmValorItems}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {kmValorPage} de {kmValorTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setKmValorPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextKmValorPage || isLoadingKmValorItems}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setKmValorPage(kmValorTotalPages)}
+                    disabled={!canGoToNextKmValorPage || isLoadingKmValorItems}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'continuaValor' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Tabela Continua_Valor</h2>
+              <p className="content-description">
+                Cadastre os valores por data para o tipo Continua. O tipo continua usa combobox com as opcoes Regular e Cadeirante, e a combinacao entre tipo e data nao pode se repetir.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertContinuaValor}
+                  disabled={isSavingContinuaValor || isDeletingContinuaValor}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterContinuaValorSubmit}>
+                  <label className="field-group" htmlFor="continua-valor-filter-tipo">
+                    <span>Tipo Continua</span>
+                    <select
+                      id="continua-valor-filter-tipo"
+                      value={continuaValorFilterTipo}
+                      onChange={(event) => setContinuaValorFilterTipo(event.target.value as ContinuaValorTipo | '')}
+                      disabled={isLoadingContinuaValorItems}
+                    >
+                      <option value="">Todos</option>
+                      {CONTINUA_TIPO_OPTIONS.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field-group" htmlFor="continua-valor-filter-data">
+                    <span>Data</span>
+                    <input
+                      id="continua-valor-filter-data"
+                      type="date"
+                      value={continuaValorFilterData}
+                      onChange={(event) => setContinuaValorFilterData(event.target.value)}
+                      disabled={isLoadingContinuaValorItems}
+                    />
+                  </label>
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearContinuaValorFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isContinuaValorFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingContinuaValor) {
+                      handleCancelContinuaValorForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="continua-valor-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateContinuaValor} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="continua-valor-modal-title">CONTINUA_VALOR</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelContinuaValorForm}
+                          disabled={isSavingContinuaValor}
+                          aria-label="Fechar formulario de continua valor"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {continuaValorFormMode === 'view' ? 'Consulta de registro' : editingContinuaValorCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="continua-valor-tipo">
+                        <span>Tipo Continua</span>
+                        <select
+                          id="continua-valor-tipo"
+                          value={continuaValorTipo}
+                          onChange={(event) => setContinuaValorTipo(event.target.value as ContinuaValorTipo | '')}
+                          disabled={isSavingContinuaValor || continuaValorFormMode === 'view'}
+                        >
+                          <option value="">Selecione o tipo continua</option>
+                          {CONTINUA_TIPO_OPTIONS.map((item) => (
+                            <option key={item} value={item}>
+                              {item}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field-group" htmlFor="continua-valor-data">
+                        <span>Data</span>
+                        <input
+                          id="continua-valor-data"
+                          type="date"
+                          value={continuaValorData}
+                          onChange={(event) => setContinuaValorData(event.target.value)}
+                          disabled={isSavingContinuaValor || continuaValorFormMode === 'view'}
+                        />
+                      </label>
+
+                      <label className="field-group" htmlFor="continua-valor-valor">
+                        <span>Valor</span>
+                        <input
+                          id="continua-valor-valor"
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          value={continuaValorValor}
+                          onChange={(event) => setContinuaValorValor(event.target.value)}
+                          disabled={isSavingContinuaValor || continuaValorFormMode === 'view'}
+                        />
+                      </label>
+
+                      <p className={`status-message status-${continuaValorStatusTone}`} aria-live="polite">
+                        {continuaValorStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {continuaValorFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingContinuaValor}>
+                            {isSavingContinuaValor ? 'Salvando...' : editingContinuaValorCodigo ? 'Salvar alteracao' : 'Salvar registro'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelContinuaValorForm} disabled={isSavingContinuaValor}>
+                          {continuaValorFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingContinuaValorItems ? 'Atualizando...' : `${continuaValorTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>Tipo Continua</th>
+                        <th>Data</th>
+                        <th>Valor</th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {continuaValorItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.tipoContinua}</td>
+                          <td>{item.data}</td>
+                          <td>{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button
+                                type="button"
+                                className="row-action-button"
+                                onClick={() => handleStartViewContinuaValor(item)}
+                              >
+                                Consulta
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-edit"
+                                onClick={() => handleStartEditContinuaValor(item)}
+                                disabled={isDeletingContinuaValor}
+                              >
+                                Alterar
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-delete"
+                                onClick={() => handleDeleteContinuaValor(item)}
+                                disabled={isDeletingContinuaValor}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {isLoadingContinuaValorItems ? (
+                    <p className="management-empty-state">Carregando registros...</p>
+                  ) : null}
+
+                  {!isLoadingContinuaValorItems && !continuaValorItems.length ? (
+                    <p className="management-empty-state">Nenhum registro de continua valor encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${continuaValorStatusTone}`} aria-live="polite">
+                  {isContinuaValorFormVisible ? '' : continuaValorStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setContinuaValorPage(1)}
+                    disabled={!canGoToPreviousContinuaValorPage || isLoadingContinuaValorItems}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setContinuaValorPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousContinuaValorPage || isLoadingContinuaValorItems}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {continuaValorPage} de {continuaValorTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setContinuaValorPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextContinuaValorPage || isLoadingContinuaValorItems}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setContinuaValorPage(continuaValorTotalPages)}
+                    disabled={!canGoToNextContinuaValorPage || isLoadingContinuaValorItems}
                     title="Ultimo registro"
                     aria-label="Ultimo registro"
                   >

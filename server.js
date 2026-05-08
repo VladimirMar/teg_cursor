@@ -330,14 +330,61 @@ const getModalidadeCodigoFromUrl = (url) => {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+const getCondicaoCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/condicao\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const getTipoBancadaCodigoFromUrl = (url) => {
   const match = url.match(/^\/api\/tipo-bancada\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getTipoPgtoCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/tipo-pgto\/([^/]+)$/)
   return match ? decodeURIComponent(match[1]) : null
 }
 
 const getModalidadeTipoBancadaAssociationCodigoFromUrl = (url) => {
   const match = url.match(/^\/api\/modalidade-tipo-bancada\/([^/]+)$/)
   return match ? decodeURIComponent(match[1]) : null
+}
+
+const getModalBancadaTpPagtoCondicaoCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/modal-bancada-condicao-tipo-pgto\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getModalBancadaTpPagtoCondicaoValorCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/modal-bancada-condicao-tipo-pgto-valor\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getKmValorCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/km-valor\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getContinuaValorCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/continua-valor\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const normalizeContinuaTipo = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  if (normalizedValue === 'regular') {
+    return 'Regular'
+  }
+
+  if (normalizedValue === 'cadeirante') {
+    return 'Cadeirante'
+  }
+
+  return ''
 }
 
 const getMarcaModeloCodigoFromUrl = (url) => {
@@ -893,7 +940,28 @@ const modalidadeSelectClause = `
   CAST(codigo AS text) AS codigo,
   BTRIM(CAST(descricao AS text)) AS descricao`
 
+const normalizeCondicaoKmValorFlag = (descricao) => {
+  return normalizeRequestValue(descricao)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .includes('KM')
+    ? 'yes'
+    : 'no'
+}
+
+const condicaoSelectClause = `
+  CAST(codigo AS text) AS codigo,
+  BTRIM(CAST(descricao AS text)) AS descricao,
+  qtde_ini,
+  qtde_fim,
+  LOWER(COALESCE(BTRIM(CAST(exibir_km_valor AS text)), 'no')) AS exibir_km_valor`
+
 const tipoBancadaSelectClause = `
+  CAST(codigo AS text) AS codigo,
+  BTRIM(CAST(descricao AS text)) AS descricao`
+
+const tipoPgtoSelectClause = `
   CAST(codigo AS text) AS codigo,
   BTRIM(CAST(descricao AS text)) AS descricao`
 
@@ -903,6 +971,20 @@ const modalidadeTipoBancadaAssociationSelectClause = `
   BTRIM(CAST(modalidade_item.descricao AS text)) AS modalidade_descricao,
   CAST(associacao.tipo_bancada_codigo AS text) AS tipo_bancada_codigo,
   BTRIM(CAST(tipo_bancada_item.descricao AS text)) AS tipo_bancada_descricao`
+
+const modalBancadaTpPagtoCondicaoSelectClause = `
+  CAST(relacao.codigo AS text) AS codigo,
+  CAST(relacao.modalidade_tipo_bancada_codigo AS text) AS modalidade_tipo_bancada_codigo,
+  CAST(modalidade_item.codigo AS text) AS modalidade_codigo,
+  BTRIM(CAST(modalidade_item.descricao AS text)) AS modalidade_descricao,
+  CAST(tipo_bancada_item.codigo AS text) AS tipo_bancada_codigo,
+  BTRIM(CAST(tipo_bancada_item.descricao AS text)) AS tipo_bancada_descricao,
+  CAST(tipo_pgto_item.codigo AS text) AS tipo_pgto_codigo,
+  BTRIM(CAST(tipo_pgto_item.descricao AS text)) AS tipo_pgto_descricao,
+  CAST(condicao_item.codigo AS text) AS condicao_codigo,
+  BTRIM(CAST(condicao_item.descricao AS text)) AS condicao_descricao,
+  condicao_item.qtde_ini AS condicao_qtde_ini,
+  condicao_item.qtde_fim AS condicao_qtde_fim`
 
 const findModalidadeTipoBancadaAssociationByCodigo = async (codigo, executor = pool) => {
   const normalizedCodigo = normalizeRequestValue(codigo)
@@ -917,6 +999,121 @@ const findModalidadeTipoBancadaAssociationByCodigo = async (codigo, executor = p
      INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
      INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
      WHERE CAST(associacao.codigo AS text) = $1
+     LIMIT 1`,
+    [normalizedCodigo],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const findModalBancadaTpPagtoCondicaoByCodigo = async (codigo, executor = pool) => {
+  const normalizedCodigo = normalizeRequestValue(codigo)
+
+  if (!normalizedCodigo) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${modalBancadaTpPagtoCondicaoSelectClause}
+    FROM modal_bancada_condicao_tipo_pgto relacao
+     INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = relacao.modalidade_tipo_bancada_codigo
+     INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+     INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+     INNER JOIN tipo_pgto tipo_pgto_item ON tipo_pgto_item.codigo = relacao.tipo_pgto_codigo
+     INNER JOIN condicao condicao_item ON condicao_item.codigo = relacao.condicao_codigo
+     WHERE CAST(relacao.codigo AS text) = $1
+     LIMIT 1`,
+    [normalizedCodigo],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const modalBancadaTpPagtoCondicaoValorSelectClause = `
+  CAST(valor_relacao.codigo AS text) AS codigo,
+  CAST(valor_relacao.modal_bancada_condicao_tipo_pgto_codigo AS text) AS modal_bancada_condicao_tipo_pgto_codigo,
+  TO_CHAR(valor_relacao.data, 'YYYY-MM-DD') AS data,
+  COALESCE(TO_CHAR(valor_relacao.valor, 'FM999999999990.00'), '0.00') AS valor,
+  CAST(relacao.codigo AS text) AS relacao_codigo,
+  CAST(relacao.modalidade_tipo_bancada_codigo AS text) AS modalidade_tipo_bancada_codigo,
+  CAST(modalidade_item.codigo AS text) AS modalidade_codigo,
+  BTRIM(CAST(modalidade_item.descricao AS text)) AS modalidade_descricao,
+  CAST(tipo_bancada_item.codigo AS text) AS tipo_bancada_codigo,
+  BTRIM(CAST(tipo_bancada_item.descricao AS text)) AS tipo_bancada_descricao,
+  CAST(tipo_pgto_item.codigo AS text) AS tipo_pgto_codigo,
+  BTRIM(CAST(tipo_pgto_item.descricao AS text)) AS tipo_pgto_descricao,
+  CAST(condicao_item.codigo AS text) AS condicao_codigo,
+  BTRIM(CAST(condicao_item.descricao AS text)) AS condicao_descricao`
+
+const kmValorSelectClause = `
+  CAST(km_valor_item.codigo AS text) AS codigo,
+  CAST(km_valor_item.condicao_codigo AS text) AS condicao_codigo,
+  BTRIM(CAST(condicao_item.descricao AS text)) AS condicao_descricao,
+  condicao_item.qtde_ini AS condicao_qtde_ini,
+  condicao_item.qtde_fim AS condicao_qtde_fim,
+  TO_CHAR(km_valor_item.data, 'YYYY-MM-DD') AS data,
+  COALESCE(TO_CHAR(km_valor_item.valor, 'FM999999999990.00'), '0.00') AS valor`
+
+const continuaValorSelectClause = `
+  CAST(continua_valor_item.codigo AS text) AS codigo,
+  BTRIM(CAST(continua_valor_item.tipo_continua AS text)) AS tipo_continua,
+  TO_CHAR(continua_valor_item.data, 'YYYY-MM-DD') AS data,
+  COALESCE(TO_CHAR(continua_valor_item.valor, 'FM999999999990.00'), '0.00') AS valor`
+
+const findModalBancadaTpPagtoCondicaoValorByCodigo = async (codigo, executor = pool) => {
+  const normalizedCodigo = normalizeRequestValue(codigo)
+
+  if (!normalizedCodigo) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${modalBancadaTpPagtoCondicaoValorSelectClause}
+     FROM modal_bancada_condicao_tipo_pgto_valor valor_relacao
+     INNER JOIN modal_bancada_condicao_tipo_pgto relacao ON relacao.codigo = valor_relacao.modal_bancada_condicao_tipo_pgto_codigo
+     INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = relacao.modalidade_tipo_bancada_codigo
+     INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+     INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+     INNER JOIN tipo_pgto tipo_pgto_item ON tipo_pgto_item.codigo = relacao.tipo_pgto_codigo
+     INNER JOIN condicao condicao_item ON condicao_item.codigo = relacao.condicao_codigo
+     WHERE CAST(valor_relacao.codigo AS text) = $1
+     LIMIT 1`,
+    [normalizedCodigo],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const findKmValorByCodigo = async (codigo, executor = pool) => {
+  const normalizedCodigo = normalizeRequestValue(codigo)
+
+  if (!normalizedCodigo) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${kmValorSelectClause}
+     FROM km_valor km_valor_item
+     INNER JOIN condicao condicao_item ON condicao_item.codigo = km_valor_item.condicao_codigo
+     WHERE CAST(km_valor_item.codigo AS text) = $1
+     LIMIT 1`,
+    [normalizedCodigo],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const findContinuaValorByCodigo = async (codigo, executor = pool) => {
+  const normalizedCodigo = normalizeRequestValue(codigo)
+
+  if (!normalizedCodigo) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${continuaValorSelectClause}
+     FROM continua_valor continua_valor_item
+     WHERE CAST(continua_valor_item.codigo AS text) = $1
      LIMIT 1`,
     [normalizedCodigo],
   )
@@ -969,6 +1166,64 @@ const normalizeTipoBancadaDescription = (value) => {
     .slice(0, 255)
 }
 
+const normalizeTipoPgtoDescription = (value) => {
+  return normalizeRequestValue(value)
+    .replace(/\s+/g, ' ')
+    .slice(0, 255)
+}
+
+const normalizeCondicaoDescription = (value) => {
+  return normalizeRequestValue(value)
+    .replace(/\s+/g, ' ')
+    .slice(0, 255)
+}
+
+const normalizeCondicaoQuantity = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (!/^-?\d+$/.test(normalizedValue)) {
+    return Number.NaN
+  }
+
+  const quantity = Number(normalizedValue)
+  return Number.isSafeInteger(quantity) ? quantity : Number.NaN
+}
+
+const validateCondicaoPayload = ({ descricao, qtdeIni, qtdeFim }) => {
+  const normalizedDescricao = normalizeCondicaoDescription(descricao)
+  const normalizedQtdeIni = normalizeCondicaoQuantity(qtdeIni)
+  const normalizedQtdeFim = normalizeCondicaoQuantity(qtdeFim)
+
+  if (!normalizedDescricao) {
+    return { status: 400, payload: { message: 'Descricao e obrigatoria.' } }
+  }
+
+  if (!Number.isInteger(normalizedQtdeIni) || normalizedQtdeIni < 0) {
+    return { status: 400, payload: { message: 'Qtde inicial deve ser um numero inteiro maior ou igual a zero.' } }
+  }
+
+  if (!Number.isInteger(normalizedQtdeFim) || normalizedQtdeFim < 0) {
+    return { status: 400, payload: { message: 'Qtde final deve ser um numero inteiro maior ou igual a zero.' } }
+  }
+
+  if (normalizedQtdeFim < normalizedQtdeIni) {
+    return { status: 400, payload: { message: 'Qtde final deve ser maior ou igual a qtde inicial.' } }
+  }
+
+  return {
+    status: 200,
+    payload: {
+      descricao: normalizedDescricao,
+      qtdeIni: normalizedQtdeIni,
+      qtdeFim: normalizedQtdeFim,
+    },
+  }
+}
+
 const findTipoBancadaByDescription = async (descricao, executor = pool) => {
   const normalizedDescricao = normalizeTipoBancadaDescription(descricao)
 
@@ -979,6 +1234,24 @@ const findTipoBancadaByDescription = async (descricao, executor = pool) => {
   const result = await executor.query(
     `SELECT ${tipoBancadaSelectClause}
      FROM tipo_bancada
+     WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1)
+     LIMIT 1`,
+    [normalizedDescricao],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const findTipoPgtoByDescription = async (descricao, executor = pool) => {
+  const normalizedDescricao = normalizeTipoPgtoDescription(descricao)
+
+  if (!normalizedDescricao) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${tipoPgtoSelectClause}
+     FROM tipo_pgto
      WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1)
      LIMIT 1`,
     [normalizedDescricao],
@@ -10234,6 +10507,65 @@ const ensureDatabaseSchema = async () => {
   await pool.query('SELECT setval(\'modalidade_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM modalidade), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS modalidade_codigo_unique_idx ON modalidade (codigo)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS modalidade_descricao_unique_idx ON modalidade (UPPER(BTRIM(descricao)))')
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS condicao_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS condicao (
+      codigo integer PRIMARY KEY DEFAULT nextval('condicao_codigo_seq'),
+      descricao varchar(255) NOT NULL,
+      qtde_ini integer NOT NULL,
+      qtde_fim integer NOT NULL,
+      exibir_km_valor varchar(3) NOT NULL DEFAULT 'no',
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_modificacao timestamp without time zone NOT NULL DEFAULT NOW(),
+      CONSTRAINT condicao_qtde_intervalo_chk CHECK (qtde_ini >= 0 AND qtde_fim >= qtde_ini)
+    )
+  `)
+  await pool.query('ALTER TABLE condicao ADD COLUMN IF NOT EXISTS descricao varchar(255)')
+  await pool.query('ALTER TABLE condicao ADD COLUMN IF NOT EXISTS qtde_ini integer')
+  await pool.query('ALTER TABLE condicao ADD COLUMN IF NOT EXISTS qtde_fim integer')
+  await pool.query('ALTER TABLE condicao ADD COLUMN IF NOT EXISTS exibir_km_valor varchar(3)')
+  await pool.query('ALTER TABLE condicao ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
+  await pool.query('ALTER TABLE condicao ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
+  await pool.query('ALTER TABLE condicao ALTER COLUMN codigo SET DEFAULT nextval(\'condicao_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE condicao_codigo_seq OWNED BY condicao.codigo')
+  await pool.query('ALTER TABLE condicao ALTER COLUMN descricao TYPE varchar(255)')
+  await pool.query('ALTER TABLE condicao ALTER COLUMN exibir_km_valor TYPE varchar(3)')
+  await pool.query('UPDATE condicao SET descricao = BTRIM(CAST(descricao AS text)) WHERE descricao IS NOT NULL')
+  await pool.query(`
+    UPDATE condicao
+    SET exibir_km_valor = CASE
+      WHEN UPPER(BTRIM(COALESCE(descricao, ''))) LIKE '%KM%' THEN 'yes'
+      ELSE 'no'
+    END
+  `)
+  await pool.query('ALTER TABLE condicao ALTER COLUMN descricao SET NOT NULL')
+  await pool.query('ALTER TABLE condicao ALTER COLUMN qtde_ini SET NOT NULL')
+  await pool.query('ALTER TABLE condicao ALTER COLUMN qtde_fim SET NOT NULL')
+  await pool.query("ALTER TABLE condicao ALTER COLUMN exibir_km_valor SET DEFAULT 'no'")
+  await pool.query('ALTER TABLE condicao ALTER COLUMN exibir_km_valor SET NOT NULL')
+  await pool.query('ALTER TABLE condicao ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('ALTER TABLE condicao ALTER COLUMN data_modificacao SET DEFAULT NOW()')
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'condicao_qtde_intervalo_chk'
+      ) THEN
+        ALTER TABLE condicao
+        ADD CONSTRAINT condicao_qtde_intervalo_chk CHECK (qtde_ini >= 0 AND qtde_fim >= qtde_ini);
+      END IF;
+    END $$;
+  `)
+  await pool.query(`
+    UPDATE condicao
+    SET data_inclusao = COALESCE(data_inclusao, NOW()),
+        data_modificacao = COALESCE(data_modificacao, COALESCE(data_inclusao, NOW()))
+    WHERE data_inclusao IS NULL OR data_modificacao IS NULL
+  `)
+  await pool.query('SELECT setval(\'condicao_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM condicao), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS condicao_codigo_unique_idx ON condicao (codigo)')
   await pool.query('CREATE SEQUENCE IF NOT EXISTS tipo_bancada_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tipo_bancada (
@@ -10251,6 +10583,32 @@ const ensureDatabaseSchema = async () => {
   await pool.query('SELECT setval(\'tipo_bancada_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM tipo_bancada), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_bancada_codigo_unique_idx ON tipo_bancada (codigo)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_bancada_descricao_unique_idx ON tipo_bancada (UPPER(BTRIM(descricao)))')
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS tipo_pgto_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tipo_pgto (
+      codigo integer PRIMARY KEY DEFAULT nextval('tipo_pgto_codigo_seq'),
+      descricao varchar(255) NOT NULL
+    )
+  `)
+  await pool.query('ALTER TABLE tipo_pgto ADD COLUMN IF NOT EXISTS descricao varchar(255)')
+  await pool.query('ALTER TABLE tipo_pgto ALTER COLUMN codigo SET DEFAULT nextval(\'tipo_pgto_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE tipo_pgto_codigo_seq OWNED BY tipo_pgto.codigo')
+  await pool.query('ALTER TABLE tipo_pgto ALTER COLUMN descricao TYPE varchar(255)')
+  await pool.query('UPDATE tipo_pgto SET descricao = BTRIM(CAST(descricao AS text)) WHERE descricao IS NOT NULL')
+  await pool.query('ALTER TABLE tipo_pgto ALTER COLUMN descricao SET NOT NULL')
+  await pool.query(`
+    INSERT INTO tipo_pgto (descricao)
+    SELECT seed.descricao
+    FROM (VALUES ('Fixo'), ('Per capita')) AS seed(descricao)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM tipo_pgto item
+      WHERE UPPER(BTRIM(CAST(item.descricao AS text))) = UPPER(seed.descricao)
+    )
+  `)
+  await pool.query('SELECT setval(\'tipo_pgto_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM tipo_pgto), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_pgto_codigo_unique_idx ON tipo_pgto (codigo)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_pgto_descricao_unique_idx ON tipo_pgto (UPPER(BTRIM(descricao)))')
   await pool.query('CREATE SEQUENCE IF NOT EXISTS modalidade_tipo_bancada_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query(`
     CREATE TABLE IF NOT EXISTS modalidade_tipo_bancada (
@@ -10270,6 +10628,224 @@ const ensureDatabaseSchema = async () => {
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS modalidade_tipo_bancada_unique_idx
     ON modalidade_tipo_bancada (modalidade_codigo, tipo_bancada_codigo)
+  `)
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF to_regclass('public.modal_bancada_tp_pagto_condicao') IS NOT NULL
+         AND to_regclass('public.modal_bancada_condicao_tipo_pgto') IS NULL THEN
+        ALTER TABLE modal_bancada_tp_pagto_condicao RENAME TO modal_bancada_condicao_tipo_pgto;
+      END IF;
+
+      IF to_regclass('public.modal_bancada_tp_pagto_condicao_codigo_seq') IS NOT NULL
+         AND to_regclass('public.modal_bancada_condicao_tipo_pgto_codigo_seq') IS NULL THEN
+        ALTER SEQUENCE modal_bancada_tp_pagto_condicao_codigo_seq RENAME TO modal_bancada_condicao_tipo_pgto_codigo_seq;
+      END IF;
+
+      IF EXISTS (SELECT 1 FROM pg_class WHERE relkind = 'i' AND relname = 'modal_bancada_tp_pagto_condicao_codigo_unique_idx')
+         AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relkind = 'i' AND relname = 'modal_bancada_condicao_tipo_pgto_codigo_unique_idx') THEN
+        ALTER INDEX modal_bancada_tp_pagto_condicao_codigo_unique_idx RENAME TO modal_bancada_condicao_tipo_pgto_codigo_unique_idx;
+      END IF;
+
+      IF EXISTS (SELECT 1 FROM pg_class WHERE relkind = 'i' AND relname = 'modal_bancada_tp_pagto_condicao_unique_idx')
+         AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relkind = 'i' AND relname = 'modal_bancada_condicao_tipo_pgto_unique_idx') THEN
+        ALTER INDEX modal_bancada_tp_pagto_condicao_unique_idx RENAME TO modal_bancada_condicao_tipo_pgto_unique_idx;
+      END IF;
+    END $$;
+  `)
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS modal_bancada_condicao_tipo_pgto_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS modal_bancada_condicao_tipo_pgto (
+      codigo integer PRIMARY KEY DEFAULT nextval('modal_bancada_condicao_tipo_pgto_codigo_seq'),
+      modalidade_tipo_bancada_codigo integer NOT NULL REFERENCES modalidade_tipo_bancada(codigo) ON DELETE CASCADE,
+      tipo_pgto_codigo integer NOT NULL REFERENCES tipo_pgto(codigo) ON DELETE CASCADE,
+      condicao_codigo integer NOT NULL REFERENCES condicao(codigo) ON DELETE CASCADE
+    )
+  `)
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto ADD COLUMN IF NOT EXISTS modalidade_tipo_bancada_codigo integer')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto ADD COLUMN IF NOT EXISTS tipo_pgto_codigo integer')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto ADD COLUMN IF NOT EXISTS condicao_codigo integer')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto ALTER COLUMN codigo SET DEFAULT nextval(\'modal_bancada_condicao_tipo_pgto_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE modal_bancada_condicao_tipo_pgto_codigo_seq OWNED BY modal_bancada_condicao_tipo_pgto.codigo')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto ALTER COLUMN modalidade_tipo_bancada_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto ALTER COLUMN tipo_pgto_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto ALTER COLUMN condicao_codigo SET NOT NULL')
+  await pool.query('SELECT setval(\'modal_bancada_condicao_tipo_pgto_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM modal_bancada_condicao_tipo_pgto), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS modal_bancada_condicao_tipo_pgto_codigo_unique_idx ON modal_bancada_condicao_tipo_pgto (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS modal_bancada_condicao_tipo_pgto_unique_idx
+    ON modal_bancada_condicao_tipo_pgto (modalidade_tipo_bancada_codigo, tipo_pgto_codigo, condicao_codigo)
+  `)
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS modal_bancada_condicao_tipo_pgto_valor_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS modal_bancada_condicao_tipo_pgto_valor (
+      codigo integer PRIMARY KEY DEFAULT nextval('modal_bancada_condicao_tipo_pgto_valor_codigo_seq'),
+      modal_bancada_condicao_tipo_pgto_codigo integer NOT NULL REFERENCES modal_bancada_condicao_tipo_pgto(codigo) ON DELETE CASCADE,
+      data date NOT NULL,
+      valor numeric(14, 2) NOT NULL DEFAULT 0,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_modificacao timestamp without time zone NOT NULL DEFAULT NOW(),
+      CONSTRAINT modal_bancada_condicao_tipo_pgto_valor_valor_chk CHECK (valor >= 0)
+    )
+  `)
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ADD COLUMN IF NOT EXISTS modal_bancada_condicao_tipo_pgto_codigo integer')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ADD COLUMN IF NOT EXISTS data date')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ADD COLUMN IF NOT EXISTS valor numeric(14, 2)')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ALTER COLUMN codigo SET DEFAULT nextval(\'modal_bancada_condicao_tipo_pgto_valor_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE modal_bancada_condicao_tipo_pgto_valor_codigo_seq OWNED BY modal_bancada_condicao_tipo_pgto_valor.codigo')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ALTER COLUMN modal_bancada_condicao_tipo_pgto_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ALTER COLUMN data SET NOT NULL')
+  await pool.query('UPDATE modal_bancada_condicao_tipo_pgto_valor SET valor = 0 WHERE valor IS NULL')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ALTER COLUMN valor SET DEFAULT 0')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ALTER COLUMN valor SET NOT NULL')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('ALTER TABLE modal_bancada_condicao_tipo_pgto_valor ALTER COLUMN data_modificacao SET DEFAULT NOW()')
+  await pool.query(`
+    UPDATE modal_bancada_condicao_tipo_pgto_valor
+    SET data_inclusao = COALESCE(data_inclusao, NOW()),
+        data_modificacao = COALESCE(data_modificacao, COALESCE(data_inclusao, NOW()))
+    WHERE data_inclusao IS NULL OR data_modificacao IS NULL
+  `)
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'modal_bancada_condicao_tipo_pgto_valor_valor_chk'
+      ) THEN
+        ALTER TABLE modal_bancada_condicao_tipo_pgto_valor
+        ADD CONSTRAINT modal_bancada_condicao_tipo_pgto_valor_valor_chk CHECK (valor >= 0);
+      END IF;
+    END $$;
+  `)
+  await pool.query('SELECT setval(\'modal_bancada_condicao_tipo_pgto_valor_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM modal_bancada_condicao_tipo_pgto_valor), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS modal_bancada_condicao_tipo_pgto_valor_codigo_unique_idx ON modal_bancada_condicao_tipo_pgto_valor (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS modal_bancada_condicao_tipo_pgto_valor_unique_idx
+    ON modal_bancada_condicao_tipo_pgto_valor (modal_bancada_condicao_tipo_pgto_codigo, data)
+  `)
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS km_valor_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS km_valor (
+      codigo integer PRIMARY KEY DEFAULT nextval('km_valor_codigo_seq'),
+      condicao_codigo integer NOT NULL REFERENCES condicao(codigo) ON DELETE RESTRICT,
+      data date NOT NULL,
+      valor numeric(14, 2) NOT NULL DEFAULT 0,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_modificacao timestamp without time zone NOT NULL DEFAULT NOW(),
+      CONSTRAINT km_valor_valor_chk CHECK (valor >= 0)
+    )
+  `)
+  await pool.query('ALTER TABLE km_valor ADD COLUMN IF NOT EXISTS condicao_codigo integer')
+  await pool.query('ALTER TABLE km_valor ADD COLUMN IF NOT EXISTS data date')
+  await pool.query('ALTER TABLE km_valor ADD COLUMN IF NOT EXISTS valor numeric(14, 2)')
+  await pool.query('ALTER TABLE km_valor ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
+  await pool.query('ALTER TABLE km_valor ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
+  await pool.query('ALTER TABLE km_valor ALTER COLUMN codigo SET DEFAULT nextval(\'km_valor_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE km_valor_codigo_seq OWNED BY km_valor.codigo')
+  await pool.query('ALTER TABLE km_valor ALTER COLUMN condicao_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE km_valor ALTER COLUMN data SET NOT NULL')
+  await pool.query('UPDATE km_valor SET valor = 0 WHERE valor IS NULL')
+  await pool.query('ALTER TABLE km_valor ALTER COLUMN valor SET DEFAULT 0')
+  await pool.query('ALTER TABLE km_valor ALTER COLUMN valor SET NOT NULL')
+  await pool.query('ALTER TABLE km_valor ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('ALTER TABLE km_valor ALTER COLUMN data_modificacao SET DEFAULT NOW()')
+  await pool.query(`
+    UPDATE km_valor
+    SET data_inclusao = COALESCE(data_inclusao, NOW()),
+        data_modificacao = COALESCE(data_modificacao, COALESCE(data_inclusao, NOW()))
+    WHERE data_inclusao IS NULL OR data_modificacao IS NULL
+  `)
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'km_valor_valor_chk'
+      ) THEN
+        ALTER TABLE km_valor
+        ADD CONSTRAINT km_valor_valor_chk CHECK (valor >= 0);
+      END IF;
+    END $$;
+  `)
+  await pool.query('SELECT setval(\'km_valor_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM km_valor), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS km_valor_codigo_unique_idx ON km_valor (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS km_valor_unique_idx
+    ON km_valor (condicao_codigo, data)
+  `)
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS continua_valor_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS continua_valor (
+      codigo integer PRIMARY KEY DEFAULT nextval('continua_valor_codigo_seq'),
+      tipo_continua varchar(20) NOT NULL,
+      data date NOT NULL,
+      valor numeric(14, 2) NOT NULL DEFAULT 0,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_modificacao timestamp without time zone NOT NULL DEFAULT NOW(),
+      CONSTRAINT continua_valor_tipo_chk CHECK (tipo_continua IN ('Regular', 'Cadeirante')),
+      CONSTRAINT continua_valor_valor_chk CHECK (valor >= 0)
+    )
+  `)
+  await pool.query('ALTER TABLE continua_valor ADD COLUMN IF NOT EXISTS tipo_continua varchar(20)')
+  await pool.query('ALTER TABLE continua_valor ADD COLUMN IF NOT EXISTS data date')
+  await pool.query('ALTER TABLE continua_valor ADD COLUMN IF NOT EXISTS valor numeric(14, 2)')
+  await pool.query('ALTER TABLE continua_valor ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
+  await pool.query('ALTER TABLE continua_valor ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
+  await pool.query('ALTER TABLE continua_valor ALTER COLUMN codigo SET DEFAULT nextval(\'continua_valor_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE continua_valor_codigo_seq OWNED BY continua_valor.codigo')
+  await pool.query(`
+    UPDATE continua_valor
+    SET tipo_continua = CASE
+      WHEN LOWER(BTRIM(CAST(tipo_continua AS text))) = 'regular' THEN 'Regular'
+      WHEN LOWER(BTRIM(CAST(tipo_continua AS text))) = 'cadeirante' THEN 'Cadeirante'
+      ELSE tipo_continua
+    END
+  `)
+  await pool.query('ALTER TABLE continua_valor ALTER COLUMN tipo_continua SET NOT NULL')
+  await pool.query('ALTER TABLE continua_valor ALTER COLUMN data SET NOT NULL')
+  await pool.query('UPDATE continua_valor SET valor = 0 WHERE valor IS NULL')
+  await pool.query('ALTER TABLE continua_valor ALTER COLUMN valor SET DEFAULT 0')
+  await pool.query('ALTER TABLE continua_valor ALTER COLUMN valor SET NOT NULL')
+  await pool.query('ALTER TABLE continua_valor ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('ALTER TABLE continua_valor ALTER COLUMN data_modificacao SET DEFAULT NOW()')
+  await pool.query(`
+    UPDATE continua_valor
+    SET data_inclusao = COALESCE(data_inclusao, NOW()),
+        data_modificacao = COALESCE(data_modificacao, COALESCE(data_inclusao, NOW()))
+    WHERE data_inclusao IS NULL OR data_modificacao IS NULL
+  `)
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'continua_valor_tipo_chk'
+      ) THEN
+        ALTER TABLE continua_valor
+        ADD CONSTRAINT continua_valor_tipo_chk CHECK (tipo_continua IN ('Regular', 'Cadeirante'));
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'continua_valor_valor_chk'
+      ) THEN
+        ALTER TABLE continua_valor
+        ADD CONSTRAINT continua_valor_valor_chk CHECK (valor >= 0);
+      END IF;
+    END $$;
+  `)
+  await pool.query('SELECT setval(\'continua_valor_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM continua_valor), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS continua_valor_codigo_unique_idx ON continua_valor (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS continua_valor_unique_idx
+    ON continua_valor (tipo_continua, data)
   `)
   await pool.query('CREATE SEQUENCE IF NOT EXISTS condutor_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query('ALTER TABLE condutor ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
@@ -11704,6 +12280,82 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === '/api/condicao') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'codigo')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'asc').toLowerCase() === 'desc'
+        ? 'DESC'
+        : 'ASC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const orderByClause = sortBy === 'descricao'
+        ? `BTRIM(CAST(descricao AS text)) ${sortDirection}, CAST(codigo AS text) ASC`
+        : sortBy === 'qtdeIni' || sortBy === 'qtde_ini'
+          ? `qtde_ini ${sortDirection}, CAST(codigo AS text) ASC`
+          : sortBy === 'qtdeFim' || sortBy === 'qtde_fim'
+            ? `qtde_fim ${sortDirection}, CAST(codigo AS text) ASC`
+            : `CAST(codigo AS text) ${sortDirection}`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(codigo AS text) ILIKE $${values.length}
+          OR BTRIM(CAST(descricao AS text)) ILIKE $${values.length}
+          OR CAST(qtde_ini AS text) ILIKE $${values.length}
+          OR CAST(qtde_fim AS text) ILIKE $${values.length}
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM condicao ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${condicaoSelectClause}
+         FROM condicao
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+      const normalizedSortBy = sortBy === 'descricao'
+        ? 'descricao'
+        : sortBy === 'qtdeIni' || sortBy === 'qtde_ini'
+          ? 'qtdeIni'
+          : sortBy === 'qtdeFim' || sortBy === 'qtde_fim'
+            ? 'qtdeFim'
+            : 'codigo'
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: normalizedSortBy,
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a tabela condicao.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'GET' && pathname === '/api/tipo-bancada') {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
@@ -11772,6 +12424,74 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === '/api/tipo-pgto') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'codigo')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'asc').toLowerCase() === 'desc'
+        ? 'DESC'
+        : 'ASC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const numericCodigoOrderClause = `
+        CASE WHEN CAST(codigo AS text) ~ '^[0-9]+$' THEN 0 ELSE 1 END ASC,
+        CASE WHEN CAST(codigo AS text) ~ '^[0-9]+$' THEN CAST(codigo AS bigint) END ${sortDirection},
+        CAST(codigo AS text) ${sortDirection}
+      `
+      const orderByClause = sortBy === 'descricao'
+        ? `BTRIM(CAST(descricao AS text)) ${sortDirection}, ${numericCodigoOrderClause}`
+        : numericCodigoOrderClause
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(codigo AS text) ILIKE $${values.length}
+          OR BTRIM(CAST(descricao AS text)) ILIKE $${values.length}
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM tipo_pgto ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${tipoPgtoSelectClause}
+         FROM tipo_pgto
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: sortBy === 'descricao' ? 'descricao' : 'codigo',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a tabela tipo_pgto.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'GET' && pathname === '/api/modalidade-tipo-bancada') {
     try {
       const result = await pool.query(
@@ -11791,6 +12511,285 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao consultar as associacoes de modalidade x tipo de bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/modal-bancada-condicao-tipo-pgto') {
+    try {
+      const modalidadeTipoBancadaCodigo = normalizeRequestValue(requestUrl.searchParams.get('modalidadeTipoBancadaCodigo') ?? '')
+      const tipoPgtoCodigo = normalizeRequestValue(requestUrl.searchParams.get('tipoPgtoCodigo') ?? '')
+      const condicaoCodigo = normalizeRequestValue(requestUrl.searchParams.get('condicaoCodigo') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 500)
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+
+      if (modalidadeTipoBancadaCodigo) {
+        values.push(modalidadeTipoBancadaCodigo)
+        filters.push(`CAST(relacao.modalidade_tipo_bancada_codigo AS text) = $${values.length}`)
+      }
+
+      if (tipoPgtoCodigo) {
+        values.push(tipoPgtoCodigo)
+        filters.push(`CAST(relacao.tipo_pgto_codigo AS text) = $${values.length}`)
+      }
+
+      if (condicaoCodigo) {
+        values.push(condicaoCodigo)
+        filters.push(`CAST(relacao.condicao_codigo AS text) = $${values.length}`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM modal_bancada_condicao_tipo_pgto relacao
+         INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = relacao.modalidade_tipo_bancada_codigo
+         INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+         INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+         INNER JOIN tipo_pgto tipo_pgto_item ON tipo_pgto_item.codigo = relacao.tipo_pgto_codigo
+         INNER JOIN condicao condicao_item ON condicao_item.codigo = relacao.condicao_codigo
+         ${whereClause}`,
+        values,
+      )
+
+      const queryValues = [...values, pageSize, offset]
+      const result = await pool.query(
+        `SELECT ${modalBancadaTpPagtoCondicaoSelectClause}
+         FROM modal_bancada_condicao_tipo_pgto relacao
+         INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = relacao.modalidade_tipo_bancada_codigo
+         INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+         INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+         INNER JOIN tipo_pgto tipo_pgto_item ON tipo_pgto_item.codigo = relacao.tipo_pgto_codigo
+         INNER JOIN condicao condicao_item ON condicao_item.codigo = relacao.condicao_codigo
+         ${whereClause}
+         ORDER BY BTRIM(CAST(modalidade_item.descricao AS text)) ASC,
+                  BTRIM(CAST(tipo_bancada_item.descricao AS text)) ASC,
+                  BTRIM(CAST(tipo_pgto_item.descricao AS text)) ASC,
+                  BTRIM(CAST(condicao_item.descricao AS text)) ASC,
+                  relacao.codigo ASC
+         LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`,
+        queryValues,
+      )
+
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar modal_bancada_condicao_tipo_pgto.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/modal-bancada-condicao-tipo-pgto-valor') {
+    try {
+      const modalBancadaTpPagtoCondicaoCodigo = normalizeRequestValue(requestUrl.searchParams.get('modalBancadaTpPagtoCondicaoCodigo') ?? '')
+      const data = normalizeRequestValue(requestUrl.searchParams.get('data') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 500)
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+
+      if (modalBancadaTpPagtoCondicaoCodigo) {
+        values.push(modalBancadaTpPagtoCondicaoCodigo)
+        filters.push(`CAST(valor_relacao.modal_bancada_condicao_tipo_pgto_codigo AS text) = $${values.length}`)
+      }
+
+      if (data) {
+        values.push(data)
+        filters.push(`TO_CHAR(valor_relacao.data, 'YYYY-MM-DD') = $${values.length}`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM modal_bancada_condicao_tipo_pgto_valor valor_relacao
+         INNER JOIN modal_bancada_condicao_tipo_pgto relacao ON relacao.codigo = valor_relacao.modal_bancada_condicao_tipo_pgto_codigo
+         INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = relacao.modalidade_tipo_bancada_codigo
+         INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+         INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+         INNER JOIN tipo_pgto tipo_pgto_item ON tipo_pgto_item.codigo = relacao.tipo_pgto_codigo
+         INNER JOIN condicao condicao_item ON condicao_item.codigo = relacao.condicao_codigo
+         ${whereClause}`,
+        values,
+      )
+
+      const queryValues = [...values, pageSize, offset]
+      const result = await pool.query(
+        `SELECT ${modalBancadaTpPagtoCondicaoValorSelectClause}
+         FROM modal_bancada_condicao_tipo_pgto_valor valor_relacao
+         INNER JOIN modal_bancada_condicao_tipo_pgto relacao ON relacao.codigo = valor_relacao.modal_bancada_condicao_tipo_pgto_codigo
+         INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = relacao.modalidade_tipo_bancada_codigo
+         INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+         INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+         INNER JOIN tipo_pgto tipo_pgto_item ON tipo_pgto_item.codigo = relacao.tipo_pgto_codigo
+         INNER JOIN condicao condicao_item ON condicao_item.codigo = relacao.condicao_codigo
+         ${whereClause}
+         ORDER BY BTRIM(CAST(modalidade_item.descricao AS text)) ASC,
+                  BTRIM(CAST(tipo_bancada_item.descricao AS text)) ASC,
+                  BTRIM(CAST(tipo_pgto_item.descricao AS text)) ASC,
+                  BTRIM(CAST(condicao_item.descricao AS text)) ASC,
+                  valor_relacao.data ASC,
+                  valor_relacao.codigo ASC
+         LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`,
+        queryValues,
+      )
+
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar modal_bancada_condicao_tipo_pgto_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/km-valor') {
+    try {
+      const condicaoCodigo = normalizeRequestValue(requestUrl.searchParams.get('condicaoCodigo') ?? '')
+      const data = normalizeRequestValue(requestUrl.searchParams.get('data') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 500)
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+
+      if (condicaoCodigo) {
+        values.push(condicaoCodigo)
+        filters.push(`CAST(km_valor_item.condicao_codigo AS text) = $${values.length}`)
+      }
+
+      if (data) {
+        values.push(data)
+        filters.push(`TO_CHAR(km_valor_item.data, 'YYYY-MM-DD') = $${values.length}`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM km_valor km_valor_item
+         INNER JOIN condicao condicao_item ON condicao_item.codigo = km_valor_item.condicao_codigo
+         ${whereClause}`,
+        values,
+      )
+
+      const queryValues = [...values, pageSize, offset]
+      const result = await pool.query(
+        `SELECT ${kmValorSelectClause}
+         FROM km_valor km_valor_item
+         INNER JOIN condicao condicao_item ON condicao_item.codigo = km_valor_item.condicao_codigo
+         ${whereClause}
+         ORDER BY BTRIM(CAST(condicao_item.descricao AS text)) ASC,
+                  km_valor_item.data ASC,
+                  km_valor_item.codigo ASC
+         LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`,
+        queryValues,
+      )
+
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar km_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/continua-valor') {
+    try {
+      const tipoContinua = normalizeContinuaTipo(requestUrl.searchParams.get('tipoContinua') ?? '')
+      const data = normalizeRequestValue(requestUrl.searchParams.get('data') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 500)
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+
+      if (tipoContinua) {
+        values.push(tipoContinua)
+        filters.push(`continua_valor_item.tipo_continua = $${values.length}`)
+      }
+
+      if (data) {
+        values.push(data)
+        filters.push(`TO_CHAR(continua_valor_item.data, 'YYYY-MM-DD') = $${values.length}`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM continua_valor continua_valor_item
+         ${whereClause}`,
+        values,
+      )
+
+      const queryValues = [...values, pageSize, offset]
+      const result = await pool.query(
+        `SELECT ${continuaValorSelectClause}
+         FROM continua_valor continua_valor_item
+         ${whereClause}
+         ORDER BY CASE continua_valor_item.tipo_continua
+                    WHEN 'Regular' THEN 1
+                    WHEN 'Cadeirante' THEN 2
+                    ELSE 3
+                  END,
+                  continua_valor_item.data ASC,
+                  continua_valor_item.codigo ASC
+         LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`,
+        queryValues,
+      )
+
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar continua_valor.'
 
       sendJson(response, 500, { message })
     }
@@ -15585,6 +16584,46 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'POST' && pathname === '/api/condicao') {
+    try {
+      const body = await readJsonBody(request)
+      const validationResult = validateCondicaoPayload({
+        descricao: body.descricao,
+        qtdeIni: body.qtdeIni,
+        qtdeFim: body.qtdeFim,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO condicao (descricao, qtde_ini, qtde_fim, exibir_km_valor, data_inclusao, data_modificacao)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())
+         RETURNING ${condicaoSelectClause}`,
+        [
+          validationResult.payload.descricao,
+          validationResult.payload.qtdeIni,
+          validationResult.payload.qtdeFim,
+          normalizeCondicaoKmValorFlag(validationResult.payload.descricao),
+        ],
+      )
+
+      sendJson(response, 201, {
+        item: insertResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar o registro condicao.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'POST' && pathname === '/api/tipo-bancada') {
     try {
       const body = await readJsonBody(request)
@@ -15619,6 +16658,47 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao gravar o registro tipo_bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/tipo-pgto') {
+    try {
+      const body = await readJsonBody(request)
+      const descricao = normalizeTipoPgtoDescription(body.descricao)
+
+      if (!descricao) {
+        sendJson(response, 400, { message: 'Descricao e obrigatoria.' })
+        return
+      }
+
+      const duplicateDescriptionResult = await pool.query(
+        'SELECT 1 FROM tipo_pgto WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1) LIMIT 1',
+        [descricao],
+      )
+
+      if (duplicateDescriptionResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Descricao ja cadastrada.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO tipo_pgto (descricao)
+         VALUES ($1)
+         RETURNING ${tipoPgtoSelectClause}`,
+        [descricao],
+      )
+
+      sendJson(response, 201, {
+        item: insertResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar o registro tipo_pgto.'
 
       sendJson(response, 500, { message })
     }
@@ -15687,6 +16767,643 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao gravar a associacao de modalidade x tipo de bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/modal-bancada-condicao-tipo-pgto') {
+    try {
+      const body = await readJsonBody(request)
+      const modalidadeTipoBancadaCodigo = normalizeRequestValue(body.modalidadeTipoBancadaCodigo)
+      const tipoPgtoCodigo = normalizeRequestValue(body.tipoPgtoCodigo)
+      const condicaoCodigo = normalizeRequestValue(body.condicaoCodigo)
+
+      if (!modalidadeTipoBancadaCodigo || !tipoPgtoCodigo || !condicaoCodigo) {
+        sendJson(response, 400, { message: 'Modalidade x Tipo de Bancada, Tipo_pgto e Condicao sao obrigatorios.' })
+        return
+      }
+
+      const modalidadeTipoBancadaResult = await pool.query(
+        'SELECT 1 FROM modalidade_tipo_bancada WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [modalidadeTipoBancadaCodigo],
+      )
+
+      if (modalidadeTipoBancadaResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao de modalidade x tipo de bancada nao encontrada.' })
+        return
+      }
+
+      const tipoPgtoResult = await pool.query(
+        'SELECT 1 FROM tipo_pgto WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [tipoPgtoCodigo],
+      )
+
+      if (tipoPgtoResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de tipo de pagamento nao encontrado.' })
+        return
+      }
+
+      const condicaoResult = await pool.query(
+        'SELECT 1 FROM condicao WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [condicaoCodigo],
+      )
+
+      if (condicaoResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro da condicao nao encontrado.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM modal_bancada_condicao_tipo_pgto
+         WHERE CAST(modalidade_tipo_bancada_codigo AS text) = $1
+           AND CAST(tipo_pgto_codigo AS text) = $2
+           AND CAST(condicao_codigo AS text) = $3
+         LIMIT 1`,
+        [modalidadeTipoBancadaCodigo, tipoPgtoCodigo, condicaoCodigo],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'A associacao modal_bancada_condicao_tipo_pgto ja existe.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO modal_bancada_condicao_tipo_pgto (modalidade_tipo_bancada_codigo, tipo_pgto_codigo, condicao_codigo)
+         VALUES ($1, $2, $3)
+         RETURNING CAST(codigo AS text) AS codigo`,
+        [modalidadeTipoBancadaCodigo, tipoPgtoCodigo, condicaoCodigo],
+      )
+
+      const item = await findModalBancadaTpPagtoCondicaoByCodigo(insertResult.rows[0]?.codigo)
+
+      sendJson(response, 201, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar modal_bancada_condicao_tipo_pgto.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getModalBancadaTpPagtoCondicaoCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getModalBancadaTpPagtoCondicaoCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para alteracao.' })
+        return
+      }
+
+      const body = await readJsonBody(request)
+      const modalidadeTipoBancadaCodigo = normalizeRequestValue(body.modalidadeTipoBancadaCodigo)
+      const tipoPgtoCodigo = normalizeRequestValue(body.tipoPgtoCodigo)
+      const condicaoCodigo = normalizeRequestValue(body.condicaoCodigo)
+
+      if (!modalidadeTipoBancadaCodigo || !tipoPgtoCodigo || !condicaoCodigo) {
+        sendJson(response, 400, { message: 'Modalidade x Tipo de Bancada, Tipo_pgto e Condicao sao obrigatorios.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM modal_bancada_condicao_tipo_pgto WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [codigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao modal_bancada_condicao_tipo_pgto nao encontrada.' })
+        return
+      }
+
+      const modalidadeTipoBancadaResult = await pool.query(
+        'SELECT 1 FROM modalidade_tipo_bancada WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [modalidadeTipoBancadaCodigo],
+      )
+
+      if (modalidadeTipoBancadaResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao de modalidade x tipo de bancada nao encontrada.' })
+        return
+      }
+
+      const tipoPgtoResult = await pool.query(
+        'SELECT 1 FROM tipo_pgto WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [tipoPgtoCodigo],
+      )
+
+      if (tipoPgtoResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de tipo de pagamento nao encontrado.' })
+        return
+      }
+
+      const condicaoResult = await pool.query(
+        'SELECT 1 FROM condicao WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [condicaoCodigo],
+      )
+
+      if (condicaoResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro da condicao nao encontrado.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM modal_bancada_condicao_tipo_pgto
+         WHERE CAST(modalidade_tipo_bancada_codigo AS text) = $1
+           AND CAST(tipo_pgto_codigo AS text) = $2
+           AND CAST(condicao_codigo AS text) = $3
+           AND CAST(codigo AS text) <> $4
+         LIMIT 1`,
+        [modalidadeTipoBancadaCodigo, tipoPgtoCodigo, condicaoCodigo, codigo],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'A associacao modal_bancada_condicao_tipo_pgto ja existe.' })
+        return
+      }
+
+      await pool.query(
+        `UPDATE modal_bancada_condicao_tipo_pgto
+         SET modalidade_tipo_bancada_codigo = $1,
+             tipo_pgto_codigo = $2,
+             condicao_codigo = $3
+         WHERE CAST(codigo AS text) = $4`,
+        [modalidadeTipoBancadaCodigo, tipoPgtoCodigo, condicaoCodigo, codigo],
+      )
+
+      const item = await findModalBancadaTpPagtoCondicaoByCodigo(codigo)
+
+      sendJson(response, 200, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar modal_bancada_condicao_tipo_pgto.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/modal-bancada-condicao-tipo-pgto-valor') {
+    try {
+      const body = await readJsonBody(request)
+      const modalBancadaTpPagtoCondicaoCodigo = normalizeRequestValue(body.modalBancadaTpPagtoCondicaoCodigo)
+      const data = normalizeRequestValue(body.data)
+      const valor = normalizeDecimalValue(body.valor)
+
+      if (!modalBancadaTpPagtoCondicaoCodigo || !data) {
+        sendJson(response, 400, { message: 'Associacao e data sao obrigatorias.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (valor === null || Number.isNaN(valor) || valor < 0) {
+        sendJson(response, 400, { message: 'Valor deve ser numerico e maior ou igual a zero.' })
+        return
+      }
+
+      const parentResult = await pool.query(
+        'SELECT 1 FROM modal_bancada_condicao_tipo_pgto WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [modalBancadaTpPagtoCondicaoCodigo],
+      )
+
+      if (parentResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao de modalidade, bancada, pagamento e condicao nao encontrada.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM modal_bancada_condicao_tipo_pgto_valor
+         WHERE CAST(modal_bancada_condicao_tipo_pgto_codigo AS text) = $1
+           AND data = $2::date
+         LIMIT 1`,
+        [modalBancadaTpPagtoCondicaoCodigo, data],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe valor cadastrado para a associacao e data informadas.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO modal_bancada_condicao_tipo_pgto_valor (modal_bancada_condicao_tipo_pgto_codigo, data, valor, data_inclusao, data_modificacao)
+         VALUES ($1, $2::date, $3, NOW(), NOW())
+         RETURNING CAST(codigo AS text) AS codigo`,
+        [modalBancadaTpPagtoCondicaoCodigo, data, valor],
+      )
+
+      const item = await findModalBancadaTpPagtoCondicaoValorByCodigo(insertResult.rows[0]?.codigo)
+
+      sendJson(response, 201, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar modal_bancada_condicao_tipo_pgto_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getModalBancadaTpPagtoCondicaoValorCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getModalBancadaTpPagtoCondicaoValorCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para alteracao.' })
+        return
+      }
+
+      const body = await readJsonBody(request)
+      const modalBancadaTpPagtoCondicaoCodigo = normalizeRequestValue(body.modalBancadaTpPagtoCondicaoCodigo)
+      const data = normalizeRequestValue(body.data)
+      const valor = normalizeDecimalValue(body.valor)
+
+      if (!modalBancadaTpPagtoCondicaoCodigo || !data) {
+        sendJson(response, 400, { message: 'Associacao e data sao obrigatorias.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (valor === null || Number.isNaN(valor) || valor < 0) {
+        sendJson(response, 400, { message: 'Valor deve ser numerico e maior ou igual a zero.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM modal_bancada_condicao_tipo_pgto_valor WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [codigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de valor nao encontrado.' })
+        return
+      }
+
+      const parentResult = await pool.query(
+        'SELECT 1 FROM modal_bancada_condicao_tipo_pgto WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [modalBancadaTpPagtoCondicaoCodigo],
+      )
+
+      if (parentResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao de modalidade, bancada, pagamento e condicao nao encontrada.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM modal_bancada_condicao_tipo_pgto_valor
+         WHERE CAST(modal_bancada_condicao_tipo_pgto_codigo AS text) = $1
+           AND data = $2::date
+           AND CAST(codigo AS text) <> $3
+         LIMIT 1`,
+        [modalBancadaTpPagtoCondicaoCodigo, data, codigo],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe valor cadastrado para a associacao e data informadas.' })
+        return
+      }
+
+      await pool.query(
+        `UPDATE modal_bancada_condicao_tipo_pgto_valor
+         SET modal_bancada_condicao_tipo_pgto_codigo = $1,
+             data = $2::date,
+             valor = $3,
+             data_modificacao = NOW()
+         WHERE CAST(codigo AS text) = $4`,
+        [modalBancadaTpPagtoCondicaoCodigo, data, valor, codigo],
+      )
+
+      const item = await findModalBancadaTpPagtoCondicaoValorByCodigo(codigo)
+
+      sendJson(response, 200, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar modal_bancada_condicao_tipo_pgto_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/km-valor') {
+    try {
+      const body = await readJsonBody(request)
+      const condicaoCodigo = normalizeRequestValue(body.condicaoCodigo)
+      const data = normalizeRequestValue(body.data)
+      const valor = normalizeDecimalValue(body.valor)
+
+      if (!condicaoCodigo || !data) {
+        sendJson(response, 400, { message: 'Condicao e data sao obrigatorias.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (valor === null || Number.isNaN(valor) || valor < 0) {
+        sendJson(response, 400, { message: 'Valor deve ser numerico e maior ou igual a zero.' })
+        return
+      }
+
+      const condicaoResult = await pool.query(
+        'SELECT 1 FROM condicao WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [condicaoCodigo],
+      )
+
+      if (condicaoResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Condicao nao encontrada.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM km_valor
+         WHERE CAST(condicao_codigo AS text) = $1
+           AND data = $2::date
+         LIMIT 1`,
+        [condicaoCodigo, data],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe km valor cadastrado para a condicao e data informadas.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO km_valor (condicao_codigo, data, valor, data_inclusao, data_modificacao)
+         VALUES ($1, $2::date, $3, NOW(), NOW())
+         RETURNING CAST(codigo AS text) AS codigo`,
+        [condicaoCodigo, data, valor],
+      )
+
+      const item = await findKmValorByCodigo(insertResult.rows[0]?.codigo)
+
+      sendJson(response, 201, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar km_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getKmValorCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getKmValorCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para alteracao.' })
+        return
+      }
+
+      const body = await readJsonBody(request)
+      const condicaoCodigo = normalizeRequestValue(body.condicaoCodigo)
+      const data = normalizeRequestValue(body.data)
+      const valor = normalizeDecimalValue(body.valor)
+
+      if (!condicaoCodigo || !data) {
+        sendJson(response, 400, { message: 'Condicao e data sao obrigatorias.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (valor === null || Number.isNaN(valor) || valor < 0) {
+        sendJson(response, 400, { message: 'Valor deve ser numerico e maior ou igual a zero.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM km_valor WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [codigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de km valor nao encontrado.' })
+        return
+      }
+
+      const condicaoResult = await pool.query(
+        'SELECT 1 FROM condicao WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [condicaoCodigo],
+      )
+
+      if (condicaoResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Condicao nao encontrada.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM km_valor
+         WHERE CAST(condicao_codigo AS text) = $1
+           AND data = $2::date
+           AND CAST(codigo AS text) <> $3
+         LIMIT 1`,
+        [condicaoCodigo, data, codigo],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe km valor cadastrado para a condicao e data informadas.' })
+        return
+      }
+
+      await pool.query(
+        `UPDATE km_valor
+         SET condicao_codigo = $1,
+             data = $2::date,
+             valor = $3,
+             data_modificacao = NOW()
+         WHERE CAST(codigo AS text) = $4`,
+        [condicaoCodigo, data, valor, codigo],
+      )
+
+      const item = await findKmValorByCodigo(codigo)
+
+      sendJson(response, 200, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar km_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/continua-valor') {
+    try {
+      const body = await readJsonBody(request)
+      const tipoContinua = normalizeContinuaTipo(body.tipoContinua)
+      const data = normalizeRequestValue(body.data)
+      const valor = normalizeDecimalValue(body.valor)
+
+      if (!tipoContinua || !data) {
+        sendJson(response, 400, { message: 'Tipo continua e data sao obrigatorios.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (valor === null || Number.isNaN(valor) || valor < 0) {
+        sendJson(response, 400, { message: 'Valor deve ser numerico e maior ou igual a zero.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM continua_valor
+         WHERE tipo_continua = $1
+           AND data = $2::date
+         LIMIT 1`,
+        [tipoContinua, data],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe continua valor cadastrado para o tipo e data informados.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO continua_valor (tipo_continua, data, valor, data_inclusao, data_modificacao)
+         VALUES ($1, $2::date, $3, NOW(), NOW())
+         RETURNING CAST(codigo AS text) AS codigo`,
+        [tipoContinua, data, valor],
+      )
+
+      const item = await findContinuaValorByCodigo(insertResult.rows[0]?.codigo)
+
+      sendJson(response, 201, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar continua_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getContinuaValorCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getContinuaValorCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para alteracao.' })
+        return
+      }
+
+      const body = await readJsonBody(request)
+      const tipoContinua = normalizeContinuaTipo(body.tipoContinua)
+      const data = normalizeRequestValue(body.data)
+      const valor = normalizeDecimalValue(body.valor)
+
+      if (!tipoContinua || !data) {
+        sendJson(response, 400, { message: 'Tipo continua e data sao obrigatorios.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (valor === null || Number.isNaN(valor) || valor < 0) {
+        sendJson(response, 400, { message: 'Valor deve ser numerico e maior ou igual a zero.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM continua_valor WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [codigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de continua valor nao encontrado.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM continua_valor
+         WHERE tipo_continua = $1
+           AND data = $2::date
+           AND CAST(codigo AS text) <> $3
+         LIMIT 1`,
+        [tipoContinua, data, codigo],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe continua valor cadastrado para o tipo e data informados.' })
+        return
+      }
+
+      await pool.query(
+        `UPDATE continua_valor
+         SET tipo_continua = $1,
+             data = $2::date,
+             valor = $3,
+             data_modificacao = NOW()
+         WHERE CAST(codigo AS text) = $4`,
+        [tipoContinua, data, valor, codigo],
+      )
+
+      const item = await findContinuaValorByCodigo(codigo)
+
+      sendJson(response, 200, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar continua_valor.'
 
       sendJson(response, 500, { message })
     }
@@ -17494,6 +19211,69 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'PUT' && getCondicaoCodigoFromUrl(pathname)) {
+    try {
+      const originalCodigo = getCondicaoCodigoFromUrl(pathname)
+      const body = await readJsonBody(request)
+
+      if (!originalCodigo) {
+        sendJson(response, 400, { message: 'Codigo original invalido.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM condicao WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [originalCodigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro da condicao nao encontrado.' })
+        return
+      }
+
+      const validationResult = validateCondicaoPayload({
+        descricao: body.descricao,
+        qtdeIni: body.qtdeIni,
+        qtdeFim: body.qtdeFim,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE condicao
+         SET descricao = $1,
+             qtde_ini = $2,
+             qtde_fim = $3,
+             exibir_km_valor = $4,
+             data_modificacao = NOW()
+         WHERE CAST(codigo AS text) = $5
+         RETURNING ${condicaoSelectClause}`,
+        [
+          validationResult.payload.descricao,
+          validationResult.payload.qtdeIni,
+          validationResult.payload.qtdeFim,
+          normalizeCondicaoKmValorFlag(validationResult.payload.descricao),
+          originalCodigo,
+        ],
+      )
+
+      sendJson(response, 200, {
+        item: updateResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar condicao.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'PUT' && getTipoBancadaCodigoFromUrl(pathname)) {
     let client = null
 
@@ -17577,6 +19357,64 @@ const server = createServer(async (request, response) => {
       sendJson(response, 500, { message })
     } finally {
       client?.release()
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getTipoPgtoCodigoFromUrl(pathname)) {
+    try {
+      const originalCodigo = getTipoPgtoCodigoFromUrl(pathname)
+      const body = await readJsonBody(request)
+      const descricao = normalizeTipoPgtoDescription(body.descricao)
+
+      if (!originalCodigo) {
+        sendJson(response, 400, { message: 'Codigo original invalido.' })
+        return
+      }
+
+      if (!descricao) {
+        sendJson(response, 400, { message: 'Descricao e obrigatoria.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM tipo_pgto WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [originalCodigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro do tipo de pagamento nao encontrado.' })
+        return
+      }
+
+      const duplicateDescriptionResult = await pool.query(
+        'SELECT 1 FROM tipo_pgto WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1) AND CAST(codigo AS text) <> $2 LIMIT 1',
+        [descricao, originalCodigo],
+      )
+
+      if (duplicateDescriptionResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Descricao ja cadastrada.' })
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE tipo_pgto
+         SET descricao = $1
+         WHERE CAST(codigo AS text) = $2
+         RETURNING ${tipoPgtoSelectClause}`,
+        [descricao, originalCodigo],
+      )
+
+      sendJson(response, 200, {
+        item: updateResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar tipo_pgto.'
+
+      sendJson(response, 500, { message })
     }
 
     return
@@ -19052,6 +20890,39 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'DELETE' && getCondicaoCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getCondicaoCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM condicao WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro da condicao nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir o registro condicao.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'DELETE' && getTipoBancadaCodigoFromUrl(pathname)) {
     try {
       const codigo = getTipoBancadaCodigoFromUrl(pathname)
@@ -19085,6 +20956,39 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'DELETE' && getTipoPgtoCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getTipoPgtoCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM tipo_pgto WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro do tipo de pagamento nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir o registro tipo_pgto.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'DELETE' && getModalidadeTipoBancadaAssociationCodigoFromUrl(pathname)) {
     try {
       const codigo = getModalidadeTipoBancadaAssociationCodigoFromUrl(pathname)
@@ -19111,6 +21015,138 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao excluir a associacao de modalidade x tipo de bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getModalBancadaTpPagtoCondicaoCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getModalBancadaTpPagtoCondicaoCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM modal_bancada_condicao_tipo_pgto WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao modal_bancada_condicao_tipo_pgto nao encontrada.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir modal_bancada_condicao_tipo_pgto.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getModalBancadaTpPagtoCondicaoValorCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getModalBancadaTpPagtoCondicaoValorCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM modal_bancada_condicao_tipo_pgto_valor WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de valor nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir modal_bancada_condicao_tipo_pgto_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getKmValorCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getKmValorCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM km_valor WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de km valor nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir km_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getContinuaValorCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getContinuaValorCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM continua_valor WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de continua valor nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir continua_valor.'
 
       sendJson(response, 500, { message })
     }

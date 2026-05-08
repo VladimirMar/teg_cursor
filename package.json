@@ -27,6 +27,7 @@
     "verify:invalid-fixtures:veiculo": "node scripts/verify-invalid-fixtures.mjs veiculo",
     "verify:credenciada:ceps": "node scripts/verify-credenciada-ceps.mjs",
     "smoke:api": "node scripts/smoke-api.mjs all",
+    "seed:condicao:dev": "node scripts/seed-condicao-dev.mjs",
     "recalculate:termo-values": "node scripts/recalculate-termo-values.mjs",
     "smoke:api:condutor": "node scripts/smoke-api.mjs condutor",
     "smoke:api:monitor": "node scripts/smoke-api.mjs monitor",
