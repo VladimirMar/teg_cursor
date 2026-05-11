@@ -370,6 +370,11 @@ const getContinuaValorCodigoFromUrl = (url) => {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+const getParametroVeiculoCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/parametro-veiculo\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const normalizeContinuaTipo = (value) => {
   const normalizedValue = normalizeRequestValue(value)
     .normalize('NFD')
@@ -385,6 +390,30 @@ const normalizeContinuaTipo = (value) => {
   }
 
   return ''
+}
+
+const normalizeParametroVeiculoCondicao = (value) => {
+  const normalizedValue = normalizeRequestValue(value).replace(/\s+/g, ' ')
+
+  if (normalizedValue === 'Capacidade' || normalizedValue === 'Desconto/ Viagem' || normalizedValue === 'Viagem') {
+    return normalizedValue
+  }
+
+  return ''
+}
+
+const normalizeParametroVeiculoQtdeCondicao = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return Number.NaN
+  }
+
+  if (!/^\d+$/.test(normalizedValue)) {
+    return Number.NaN
+  }
+
+  return Number(normalizedValue)
 }
 
 const getMarcaModeloCodigoFromUrl = (url) => {
@@ -1054,6 +1083,17 @@ const kmValorSelectClause = `
   TO_CHAR(km_valor_item.data, 'YYYY-MM-DD') AS data,
   COALESCE(TO_CHAR(km_valor_item.valor, 'FM999999999990.00'), '0.00') AS valor`
 
+const parametroVeiculoSelectClause = `
+  CAST(parametro_veiculo_item.codigo AS text) AS codigo,
+  CAST(parametro_veiculo_item.modalidade_tipo_bancada_codigo AS text) AS modalidade_tipo_bancada_codigo,
+  CAST(modalidade_item.codigo AS text) AS modalidade_codigo,
+  BTRIM(CAST(modalidade_item.descricao AS text)) AS modalidade_descricao,
+  CAST(tipo_bancada_item.codigo AS text) AS tipo_bancada_codigo,
+  BTRIM(CAST(tipo_bancada_item.descricao AS text)) AS tipo_bancada_descricao,
+  BTRIM(CAST(parametro_veiculo_item.condicao AS text)) AS condicao,
+  parametro_veiculo_item.qtde_condicao AS qtde_condicao,
+  TO_CHAR(parametro_veiculo_item.data, 'YYYY-MM-DD') AS data`
+
 const continuaValorSelectClause = `
   CAST(continua_valor_item.codigo AS text) AS codigo,
   BTRIM(CAST(continua_valor_item.tipo_continua AS text)) AS tipo_continua,
@@ -1096,6 +1136,27 @@ const findKmValorByCodigo = async (codigo, executor = pool) => {
      FROM km_valor km_valor_item
      INNER JOIN condicao condicao_item ON condicao_item.codigo = km_valor_item.condicao_codigo
      WHERE CAST(km_valor_item.codigo AS text) = $1
+     LIMIT 1`,
+    [normalizedCodigo],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const findParametroVeiculoByCodigo = async (codigo, executor = pool) => {
+  const normalizedCodigo = normalizeRequestValue(codigo)
+
+  if (!normalizedCodigo) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${parametroVeiculoSelectClause}
+     FROM parametro_veiculo parametro_veiculo_item
+     INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = parametro_veiculo_item.modalidade_tipo_bancada_codigo
+     INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+     INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+     WHERE CAST(parametro_veiculo_item.codigo AS text) = $1
      LIMIT 1`,
     [normalizedCodigo],
   )
@@ -10778,6 +10839,60 @@ const ensureDatabaseSchema = async () => {
     CREATE UNIQUE INDEX IF NOT EXISTS km_valor_unique_idx
     ON km_valor (condicao_codigo, data)
   `)
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS parametro_veiculo_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS parametro_veiculo (
+      codigo integer PRIMARY KEY DEFAULT nextval('parametro_veiculo_codigo_seq'),
+      modalidade_tipo_bancada_codigo integer NOT NULL REFERENCES modalidade_tipo_bancada(codigo) ON DELETE CASCADE,
+      condicao varchar(100) NOT NULL,
+      qtde_condicao integer NOT NULL,
+      data date NOT NULL,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_modificacao timestamp without time zone NOT NULL DEFAULT NOW(),
+      CONSTRAINT parametro_veiculo_qtde_condicao_chk CHECK (qtde_condicao >= 0)
+    )
+  `)
+  await pool.query('ALTER TABLE parametro_veiculo ADD COLUMN IF NOT EXISTS modalidade_tipo_bancada_codigo integer')
+  await pool.query('ALTER TABLE parametro_veiculo ADD COLUMN IF NOT EXISTS condicao varchar(100)')
+  await pool.query('ALTER TABLE parametro_veiculo ADD COLUMN IF NOT EXISTS qtde_condicao integer')
+  await pool.query('ALTER TABLE parametro_veiculo ADD COLUMN IF NOT EXISTS data date')
+  await pool.query('ALTER TABLE parametro_veiculo ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
+  await pool.query('ALTER TABLE parametro_veiculo ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
+  await pool.query('ALTER TABLE parametro_veiculo ALTER COLUMN codigo SET DEFAULT nextval(\'parametro_veiculo_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE parametro_veiculo_codigo_seq OWNED BY parametro_veiculo.codigo')
+  await pool.query('UPDATE parametro_veiculo SET condicao = BTRIM(CAST(condicao AS text)) WHERE condicao IS NOT NULL')
+  await pool.query('ALTER TABLE parametro_veiculo ALTER COLUMN modalidade_tipo_bancada_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE parametro_veiculo ALTER COLUMN condicao TYPE varchar(100)')
+  await pool.query('ALTER TABLE parametro_veiculo ALTER COLUMN condicao SET NOT NULL')
+  await pool.query('ALTER TABLE parametro_veiculo ALTER COLUMN qtde_condicao SET NOT NULL')
+  await pool.query('ALTER TABLE parametro_veiculo ALTER COLUMN data SET NOT NULL')
+  await pool.query('ALTER TABLE parametro_veiculo ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('ALTER TABLE parametro_veiculo ALTER COLUMN data_modificacao SET DEFAULT NOW()')
+  await pool.query(`
+    UPDATE parametro_veiculo
+    SET data_inclusao = COALESCE(data_inclusao, NOW()),
+        data_modificacao = COALESCE(data_modificacao, COALESCE(data_inclusao, NOW()))
+    WHERE data_inclusao IS NULL OR data_modificacao IS NULL
+  `)
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'parametro_veiculo_qtde_condicao_chk'
+      ) THEN
+        ALTER TABLE parametro_veiculo
+        ADD CONSTRAINT parametro_veiculo_qtde_condicao_chk CHECK (qtde_condicao >= 0);
+      END IF;
+    END $$;
+  `)
+  await pool.query('SELECT setval(\'parametro_veiculo_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM parametro_veiculo), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS parametro_veiculo_codigo_unique_idx ON parametro_veiculo (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS parametro_veiculo_unique_idx
+    ON parametro_veiculo (modalidade_tipo_bancada_codigo, UPPER(BTRIM(condicao)), data)
+  `)
   await pool.query('CREATE SEQUENCE IF NOT EXISTS continua_valor_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query(`
     CREATE TABLE IF NOT EXISTS continua_valor (
@@ -12726,6 +12841,81 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao consultar km_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/parametro-veiculo') {
+    try {
+      const modalidadeTipoBancadaCodigo = normalizeRequestValue(requestUrl.searchParams.get('modalidadeTipoBancadaCodigo') ?? '')
+      const condicao = normalizeParametroVeiculoCondicao(requestUrl.searchParams.get('condicao') ?? '')
+      const data = normalizeRequestValue(requestUrl.searchParams.get('data') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 500)
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+
+      if (modalidadeTipoBancadaCodigo) {
+        values.push(modalidadeTipoBancadaCodigo)
+        filters.push(`CAST(parametro_veiculo_item.modalidade_tipo_bancada_codigo AS text) = $${values.length}`)
+      }
+
+      if (condicao) {
+        values.push(`%${condicao}%`)
+        filters.push(`BTRIM(CAST(parametro_veiculo_item.condicao AS text)) ILIKE $${values.length}`)
+      }
+
+      if (data) {
+        values.push(data)
+        filters.push(`TO_CHAR(parametro_veiculo_item.data, 'YYYY-MM-DD') = $${values.length}`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM parametro_veiculo parametro_veiculo_item
+         INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = parametro_veiculo_item.modalidade_tipo_bancada_codigo
+         INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+         INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+         ${whereClause}`,
+        values,
+      )
+
+      const queryValues = [...values, pageSize, offset]
+      const result = await pool.query(
+        `SELECT ${parametroVeiculoSelectClause}
+         FROM parametro_veiculo parametro_veiculo_item
+         INNER JOIN modalidade_tipo_bancada associacao ON associacao.codigo = parametro_veiculo_item.modalidade_tipo_bancada_codigo
+         INNER JOIN modalidade modalidade_item ON modalidade_item.codigo = associacao.modalidade_codigo
+         INNER JOIN tipo_bancada tipo_bancada_item ON tipo_bancada_item.codigo = associacao.tipo_bancada_codigo
+         ${whereClause}
+         ORDER BY BTRIM(CAST(modalidade_item.descricao AS text)) ASC,
+                  BTRIM(CAST(tipo_bancada_item.descricao AS text)) ASC,
+                  BTRIM(CAST(parametro_veiculo_item.condicao AS text)) ASC,
+                  parametro_veiculo_item.qtde_condicao ASC,
+                  parametro_veiculo_item.data ASC,
+                  parametro_veiculo_item.codigo ASC
+         LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`,
+        queryValues,
+      )
+
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar parametro_veiculo.'
 
       sendJson(response, 500, { message })
     }
@@ -17272,6 +17462,83 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'POST' && pathname === '/api/parametro-veiculo') {
+    try {
+      const body = await readJsonBody(request)
+      const modalidadeTipoBancadaCodigo = normalizeRequestValue(body.modalidadeTipoBancadaCodigo)
+      const rawCondicao = normalizeRequestValue(body.condicao)
+      const condicao = normalizeParametroVeiculoCondicao(body.condicao)
+      const qtdeCondicao = normalizeParametroVeiculoQtdeCondicao(body.qtdeCondicao)
+      const data = normalizeRequestValue(body.data)
+
+      if (rawCondicao && !condicao) {
+        sendJson(response, 400, { message: 'Condicao invalida. Selecione Capacidade, Desconto/ Viagem ou Viagem.' })
+        return
+      }
+
+      if (!modalidadeTipoBancadaCodigo || !condicao || !data) {
+        sendJson(response, 400, { message: 'Modalidade x Tipo de Bancada, Condicao e Data sao obrigatorias.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (!Number.isInteger(qtdeCondicao) || qtdeCondicao < 0) {
+        sendJson(response, 400, { message: 'Qtde da condicao deve ser um numero inteiro maior ou igual a zero.' })
+        return
+      }
+
+      const parentResult = await pool.query(
+        'SELECT 1 FROM modalidade_tipo_bancada WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [modalidadeTipoBancadaCodigo],
+      )
+
+      if (parentResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao de modalidade x tipo de bancada nao encontrada.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM parametro_veiculo
+         WHERE CAST(modalidade_tipo_bancada_codigo AS text) = $1
+           AND UPPER(BTRIM(CAST(condicao AS text))) = UPPER($2)
+           AND data = $3::date
+         LIMIT 1`,
+        [modalidadeTipoBancadaCodigo, condicao, data],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe parametro veiculo cadastrado para a combinacao informada.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO parametro_veiculo (modalidade_tipo_bancada_codigo, condicao, qtde_condicao, data, data_inclusao, data_modificacao)
+         VALUES ($1, $2, $3, $4::date, NOW(), NOW())
+         RETURNING CAST(codigo AS text) AS codigo`,
+        [modalidadeTipoBancadaCodigo, condicao, qtdeCondicao, data],
+      )
+
+      const item = await findParametroVeiculoByCodigo(insertResult.rows[0]?.codigo)
+
+      sendJson(response, 201, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar parametro_veiculo.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'POST' && pathname === '/api/continua-valor') {
     try {
       const body = await readJsonBody(request)
@@ -19731,6 +19998,105 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'PUT' && getParametroVeiculoCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getParametroVeiculoCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para alteracao.' })
+        return
+      }
+
+      const body = await readJsonBody(request)
+      const modalidadeTipoBancadaCodigo = normalizeRequestValue(body.modalidadeTipoBancadaCodigo)
+      const rawCondicao = normalizeRequestValue(body.condicao)
+      const condicao = normalizeParametroVeiculoCondicao(body.condicao)
+      const qtdeCondicao = normalizeParametroVeiculoQtdeCondicao(body.qtdeCondicao)
+      const data = normalizeRequestValue(body.data)
+
+      if (rawCondicao && !condicao) {
+        sendJson(response, 400, { message: 'Condicao invalida. Selecione Capacidade, Desconto/ Viagem ou Viagem.' })
+        return
+      }
+
+      if (!modalidadeTipoBancadaCodigo || !condicao || !data) {
+        sendJson(response, 400, { message: 'Modalidade x Tipo de Bancada, Condicao e Data sao obrigatorias.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (!Number.isInteger(qtdeCondicao) || qtdeCondicao < 0) {
+        sendJson(response, 400, { message: 'Qtde da condicao deve ser um numero inteiro maior ou igual a zero.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM parametro_veiculo WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [codigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de parametro veiculo nao encontrado.' })
+        return
+      }
+
+      const parentResult = await pool.query(
+        'SELECT 1 FROM modalidade_tipo_bancada WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [modalidadeTipoBancadaCodigo],
+      )
+
+      if (parentResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Associacao de modalidade x tipo de bancada nao encontrada.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM parametro_veiculo
+         WHERE CAST(modalidade_tipo_bancada_codigo AS text) = $1
+           AND UPPER(BTRIM(CAST(condicao AS text))) = UPPER($2)
+           AND data = $3::date
+           AND CAST(codigo AS text) <> $4
+         LIMIT 1`,
+        [modalidadeTipoBancadaCodigo, condicao, data, codigo],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe parametro veiculo cadastrado para a combinacao informada.' })
+        return
+      }
+
+      await pool.query(
+        `UPDATE parametro_veiculo
+         SET modalidade_tipo_bancada_codigo = $1,
+             condicao = $2,
+             qtde_condicao = $3,
+             data = $4::date,
+             data_modificacao = NOW()
+         WHERE CAST(codigo AS text) = $5`,
+        [modalidadeTipoBancadaCodigo, condicao, qtdeCondicao, data, codigo],
+      )
+
+      const item = await findParametroVeiculoByCodigo(codigo)
+
+      sendJson(response, 200, {
+        item,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar parametro_veiculo.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'PUT' && getMarcaModeloCodigoFromUrl(pathname)) {
     try {
       const originalCodigo = getMarcaModeloCodigoFromUrl(pathname)
@@ -21147,6 +21513,39 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao excluir continua_valor.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getParametroVeiculoCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getParametroVeiculoCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM parametro_veiculo WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de parametro veiculo nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir parametro_veiculo.'
 
       sendJson(response, 500, { message })
     }

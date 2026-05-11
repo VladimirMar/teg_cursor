@@ -46,6 +46,13 @@ import {
   updateContinuaValorItem,
 } from './services/continuaValor'
 import type { ContinuaValorItem, ContinuaValorTipo } from './services/continuaValor'
+import {
+  createParametroVeiculoItem,
+  deleteParametroVeiculoItem,
+  listParametroVeiculoItems,
+  updateParametroVeiculoItem,
+} from './services/parametroVeiculo'
+import type { ParametroVeiculoItem } from './services/parametroVeiculo'
 import { createTitularItem, deleteTitularItem, listTitularItemsPaginated, updateTitularItem } from './services/titular'
 import type { TitularItem } from './services/titular'
 import { createMarcaModeloItem, deleteMarcaModeloItem, listMarcaModeloItemsPaginated, updateMarcaModeloItem } from './services/marcaModelo'
@@ -112,7 +119,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -137,7 +144,59 @@ const formatModalBancadaTpPagtoCondicaoLabel = (
   return `${item.modalidadeDescricao} / ${item.tipoBancadaDescricao} / ${item.tipoPgtoDescricao} / ${item.condicaoDescricao}`
 }
 
+const formatModalidadeTipoBancadaLabel = (
+  item: Pick<ModalidadeTipoBancadaAssociationItem, 'modalidadeDescricao' | 'tipoBancadaDescricao'>,
+) => {
+  return `${item.modalidadeDescricao} / ${item.tipoBancadaDescricao}`
+}
+
+const currencyInputFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
+
+const normalizeCurrencyInput = (value: string) => {
+  const trimmedValue = value.trim()
+
+  if (!trimmedValue) {
+    return ''
+  }
+
+  const decimalCandidate = trimmedValue.replace(/\s+/g, '')
+
+  if (/^-?\d+(?:\.\d+)?$/.test(decimalCandidate)) {
+    return Number(decimalCandidate).toFixed(2)
+  }
+
+  const digitsOnly = trimmedValue.replace(/\D/g, '')
+
+  if (!digitsOnly) {
+    return ''
+  }
+
+  return (Number(digitsOnly) / 100).toFixed(2)
+}
+
+const formatCurrencyInput = (value: string | number) => {
+  const normalizedValue = typeof value === 'number'
+    ? value.toFixed(2)
+    : normalizeCurrencyInput(value)
+
+  if (!normalizedValue) {
+    return ''
+  }
+
+  const parsedValue = Number(normalizedValue)
+
+  if (!Number.isFinite(parsedValue)) {
+    return ''
+  }
+
+  return currencyInputFormatter.format(parsedValue)
+}
+
 const CONTINUA_TIPO_OPTIONS: ContinuaValorTipo[] = ['Regular', 'Cadeirante']
+const PARAMETRO_VEICULO_CONDICAO_OPTIONS = ['Capacidade', 'Desconto/ Viagem', 'Viagem'] as const
 
 const getDefaultCollapsedMenuGroups = (): Record<CollapsedMenuGroup, boolean> => ({
   cadastros: true,
@@ -182,6 +241,7 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'modalBancadaTpPagtoCondicaoValor':
     case 'kmValor':
     case 'continuaValor':
+    case 'parametroVeiculo':
       return ['cadastros', 'cadastrosFinanceiro']
     case 'acesso':
     case 'loginDre':
@@ -1018,6 +1078,30 @@ function App() {
   const [continuaValorPage, setContinuaValorPage] = useState(1)
   const [continuaValorTotalItems, setContinuaValorTotalItems] = useState(0)
   const [continuaValorTotalPages, setContinuaValorTotalPages] = useState(1)
+  const [parametroVeiculoItems, setParametroVeiculoItems] = useState<ParametroVeiculoItem[]>([])
+  const [parametroVeiculoModalidadeTipoBancadaCodigo, setParametroVeiculoModalidadeTipoBancadaCodigo] = useState('')
+  const [parametroVeiculoCondicao, setParametroVeiculoCondicao] = useState('')
+  const [parametroVeiculoQtdeCondicao, setParametroVeiculoQtdeCondicao] = useState('')
+  const [parametroVeiculoData, setParametroVeiculoData] = useState('')
+  const [parametroVeiculoStatusMessage, setParametroVeiculoStatusMessage] = useState('')
+  const [parametroVeiculoStatusTone, setParametroVeiculoStatusTone] = useState<StatusTone>('idle')
+  const [parametroVeiculoAssociationOptions, setParametroVeiculoAssociationOptions] = useState<ModalidadeTipoBancadaAssociationItem[]>([])
+  const [isLoadingParametroVeiculoOptions, setIsLoadingParametroVeiculoOptions] = useState(false)
+  const [isLoadingParametroVeiculoItems, setIsLoadingParametroVeiculoItems] = useState(false)
+  const [isSavingParametroVeiculo, setIsSavingParametroVeiculo] = useState(false)
+  const [isDeletingParametroVeiculo, setIsDeletingParametroVeiculo] = useState(false)
+  const [isParametroVeiculoFormVisible, setIsParametroVeiculoFormVisible] = useState(false)
+  const [editingParametroVeiculoCodigo, setEditingParametroVeiculoCodigo] = useState<string | null>(null)
+  const [parametroVeiculoFormMode, setParametroVeiculoFormMode] = useState<FormMode>('create')
+  const [parametroVeiculoFilterModalidadeTipoBancadaCodigo, setParametroVeiculoFilterModalidadeTipoBancadaCodigo] = useState('')
+  const [parametroVeiculoFilterCondicao, setParametroVeiculoFilterCondicao] = useState('')
+  const [parametroVeiculoFilterData, setParametroVeiculoFilterData] = useState('')
+  const [appliedParametroVeiculoFilterModalidadeTipoBancadaCodigo, setAppliedParametroVeiculoFilterModalidadeTipoBancadaCodigo] = useState('')
+  const [appliedParametroVeiculoFilterCondicao, setAppliedParametroVeiculoFilterCondicao] = useState('')
+  const [appliedParametroVeiculoFilterData, setAppliedParametroVeiculoFilterData] = useState('')
+  const [parametroVeiculoPage, setParametroVeiculoPage] = useState(1)
+  const [parametroVeiculoTotalItems, setParametroVeiculoTotalItems] = useState(0)
+  const [parametroVeiculoTotalPages, setParametroVeiculoTotalPages] = useState(1)
   const [titularItems, setTitularItems] = useState<TitularItem[]>([])
   const [titularCnpjCpf, setTitularCnpjCpf] = useState('')
   const [titularNome, setTitularNome] = useState('')
@@ -1775,6 +1859,62 @@ function App() {
     appliedContinuaValorFilterTipo,
   ])
 
+  const loadParametroVeiculoOptions = useCallback(async () => {
+    setIsLoadingParametroVeiculoOptions(true)
+    setParametroVeiculoStatusTone('idle')
+    setParametroVeiculoStatusMessage('Carregando opcoes de modalidade x tipo de bancada...')
+
+    try {
+      const items = await listModalidadeTipoBancadaAssociationItems()
+      setParametroVeiculoAssociationOptions(items)
+      setParametroVeiculoStatusMessage('')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar as opcoes de modalidade x tipo de bancada para parametro veiculo.'
+
+      setParametroVeiculoStatusTone('error')
+      setParametroVeiculoStatusMessage(message)
+    } finally {
+      setIsLoadingParametroVeiculoOptions(false)
+    }
+  }, [])
+
+  const loadParametroVeiculoItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingParametroVeiculoItems(true)
+    setParametroVeiculoStatusTone('idle')
+    setParametroVeiculoStatusMessage('Carregando registros de parametro veiculo...')
+
+    try {
+      const result = await listParametroVeiculoItems({
+        modalidadeTipoBancadaCodigo: appliedParametroVeiculoFilterModalidadeTipoBancadaCodigo,
+        condicao: appliedParametroVeiculoFilterCondicao,
+        data: appliedParametroVeiculoFilterData,
+        page: pageToLoad,
+        pageSize: DRE_PAGE_SIZE,
+      })
+
+      setParametroVeiculoItems(result.items)
+      setParametroVeiculoTotalItems(result.total)
+      setParametroVeiculoTotalPages(result.totalPages)
+      setParametroVeiculoPage(result.page)
+      setParametroVeiculoStatusMessage(result.items.length ? '' : 'Nenhum registro de parametro veiculo encontrado.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de parametro veiculo.'
+
+      setParametroVeiculoStatusTone('error')
+      setParametroVeiculoStatusMessage(message)
+    } finally {
+      setIsLoadingParametroVeiculoItems(false)
+    }
+  }, [
+    appliedParametroVeiculoFilterCondicao,
+    appliedParametroVeiculoFilterData,
+    appliedParametroVeiculoFilterModalidadeTipoBancadaCodigo,
+  ])
+
   const handleCreateModalBancadaTpPagtoCondicao = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -1969,7 +2109,9 @@ function App() {
     setKmValorStatusTone('idle')
     setKmValorStatusMessage('')
 
-    if (!kmValorCondicaoCodigo || !kmValorData || kmValorValor.trim() === '') {
+    const normalizedKmValor = normalizeCurrencyInput(kmValorValor)
+
+    if (!kmValorCondicaoCodigo || !kmValorData || !normalizedKmValor) {
       setKmValorStatusTone('error')
       setKmValorStatusMessage('Selecione a condicao e informe data e valor.')
       return
@@ -1985,12 +2127,12 @@ function App() {
         ? updateKmValorItem(editingCodigo, {
             condicaoCodigo: kmValorCondicaoCodigo,
             data: kmValorData,
-            valor: kmValorValor,
+            valor: normalizedKmValor,
           })
         : createKmValorItem({
             condicaoCodigo: kmValorCondicaoCodigo,
             data: kmValorData,
-            valor: kmValorValor,
+            valor: normalizedKmValor,
           }))
 
       resetKmValorForm()
@@ -2052,7 +2194,9 @@ function App() {
     setContinuaValorStatusTone('idle')
     setContinuaValorStatusMessage('')
 
-    if (!continuaValorTipo || !continuaValorData || continuaValorValor.trim() === '') {
+    const normalizedContinuaValor = normalizeCurrencyInput(continuaValorValor)
+
+    if (!continuaValorTipo || !continuaValorData || !normalizedContinuaValor) {
       setContinuaValorStatusTone('error')
       setContinuaValorStatusMessage('Selecione o tipo continua e informe data e valor.')
       return
@@ -2068,12 +2212,12 @@ function App() {
         ? updateContinuaValorItem(editingCodigo, {
             tipoContinua: continuaValorTipo,
             data: continuaValorData,
-            valor: continuaValorValor,
+            valor: normalizedContinuaValor,
           })
         : createContinuaValorItem({
             tipoContinua: continuaValorTipo,
             data: continuaValorData,
-            valor: continuaValorValor,
+            valor: normalizedContinuaValor,
           }))
 
       resetContinuaValorForm()
@@ -2120,6 +2264,105 @@ function App() {
       setContinuaValorStatusMessage(message)
     } finally {
       setIsDeletingContinuaValor(false)
+    }
+  }
+
+  const handleCreateParametroVeiculo = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (parametroVeiculoFormMode === 'view') {
+      setParametroVeiculoStatusTone('idle')
+      setParametroVeiculoStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    setParametroVeiculoStatusTone('idle')
+    setParametroVeiculoStatusMessage('')
+
+    if (!parametroVeiculoModalidadeTipoBancadaCodigo || !parametroVeiculoCondicao.trim() || !parametroVeiculoQtdeCondicao.trim() || !parametroVeiculoData) {
+      setParametroVeiculoStatusTone('error')
+      setParametroVeiculoStatusMessage('Informe modalidade x tipo de bancada, condicao, qtde da condicao e data.')
+      return
+    }
+
+    if (!PARAMETRO_VEICULO_CONDICAO_OPTIONS.includes(parametroVeiculoCondicao as (typeof PARAMETRO_VEICULO_CONDICAO_OPTIONS)[number])) {
+      setParametroVeiculoStatusTone('error')
+      setParametroVeiculoStatusMessage('Selecione uma condicao valida.')
+      return
+    }
+
+    const qtdeCondicao = Number(parametroVeiculoQtdeCondicao)
+
+    if (!Number.isInteger(qtdeCondicao) || qtdeCondicao < 0) {
+      setParametroVeiculoStatusTone('error')
+      setParametroVeiculoStatusMessage('Qtde da condicao deve ser um numero inteiro maior ou igual a zero.')
+      return
+    }
+
+    const editingCodigo = editingParametroVeiculoCodigo
+
+    setIsSavingParametroVeiculo(true)
+    setParametroVeiculoStatusMessage(editingCodigo ? 'Alterando registro de parametro veiculo...' : 'Gravando registro de parametro veiculo...')
+
+    try {
+      await (editingCodigo
+        ? updateParametroVeiculoItem(editingCodigo, {
+            modalidadeTipoBancadaCodigo: parametroVeiculoModalidadeTipoBancadaCodigo,
+            condicao: parametroVeiculoCondicao,
+            qtdeCondicao: String(qtdeCondicao),
+            data: parametroVeiculoData,
+          })
+        : createParametroVeiculoItem({
+            modalidadeTipoBancadaCodigo: parametroVeiculoModalidadeTipoBancadaCodigo,
+            condicao: parametroVeiculoCondicao,
+            qtdeCondicao: String(qtdeCondicao),
+            data: parametroVeiculoData,
+          }))
+
+      resetParametroVeiculoForm()
+      setIsParametroVeiculoFormVisible(false)
+      setParametroVeiculoStatusTone('success')
+      setParametroVeiculoStatusMessage(editingCodigo
+        ? 'Registro de parametro veiculo alterado com sucesso.'
+        : 'Registro de parametro veiculo criado com sucesso.')
+      await loadParametroVeiculoItems(editingCodigo ? parametroVeiculoPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao salvar o registro de parametro veiculo.'
+
+      setParametroVeiculoStatusTone('error')
+      setParametroVeiculoStatusMessage(message)
+    } finally {
+      setIsSavingParametroVeiculo(false)
+    }
+  }
+
+  const handleDeleteParametroVeiculo = async (item: ParametroVeiculoItem) => {
+    const confirmed = window.confirm(
+      `Excluir o parametro veiculo ${formatModalidadeTipoBancadaLabel(item)} / ${item.condicao} / ${item.data}?`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingParametroVeiculo(true)
+
+    try {
+      await deleteParametroVeiculoItem(item.codigo)
+      setParametroVeiculoStatusTone('success')
+      setParametroVeiculoStatusMessage('Registro de parametro veiculo removido.')
+      await loadParametroVeiculoItems(parametroVeiculoPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir o registro de parametro veiculo.'
+
+      setParametroVeiculoStatusTone('error')
+      setParametroVeiculoStatusMessage(message)
+    } finally {
+      setIsDeletingParametroVeiculo(false)
     }
   }
 
@@ -2304,6 +2547,15 @@ function App() {
 
     void loadContinuaValorItems(continuaValorPage)
   }, [activeView, continuaValorPage, loadContinuaValorItems, session])
+
+  useEffect(() => {
+    if (!session || activeView !== 'parametroVeiculo') {
+      return
+    }
+
+    void loadParametroVeiculoOptions()
+    void loadParametroVeiculoItems(parametroVeiculoPage)
+  }, [activeView, loadParametroVeiculoItems, loadParametroVeiculoOptions, parametroVeiculoPage, session])
 
   useEffect(() => {
     if (!session || activeView !== 'seguradora') {
@@ -2608,6 +2860,15 @@ function App() {
     setContinuaValorFormMode('create')
   }
 
+  const resetParametroVeiculoForm = () => {
+    setParametroVeiculoModalidadeTipoBancadaCodigo('')
+    setParametroVeiculoCondicao('')
+    setParametroVeiculoQtdeCondicao('')
+    setParametroVeiculoData('')
+    setEditingParametroVeiculoCodigo(null)
+    setParametroVeiculoFormMode('create')
+  }
+
   const handleStartInsertDre = () => {
     resetDreForm()
     setDreFormMode('create')
@@ -2678,6 +2939,14 @@ function App() {
     setContinuaValorStatusTone('idle')
     setContinuaValorStatusMessage('')
     setIsContinuaValorFormVisible(true)
+  }
+
+  const handleStartInsertParametroVeiculo = () => {
+    resetParametroVeiculoForm()
+    setParametroVeiculoFormMode('create')
+    setParametroVeiculoStatusTone('idle')
+    setParametroVeiculoStatusMessage('')
+    setIsParametroVeiculoFormVisible(true)
   }
 
   const handleFilterDreSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -2809,6 +3078,26 @@ function App() {
     setAppliedContinuaValorFilterTipo('')
     setAppliedContinuaValorFilterData('')
     setContinuaValorPage(1)
+  }
+
+  const handleFilterParametroVeiculoSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAppliedParametroVeiculoFilterModalidadeTipoBancadaCodigo(parametroVeiculoFilterModalidadeTipoBancadaCodigo)
+    setAppliedParametroVeiculoFilterCondicao(parametroVeiculoFilterCondicao)
+    setAppliedParametroVeiculoFilterData(parametroVeiculoFilterData)
+    setParametroVeiculoPage(1)
+    setParametroVeiculoStatusMessage('Aplicando filtro de parametro veiculo...')
+    setParametroVeiculoStatusTone('idle')
+  }
+
+  const handleClearParametroVeiculoFilter = () => {
+    setParametroVeiculoFilterModalidadeTipoBancadaCodigo('')
+    setParametroVeiculoFilterCondicao('')
+    setParametroVeiculoFilterData('')
+    setAppliedParametroVeiculoFilterModalidadeTipoBancadaCodigo('')
+    setAppliedParametroVeiculoFilterCondicao('')
+    setAppliedParametroVeiculoFilterData('')
+    setParametroVeiculoPage(1)
   }
 
   const handleSortDre = (field: DreSortField) => {
@@ -3044,7 +3333,7 @@ function App() {
     setKmValorFormMode('edit')
     setKmValorCondicaoCodigo(item.condicaoCodigo)
     setKmValorData(item.data)
-    setKmValorValor(String(item.valor))
+    setKmValorValor(formatCurrencyInput(item.valor))
     setKmValorStatusTone('idle')
     setKmValorStatusMessage(`Alterando registro ${item.codigo}.`)
     setIsKmValorFormVisible(true)
@@ -3055,7 +3344,7 @@ function App() {
     setKmValorFormMode('view')
     setKmValorCondicaoCodigo(item.condicaoCodigo)
     setKmValorData(item.data)
-    setKmValorValor(String(item.valor))
+    setKmValorValor(formatCurrencyInput(item.valor))
     setKmValorStatusTone('idle')
     setKmValorStatusMessage(`Consulta do registro ${item.codigo}.`)
     setIsKmValorFormVisible(true)
@@ -3066,7 +3355,7 @@ function App() {
     setContinuaValorFormMode('edit')
     setContinuaValorTipo(item.tipoContinua)
     setContinuaValorData(item.data)
-    setContinuaValorValor(String(item.valor))
+    setContinuaValorValor(formatCurrencyInput(item.valor))
     setContinuaValorStatusTone('idle')
     setContinuaValorStatusMessage(`Alterando registro ${item.codigo}.`)
     setIsContinuaValorFormVisible(true)
@@ -3077,10 +3366,34 @@ function App() {
     setContinuaValorFormMode('view')
     setContinuaValorTipo(item.tipoContinua)
     setContinuaValorData(item.data)
-    setContinuaValorValor(String(item.valor))
+    setContinuaValorValor(formatCurrencyInput(item.valor))
     setContinuaValorStatusTone('idle')
     setContinuaValorStatusMessage(`Consulta do registro ${item.codigo}.`)
     setIsContinuaValorFormVisible(true)
+  }
+
+  const handleStartEditParametroVeiculo = (item: ParametroVeiculoItem) => {
+    setEditingParametroVeiculoCodigo(item.codigo)
+    setParametroVeiculoFormMode('edit')
+    setParametroVeiculoModalidadeTipoBancadaCodigo(item.modalidadeTipoBancadaCodigo)
+    setParametroVeiculoCondicao(item.condicao)
+    setParametroVeiculoQtdeCondicao(String(item.qtdeCondicao))
+    setParametroVeiculoData(item.data)
+    setParametroVeiculoStatusTone('idle')
+    setParametroVeiculoStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsParametroVeiculoFormVisible(true)
+  }
+
+  const handleStartViewParametroVeiculo = (item: ParametroVeiculoItem) => {
+    setEditingParametroVeiculoCodigo(item.codigo)
+    setParametroVeiculoFormMode('view')
+    setParametroVeiculoModalidadeTipoBancadaCodigo(item.modalidadeTipoBancadaCodigo)
+    setParametroVeiculoCondicao(item.condicao)
+    setParametroVeiculoQtdeCondicao(String(item.qtdeCondicao))
+    setParametroVeiculoData(item.data)
+    setParametroVeiculoStatusTone('idle')
+    setParametroVeiculoStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsParametroVeiculoFormVisible(true)
   }
 
   const handleCancelModalidadeForm = () => {
@@ -3124,6 +3437,76 @@ function App() {
     setContinuaValorStatusTone('idle')
     setContinuaValorStatusMessage('')
   }
+
+  const handleCancelParametroVeiculoForm = () => {
+    resetParametroVeiculoForm()
+    setIsParametroVeiculoFormVisible(false)
+    setParametroVeiculoStatusTone('idle')
+    setParametroVeiculoStatusMessage('')
+  }
+
+  useEffect(() => {
+    if (!isKmValorFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingKmValor) {
+        handleCancelKmValorForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelKmValorForm, isKmValorFormVisible, isSavingKmValor])
+
+  useEffect(() => {
+    if (!isContinuaValorFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingContinuaValor) {
+        handleCancelContinuaValorForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelContinuaValorForm, isContinuaValorFormVisible, isSavingContinuaValor])
+
+  useEffect(() => {
+    if (!isParametroVeiculoFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingParametroVeiculo) {
+        handleCancelParametroVeiculoForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelParametroVeiculoForm, isParametroVeiculoFormVisible, isSavingParametroVeiculo])
 
   const handleStartEditTipoBancada = (item: TipoBancadaItem) => {
     setEditingTipoBancadaCodigo(item.codigo)
@@ -4507,6 +4890,8 @@ function App() {
   const canGoToNextKmValorPage = kmValorPage < kmValorTotalPages
   const canGoToPreviousContinuaValorPage = continuaValorPage > 1
   const canGoToNextContinuaValorPage = continuaValorPage < continuaValorTotalPages
+  const canGoToPreviousParametroVeiculoPage = parametroVeiculoPage > 1
+  const canGoToNextParametroVeiculoPage = parametroVeiculoPage < parametroVeiculoTotalPages
   const canGoToPreviousTitularPage = titularPage > 1
   const canGoToNextTitularPage = titularPage < titularTotalPages
   const canGoToPreviousMarcaModeloPage = marcaModeloPage > 1
@@ -5036,12 +5421,6 @@ function App() {
                       Condicao
                     </li>
                     <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'tipoPgto' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('tipoPgto')}
-                    >
-                      Tipo_pgto
-                    </li>
-                    <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'modalBancadaTpPagtoCondicao' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('modalBancadaTpPagtoCondicao')}
                     >
@@ -5064,6 +5443,18 @@ function App() {
                       onClick={() => setActiveView('continuaValor')}
                     >
                       Continua_Valor
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'parametroVeiculo' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('parametroVeiculo')}
+                    >
+                      Parametro Pgto Veiculo
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'tipoPgto' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('tipoPgto')}
+                    >
+                      Tipo de Pagamento
                     </li>
                   </ul>
                 </li>
@@ -6355,9 +6746,9 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Cadastro financeiro</p>
-              <h2 id="content-title">Tabela Tipo_pgto</h2>
+              <h2 id="content-title">Tipo de Pagamento</h2>
               <p className="content-description">
-                Cadastre e consulte os registros da tabela Tipo_pgto no mesmo modelo da DRE.
+                Cadastre e consulte os registros de Tipo de Pagamento no mesmo modelo da DRE.
                 O codigo e gerado automaticamente e a descricao nao pode se repetir.
               </p>
             </div>
@@ -6411,7 +6802,7 @@ function App() {
                       <div className="management-modal-header">
                         <div>
                           <p className="management-modal-kicker">Cadastro financeiro</p>
-                          <h2 id="tipo-pgto-modal-title">TIPO_PGTO</h2>
+                          <h2 id="tipo-pgto-modal-title">TIPO DE PAGAMENTO</h2>
                         </div>
                         <button
                           type="button"
@@ -6449,7 +6840,7 @@ function App() {
                       <div className="button-row dre-button-row management-modal-footer">
                         {tipoPgtoFormMode !== 'view' ? (
                           <button type="submit" className="primary-button" disabled={isSavingTipoPgto}>
-                            {isSavingTipoPgto ? 'Salvando...' : editingTipoPgtoCodigo ? 'Salvar alteracao' : 'Salvar Tipo_pgto'}
+                            {isSavingTipoPgto ? 'Salvando...' : editingTipoPgtoCodigo ? 'Salvar alteracao' : 'Salvar Tipo de Pagamento'}
                           </button>
                         ) : null}
                         <button type="button" className="secondary-button" onClick={handleCancelTipoPgtoForm} disabled={isSavingTipoPgto}>
@@ -7285,7 +7676,7 @@ function App() {
                           inputMode="decimal"
                           autoComplete="off"
                           value={kmValorValor}
-                          onChange={(event) => setKmValorValor(event.target.value)}
+                          onChange={(event) => setKmValorValor(formatCurrencyInput(event.target.value))}
                           disabled={isSavingKmValor || kmValorFormMode === 'view'}
                         />
                       </label>
@@ -7557,7 +7948,7 @@ function App() {
                           inputMode="decimal"
                           autoComplete="off"
                           value={continuaValorValor}
-                          onChange={(event) => setContinuaValorValor(event.target.value)}
+                          onChange={(event) => setContinuaValorValor(formatCurrencyInput(event.target.value))}
                           disabled={isSavingContinuaValor || continuaValorFormMode === 'view'}
                         />
                       </label>
@@ -8448,6 +8839,309 @@ function App() {
                     className="secondary-button management-pagination-button management-pagination-button-icon"
                     onClick={() => setMarcaModeloPage(marcaModeloTotalPages)}
                     disabled={!canGoToNextMarcaModeloPage || isLoadingMarcaModelo}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'parametroVeiculo' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Parametro Pgto Veiculo</h2>
+              <p className="content-description">
+                Cadastre os parametros por data vinculando modalidade x tipo de bancada, condicao e quantidade da condicao. A combinacao entre associacao, condicao e data nao pode se repetir.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertParametroVeiculo}
+                  disabled={isSavingParametroVeiculo || isDeletingParametroVeiculo || isLoadingParametroVeiculoOptions}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterParametroVeiculoSubmit}>
+                  <label className="field-group" htmlFor="parametro-veiculo-filter-associacao">
+                    <span>Modalidade x Tipo de Bancada</span>
+                    <select
+                      id="parametro-veiculo-filter-associacao"
+                      value={parametroVeiculoFilterModalidadeTipoBancadaCodigo}
+                      onChange={(event) => setParametroVeiculoFilterModalidadeTipoBancadaCodigo(event.target.value)}
+                      disabled={isLoadingParametroVeiculoItems || isLoadingParametroVeiculoOptions}
+                    >
+                      <option value="">Todas</option>
+                      {parametroVeiculoAssociationOptions.map((item) => (
+                        <option key={item.codigo} value={item.codigo}>
+                          {formatModalidadeTipoBancadaLabel(item)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field-group" htmlFor="parametro-veiculo-filter-condicao">
+                    <span>Condicao</span>
+                    <input
+                      id="parametro-veiculo-filter-condicao"
+                      type="text"
+                      value={parametroVeiculoFilterCondicao}
+                      onChange={(event) => setParametroVeiculoFilterCondicao(event.target.value)}
+                      disabled={isLoadingParametroVeiculoItems}
+                    />
+                  </label>
+                  <label className="field-group" htmlFor="parametro-veiculo-filter-data">
+                    <span>Data</span>
+                    <input
+                      id="parametro-veiculo-filter-data"
+                      type="date"
+                      value={parametroVeiculoFilterData}
+                      onChange={(event) => setParametroVeiculoFilterData(event.target.value)}
+                      disabled={isLoadingParametroVeiculoItems}
+                    />
+                  </label>
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearParametroVeiculoFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isParametroVeiculoFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingParametroVeiculo) {
+                      handleCancelParametroVeiculoForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="parametro-veiculo-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateParametroVeiculo} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="parametro-veiculo-modal-title">PARAMETRO PGTO VEICULO</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelParametroVeiculoForm}
+                          disabled={isSavingParametroVeiculo}
+                          aria-label="Fechar formulario de parametro do veiculo"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {parametroVeiculoFormMode === 'view' ? 'Consulta de registro' : editingParametroVeiculoCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="parametro-veiculo-data">
+                        <span>Data</span>
+                        <input
+                          id="parametro-veiculo-data"
+                          type="date"
+                          value={parametroVeiculoData}
+                          onChange={(event) => setParametroVeiculoData(event.target.value)}
+                          disabled={isSavingParametroVeiculo || parametroVeiculoFormMode === 'view'}
+                        />
+                      </label>
+
+                      <label className="field-group" htmlFor="parametro-veiculo-associacao">
+                        <span>Modalidade x Tipo de Bancada</span>
+                        <select
+                          id="parametro-veiculo-associacao"
+                          value={parametroVeiculoModalidadeTipoBancadaCodigo}
+                          onChange={(event) => setParametroVeiculoModalidadeTipoBancadaCodigo(event.target.value)}
+                          disabled={isLoadingParametroVeiculoOptions || isSavingParametroVeiculo || parametroVeiculoFormMode === 'view'}
+                        >
+                          <option value="">Selecione a associacao</option>
+                          {parametroVeiculoAssociationOptions.map((item) => (
+                            <option key={item.codigo} value={item.codigo}>
+                              {formatModalidadeTipoBancadaLabel(item)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field-group" htmlFor="parametro-veiculo-condicao">
+                        <span>Condicao</span>
+                        <select
+                          id="parametro-veiculo-condicao"
+                          value={parametroVeiculoCondicao}
+                          onChange={(event) => setParametroVeiculoCondicao(event.target.value)}
+                          disabled={isSavingParametroVeiculo || parametroVeiculoFormMode === 'view'}
+                        >
+                          <option value="">Selecione a condicao</option>
+                          {PARAMETRO_VEICULO_CONDICAO_OPTIONS.map((item) => (
+                            <option key={item} value={item}>
+                              {item}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field-group" htmlFor="parametro-veiculo-qtde-condicao">
+                        <span>Qtde da condicao</span>
+                        <input
+                          id="parametro-veiculo-qtde-condicao"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={parametroVeiculoQtdeCondicao}
+                          onChange={(event) => setParametroVeiculoQtdeCondicao(event.target.value)}
+                          disabled={isSavingParametroVeiculo || parametroVeiculoFormMode === 'view'}
+                        />
+                      </label>
+
+                      <p className={`status-message status-${parametroVeiculoStatusTone}`} aria-live="polite">
+                        {parametroVeiculoStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {parametroVeiculoFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingParametroVeiculo || isLoadingParametroVeiculoOptions}>
+                            {isSavingParametroVeiculo ? 'Salvando...' : editingParametroVeiculoCodigo ? 'Salvar alteracao' : 'Salvar registro'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelParametroVeiculoForm} disabled={isSavingParametroVeiculo}>
+                          {parametroVeiculoFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingParametroVeiculoItems ? 'Atualizando...' : `${parametroVeiculoTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>Modalidade</th>
+                        <th>Tipo de Bancada</th>
+                        <th>Condicao</th>
+                        <th>Qtde da Condicao</th>
+                        <th>Data</th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parametroVeiculoItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.modalidadeDescricao}</td>
+                          <td>{item.tipoBancadaDescricao}</td>
+                          <td>{item.condicao}</td>
+                          <td>{item.qtdeCondicao}</td>
+                          <td>{item.data}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button
+                                type="button"
+                                className="row-action-button"
+                                onClick={() => handleStartViewParametroVeiculo(item)}
+                              >
+                                Consulta
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-edit"
+                                onClick={() => handleStartEditParametroVeiculo(item)}
+                                disabled={isDeletingParametroVeiculo}
+                              >
+                                Alterar
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-delete"
+                                onClick={() => handleDeleteParametroVeiculo(item)}
+                                disabled={isDeletingParametroVeiculo}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {isLoadingParametroVeiculoItems ? (
+                    <p className="management-empty-state">Carregando registros...</p>
+                  ) : null}
+
+                  {!isLoadingParametroVeiculoItems && !parametroVeiculoItems.length ? (
+                    <p className="management-empty-state">Nenhum registro de parametro veiculo encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${parametroVeiculoStatusTone}`} aria-live="polite">
+                  {isParametroVeiculoFormVisible ? '' : parametroVeiculoStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setParametroVeiculoPage(1)}
+                    disabled={!canGoToPreviousParametroVeiculoPage || isLoadingParametroVeiculoItems}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setParametroVeiculoPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousParametroVeiculoPage || isLoadingParametroVeiculoItems}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {parametroVeiculoPage} de {parametroVeiculoTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setParametroVeiculoPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextParametroVeiculoPage || isLoadingParametroVeiculoItems}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setParametroVeiculoPage(parametroVeiculoTotalPages)}
+                    disabled={!canGoToNextParametroVeiculoPage || isLoadingParametroVeiculoItems}
                     title="Ultimo registro"
                     aria-label="Ultimo registro"
                   >
