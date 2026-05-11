@@ -2589,6 +2589,763 @@ const fetchVeiculoAuditItemByCodigo = async (executor, codigo) => {
   return result.rows[0] ?? null
 }
 
+const findVeiculoByCodigo = async (executor, codigo) => {
+  const normalizedCodigo = normalizeCondutorCodigo(codigo)
+
+  if (!Number.isInteger(normalizedCodigo) || normalizedCodigo <= 0) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT
+       ${veiculoSelectClause}
+     FROM veiculo
+     WHERE codigo = $1
+     LIMIT 1`,
+    [normalizedCodigo],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const normalizedSqlTextExpression = (expression) => `translate(UPPER(BTRIM(COALESCE(${expression}, ''))), 'ÁÀÃÂÉÊÍÓÔÕÚÇ', 'AAAAEEIOOOUC')`
+
+const hasEligibleSpecialConventionalVehiclesForRecalculation = async (executor, codigos = null) => {
+  const normalizedCodigos = Array.isArray(codigos)
+    ? [...new Set(codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const values = []
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const result = await executor.query(
+    `SELECT 1
+     FROM veiculo v
+     WHERE UPPER(BTRIM(COALESCE(v.os_especial, ''))) = 'SIM'
+       AND UPPER(BTRIM(COALESCE(v.tipo_de_bancada, ''))) = 'CONVENCIONAL'
+       AND v.cap_teg IS NOT NULL${codigoClause}
+     LIMIT 1`,
+    values,
+  )
+
+  return result.rowCount > 0
+}
+
+const hasEligibleSpecialAccessibleVehiclesForRecalculation = async (executor, codigos = null) => {
+  const normalizedCodigos = Array.isArray(codigos)
+    ? [...new Set(codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const values = []
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const result = await executor.query(
+    `SELECT 1
+     FROM veiculo v
+     WHERE UPPER(BTRIM(COALESCE(v.os_especial, ''))) = 'SIM'
+       AND ${normalizedSqlTextExpression('v.tipo_de_bancada')} = 'ACESSIVEL'${codigoClause}
+     LIMIT 1`,
+    values,
+  )
+
+  return result.rowCount > 0
+}
+
+const getLatestSpecialConventionalVehicleFormulaValues = async (executor = pool) => {
+  const result = await executor.query(`
+    WITH parametro AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS viagens
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE UPPER(BTRIM(m.descricao)) = 'TEG ESPECIAL'
+        AND UPPER(BTRIM(tb.descricao)) = 'CONVENCIONAL'
+        AND UPPER(BTRIM(pv.condicao)) = 'VIAGEM'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), fixo AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_fixo
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE UPPER(BTRIM(m.descricao)) = 'TEG ESPECIAL'
+        AND UPPER(BTRIM(tb.descricao)) = 'CONVENCIONAL'
+        AND UPPER(BTRIM(tp.descricao)) = 'FIXO'
+        AND UPPER(BTRIM(c.descricao)) = 'FIXO ESP'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    ), percap AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_percap
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE UPPER(BTRIM(m.descricao)) = 'TEG ESPECIAL'
+        AND UPPER(BTRIM(tb.descricao)) = 'CONVENCIONAL'
+        AND UPPER(BTRIM(tp.descricao)) = 'PER CAPITA'
+        AND UPPER(BTRIM(c.descricao)) = 'PER CAP REGULAR'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    )
+    SELECT parametro.viagens::text AS viagens,
+           fixo.valor_fixo::text AS valor_fixo,
+           percap.valor_percap::text AS valor_percap
+    FROM parametro
+    CROSS JOIN fixo
+    CROSS JOIN percap
+  `)
+
+  if (result.rowCount === 0) {
+    throw new Error('Nao foi possivel recalcular o valor do veiculo porque os parametros mais recentes de TEG ESPECIAL / Convencional estao incompletos.')
+  }
+
+  return {
+    viagens: result.rows[0].viagens,
+    valorFixo: result.rows[0].valor_fixo,
+    valorPerCap: result.rows[0].valor_percap,
+  }
+}
+
+const recalculateSpecialConventionalVehicleValues = async (executor = pool, options = {}) => {
+  const normalizedCodigos = Array.isArray(options?.codigos)
+    ? [...new Set(options.codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const hasEligibleVehicles = await hasEligibleSpecialConventionalVehiclesForRecalculation(
+    executor,
+    normalizedCodigos.length > 0 ? normalizedCodigos : null,
+  )
+
+  if (!hasEligibleVehicles) {
+    return []
+  }
+
+  const { valorFixo, valorPerCap, viagens } = await getLatestSpecialConventionalVehicleFormulaValues(executor)
+  const values = [valorFixo, valorPerCap, viagens]
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const expression = `ROUND((($1::numeric(14,2) * 12) + (((v.cap_teg::numeric(14,2) * $2::numeric(14,2)) * $3::numeric(14,2)) * 12)), 2)`
+  const result = await executor.query(
+    `UPDATE veiculo v
+     SET valor_veiculo = ${expression},
+         data_modificacao = NOW()
+     WHERE UPPER(BTRIM(COALESCE(v.os_especial, ''))) = 'SIM'
+       AND UPPER(BTRIM(COALESCE(v.tipo_de_bancada, ''))) = 'CONVENCIONAL'
+       AND v.cap_teg IS NOT NULL${codigoClause}
+       AND COALESCE(v.valor_veiculo, -1) <> ${expression}
+     RETURNING CAST(v.codigo AS text) AS codigo`,
+    values,
+  )
+
+  return result.rows
+}
+
+const getLatestSpecialAccessibleVehicleFormulaValues = async (executor = pool) => {
+  const result = await executor.query(`
+    WITH parametro_capacidade AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS capacidade
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG ESPECIAL'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'ACESSIVEL'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'CAPACIDADE'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), parametro_viagem AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS viagens
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG ESPECIAL'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'ACESSIVEL'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'VIAGEM'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), fixo AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_fixo
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG ESPECIAL'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'ACESSIVEL'
+        AND ${normalizedSqlTextExpression('tp.descricao')} = 'FIXO'
+        AND ${normalizedSqlTextExpression('c.descricao')} = 'FIXO ESP'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    ), percap AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_percap
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG ESPECIAL'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'ACESSIVEL'
+        AND ${normalizedSqlTextExpression('tp.descricao')} = 'PER CAPITA'
+        AND ${normalizedSqlTextExpression('c.descricao')} = 'PER CAP ACESSI'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    )
+    SELECT parametro_capacidade.capacidade::text AS capacidade,
+           parametro_viagem.viagens::text AS viagens,
+           fixo.valor_fixo::text AS valor_fixo,
+           percap.valor_percap::text AS valor_percap
+    FROM parametro_capacidade
+    CROSS JOIN parametro_viagem
+    CROSS JOIN fixo
+    CROSS JOIN percap
+  `)
+
+  if (result.rowCount === 0) {
+    throw new Error('Nao foi possivel recalcular o valor do veiculo porque os parametros mais recentes de TEG ESPECIAL / Acessivel estao incompletos.')
+  }
+
+  return {
+    capacidade: result.rows[0].capacidade,
+    viagens: result.rows[0].viagens,
+    valorFixo: result.rows[0].valor_fixo,
+    valorPerCap: result.rows[0].valor_percap,
+  }
+}
+
+const recalculateSpecialAccessibleVehicleValues = async (executor = pool, options = {}) => {
+  const normalizedCodigos = Array.isArray(options?.codigos)
+    ? [...new Set(options.codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const hasEligibleVehicles = await hasEligibleSpecialAccessibleVehiclesForRecalculation(
+    executor,
+    normalizedCodigos.length > 0 ? normalizedCodigos : null,
+  )
+
+  if (!hasEligibleVehicles) {
+    return []
+  }
+
+  const { valorFixo, valorPerCap, capacidade, viagens } = await getLatestSpecialAccessibleVehicleFormulaValues(executor)
+  const values = [valorFixo, capacidade, viagens, valorPerCap]
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const expression = `ROUND((($1::numeric(14,2) * 12) + (($2::numeric(14,2) * $3::numeric(14,2) * $4::numeric(14,2)) * 12)), 2)`
+  const result = await executor.query(
+    `UPDATE veiculo v
+     SET valor_veiculo = ${expression},
+         data_modificacao = NOW()
+     WHERE UPPER(BTRIM(COALESCE(v.os_especial, ''))) = 'SIM'
+       AND ${normalizedSqlTextExpression('v.tipo_de_bancada')} = 'ACESSIVEL'${codigoClause}
+       AND COALESCE(v.valor_veiculo, -1) <> ${expression}
+     RETURNING CAST(v.codigo AS text) AS codigo`,
+    values,
+  )
+
+  return result.rows
+}
+
+const hasEligibleRegularConventionalVehiclesForRecalculation = async (executor, codigos = null) => {
+  const normalizedCodigos = Array.isArray(codigos)
+    ? [...new Set(codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const values = []
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const result = await executor.query(
+    `SELECT 1
+     FROM veiculo v
+     WHERE ${normalizedSqlTextExpression('v.os_especial')} = 'NAO'
+       AND ${normalizedSqlTextExpression('v.tipo_de_bancada')} = 'CONVENCIONAL'
+       AND v.cap_teg IS NOT NULL${codigoClause}
+     LIMIT 1`,
+    values,
+  )
+
+  return result.rowCount > 0
+}
+
+const getLatestRegularConventionalVehicleFormulaValues = async (executor = pool) => {
+  const result = await executor.query(`
+    WITH parametro_multiplicador AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS multiplicador
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CONVENCIONAL'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'DESCONTO/ VIAGEM'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), parametro_subtracao AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS subtracao
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG ESPECIAL'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CONVENCIONAL'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'CAPACIDADE'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), fixo AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_fixo
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CONVENCIONAL'
+        AND ${normalizedSqlTextExpression('tp.descricao')} = 'FIXO'
+        AND ${normalizedSqlTextExpression('c.descricao')} = '17 EM DIANTE'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    ), percap AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_percap
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CONVENCIONAL'
+        AND ${normalizedSqlTextExpression('tp.descricao')} = 'PER CAPITA'
+        AND ${normalizedSqlTextExpression('c.descricao')} = '17 EM DIANTE'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    )
+    SELECT parametro_multiplicador.multiplicador::text AS multiplicador,
+           parametro_subtracao.subtracao::text AS subtracao,
+           fixo.valor_fixo::text AS valor_fixo,
+           percap.valor_percap::text AS valor_percap
+    FROM parametro_multiplicador
+    CROSS JOIN parametro_subtracao
+    CROSS JOIN fixo
+    CROSS JOIN percap
+  `)
+
+  if (result.rowCount === 0) {
+    throw new Error('Nao foi possivel recalcular o valor do veiculo porque os parametros mais recentes de TEG REGULAR / Convencional estao incompletos.')
+  }
+
+  return {
+    multiplicador: result.rows[0].multiplicador,
+    subtracao: result.rows[0].subtracao,
+    valorFixo: result.rows[0].valor_fixo,
+    valorPerCap: result.rows[0].valor_percap,
+  }
+}
+
+const recalculateRegularConventionalVehicleValues = async (executor = pool, options = {}) => {
+  const normalizedCodigos = Array.isArray(options?.codigos)
+    ? [...new Set(options.codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const hasEligibleVehicles = await hasEligibleRegularConventionalVehiclesForRecalculation(
+    executor,
+    normalizedCodigos.length > 0 ? normalizedCodigos : null,
+  )
+
+  if (!hasEligibleVehicles) {
+    return []
+  }
+
+  const { valorFixo, valorPerCap, multiplicador, subtracao } = await getLatestRegularConventionalVehicleFormulaValues(executor)
+  const values = [valorFixo, multiplicador, subtracao, valorPerCap]
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const expression = `ROUND((($1::numeric(14,2) * 12) + ((((v.cap_teg::numeric(14,2) * $2::numeric(14,2)) - $3::numeric(14,2)) * $4::numeric(14,2)) * 12)), 2)`
+  const result = await executor.query(
+    `UPDATE veiculo v
+     SET valor_veiculo = ${expression},
+         data_modificacao = NOW()
+     WHERE ${normalizedSqlTextExpression('v.os_especial')} = 'NAO'
+       AND ${normalizedSqlTextExpression('v.tipo_de_bancada')} = 'CONVENCIONAL'
+       AND v.cap_teg IS NOT NULL${codigoClause}
+       AND COALESCE(v.valor_veiculo, -1) <> ${expression}
+     RETURNING CAST(v.codigo AS text) AS codigo`,
+    values,
+  )
+
+  return result.rows
+}
+
+const hasEligibleRegularAccessibleVehiclesForRecalculation = async (executor, codigos = null) => {
+  const normalizedCodigos = Array.isArray(codigos)
+    ? [...new Set(codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const values = []
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const result = await executor.query(
+    `SELECT 1
+     FROM veiculo v
+     WHERE ${normalizedSqlTextExpression('v.os_especial')} = 'NAO'
+       AND ${normalizedSqlTextExpression('v.tipo_de_bancada')} = 'ACESSIVEL'${codigoClause}
+     LIMIT 1`,
+    values,
+  )
+
+  return result.rowCount > 0
+}
+
+const getLatestRegularAccessibleVehicleFormulaValues = async (executor = pool) => {
+  const result = await executor.query(`
+    WITH parametro_viagem AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS viagem
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'ACESSIVEL'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'VIAGEM'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), parametro_capacidade AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS capacidade
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'ACESSIVEL'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'CAPACIDADE'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), fixo AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_fixo
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'ACESSIVEL'
+        AND ${normalizedSqlTextExpression('tp.descricao')} = 'FIXO'
+        AND ${normalizedSqlTextExpression('c.descricao')} = '3 EM DIANTE'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    ), percap AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_percap
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'ACESSIVEL'
+        AND ${normalizedSqlTextExpression('tp.descricao')} = 'PER CAPITA'
+        AND ${normalizedSqlTextExpression('c.descricao')} = '3 EM DIANTE'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    )
+    SELECT parametro_viagem.viagem::text AS viagem,
+           parametro_capacidade.capacidade::text AS capacidade,
+           fixo.valor_fixo::text AS valor_fixo,
+           percap.valor_percap::text AS valor_percap
+    FROM parametro_viagem
+    CROSS JOIN parametro_capacidade
+    CROSS JOIN fixo
+    CROSS JOIN percap
+  `)
+
+  if (result.rowCount === 0) {
+    throw new Error('Nao foi possivel recalcular o valor do veiculo porque os parametros mais recentes de TEG REGULAR / Acessivel estao incompletos.')
+  }
+
+  return {
+    viagem: result.rows[0].viagem,
+    capacidade: result.rows[0].capacidade,
+    valorFixo: result.rows[0].valor_fixo,
+    valorPerCap: result.rows[0].valor_percap,
+  }
+}
+
+const recalculateRegularAccessibleVehicleValues = async (executor = pool, options = {}) => {
+  const normalizedCodigos = Array.isArray(options?.codigos)
+    ? [...new Set(options.codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const hasEligibleVehicles = await hasEligibleRegularAccessibleVehiclesForRecalculation(
+    executor,
+    normalizedCodigos.length > 0 ? normalizedCodigos : null,
+  )
+
+  if (!hasEligibleVehicles) {
+    return []
+  }
+
+  const { valorFixo, valorPerCap, viagem, capacidade } = await getLatestRegularAccessibleVehicleFormulaValues(executor)
+  const values = [valorFixo, viagem, capacidade, valorPerCap]
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const expression = `ROUND((($1::numeric(14,2) * 12) + (12 * $2::numeric(14,2) * $3::numeric(14,2) * $4::numeric(14,2))), 2)`
+  const result = await executor.query(
+    `UPDATE veiculo v
+     SET valor_veiculo = ${expression},
+         data_modificacao = NOW()
+     WHERE ${normalizedSqlTextExpression('v.os_especial')} = 'NAO'
+       AND ${normalizedSqlTextExpression('v.tipo_de_bancada')} = 'ACESSIVEL'${codigoClause}
+       AND COALESCE(v.valor_veiculo, -1) <> ${expression}
+     RETURNING CAST(v.codigo AS text) AS codigo`,
+    values,
+  )
+
+  return result.rows
+}
+
+const hasEligibleRegularCrecheVehiclesForRecalculation = async (executor, codigos = null) => {
+  const normalizedCodigos = Array.isArray(codigos)
+    ? [...new Set(codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const values = []
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const result = await executor.query(
+    `SELECT 1
+     FROM veiculo v
+     WHERE ${normalizedSqlTextExpression('v.os_especial')} = 'NAO'
+       AND ${normalizedSqlTextExpression('v.tipo_de_bancada')} = 'CRECHE'
+       AND v.cap_teg IS NOT NULL${codigoClause}
+     LIMIT 1`,
+    values,
+  )
+
+  return result.rowCount > 0
+}
+
+const getLatestRegularCrecheVehicleFormulaValues = async (executor = pool) => {
+  const result = await executor.query(`
+    WITH parametro_multiplicador AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS multiplicador
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG CRECHE'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CRECHE'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'DESCONTO/ VIAGEM'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), parametro_subtracao_a AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS subtracao_a
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG CRECHE'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CRECHE'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'CAPACIDADE'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), parametro_subtracao_b AS (
+      SELECT pv.qtde_condicao::numeric(14,2) AS subtracao_b
+      FROM parametro_veiculo pv
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = pv.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG CRECHE'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CRECHE'
+        AND ${normalizedSqlTextExpression('pv.condicao')} = 'VIAGEM'
+      ORDER BY pv.data DESC, pv.codigo DESC
+      LIMIT 1
+    ), fixo AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_fixo
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG CRECHE'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CRECHE'
+        AND ${normalizedSqlTextExpression('tp.descricao')} = 'FIXO'
+        AND ${normalizedSqlTextExpression('c.descricao')} = '11 EM DIANTE'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    ), percap AS (
+      SELECT mbv.valor::numeric(14,2) AS valor_percap
+      FROM modal_bancada_condicao_tipo_pgto_valor mbv
+      INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+      INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+      INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+      WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG CRECHE'
+        AND ${normalizedSqlTextExpression('tb.descricao')} = 'CRECHE'
+        AND ${normalizedSqlTextExpression('tp.descricao')} = 'PER CAPITA'
+        AND ${normalizedSqlTextExpression('c.descricao')} = '11 EM DIANTE'
+      ORDER BY mbv.data DESC, mbv.codigo DESC
+      LIMIT 1
+    )
+    SELECT parametro_multiplicador.multiplicador::text AS multiplicador,
+           parametro_subtracao_a.subtracao_a::text AS subtracao_a,
+           parametro_subtracao_b.subtracao_b::text AS subtracao_b,
+           fixo.valor_fixo::text AS valor_fixo,
+           percap.valor_percap::text AS valor_percap
+    FROM parametro_multiplicador
+    CROSS JOIN parametro_subtracao_a
+    CROSS JOIN parametro_subtracao_b
+    CROSS JOIN fixo
+    CROSS JOIN percap
+  `)
+
+  if (result.rowCount === 0) {
+    throw new Error('Nao foi possivel recalcular o valor do veiculo porque os parametros mais recentes de TEG CRECHE / Creche estao incompletos.')
+  }
+
+  return {
+    multiplicador: result.rows[0].multiplicador,
+    subtracaoA: result.rows[0].subtracao_a,
+    subtracaoB: result.rows[0].subtracao_b,
+    valorFixo: result.rows[0].valor_fixo,
+    valorPerCap: result.rows[0].valor_percap,
+  }
+}
+
+const recalculateRegularCrecheVehicleValues = async (executor = pool, options = {}) => {
+  const normalizedCodigos = Array.isArray(options?.codigos)
+    ? [...new Set(options.codigos
+        .map((codigo) => normalizeCondutorCodigo(codigo))
+        .filter((codigo) => Number.isInteger(codigo) && codigo > 0))]
+    : []
+
+  const hasEligibleVehicles = await hasEligibleRegularCrecheVehiclesForRecalculation(
+    executor,
+    normalizedCodigos.length > 0 ? normalizedCodigos : null,
+  )
+
+  if (!hasEligibleVehicles) {
+    return []
+  }
+
+  const { valorFixo, valorPerCap, multiplicador, subtracaoA, subtracaoB } = await getLatestRegularCrecheVehicleFormulaValues(executor)
+  const values = [valorFixo, multiplicador, subtracaoA, subtracaoB, valorPerCap]
+  let codigoClause = ''
+
+  if (normalizedCodigos.length > 0) {
+    values.push(normalizedCodigos)
+    codigoClause = ` AND v.codigo = ANY($${values.length}::int[])`
+  }
+
+  const expression = `ROUND((($1::numeric(14,2) * 12) + ((((v.cap_teg::numeric(14,2) * $2::numeric(14,2)) - ($3::numeric(14,2) * $4::numeric(14,2))) * $5::numeric(14,2)) * 12)), 2)`
+  const result = await executor.query(
+    `UPDATE veiculo v
+     SET valor_veiculo = ${expression},
+         data_modificacao = NOW()
+     WHERE ${normalizedSqlTextExpression('v.os_especial')} = 'NAO'
+       AND ${normalizedSqlTextExpression('v.tipo_de_bancada')} = 'CRECHE'
+       AND v.cap_teg IS NOT NULL${codigoClause}
+       AND COALESCE(v.valor_veiculo, -1) <> ${expression}
+     RETURNING CAST(v.codigo AS text) AS codigo`,
+    values,
+  )
+
+  return result.rows
+}
+
+const recalculateSpecialVehicleValues = async (executor = pool, options = {}) => {
+  const conventionalRows = await recalculateSpecialConventionalVehicleValues(executor, options)
+  const accessibleRows = await recalculateSpecialAccessibleVehicleValues(executor, options)
+  const regularConventionalRows = await recalculateRegularConventionalVehicleValues(executor, options)
+  const regularAccessibleRows = await recalculateRegularAccessibleVehicleValues(executor, options)
+  const regularCrecheRows = await recalculateRegularCrecheVehicleValues(executor, options)
+
+  return [...conventionalRows, ...accessibleRows, ...regularConventionalRows, ...regularAccessibleRows, ...regularCrecheRows]
+}
+
 const fetchVeiculoAuditItemByCrm = async (executor, crm) => {
   const normalizedCrm = normalizeVehicleCrm(crm)
 
@@ -5753,6 +6510,7 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
   try {
     await client.query('BEGIN')
     await client.query('TRUNCATE TABLE veiculo_import_recusa RESTART IDENTITY')
+    const recalculateVehicleCodigos = new Set()
     let inserted = 0
     let updated = 0
 
@@ -5823,6 +6581,7 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
         }
 
         await upsertImportedVeiculoByCodigo(client, targetCodigo, targetRecord)
+        recalculateVehicleCodigos.add(targetCodigo)
         updated += 1
         continue
       }
@@ -5874,7 +6633,14 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
           record.osEspecial,
         ],
       )
+      recalculateVehicleCodigos.add(record.codigo)
       inserted += 1
+    }
+
+    if (recalculateVehicleCodigos.size > 0) {
+      await recalculateSpecialVehicleValues(client, {
+        codigos: [...recalculateVehicleCodigos],
+      })
     }
 
     if (normalizedRecords.length) {
@@ -17190,18 +17956,31 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const insertResult = await pool.query(
-        `INSERT INTO modal_bancada_condicao_tipo_pgto_valor (modal_bancada_condicao_tipo_pgto_codigo, data, valor, data_inclusao, data_modificacao)
-         VALUES ($1, $2::date, $3, NOW(), NOW())
-         RETURNING CAST(codigo AS text) AS codigo`,
-        [modalBancadaTpPagtoCondicaoCodigo, data, valor],
-      )
+      const client = await pool.connect()
 
-      const item = await findModalBancadaTpPagtoCondicaoValorByCodigo(insertResult.rows[0]?.codigo)
+      try {
+        await client.query('BEGIN')
 
-      sendJson(response, 201, {
-        item,
-      })
+        const insertResult = await client.query(
+          `INSERT INTO modal_bancada_condicao_tipo_pgto_valor (modal_bancada_condicao_tipo_pgto_codigo, data, valor, data_inclusao, data_modificacao)
+           VALUES ($1, $2::date, $3, NOW(), NOW())
+           RETURNING CAST(codigo AS text) AS codigo`,
+          [modalBancadaTpPagtoCondicaoCodigo, data, valor],
+        )
+
+        await recalculateSpecialVehicleValues(client)
+        const item = await findModalBancadaTpPagtoCondicaoValorByCodigo(insertResult.rows[0]?.codigo, client)
+        await client.query('COMMIT')
+
+        sendJson(response, 201, {
+          item,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
+      }
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -17277,21 +18056,33 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      await pool.query(
-        `UPDATE modal_bancada_condicao_tipo_pgto_valor
-         SET modal_bancada_condicao_tipo_pgto_codigo = $1,
-             data = $2::date,
-             valor = $3,
-             data_modificacao = NOW()
-         WHERE CAST(codigo AS text) = $4`,
-        [modalBancadaTpPagtoCondicaoCodigo, data, valor, codigo],
-      )
+      const client = await pool.connect()
 
-      const item = await findModalBancadaTpPagtoCondicaoValorByCodigo(codigo)
+      try {
+        await client.query('BEGIN')
+        await client.query(
+          `UPDATE modal_bancada_condicao_tipo_pgto_valor
+           SET modal_bancada_condicao_tipo_pgto_codigo = $1,
+               data = $2::date,
+               valor = $3,
+               data_modificacao = NOW()
+           WHERE CAST(codigo AS text) = $4`,
+          [modalBancadaTpPagtoCondicaoCodigo, data, valor, codigo],
+        )
 
-      sendJson(response, 200, {
-        item,
-      })
+        await recalculateSpecialVehicleValues(client)
+        const item = await findModalBancadaTpPagtoCondicaoValorByCodigo(codigo, client)
+        await client.query('COMMIT')
+
+        sendJson(response, 200, {
+          item,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
+      }
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -17516,18 +18307,31 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const insertResult = await pool.query(
-        `INSERT INTO parametro_veiculo (modalidade_tipo_bancada_codigo, condicao, qtde_condicao, data, data_inclusao, data_modificacao)
-         VALUES ($1, $2, $3, $4::date, NOW(), NOW())
-         RETURNING CAST(codigo AS text) AS codigo`,
-        [modalidadeTipoBancadaCodigo, condicao, qtdeCondicao, data],
-      )
+      const client = await pool.connect()
 
-      const item = await findParametroVeiculoByCodigo(insertResult.rows[0]?.codigo)
+      try {
+        await client.query('BEGIN')
 
-      sendJson(response, 201, {
-        item,
-      })
+        const insertResult = await client.query(
+          `INSERT INTO parametro_veiculo (modalidade_tipo_bancada_codigo, condicao, qtde_condicao, data, data_inclusao, data_modificacao)
+           VALUES ($1, $2, $3, $4::date, NOW(), NOW())
+           RETURNING CAST(codigo AS text) AS codigo`,
+          [modalidadeTipoBancadaCodigo, condicao, qtdeCondicao, data],
+        )
+
+        await recalculateSpecialVehicleValues(client)
+        const item = await findParametroVeiculoByCodigo(insertResult.rows[0]?.codigo, client)
+        await client.query('COMMIT')
+
+        sendJson(response, 201, {
+          item,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
+      }
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -18262,56 +19066,74 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const insertResult = await pool.query(
-        `INSERT INTO veiculo (
-           crm,
-           placas,
-           ano,
-           cap_detran,
-           cap_teg,
-           cap_teg_creche,
-           cap_acessivel,
-           val_crm,
-           seguradora,
-           seguro_inicio,
-           seguro_termino,
-           tipo_de_bancada,
-           tipo_de_veiculo,
-           marca_modelo,
-           titular,
-           cnpj_cpf,
-           valor_veiculo,
-           os_especial,
-           data_inclusao,
-           data_modificacao
-         )
-         VALUES (NULLIF($1, ''), NULLIF($2, ''), $3, $4, $5, $6, $7, NULLIF($8, '')::date, NULLIF($9, ''), NULLIF($10, '')::date, NULLIF($11, '')::date, NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), $17, NULLIF($18, ''), NOW(), NOW())
-         RETURNING ${veiculoSelectClause}`,
-        [
-          validationResult.payload.crm,
-          validationResult.payload.placas,
-          validationResult.payload.ano,
-          validationResult.payload.capDetran,
-          validationResult.payload.capTeg,
-          validationResult.payload.capTegCreche,
-          validationResult.payload.capAcessivel,
-          validationResult.payload.valCrm,
-          validationResult.payload.seguradora,
-          validationResult.payload.seguroInicio,
-          validationResult.payload.seguroTermino,
-          validationResult.payload.tipoDeBancada,
-          validationResult.payload.tipoDeVeiculo,
-          validationResult.payload.marcaModelo,
-          validationResult.payload.titular,
-          validationResult.payload.cnpjCpf,
-          validationResult.payload.valorVeiculo,
-          validationResult.payload.osEspecial,
-        ],
-      )
+      const client = await pool.connect()
 
-      sendJson(response, 201, {
-        item: insertResult.rows[0],
-      })
+      try {
+        await client.query('BEGIN')
+
+        const insertResult = await client.query(
+          `INSERT INTO veiculo (
+             crm,
+             placas,
+             ano,
+             cap_detran,
+             cap_teg,
+             cap_teg_creche,
+             cap_acessivel,
+             val_crm,
+             seguradora,
+             seguro_inicio,
+             seguro_termino,
+             tipo_de_bancada,
+             tipo_de_veiculo,
+             marca_modelo,
+             titular,
+             cnpj_cpf,
+             valor_veiculo,
+             os_especial,
+             data_inclusao,
+             data_modificacao
+           )
+           VALUES (NULLIF($1, ''), NULLIF($2, ''), $3, $4, $5, $6, $7, NULLIF($8, '')::date, NULLIF($9, ''), NULLIF($10, '')::date, NULLIF($11, '')::date, NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), $17, NULLIF($18, ''), NOW(), NOW())
+           RETURNING CAST(codigo AS text) AS codigo`,
+          [
+            validationResult.payload.crm,
+            validationResult.payload.placas,
+            validationResult.payload.ano,
+            validationResult.payload.capDetran,
+            validationResult.payload.capTeg,
+            validationResult.payload.capTegCreche,
+            validationResult.payload.capAcessivel,
+            validationResult.payload.valCrm,
+            validationResult.payload.seguradora,
+            validationResult.payload.seguroInicio,
+            validationResult.payload.seguroTermino,
+            validationResult.payload.tipoDeBancada,
+            validationResult.payload.tipoDeVeiculo,
+            validationResult.payload.marcaModelo,
+            validationResult.payload.titular,
+            validationResult.payload.cnpjCpf,
+            validationResult.payload.valorVeiculo,
+            validationResult.payload.osEspecial,
+          ],
+        )
+
+        await recalculateSpecialVehicleValues(client, {
+          codigos: [insertResult.rows[0]?.codigo],
+        })
+
+        const item = await findVeiculoByCodigo(client, insertResult.rows[0]?.codigo)
+        await client.query('COMMIT')
+
+        sendJson(response, 201, {
+          item,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
+      }
     } catch (error) {
       const persistenceError = getVeiculoPersistenceError(error, 'Erro ao cadastrar veiculo.')
 
@@ -20070,22 +20892,34 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      await pool.query(
-        `UPDATE parametro_veiculo
-         SET modalidade_tipo_bancada_codigo = $1,
-             condicao = $2,
-             qtde_condicao = $3,
-             data = $4::date,
-             data_modificacao = NOW()
-         WHERE CAST(codigo AS text) = $5`,
-        [modalidadeTipoBancadaCodigo, condicao, qtdeCondicao, data, codigo],
-      )
+      const client = await pool.connect()
 
-      const item = await findParametroVeiculoByCodigo(codigo)
+      try {
+        await client.query('BEGIN')
+        await client.query(
+          `UPDATE parametro_veiculo
+           SET modalidade_tipo_bancada_codigo = $1,
+               condicao = $2,
+               qtde_condicao = $3,
+               data = $4::date,
+               data_modificacao = NOW()
+           WHERE CAST(codigo AS text) = $5`,
+          [modalidadeTipoBancadaCodigo, condicao, qtdeCondicao, data, codigo],
+        )
 
-      sendJson(response, 200, {
-        item,
-      })
+        await recalculateSpecialVehicleValues(client)
+        const item = await findParametroVeiculoByCodigo(codigo, client)
+        await client.query('COMMIT')
+
+        sendJson(response, 200, {
+          item,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
+      }
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -20478,10 +21312,14 @@ const server = createServer(async (request, response) => {
 
         const updatedItem = await updateVeiculoByCodigo(client, originalCodigo, validationResult.payload)
         await syncCredenciamentoTermoValoresByVehicleCrms([existingItem.crm, updatedItem?.crm], client)
+        await recalculateSpecialVehicleValues(client, {
+          codigos: [originalCodigo],
+        })
+        const refreshedItem = await findVeiculoByCodigo(client, originalCodigo)
         await client.query('COMMIT')
 
         sendJson(response, 200, {
-          item: updatedItem,
+          item: refreshedItem,
         })
       } catch (error) {
         await client.query('ROLLBACK')
@@ -21430,19 +22268,34 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const deleteResult = await pool.query(
-        'DELETE FROM modal_bancada_condicao_tipo_pgto_valor WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
-        [codigo],
-      )
+      const client = await pool.connect()
 
-      if (deleteResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Registro de valor nao encontrado.' })
-        return
+      try {
+        await client.query('BEGIN')
+
+        const deleteResult = await client.query(
+          'DELETE FROM modal_bancada_condicao_tipo_pgto_valor WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+          [codigo],
+        )
+
+        if (deleteResult.rowCount === 0) {
+          await client.query('ROLLBACK')
+          sendJson(response, 404, { message: 'Registro de valor nao encontrado.' })
+          return
+        }
+
+        await recalculateSpecialVehicleValues(client)
+        await client.query('COMMIT')
+
+        sendJson(response, 200, {
+          deletedCodigo: deleteResult.rows[0].codigo,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
       }
-
-      sendJson(response, 200, {
-        deletedCodigo: deleteResult.rows[0].codigo,
-      })
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -21529,19 +22382,34 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const deleteResult = await pool.query(
-        'DELETE FROM parametro_veiculo WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
-        [codigo],
-      )
+      const client = await pool.connect()
 
-      if (deleteResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Registro de parametro veiculo nao encontrado.' })
-        return
+      try {
+        await client.query('BEGIN')
+
+        const deleteResult = await client.query(
+          'DELETE FROM parametro_veiculo WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+          [codigo],
+        )
+
+        if (deleteResult.rowCount === 0) {
+          await client.query('ROLLBACK')
+          sendJson(response, 404, { message: 'Registro de parametro veiculo nao encontrado.' })
+          return
+        }
+
+        await recalculateSpecialVehicleValues(client)
+        await client.query('COMMIT')
+
+        sendJson(response, 200, {
+          deletedCodigo: deleteResult.rows[0].codigo,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
       }
-
-      sendJson(response, 200, {
-        deletedCodigo: deleteResult.rows[0].codigo,
-      })
     } catch (error) {
       const message = error instanceof Error
         ? error.message
