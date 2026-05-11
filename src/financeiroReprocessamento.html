@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reprocessamento financeiro</title>
+
+    <link rel="stylesheet" href="css/login.css" />
+    <style>
+      .dsc-finance-layout {
+        display: grid;
+        gap: 20px;
+      }
+
+      .dsc-finance-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .dsc-finance-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+      }
+
+      .dsc-finance-summary-card {
+        border: 1px solid #d7dce5;
+        border-radius: 18px;
+        padding: 20px;
+        background: #fff;
+      }
+
+      .dsc-finance-summary-card strong {
+        display: block;
+        font-size: 2rem;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
+    <main class="dsc-access-page">
+      <section class="dsc-container">
+        <div class="dsc-finance-layout">
+          <section class="dsc-card">
+            <h2>Reprocessamento financeiro global</h2>
+            <p>
+              Esta rotina recalcula os valores dos veiculos e sincroniza os valores de contrato dos termos afetados.
+              Antes da execucao, a tela consulta uma previa para informar quantos contratos serao alterados.
+            </p>
+
+            <div class="dsc-finance-actions">
+              <button type="button" class="dsc-btn dsc-btn-white" id="financeiro-preview-button">Atualizar previa</button>
+              <button type="button" class="dsc-btn" id="financeiro-execute-button">Reprocessar agora</button>
+            </div>
+
+            <p class="dsc-feedback" id="financeiro-feedback"></p>
+          </section>
+
+          <section class="dsc-finance-summary-grid">
+            <article class="dsc-finance-summary-card">
+              <span>Veiculos recalculados</span>
+              <strong id="financeiro-veiculos-total">0</strong>
+            </article>
+            <article class="dsc-finance-summary-card">
+              <span>Termos com contrato alterado</span>
+              <strong id="financeiro-termos-total">0</strong>
+            </article>
+          </section>
+
+          <section class="dsc-card dsc-access-grid-card">
+            <div class="dsc-access-grid-header">
+              <div class="dsc-access-grid-header-copy">
+                <h2>Termos afetados na ultima previa</h2>
+                <span id="financeiro-grid-total"></span>
+              </div>
+            </div>
+
+            <div class="dsc-access-grid-wrapper">
+              <table class="dsc-access-grid">
+                <thead>
+                  <tr>
+                    <th>Codigo</th>
+                    <th>Termo</th>
+                    <th>Credenciado</th>
+                    <th>Valor anterior</th>
+                    <th>Valor atualizado anterior</th>
+                    <th>Novo valor</th>
+                  </tr>
+                </thead>
+                <tbody id="financeiro-grid-body"></tbody>
+              </table>
+              <p class="dsc-empty-state dsc-hidden" id="financeiro-empty-state">Nenhum termo com alteracao prevista.</p>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const statusBanner = document.getElementById('status-banner');
+      const previewButton = document.getElementById('financeiro-preview-button');
+      const executeButton = document.getElementById('financeiro-execute-button');
+      const feedback = document.getElementById('financeiro-feedback');
+      const veiculosTotal = document.getElementById('financeiro-veiculos-total');
+      const termosTotal = document.getElementById('financeiro-termos-total');
+      const gridTotal = document.getElementById('financeiro-grid-total');
+      const gridBody = document.getElementById('financeiro-grid-body');
+      const emptyState = document.getElementById('financeiro-empty-state');
+
+      let currentPreview = {
+        veiculosAtualizados: 0,
+        termosAtualizados: 0,
+        itensTermo: [],
+      };
+
+      const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      });
+
+      const showBanner = (message, type = 'success') => {
+        if (!message) {
+          statusBanner.textContent = '';
+          statusBanner.className = 'dsc-status-banner dsc-hidden';
+          return;
+        }
+
+        statusBanner.textContent = message;
+        statusBanner.className = `dsc-status-banner ${type === 'error' ? 'dsc-status-banner-error' : ''}`.trim();
+      };
+
+      const formatCurrency = (value) => {
+        const parsedValue = Number.parseFloat(String(value || '0').replace(',', '.'));
+        return Number.isFinite(parsedValue) ? currencyFormatter.format(parsedValue) : '';
+      };
+
+      const renderPreview = () => {
+        veiculosTotal.textContent = String(currentPreview.veiculosAtualizados || 0);
+        termosTotal.textContent = String(currentPreview.termosAtualizados || 0);
+        gridTotal.textContent = `${Array.isArray(currentPreview.itensTermo) ? currentPreview.itensTermo.length : 0} termo(s) exibido(s)`;
+        gridBody.innerHTML = '';
+
+        if (!Array.isArray(currentPreview.itensTermo) || !currentPreview.itensTermo.length) {
+          emptyState.classList.remove('dsc-hidden');
+          return;
+        }
+
+        emptyState.classList.add('dsc-hidden');
+        currentPreview.itensTermo.forEach((item) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${String(item.codigo || '').trim()}</td>
+            <td>${String(item.termo_adesao || '').trim()}</td>
+            <td>${String(item.credenciado || '').trim()}</td>
+            <td>${formatCurrency(item.valor_contrato_anterior)}</td>
+            <td>${formatCurrency(item.valor_contrato_atualizado_anterior)}</td>
+            <td>${formatCurrency(item.valor_contrato_novo || item.valor_contrato)}</td>
+          `;
+          gridBody.appendChild(row);
+        });
+      };
+
+      const setBusy = (busy, message) => {
+        previewButton.disabled = busy;
+        executeButton.disabled = busy;
+        feedback.textContent = message || '';
+      };
+
+      const loadPreview = async () => {
+        setBusy(true, 'Carregando previa do reprocessamento...');
+        showBanner('');
+
+        try {
+          const response = await fetch('/api/financeiro/reprocessar-valores/preview', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+            },
+          });
+          const payload = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao carregar a previa do reprocessamento financeiro.');
+          }
+
+          currentPreview = {
+            veiculosAtualizados: Number(payload.veiculosAtualizados || 0),
+            termosAtualizados: Number(payload.termosAtualizados || 0),
+            itensTermo: Array.isArray(payload.itensTermo) ? payload.itensTermo : [],
+          };
+
+          renderPreview();
+          feedback.textContent = 'Previa atualizada com sucesso.';
+        } catch (error) {
+          currentPreview = { veiculosAtualizados: 0, termosAtualizados: 0, itensTermo: [] };
+          renderPreview();
+          feedback.textContent = error instanceof Error ? error.message : 'Falha ao carregar a previa do reprocessamento financeiro.';
+          showBanner(feedback.textContent, 'error');
+        } finally {
+          setBusy(false, feedback.textContent);
+        }
+      };
+
+      const executeReprocess = async () => {
+        const confirmMessage = `Confirma reprocessar todos os valores dos veiculos e atualizar ${currentPreview.termosAtualizados || 0} termo(s) com mudanca no valor do contrato?`;
+        if (!window.confirm(confirmMessage)) {
+          return;
+        }
+
+        setBusy(true, 'Executando reprocessamento financeiro...');
+        showBanner('');
+
+        try {
+          const response = await fetch('/api/financeiro/reprocessar-valores', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify({ confirm: true }),
+          });
+          const payload = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao executar o reprocessamento financeiro.');
+          }
+
+          currentPreview = {
+            veiculosAtualizados: Number(payload.veiculosAtualizados || 0),
+            termosAtualizados: Number(payload.termosAtualizados || 0),
+            itensTermo: Array.isArray(payload.itensTermo) ? payload.itensTermo : [],
+          };
+
+          renderPreview();
+          feedback.textContent = 'Reprocessamento financeiro concluido com sucesso.';
+          showBanner(feedback.textContent);
+          await loadPreview();
+        } catch (error) {
+          feedback.textContent = error instanceof Error ? error.message : 'Falha ao executar o reprocessamento financeiro.';
+          showBanner(feedback.textContent, 'error');
+        } finally {
+          setBusy(false, feedback.textContent);
+        }
+      };
+
+      previewButton.addEventListener('click', () => {
+        void loadPreview();
+      });
+
+      executeButton.addEventListener('click', () => {
+        void executeReprocess();
+      });
+
+      renderPreview();
+      void loadPreview();
+    </script>
+  </body>
+</html>

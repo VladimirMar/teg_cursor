@@ -166,9 +166,12 @@ const pool = new Pool({
 })
 
 const ordemServicoTableName = 'ordem_servico'
+const ordemServicoHistoricoTableName = 'ordem_servico_historico'
 const ordemServicoImportRecusaTableName = 'ordem_servico_import_recusa'
 const ordemServicoCodigoSequenceName = 'ordem_servico_codigo_seq'
+const credenciadaTableName = 'credenciada'
 const credenciamentoTermoTableName = 'termo'
+const termoHistoricoTableName = 'termo_historico'
 const credenciamentoTermoImportRecusaTableName = 'termo_import_recusa'
 const credenciamentoTermoCodigoSequenceName = 'termo_codigo_seq'
 const vinculoCondutorTableName = 'vinculo_condutor'
@@ -181,6 +184,7 @@ const legacyCredenciamentoOsCodigoSequenceName = 'credenciamento_os_codigo_seq'
 const veiculoHistoricoTableName = 'veiculo_historico'
 const veiculoOrdemServicoCollectionPath = '/api/veiculo/ordens-servico'
 const ordemServicoCollectionPath = '/api/ordem-servico'
+const ordemServicoHistoricoCollectionPath = '/api/ordem-servico-historico'
 const ordemServicoDashboardAtivosPath = '/api/ordem-servico/dashboard-ativos'
 const ordemServicoDashboardAtivosBancadaPath = '/api/ordem-servico/dashboard-ativos-bancada'
 const ordemServicoDashboardAtivosDetalhesPath = '/api/ordem-servico/dashboard-ativos/detalhes'
@@ -193,10 +197,13 @@ const ordemServicoActivePlacaPath = '/api/ordem-servico/active-placa'
 const ordemServicoImportXmlPath = '/api/ordem-servico/import-xml'
 const ordemServicoImportRejectionsPath = '/api/ordem-servico/import-rejections'
 const credenciamentoTermoCollectionPath = '/api/termo'
+const termoHistoricoCollectionPath = '/api/termo-historico'
 const credenciamentoTermoDataAssinaturaPendenciasPath = '/api/termo/data-assinatura-pendencias'
 const credenciamentoTermoLookupPath = '/api/termo/lookup'
 const credenciamentoTermoImportXmlPath = '/api/termo/import-xml'
 const credenciamentoTermoImportRejectionsPath = '/api/termo/import-rejections'
+const financeiroReprocessamentoPreviewPath = '/api/financeiro/reprocessar-valores/preview'
+const financeiroReprocessamentoExecutePath = '/api/financeiro/reprocessar-valores'
 const vinculoCondutorCollectionPath = '/api/vinculo-condutor'
 const vinculoCondutorImportXmlPath = '/api/vinculo-condutor/import-xml'
 const vinculoCondutorImportRejectionsPath = '/api/vinculo-condutor/import-rejections'
@@ -4870,7 +4877,7 @@ const normalizeImportedMarcaModeloRecord = (record, index) => {
   }
 }
 
-const importOrdemServicoXmlFile = async (fileName) => {
+const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_XML' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -5005,6 +5012,12 @@ const importOrdemServicoXmlFile = async (fileName) => {
       )
 
       if (existingResult.rowCount > 0) {
+        const existingItem = await fetchOrdemServicoItemByCodigo(client, existingResult.rows[0].codigo)
+        await insertOrdemServicoHistoricoEntry(client, existingItem, {
+          acao: 'IMPORTACAO_XML_ALTERACAO',
+          realizadoPor,
+        })
+
         await client.query(
           `UPDATE ${ordemServicoTableName}
            SET codigo_access = NULLIF($1, ''),
@@ -5140,7 +5153,11 @@ const importOrdemServicoXmlFile = async (fileName) => {
     }
 
     if (normalizedRecords.length > 0) {
-      await rebalanceOrdemServicoRevisions(client)
+      await rebalanceOrdemServicoRevisions(client, {
+        captureHistory: true,
+        acao: 'REBALANCEAMENTO_REVISAO',
+        realizadoPor,
+      })
       await syncCondutorVinculosFromOrdemServico(client)
       await syncMonitorVinculosFromOrdemServico(client)
     }
@@ -5450,6 +5467,96 @@ const credenciamentoTermoImportRecusaSelectClause = `
   BTRIM(motivo_recusa) AS motivo_recusa,
   TO_CHAR(data_importacao, 'YYYY-MM-DD HH24:MI:SS') AS data_importacao`
 
+const termoHistoricoSelectClause = `
+  id::text AS id,
+  termo_codigo::text AS termo_codigo,
+  COALESCE(BTRIM(acao), '') AS acao,
+  COALESCE(BTRIM(realizado_por), '') AS realizado_por,
+  TO_CHAR(data_evento, 'YYYY-MM-DD HH24:MI:SS') AS data_evento,
+  codigo_xml::text AS codigo_xml,
+  credenciada_codigo::text AS credenciada_codigo,
+  COALESCE(BTRIM(credenciado), '') AS credenciado,
+  COALESCE(BTRIM(empresa), '') AS empresa,
+  COALESCE(BTRIM(cnpj_cpf), '') AS cnpj_cpf,
+  COALESCE(BTRIM(termo_adesao), '') AS termo_adesao,
+  COALESCE(BTRIM(sei), '') AS sei,
+  aditivo::text AS aditivo,
+  COALESCE(BTRIM(situacao_publicacao), '') AS situacao_publicacao,
+  COALESCE(BTRIM(situacao_emissao), '') AS situacao_emissao,
+  TO_CHAR(inicio_vigencia::date, 'YYYY-MM-DD') AS inicio_vigencia,
+  TO_CHAR(termino_vigencia::date, 'YYYY-MM-DD') AS termino_vigencia,
+  TO_CHAR(comp_data_aditivo::date, 'YYYY-MM-DD') AS comp_data_aditivo,
+  TO_CHAR(data_rescisao::date, 'YYYY-MM-DD') AS data_rescisao,
+  COALESCE(BTRIM(status_aditivo), '') AS status_aditivo,
+  TO_CHAR(data_pub_aditivo::date, 'YYYY-MM-DD') AS data_pub_aditivo,
+  check_aditivo::text AS check_aditivo,
+  COALESCE(BTRIM(status_termo), '') AS status_termo,
+  COALESCE(BTRIM(tipo_termo), '') AS tipo_termo,
+  COALESCE(BTRIM(representante), '') AS representante,
+  COALESCE(BTRIM(cpf_representante), '') AS cpf_representante,
+  COALESCE(BTRIM(especificacao_sei), '') AS especificacao_sei,
+  valor_contrato::text AS valor_contrato,
+  TO_CHAR(data_assinatura::date, 'YYYY-MM-DD') AS data_assinatura,
+  TO_CHAR(data_publicacao::date, 'YYYY-MM-DD') AS data_publicacao,
+  valor_contrato_atualizado::text AS valor_contrato_atualizado,
+  TO_CHAR(vencimento_geral::date, 'YYYY-MM-DD') AS vencimento_geral,
+  COALESCE(BTRIM(mes_renovacao), '') AS mes_renovacao,
+  COALESCE(BTRIM(tp_optante), '') AS tp_optante,
+  TO_CHAR(data_inclusao_original, 'YYYY-MM-DD HH24:MI:SS') AS data_inclusao_original,
+  TO_CHAR(data_modificacao_original, 'YYYY-MM-DD HH24:MI:SS') AS data_modificacao_original`
+
+const ordemServicoHistoricoSelectClause = `
+  id::text AS id,
+  ordem_servico_codigo::text AS ordem_servico_codigo,
+  COALESCE(BTRIM(acao), '') AS acao,
+  COALESCE(BTRIM(realizado_por), '') AS realizado_por,
+  TO_CHAR(data_evento, 'YYYY-MM-DD HH24:MI:SS') AS data_evento,
+  COALESCE(BTRIM(codigo_access), '') AS codigo_access,
+  COALESCE(BTRIM(termo_adesao), '') AS termo_adesao,
+  COALESCE(BTRIM(num_os), '') AS num_os,
+  COALESCE(BTRIM(revisao), '') AS revisao,
+  COALESCE(BTRIM(os_concat), '') AS os_concat,
+  TO_CHAR(vigencia_os::date, 'YYYY-MM-DD') AS vigencia_os,
+  TO_CHAR(data_emissao::date, 'YYYY-MM-DD') AS data_emissao,
+  COALESCE(credenciada_codigo::text, '') AS credenciada_codigo,
+  COALESCE(BTRIM(credenciado), '') AS credenciado,
+  COALESCE(BTRIM(cnpj_cpf), '') AS cnpj_cpf,
+  COALESCE(BTRIM(dre_codigo), '') AS dre_codigo,
+  COALESCE(BTRIM(dre_descricao), '') AS dre_descricao,
+  COALESCE(modalidade_codigo::text, '') AS modalidade_codigo,
+  COALESCE(BTRIM(modalidade_descricao), '') AS modalidade_descricao,
+  COALESCE(BTRIM(cpf_condutor), '') AS cpf_condutor,
+  COALESCE(BTRIM(condutor), '') AS condutor,
+  COALESCE(BTRIM(crmc_condutor), '') AS crmc_condutor,
+  TO_CHAR(data_admissao_condutor::date, 'YYYY-MM-DD') AS data_admissao_condutor,
+  COALESCE(BTRIM(cpf_preposto), '') AS cpf_preposto,
+  COALESCE(BTRIM(preposto_condutor), '') AS preposto_condutor,
+  TO_CHAR(preposto_inicio::date, 'YYYY-MM-DD') AS preposto_inicio,
+  COALESCE(preposto_dias::text, '') AS preposto_dias,
+  COALESCE(BTRIM(crm), '') AS crm,
+  COALESCE(BTRIM(veiculo_placas), '') AS veiculo_placas,
+  COALESCE(BTRIM(cpf_monitor), '') AS cpf_monitor,
+  COALESCE(BTRIM(monitor), '') AS monitor,
+  TO_CHAR(monitor_nascimento::date, 'YYYY-MM-DD') AS monitor_nascimento,
+  TO_CHAR(data_admissao_monitor::date, 'YYYY-MM-DD') AS data_admissao_monitor,
+  COALESCE(BTRIM(situacao), '') AS situacao,
+  COALESCE(tipo_troca_codigo::text, '') AS tipo_troca_codigo,
+  COALESCE(BTRIM(tipo_troca_descricao), '') AS tipo_troca_descricao,
+  COALESCE(BTRIM(conexao), '') AS conexao,
+  COALESCE(veiculo_ano::text, '') AS veiculo_ano,
+  COALESCE(veiculo_cap_detran::text, '') AS veiculo_cap_detran,
+  COALESCE(veiculo_cap_teg::text, '') AS veiculo_cap_teg,
+  COALESCE(veiculo_cap_teg_creche::text, '') AS veiculo_cap_teg_creche,
+  COALESCE(veiculo_cap_acessivel::text, '') AS veiculo_cap_acessivel,
+  COALESCE(BTRIM(veiculo_tipo_de_bancada), '') AS veiculo_tipo_de_bancada,
+  COALESCE(BTRIM(veiculo_os_especial), '') AS veiculo_os_especial,
+  TO_CHAR(data_encerramento::date, 'YYYY-MM-DD') AS data_encerramento,
+  TO_CHAR(data_eol::date, 'YYYY-MM-DD') AS data_eol,
+  COALESCE(BTRIM(anotacao), '') AS anotacao,
+  COALESCE(BTRIM(uniao_termos), '') AS uniao_termos,
+  TO_CHAR(data_inclusao_original, 'YYYY-MM-DD HH24:MI:SS') AS data_inclusao_original,
+  TO_CHAR(data_modificacao_original, 'YYYY-MM-DD HH24:MI:SS') AS data_modificacao_original`
+
 const vinculoCondutorSelectClause = `
   vc.id::text AS id,
   COALESCE(BTRIM(vc.termo_adesao), '') AS termo_adesao,
@@ -5646,13 +5753,244 @@ const fetchOrdemServicoItemByCodigo = async (executor, codigo) => {
   return result.rows[0] ?? null
 }
 
-const cancelActiveOrdemServicosByTermoAdesao = async (executor, termoAdesao, dataEncerramento) => {
+const listOrdemServicoItemsByCodigos = async (executor, codigos) => {
+  const normalizedCodigos = Array.from(new Set((Array.isArray(codigos) ? codigos : [codigos])
+    .map((codigo) => Number.parseInt(String(codigo ?? ''), 10))
+    .filter((codigo) => Number.isInteger(codigo) && codigo > 0)))
+
+  if (!normalizedCodigos.length) {
+    return []
+  }
+
+  const result = await executor.query(
+    `SELECT ${ordemServicoSelectClause}
+       FROM ${ordemServicoTableName}
+      WHERE codigo = ANY($1::int[])
+      ORDER BY codigo ASC`,
+    [normalizedCodigos],
+  )
+
+  return result.rows
+}
+
+const listActiveOrdemServicoItemsByTermoAdesao = async (executor, termoAdesao) => {
+  const normalizedTermoAdesao = normalizeOrdemServicoTermoAdesao(termoAdesao)
+
+  if (!normalizedTermoAdesao) {
+    return []
+  }
+
+  const result = await executor.query(
+    `SELECT ${ordemServicoSelectClause}
+       FROM ${ordemServicoTableName}
+      WHERE REGEXP_REPLACE(COALESCE(BTRIM(termo_adesao), ''), '\\D', '', 'g') = REGEXP_REPLACE($1, '\\D', '', 'g')
+        AND UPPER(BTRIM(COALESCE(situacao, ''))) = 'ATIVO'
+      ORDER BY codigo ASC`,
+    [normalizedTermoAdesao],
+  )
+
+  return result.rows
+}
+
+const listOrdemServicoRevisionRebalanceCandidates = async (executor) => {
+  const result = await executor.query(
+    `SELECT ${ordemServicoSelectClause}
+       FROM ${ordemServicoTableName}
+      WHERE COALESCE(BTRIM(revisao), '') = ''
+         OR COALESCE(BTRIM(os_concat), '') <> CONCAT(
+           COALESCE(BTRIM(termo_adesao), ''),
+           '-',
+           COALESCE(BTRIM(num_os), ''),
+           COALESCE(NULLIF(BTRIM(revisao), ''), $1)
+         )
+      ORDER BY codigo ASC`,
+    [ordemServicoSemRevisaoLabel],
+  )
+
+  return result.rows
+}
+
+const insertOrdemServicoHistoricoEntry = async (executor, item, { acao, realizadoPor, dataEvento = null }) => {
+  if (!item) {
+    return
+  }
+
+  await executor.query(
+    `INSERT INTO ${ordemServicoHistoricoTableName} (
+       ordem_servico_codigo,
+       acao,
+       realizado_por,
+       data_evento,
+       codigo_access,
+       termo_adesao,
+       num_os,
+       revisao,
+       os_concat,
+       vigencia_os,
+       data_emissao,
+       credenciada_codigo,
+       credenciado,
+       cnpj_cpf,
+       dre_codigo,
+       dre_descricao,
+       modalidade_codigo,
+       modalidade_descricao,
+       cpf_condutor,
+       condutor,
+       crmc_condutor,
+       data_admissao_condutor,
+       cpf_preposto,
+       preposto_condutor,
+       preposto_inicio,
+       preposto_dias,
+       crm,
+       veiculo_placas,
+       cpf_monitor,
+       monitor,
+       monitor_nascimento,
+       data_admissao_monitor,
+       situacao,
+       tipo_troca_codigo,
+       tipo_troca_descricao,
+       conexao,
+       veiculo_ano,
+       veiculo_cap_detran,
+       veiculo_cap_teg,
+       veiculo_cap_teg_creche,
+       veiculo_cap_acessivel,
+       veiculo_tipo_de_bancada,
+       veiculo_os_especial,
+       data_encerramento,
+       data_eol,
+       anotacao,
+       uniao_termos,
+       data_inclusao_original,
+       data_modificacao_original
+     )
+     VALUES (
+       $1,
+       $2,
+       $3,
+       COALESCE(NULLIF($4, '')::timestamp, NOW()),
+       NULLIF($5, ''),
+       NULLIF($6, ''),
+       NULLIF($7, ''),
+       NULLIF($8, ''),
+       NULLIF($9, ''),
+       NULLIF($10, '')::date,
+       NULLIF($11, '')::date,
+       $12,
+       NULLIF($13, ''),
+       NULLIF($14, ''),
+       NULLIF($15, ''),
+       NULLIF($16, ''),
+       $17,
+       NULLIF($18, ''),
+       NULLIF($19, ''),
+       NULLIF($20, ''),
+       NULLIF($21, ''),
+       NULLIF($22, '')::date,
+       NULLIF($23, ''),
+       NULLIF($24, ''),
+       NULLIF($25, '')::date,
+       $26,
+       NULLIF($27, ''),
+       NULLIF($28, ''),
+       NULLIF($29, ''),
+       NULLIF($30, ''),
+       NULLIF($31, '')::date,
+       NULLIF($32, '')::date,
+       NULLIF($33, ''),
+       $34,
+      NULLIF($35, ''),
+      NULLIF($36, ''),
+      NULLIF($37, ''),
+       $38,
+       $39,
+       $40,
+       $41,
+       NULLIF($42, ''),
+       NULLIF($43, ''),
+       NULLIF($44, '')::date,
+       NULLIF($45, '')::date,
+       NULLIF($46, ''),
+       NULLIF($47, ''),
+       NULLIF($48, '')::timestamp,
+       NULLIF($49, '')::timestamp
+     )`,
+    [
+      Number(item.codigo),
+      normalizeRequestValue(acao).slice(0, 50) || 'ALTERACAO',
+      normalizeAuditActor(realizadoPor) || 'SISTEMA',
+      normalizeRequestValue(dataEvento),
+      item.codigo_access,
+      item.termo_adesao,
+      item.num_os,
+      item.revisao,
+      item.os_concat,
+      item.vigencia_os,
+      item.data_emissao,
+      Number.isInteger(Number(item.credenciada_codigo)) ? Number(item.credenciada_codigo) : null,
+      item.credenciado,
+      item.cnpj_cpf,
+      item.dre_codigo,
+      item.dre_descricao,
+      Number.isInteger(Number(item.modalidade_codigo)) ? Number(item.modalidade_codigo) : null,
+      item.modalidade_descricao,
+      item.cpf_condutor,
+      item.condutor,
+      item.crmc_condutor,
+      item.data_admissao_condutor,
+      item.cpf_preposto,
+      item.preposto_condutor,
+      item.preposto_inicio,
+      Number.isInteger(Number(item.preposto_dias)) ? Number(item.preposto_dias) : null,
+      item.crm,
+      item.veiculo_placas,
+      item.cpf_monitor,
+      item.monitor,
+      item.monitor_nascimento,
+      item.data_admissao_monitor,
+      item.situacao,
+      Number.isInteger(Number(item.tipo_troca_codigo)) ? Number(item.tipo_troca_codigo) : null,
+      item.tipo_troca_descricao,
+      item.conexao,
+      Number.isInteger(Number(item.veiculo_ano)) ? Number(item.veiculo_ano) : null,
+      Number.isInteger(Number(item.veiculo_cap_detran)) ? Number(item.veiculo_cap_detran) : null,
+      Number.isInteger(Number(item.veiculo_cap_teg)) ? Number(item.veiculo_cap_teg) : null,
+      Number.isInteger(Number(item.veiculo_cap_teg_creche)) ? Number(item.veiculo_cap_teg_creche) : null,
+      Number.isInteger(Number(item.veiculo_cap_acessivel)) ? Number(item.veiculo_cap_acessivel) : null,
+      item.veiculo_tipo_de_bancada,
+      item.veiculo_os_especial,
+      item.data_encerramento,
+      item.data_eol,
+      item.anotacao,
+      item.uniao_termos,
+      item.data_inclusao,
+      item.data_modificacao,
+    ],
+  )
+}
+
+const insertOrdemServicoHistoricoEntries = async (executor, items, options) => {
+  for (const item of Array.isArray(items) ? items : []) {
+    await insertOrdemServicoHistoricoEntry(executor, item, options)
+  }
+}
+
+const cancelActiveOrdemServicosByTermoAdesao = async (executor, termoAdesao, dataEncerramento, options = {}) => {
   const normalizedTermoAdesao = normalizeOrdemServicoTermoAdesao(termoAdesao)
   const normalizedDataEncerramento = normalizeXmlDateInput(dataEncerramento) || normalizeRequestValue(dataEncerramento)
 
   if (!normalizedTermoAdesao || !normalizedDataEncerramento) {
     return 0
   }
+
+  const itemsToBeCanceled = await listActiveOrdemServicoItemsByTermoAdesao(executor, normalizedTermoAdesao)
+  await insertOrdemServicoHistoricoEntries(executor, itemsToBeCanceled, {
+    acao: options.acao || 'ALTERACAO_TERMO',
+    realizadoPor: options.realizadoPor || 'SISTEMA',
+  })
 
   const result = await executor.query(
     `UPDATE ${ordemServicoTableName}
@@ -5668,6 +6006,14 @@ const cancelActiveOrdemServicosByTermoAdesao = async (executor, termoAdesao, dat
 }
 
 const rebalanceOrdemServicoRevisions = async (executor, osValues = null) => {
+  if (osValues && typeof osValues === 'object' && osValues.captureHistory === true) {
+    const candidates = await listOrdemServicoRevisionRebalanceCandidates(executor)
+    await insertOrdemServicoHistoricoEntries(executor, candidates, {
+      acao: osValues.acao || 'REBALANCEAMENTO_REVISAO',
+      realizadoPor: osValues.realizadoPor || 'SISTEMA',
+    })
+  }
+
   return executor.query(
     `UPDATE ${ordemServicoTableName}
      SET revisao = COALESCE(NULLIF(BTRIM(revisao), ''), $1),
@@ -6638,9 +6984,20 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
     }
 
     if (recalculateVehicleCodigos.size > 0) {
-      await recalculateSpecialVehicleValues(client, {
+      const recalculatedVehicles = await recalculateSpecialVehicleValues(client, {
         codigos: [...recalculateVehicleCodigos],
       })
+
+      await syncCredenciamentoTermoValoresByRecalculatedVehicles(
+        recalculatedVehicles,
+        client,
+        normalizedRecords.map((record) => record.crm),
+      )
+    } else if (normalizedRecords.length) {
+      await syncCredenciamentoTermoValoresByVehicleCrms(
+        normalizedRecords.map((record) => record.crm),
+        client,
+      )
     }
 
     if (normalizedRecords.length) {
@@ -6666,7 +7023,7 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
   }
 }
 
-const importCredenciamentoTermoXmlFile = async (fileName) => {
+const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_XML' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -6723,6 +7080,12 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
     }
 
     for (const [codigoXml, aditivos] of allowedAditivosByCodigoXml.entries()) {
+      const deletedItems = await listCredenciamentoTermoItemsByCodigoXmlExceptAditivos(client, codigoXml, Array.from(aditivos))
+      await insertTermoHistoricoEntries(client, deletedItems, {
+        acao: 'IMPORTACAO_XML_EXCLUSAO',
+        realizadoPor,
+      })
+
       await client.query(
         `DELETE FROM ${credenciamentoTermoTableName}
          WHERE codigo_xml = $1
@@ -6825,6 +7188,12 @@ const importCredenciamentoTermoXmlFile = async (fileName) => {
       ]
 
       if (existingResult.rowCount > 0) {
+        const existingItem = await fetchCredenciamentoTermoItemByCodigo(client, existingResult.rows[0].codigo)
+        await insertTermoHistoricoEntry(client, existingItem, {
+          acao: 'IMPORTACAO_XML_ALTERACAO',
+          realizadoPor,
+        })
+
         await client.query(
           `UPDATE ${credenciamentoTermoTableName}
            SET codigo_xml = $1,
@@ -6941,6 +7310,176 @@ const fetchCredenciamentoTermoItemByCodigo = async (executor, codigo) => {
   return {
     ...item,
     valorContratoExtenso: buildCurrencyExtenso(item.valor_contrato),
+  }
+}
+
+const listCredenciamentoTermoItemsByNormalizedTermoAdesao = async (executor, termoAdesao) => {
+  const normalizedTermo = normalizeOrdemServicoTermoAdesao(termoAdesao)
+
+  if (!normalizedTermo) {
+    return []
+  }
+
+  const result = await executor.query(
+    `SELECT
+       ${credenciamentoTermoSelectClause}
+     FROM ${credenciamentoTermoTableName}
+     WHERE ${credenciamentoTermoNormalizedTermoExpression} = REGEXP_REPLACE($1, '\\D', '', 'g')
+     ORDER BY aditivo ASC, codigo ASC`,
+    [normalizedTermo],
+  )
+
+  return result.rows
+}
+
+const listCredenciamentoTermoItemsByCodigoXmlExceptAditivos = async (executor, codigoXml, allowedAditivos = []) => {
+  const normalizedCodigoXml = Number.parseInt(String(codigoXml ?? ''), 10)
+  const normalizedAditivos = Array.from(new Set((Array.isArray(allowedAditivos) ? allowedAditivos : [allowedAditivos])
+    .map((aditivo) => Number.parseInt(String(aditivo ?? ''), 10))
+    .filter((aditivo) => Number.isInteger(aditivo))))
+
+  if (!Number.isInteger(normalizedCodigoXml) || normalizedCodigoXml <= 0) {
+    return []
+  }
+
+  const result = await executor.query(
+    `SELECT
+       ${credenciamentoTermoSelectClause}
+     FROM ${credenciamentoTermoTableName}
+     WHERE codigo_xml = $1
+       AND NOT (aditivo = ANY($2::integer[]))
+     ORDER BY aditivo ASC, codigo ASC`,
+    [normalizedCodigoXml, normalizedAditivos],
+  )
+
+  return result.rows
+}
+
+const insertTermoHistoricoEntry = async (executor, item, { acao, realizadoPor, dataEvento = null }) => {
+  if (!item) {
+    return
+  }
+
+  await executor.query(
+    `INSERT INTO ${termoHistoricoTableName} (
+       termo_codigo,
+       acao,
+       realizado_por,
+       data_evento,
+       codigo_xml,
+       credenciada_codigo,
+       credenciado,
+       empresa,
+       cnpj_cpf,
+       termo_adesao,
+       sei,
+       aditivo,
+       situacao_publicacao,
+       situacao_emissao,
+       inicio_vigencia,
+       termino_vigencia,
+       comp_data_aditivo,
+       data_rescisao,
+       status_aditivo,
+       data_pub_aditivo,
+       check_aditivo,
+       status_termo,
+       tipo_termo,
+       representante,
+       cpf_representante,
+       especificacao_sei,
+       valor_contrato,
+       data_assinatura,
+       data_publicacao,
+       valor_contrato_atualizado,
+       vencimento_geral,
+       mes_renovacao,
+       tp_optante,
+       data_inclusao_original,
+       data_modificacao_original
+     )
+     VALUES (
+       $1,
+       $2,
+       $3,
+       COALESCE(NULLIF($4, '')::timestamp, NOW()),
+       $5,
+       $6,
+       NULLIF($7, ''),
+       NULLIF($8, ''),
+       NULLIF($9, ''),
+       NULLIF($10, ''),
+       NULLIF($11, ''),
+       $12,
+       NULLIF($13, ''),
+       NULLIF($14, ''),
+       NULLIF($15, '')::date,
+       NULLIF($16, '')::date,
+       NULLIF($17, '')::date,
+       NULLIF($18, '')::date,
+       NULLIF($19, ''),
+       NULLIF($20, '')::date,
+       $21,
+       NULLIF($22, ''),
+       NULLIF($23, ''),
+       NULLIF($24, ''),
+       NULLIF($25, ''),
+       NULLIF($26, ''),
+       $27,
+       NULLIF($28, '')::date,
+       NULLIF($29, '')::date,
+       $30,
+       NULLIF($31, '')::date,
+       NULLIF($32, ''),
+       NULLIF($33, ''),
+       NULLIF($34, '')::timestamp,
+       NULLIF($35, '')::timestamp
+     )`,
+    [
+      Number(item.codigo),
+      normalizeRequestValue(acao).slice(0, 50) || 'ALTERACAO',
+      normalizeAuditActor(realizadoPor) || 'SISTEMA',
+      normalizeRequestValue(dataEvento),
+      Number.isInteger(Number(item.codigo_xml)) ? Number(item.codigo_xml) : null,
+      Number.isInteger(Number(item.credenciada_codigo)) ? Number(item.credenciada_codigo) : null,
+      item.credenciado,
+      item.empresa,
+      item.cnpj_cpf,
+      item.termo_adesao,
+      item.sei,
+      Number.isInteger(Number(item.aditivo)) ? Number(item.aditivo) : null,
+      item.situacao_publicacao,
+      item.situacao_emissao,
+      item.inicio_vigencia,
+      item.termino_vigencia,
+      item.comp_data_aditivo,
+      item.data_rescisao,
+      item.status_aditivo,
+      item.data_pub_aditivo,
+      Number.isInteger(Number(item.check_aditivo)) ? Number(item.check_aditivo) : 0,
+      item.status_termo,
+      item.tipo_termo,
+      item.representante,
+      item.cpf_representante,
+      item.especificacao_sei,
+      item.valor_contrato ? Number(item.valor_contrato) : null,
+      item.data_assinatura,
+      item.data_publicacao,
+      item.valor_contrato_atualizado ? Number(item.valor_contrato_atualizado) : null,
+      item.vencimento_geral,
+      item.mes_renovacao,
+      item.tp_optante,
+      item.data_inclusao,
+      item.data_modificacao,
+    ],
+  )
+}
+
+const insertTermoHistoricoEntries = async (executor, items, options) => {
+  const snapshots = Array.isArray(items) ? items : []
+
+  for (const item of snapshots) {
+    await insertTermoHistoricoEntry(executor, item, options)
   }
 }
 
@@ -9751,43 +10290,267 @@ const calculateCredenciamentoTermoValorContratoByTermoAdesao = async (termoAdesa
     [normalizedTermo],
   )
 
-  const normalizedTotal = normalizeDecimalValue(result.rows[0]?.total)
-  return typeof normalizedTotal === 'number' && !Number.isNaN(normalizedTotal)
-    ? normalizedTotal
+  const parsedTotal = Number.parseFloat(String(result.rows[0]?.total ?? '0'))
+  return Number.isFinite(parsedTotal)
+    ? Number(parsedTotal.toFixed(2))
     : 0
 }
 
-const syncCredenciamentoTermoValorContratoByTermoAdesao = async (termoAdesao, executor = pool) => {
+const buildCredenciamentoTermoSyncScope = (termos, { syncAll = false } = {}) => {
+  const normalizedTermos = Array.from(new Set((Array.isArray(termos) ? termos : [termos])
+    .map((termo) => normalizeOrdemServicoTermoAdesao(termo))
+    .filter(Boolean)))
+
+  if (!syncAll && !normalizedTermos.length) {
+    return {
+      normalizedTermos,
+      filterClause: 'WHERE FALSE',
+      values: [],
+    }
+  }
+
+  if (!normalizedTermos.length) {
+    return {
+      normalizedTermos,
+      filterClause: '',
+      values: [],
+    }
+  }
+
+  return {
+    normalizedTermos,
+    filterClause: `WHERE ${credenciamentoTermoNormalizedTermoExpression} = ANY($1::text[])`,
+    values: [normalizedTermos],
+  }
+}
+
+const buildCredenciamentoTermoChangedRowsCte = (filterClause) => `
+  WITH target_termos AS (
+    SELECT t.*
+      FROM ${credenciamentoTermoTableName} t
+      ${filterClause}
+  ),
+  recalculated AS (
+    SELECT
+      t.codigo,
+      COALESCE(SUM(COALESCE(v.valor_veiculo, 0)), 0)::numeric(14, 2) AS total
+    FROM target_termos t
+    LEFT JOIN ${ordemServicoTableName} os
+      ON REGEXP_REPLACE(COALESCE(BTRIM(os.termo_adesao), ''), '\\D', '', 'g') = REGEXP_REPLACE(COALESCE(BTRIM(t.termo_adesao), ''), '\\D', '', 'g')
+     AND UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO'
+    LEFT JOIN veiculo v
+      ON UPPER(BTRIM(COALESCE(v.crm, ''))) = UPPER(BTRIM(COALESCE(os.crm, '')))
+    GROUP BY t.codigo
+  ),
+  changed AS (
+    SELECT
+      t.codigo,
+      t.codigo_xml,
+      t.credenciada_codigo,
+      t.termo_adesao,
+      t.sei,
+      t.aditivo,
+      t.situacao_publicacao,
+      t.situacao_emissao,
+      t.inicio_vigencia,
+      t.termino_vigencia,
+      t.comp_data_aditivo,
+      t.data_rescisao,
+      t.status_aditivo,
+      t.data_pub_aditivo,
+      t.check_aditivo,
+      t.status_termo,
+      t.tipo_termo,
+      t.especificacao_sei,
+      t.valor_contrato,
+      t.data_assinatura,
+      t.data_publicacao,
+      t.valor_contrato_atualizado,
+      t.vencimento_geral,
+      t.mes_renovacao,
+      t.data_inclusao,
+      t.data_modificacao,
+      recalculated.total,
+      COALESCE(BTRIM((SELECT c.credenciado FROM ${credenciadaTableName} c WHERE c.codigo = t.credenciada_codigo)), '') AS credenciado,
+      COALESCE(BTRIM((SELECT c.empresa FROM ${credenciadaTableName} c WHERE c.codigo = t.credenciada_codigo)), '') AS empresa,
+      COALESCE(BTRIM((SELECT c.cnpj_cpf FROM ${credenciadaTableName} c WHERE c.codigo = t.credenciada_codigo)), '') AS cnpj_cpf,
+      COALESCE(BTRIM((SELECT c.representante FROM ${credenciadaTableName} c WHERE c.codigo = t.credenciada_codigo)), '') AS representante,
+      COALESCE(BTRIM((SELECT c.cpf_representante FROM ${credenciadaTableName} c WHERE c.codigo = t.credenciada_codigo)), '') AS cpf_representante,
+      COALESCE(BTRIM((SELECT c.tp_optante FROM ${credenciadaTableName} c WHERE c.codigo = t.credenciada_codigo)), '') AS tp_optante
+    FROM target_termos t
+    INNER JOIN recalculated
+      ON recalculated.codigo = t.codigo
+    WHERE COALESCE(t.valor_contrato, 0) <> recalculated.total
+       OR COALESCE(t.valor_contrato_atualizado, 0) <> recalculated.total
+  )`
+
+const queryCredenciamentoTermoRecalculationDiffSummary = async (executor = pool, { termos = [], limit = 5, syncAll = false } = {}) => {
+  const scope = buildCredenciamentoTermoSyncScope(termos, { syncAll })
+  const limitedValue = Number.isInteger(limit) && limit > 0 ? limit : 5
+  const limitParamIndex = scope.values.length + 1
+  const result = await executor.query(
+    `${buildCredenciamentoTermoChangedRowsCte(scope.filterClause)}
+     SELECT
+       (SELECT COUNT(*)::int FROM changed) AS total,
+       COALESCE((
+         SELECT JSON_AGG(sample_row)
+         FROM (
+           SELECT
+             changed.codigo::text AS codigo,
+             COALESCE(BTRIM(changed.termo_adesao), '') AS termo_adesao,
+             COALESCE(BTRIM(changed.credenciado), '') AS credenciado,
+             changed.valor_contrato::text AS valor_contrato_anterior,
+             changed.valor_contrato_atualizado::text AS valor_contrato_atualizado_anterior,
+             changed.total::text AS valor_contrato_novo
+           FROM changed
+           ORDER BY changed.termo_adesao ASC, changed.aditivo ASC, changed.codigo ASC
+           LIMIT $${limitParamIndex}
+         ) AS sample_row
+       ), '[]'::json) AS items`,
+    [...scope.values, limitedValue],
+  )
+
+  return {
+    total: Number(result.rows[0]?.total || 0),
+    items: Array.isArray(result.rows[0]?.items) ? result.rows[0].items : [],
+    termos: scope.normalizedTermos,
+  }
+}
+
+const syncCredenciamentoTermoValoresInternal = async (termos, executor = pool, { acao = 'RECALCULO_TERMO', realizadoPor = 'SISTEMA', syncAll = false } = {}) => {
+  const scope = buildCredenciamentoTermoSyncScope(termos, { syncAll })
+
+  if (!syncAll && !scope.normalizedTermos.length) {
+    return []
+  }
+
+  const actionParamIndex = scope.values.length + 1
+  const actorParamIndex = scope.values.length + 2
+  const result = await executor.query(
+    `${buildCredenciamentoTermoChangedRowsCte(scope.filterClause)},
+     inserted_history AS (
+       INSERT INTO ${termoHistoricoTableName} (
+         termo_codigo,
+         acao,
+         realizado_por,
+         data_evento,
+         codigo_xml,
+         credenciada_codigo,
+         credenciado,
+         empresa,
+         cnpj_cpf,
+         termo_adesao,
+         sei,
+         aditivo,
+         situacao_publicacao,
+         situacao_emissao,
+         inicio_vigencia,
+         termino_vigencia,
+         comp_data_aditivo,
+         data_rescisao,
+         status_aditivo,
+         data_pub_aditivo,
+         check_aditivo,
+         status_termo,
+         tipo_termo,
+         representante,
+         cpf_representante,
+         especificacao_sei,
+         valor_contrato,
+         data_assinatura,
+         data_publicacao,
+         valor_contrato_atualizado,
+         vencimento_geral,
+         mes_renovacao,
+         tp_optante,
+         data_inclusao_original,
+         data_modificacao_original
+       )
+       SELECT
+         changed.codigo,
+         $${actionParamIndex},
+         $${actorParamIndex},
+         NOW(),
+         changed.codigo_xml,
+         changed.credenciada_codigo,
+         changed.credenciado,
+         changed.empresa,
+         changed.cnpj_cpf,
+         changed.termo_adesao,
+         changed.sei,
+         changed.aditivo,
+         changed.situacao_publicacao,
+         changed.situacao_emissao,
+         changed.inicio_vigencia,
+         changed.termino_vigencia,
+         changed.comp_data_aditivo,
+         changed.data_rescisao,
+         changed.status_aditivo,
+         changed.data_pub_aditivo,
+         changed.check_aditivo,
+         changed.status_termo,
+         changed.tipo_termo,
+         changed.representante,
+         changed.cpf_representante,
+         changed.especificacao_sei,
+         changed.valor_contrato,
+         changed.data_assinatura,
+         changed.data_publicacao,
+         changed.valor_contrato_atualizado,
+         changed.vencimento_geral,
+         changed.mes_renovacao,
+         changed.tp_optante,
+         changed.data_inclusao,
+         changed.data_modificacao
+       FROM changed
+     ),
+     updated AS (
+       UPDATE ${credenciamentoTermoTableName} t
+          SET valor_contrato = changed.total,
+              valor_contrato_atualizado = changed.total,
+              data_modificacao = NOW()
+         FROM changed
+        WHERE t.codigo = changed.codigo
+       RETURNING t.codigo::text AS codigo,
+                 COALESCE(BTRIM(t.termo_adesao), '') AS termo_adesao,
+                 changed.total::text AS valor_contrato
+     )
+     SELECT *
+       FROM updated
+      ORDER BY termo_adesao ASC, codigo ASC`,
+    [
+      ...scope.values,
+      normalizeRequestValue(acao).slice(0, 50) || 'RECALCULO_TERMO',
+      normalizeAuditActor(realizadoPor) || 'SISTEMA',
+    ],
+  )
+
+  return result.rows
+}
+
+const syncCredenciamentoTermoValorContratoByTermoAdesao = async (termoAdesao, executor = pool, options = {}) => {
   const normalizedTermo = normalizeOrdemServicoTermoAdesao(termoAdesao)
 
   if (!normalizedTermo) {
     return 0
   }
 
-  const total = await calculateCredenciamentoTermoValorContratoByTermoAdesao(normalizedTermo, executor)
+  const updatedItems = await syncCredenciamentoTermoValoresInternal([normalizedTermo], executor, options)
 
-  await executor.query(
-    `UPDATE ${credenciamentoTermoTableName}
-        SET valor_contrato = $2,
-            valor_contrato_atualizado = $2,
-            data_modificacao = NOW()
-      WHERE ${credenciamentoTermoNormalizedTermoExpression} = REGEXP_REPLACE($1, '\\D', '', 'g')`,
-    [normalizedTermo, total],
-  )
-
-  return total
-}
-
-const syncCredenciamentoTermoValoresByTermos = async (termos, executor = pool) => {
-  const normalizedTermos = Array.from(new Set((Array.isArray(termos) ? termos : [termos])
-    .map((termo) => normalizeOrdemServicoTermoAdesao(termo))
-    .filter(Boolean)))
-
-  for (const termoAdesao of normalizedTermos) {
-    await syncCredenciamentoTermoValorContratoByTermoAdesao(termoAdesao, executor)
+  if (updatedItems.length) {
+    return Number.parseFloat(String(updatedItems[0]?.valor_contrato || '0')) || 0
   }
 
-  return normalizedTermos
+  return calculateCredenciamentoTermoValorContratoByTermoAdesao(normalizedTermo, executor)
+}
+
+const syncCredenciamentoTermoValoresByTermos = async (termos, executor = pool, options = {}) => {
+  const updatedItems = await syncCredenciamentoTermoValoresInternal(termos, executor, options)
+  return updatedItems.map((item) => normalizeOrdemServicoTermoAdesao(item?.termo_adesao)).filter(Boolean)
+}
+
+const syncAllCredenciamentoTermoValores = async (executor = pool, options = {}) => {
+  return syncCredenciamentoTermoValoresInternal([], executor, { ...options, syncAll: true })
 }
 
 const listActiveCredenciamentoTermosByVehicleCrms = async (crms, executor = pool) => {
@@ -9814,9 +10577,48 @@ const listActiveCredenciamentoTermosByVehicleCrms = async (crms, executor = pool
     .filter(Boolean)
 }
 
-const syncCredenciamentoTermoValoresByVehicleCrms = async (crms, executor = pool) => {
+const syncCredenciamentoTermoValoresByVehicleCrms = async (crms, executor = pool, options = {}) => {
   const termos = await listActiveCredenciamentoTermosByVehicleCrms(crms, executor)
-  return syncCredenciamentoTermoValoresByTermos(termos, executor)
+  return syncCredenciamentoTermoValoresByTermos(termos, executor, options)
+}
+
+const listVehicleCrmsByCodigos = async (codigos, executor = pool) => {
+  const normalizedCodigos = Array.from(new Set((Array.isArray(codigos) ? codigos : [codigos])
+    .map((codigo) => Number.parseInt(String(codigo ?? ''), 10))
+    .filter((codigo) => Number.isInteger(codigo) && codigo > 0)))
+
+  if (!normalizedCodigos.length) {
+    return []
+  }
+
+  const result = await executor.query(
+    `SELECT DISTINCT UPPER(BTRIM(COALESCE(crm, ''))) AS crm
+       FROM veiculo
+      WHERE codigo = ANY($1::int[])
+        AND COALESCE(BTRIM(crm), '') <> ''`,
+    [normalizedCodigos],
+  )
+
+  return result.rows
+    .map((row) => normalizeVehicleCrm(row?.crm))
+    .filter(Boolean)
+}
+
+const syncCredenciamentoTermoValoresByRecalculatedVehicles = async (rows, executor = pool, fallbackCrms = [], options = {}) => {
+  const rowCodigos = Array.isArray(rows)
+    ? rows.map((row) => row?.codigo)
+    : []
+  const recalculatedCrms = await listVehicleCrmsByCodigos(rowCodigos, executor)
+  const targetCrms = Array.from(new Set([
+    ...recalculatedCrms,
+    ...(Array.isArray(fallbackCrms) ? fallbackCrms : [fallbackCrms]),
+  ].map((crm) => normalizeVehicleCrm(crm)).filter(Boolean)))
+
+  if (!targetCrms.length) {
+    return []
+  }
+
+  return syncCredenciamentoTermoValoresByVehicleCrms(targetCrms, executor, options)
 }
 
 const findEmissaoDocumentoParametroByDate = async (dataReferencia, executor = pool) => {
@@ -12316,6 +13118,107 @@ const ensureDatabaseSchema = async () => {
       data_importacao timestamp without time zone NOT NULL DEFAULT NOW()
     )
   `)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ${termoHistoricoTableName} (
+      id bigserial PRIMARY KEY,
+      termo_codigo integer NOT NULL,
+      acao varchar(50) NOT NULL,
+      realizado_por varchar(255) NOT NULL,
+      data_evento timestamp without time zone NOT NULL DEFAULT NOW(),
+      codigo_xml integer,
+      credenciada_codigo integer,
+      credenciado varchar(255),
+      empresa varchar(255),
+      cnpj_cpf varchar(20),
+      termo_adesao varchar(255),
+      sei varchar(255),
+      aditivo integer,
+      situacao_publicacao varchar(100),
+      situacao_emissao varchar(100),
+      inicio_vigencia date,
+      termino_vigencia date,
+      comp_data_aditivo date,
+      data_rescisao date,
+      status_aditivo varchar(100),
+      data_pub_aditivo date,
+      check_aditivo integer,
+      status_termo varchar(100),
+      tipo_termo varchar(100),
+      representante varchar(255),
+      cpf_representante varchar(20),
+      especificacao_sei varchar(255),
+      valor_contrato numeric(14, 2),
+      data_assinatura date,
+      data_publicacao date,
+      valor_contrato_atualizado numeric(14, 2),
+      vencimento_geral date,
+      mes_renovacao varchar(50),
+      tp_optante varchar(50),
+      data_inclusao_original timestamp without time zone,
+      data_modificacao_original timestamp without time zone
+    )
+  `)
+  await pool.query(`CREATE INDEX IF NOT EXISTS termo_historico_termo_codigo_idx ON ${termoHistoricoTableName} (termo_codigo, data_evento DESC)`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS termo_historico_termo_adesao_idx ON ${termoHistoricoTableName} (termo_adesao, data_evento DESC)`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS termo_historico_data_evento_idx ON ${termoHistoricoTableName} (data_evento DESC)`)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ${ordemServicoHistoricoTableName} (
+      id bigserial PRIMARY KEY,
+      ordem_servico_codigo integer NOT NULL,
+      acao varchar(50) NOT NULL,
+      realizado_por varchar(255) NOT NULL,
+      data_evento timestamp without time zone NOT NULL DEFAULT NOW(),
+      codigo_access varchar(50),
+      termo_adesao varchar(255),
+      num_os varchar(100),
+      revisao varchar(50),
+      os_concat varchar(255),
+      vigencia_os date,
+      data_emissao date,
+      credenciada_codigo integer,
+      credenciado varchar(255),
+      cnpj_cpf varchar(20),
+      dre_codigo varchar(50),
+      dre_descricao varchar(255),
+      modalidade_codigo integer,
+      modalidade_descricao varchar(255),
+      cpf_condutor varchar(20),
+      condutor varchar(255),
+      crmc_condutor varchar(50),
+      data_admissao_condutor date,
+      cpf_preposto varchar(20),
+      preposto_condutor varchar(255),
+      preposto_inicio date,
+      preposto_dias integer,
+      crm varchar(50),
+      veiculo_placas varchar(20),
+      cpf_monitor varchar(20),
+      monitor varchar(255),
+      monitor_nascimento date,
+      data_admissao_monitor date,
+      situacao varchar(100),
+      tipo_troca_codigo integer,
+      tipo_troca_descricao varchar(255),
+      conexao varchar(50),
+      veiculo_ano integer,
+      veiculo_cap_detran integer,
+      veiculo_cap_teg integer,
+      veiculo_cap_teg_creche integer,
+      veiculo_cap_acessivel integer,
+      veiculo_tipo_de_bancada varchar(255),
+      veiculo_os_especial varchar(255),
+      data_encerramento date,
+      data_eol date,
+      anotacao text,
+      uniao_termos text,
+      data_inclusao_original timestamp without time zone,
+      data_modificacao_original timestamp without time zone
+    )
+  `)
+  await pool.query(`CREATE INDEX IF NOT EXISTS ordem_servico_historico_codigo_idx ON ${ordemServicoHistoricoTableName} (ordem_servico_codigo, data_evento DESC)`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS ordem_servico_historico_termo_idx ON ${ordemServicoHistoricoTableName} (termo_adesao, data_evento DESC)`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS ordem_servico_historico_os_concat_idx ON ${ordemServicoHistoricoTableName} (os_concat, data_evento DESC)`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS ordem_servico_historico_data_evento_idx ON ${ordemServicoHistoricoTableName} (data_evento DESC)`)
   await pool.query(`
     UPDATE credenciada
     SET placa = COALESCE(NULLIF(BTRIM(placa), ''), LEFT(CONCAT('CRED-', codigo::text), 20)),
@@ -15902,6 +16805,171 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === termoHistoricoCollectionPath) {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const termoCodigo = Number.parseInt(normalizeRequestValue(requestUrl.searchParams.get('termoCodigo') ?? ''), 10)
+      const termoAdesao = normalizeOrdemServicoTermoAdesao(requestUrl.searchParams.get('termoAdesao') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 100)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'data_evento')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
+        ? 'ASC'
+        : 'DESC'
+      const offset = (page - 1) * pageSize
+      const values = []
+      const filters = []
+      const orderByClause = sortBy === 'termo_adesao'
+        ? `UPPER(BTRIM(COALESCE(termo_adesao, ''))) ${sortDirection}, id DESC`
+        : sortBy === 'termo_codigo'
+          ? `termo_codigo ${sortDirection}, id DESC`
+          : `data_evento ${sortDirection}, id ${sortDirection}`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(id AS text) ILIKE $${values.length}
+          OR CAST(termo_codigo AS text) ILIKE $${values.length}
+          OR COALESCE(BTRIM(termo_adesao), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(credenciado), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(sei), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(acao), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(realizado_por), '') ILIKE UPPER($${values.length})
+        )`)
+      }
+
+      if (Number.isInteger(termoCodigo) && termoCodigo > 0) {
+        values.push(termoCodigo)
+        filters.push(`termo_codigo = $${values.length}`)
+      }
+
+      if (termoAdesao) {
+        values.push(termoAdesao)
+        filters.push(`REGEXP_REPLACE(COALESCE(BTRIM(termo_adesao), ''), '\\D', '', 'g') = REGEXP_REPLACE($${values.length}, '\\D', '', 'g')`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM ${termoHistoricoTableName} ${whereClause}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+      const result = await pool.query(
+        `SELECT
+           ${termoHistoricoSelectClause}
+         FROM ${termoHistoricoTableName}
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length + 1}
+         OFFSET $${values.length + 2}`,
+        [...values, pageSize, offset],
+      )
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: ['termo_adesao', 'termo_codigo'].includes(sortBy) ? sortBy : 'data_evento',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar historico de termos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === ordemServicoHistoricoCollectionPath) {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const ordemServicoCodigo = Number.parseInt(normalizeRequestValue(requestUrl.searchParams.get('ordemServicoCodigo') ?? ''), 10)
+      const termoAdesao = normalizeOrdemServicoTermoAdesao(requestUrl.searchParams.get('termoAdesao') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 100)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'data_evento').toLowerCase()
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
+        ? 'ASC'
+        : 'DESC'
+      const offset = (page - 1) * pageSize
+      const values = []
+      const filters = []
+      const orderByClause = sortBy === 'chave'
+        ? `UPPER(BTRIM(COALESCE(termo_adesao, ''))) ${sortDirection}, UPPER(BTRIM(COALESCE(num_os, ''))) ${sortDirection}, UPPER(BTRIM(COALESCE(revisao, ''))) ${sortDirection}, id DESC`
+        : sortBy === 'credenciado'
+          ? `UPPER(BTRIM(COALESCE(credenciado, ''))) ${sortDirection}, id DESC`
+          : `data_evento ${sortDirection}, id ${sortDirection}`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(id AS text) ILIKE $${values.length}
+          OR CAST(ordem_servico_codigo AS text) ILIKE $${values.length}
+          OR COALESCE(BTRIM(termo_adesao), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(num_os), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(revisao), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(os_concat), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(credenciado), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(condutor), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(monitor), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(veiculo_placas), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(acao), '') ILIKE UPPER($${values.length})
+          OR COALESCE(BTRIM(realizado_por), '') ILIKE UPPER($${values.length})
+        )`)
+      }
+
+      if (Number.isInteger(ordemServicoCodigo) && ordemServicoCodigo > 0) {
+        values.push(ordemServicoCodigo)
+        filters.push(`ordem_servico_codigo = $${values.length}`)
+      }
+
+      if (termoAdesao) {
+        values.push(termoAdesao)
+        filters.push(`REGEXP_REPLACE(COALESCE(BTRIM(termo_adesao), ''), '\\D', '', 'g') = REGEXP_REPLACE($${values.length}, '\\D', '', 'g')`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM ${ordemServicoHistoricoTableName} ${whereClause}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+      const result = await pool.query(
+        `SELECT
+           ${ordemServicoHistoricoSelectClause}
+         FROM ${ordemServicoHistoricoTableName}
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length + 1}
+         OFFSET $${values.length + 2}`,
+        [...values, pageSize, offset],
+      )
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: ['chave', 'credenciado'].includes(sortBy) ? sortBy : 'data_evento',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar historico de OrdemServico.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'GET' && pathname === credenciamentoTermoDataAssinaturaPendenciasPath) {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
@@ -16026,6 +17094,84 @@ const server = createServer(async (request, response) => {
         : 'Erro ao consultar pendencias de data de assinatura.'
 
       sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === financeiroReprocessamentoPreviewPath) {
+    const client = await pool.connect()
+
+    try {
+      await client.query('BEGIN')
+      const recalculatedVehicles = await recalculateSpecialVehicleValues(client)
+      const termoDiffSummary = await queryCredenciamentoTermoRecalculationDiffSummary(client, {
+        syncAll: true,
+        limit: 10,
+      })
+      await client.query('ROLLBACK')
+
+      sendJson(response, 200, {
+        veiculosAtualizados: recalculatedVehicles.length,
+        termosAtualizados: termoDiffSummary.total,
+        itensTermo: termoDiffSummary.items,
+      })
+    } catch (error) {
+      try {
+        await client.query('ROLLBACK')
+      } catch {
+      }
+
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao montar a previsao do reprocessamento financeiro.'
+
+      sendJson(response, 500, { message })
+    } finally {
+      client.release()
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === financeiroReprocessamentoExecutePath) {
+    let body = null
+    const client = await pool.connect()
+
+    try {
+      body = await readJsonBody(request)
+
+      if (body?.confirm !== true) {
+        sendJson(response, 400, { message: 'Confirme o reprocessamento financeiro para continuar.' })
+        return
+      }
+
+      await client.query('BEGIN')
+      const recalculatedVehicles = await recalculateSpecialVehicleValues(client)
+      const updatedTermos = await syncAllCredenciamentoTermoValores(client, {
+        acao: 'REPROCESSAMENTO_GLOBAL',
+        realizadoPor: resolveRequestActor(request, 'REPROCESSAMENTO_FINANCEIRO'),
+      })
+      await client.query('COMMIT')
+
+      sendJson(response, 200, {
+        veiculosAtualizados: recalculatedVehicles.length,
+        termosAtualizados: updatedTermos.length,
+        itensTermo: updatedTermos.slice(0, 10),
+      })
+    } catch (error) {
+      try {
+        await client.query('ROLLBACK')
+      } catch {
+      }
+
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao reprocessar os valores financeiros.'
+
+      sendJson(response, 500, { message })
+    } finally {
+      client.release()
     }
 
     return
@@ -17968,7 +19114,8 @@ const server = createServer(async (request, response) => {
           [modalBancadaTpPagtoCondicaoCodigo, data, valor],
         )
 
-        await recalculateSpecialVehicleValues(client)
+        const recalculatedVehicles = await recalculateSpecialVehicleValues(client)
+        await syncCredenciamentoTermoValoresByRecalculatedVehicles(recalculatedVehicles, client)
         const item = await findModalBancadaTpPagtoCondicaoValorByCodigo(insertResult.rows[0]?.codigo, client)
         await client.query('COMMIT')
 
@@ -18070,7 +19217,8 @@ const server = createServer(async (request, response) => {
           [modalBancadaTpPagtoCondicaoCodigo, data, valor, codigo],
         )
 
-        await recalculateSpecialVehicleValues(client)
+        const recalculatedVehicles = await recalculateSpecialVehicleValues(client)
+        await syncCredenciamentoTermoValoresByRecalculatedVehicles(recalculatedVehicles, client)
         const item = await findModalBancadaTpPagtoCondicaoValorByCodigo(codigo, client)
         await client.query('COMMIT')
 
@@ -18319,7 +19467,8 @@ const server = createServer(async (request, response) => {
           [modalidadeTipoBancadaCodigo, condicao, qtdeCondicao, data],
         )
 
-        await recalculateSpecialVehicleValues(client)
+        const recalculatedVehicles = await recalculateSpecialVehicleValues(client)
+        await syncCredenciamentoTermoValoresByRecalculatedVehicles(recalculatedVehicles, client)
         const item = await findParametroVeiculoByCodigo(insertResult.rows[0]?.codigo, client)
         await client.query('COMMIT')
 
@@ -19118,9 +20267,14 @@ const server = createServer(async (request, response) => {
           ],
         )
 
-        await recalculateSpecialVehicleValues(client, {
+        const recalculatedVehicles = await recalculateSpecialVehicleValues(client, {
           codigos: [insertResult.rows[0]?.codigo],
         })
+        await syncCredenciamentoTermoValoresByRecalculatedVehicles(
+          recalculatedVehicles,
+          client,
+          [validationResult.payload.crm],
+        )
 
         const item = await findVeiculoByCodigo(client, insertResult.rows[0]?.codigo)
         await client.query('COMMIT')
@@ -19146,6 +20300,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === credenciamentoTermoCollectionPath) {
     try {
       const body = await readJsonBody(request)
+      const performedBy = resolveRequestActor(request, 'USUARIO')
       const allowExistingTermAditivo = body.allowExistingTermAditivo === true
       const validationResult = await validateCredenciamentoTermoPayload(body, pool, { requireAditivo: false })
 
@@ -19205,6 +20360,12 @@ const server = createServer(async (request, response) => {
         let nextAditivo = 0
 
         if (latestTermo) {
+          const latestLinkedItems = await listCredenciamentoTermoItemsByNormalizedTermoAdesao(client, validationResult.payload.termoAdesao)
+          await insertTermoHistoricoEntries(client, latestLinkedItems, {
+            acao: 'ADITIVO_SUBSTITUICAO',
+            realizadoPor: performedBy,
+          })
+
           nextAditivo = Number.isInteger(Number(latestTermo.aditivo))
             ? Number(latestTermo.aditivo) + 1
             : 1
@@ -19293,10 +20454,17 @@ const server = createServer(async (request, response) => {
             client,
             createPayload.termoAdesao,
             createPayload.dataRescisao,
+            {
+              acao: 'ALTERACAO_TERMO',
+              realizadoPor: performedBy,
+            },
           )
         }
 
-        await syncCredenciamentoTermoValoresByTermos([createPayload.termoAdesao], client)
+        await syncCredenciamentoTermoValoresByTermos([createPayload.termoAdesao], client, {
+          acao: 'RECALCULO_TERMO',
+          realizadoPor: performedBy,
+        })
 
         await client.query('COMMIT')
 
@@ -19319,7 +20487,9 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === credenciamentoTermoImportXmlPath) {
     try {
       const body = await readJsonBody(request)
-      const result = await importCredenciamentoTermoXmlFile(body.fileName)
+      const result = await importCredenciamentoTermoXmlFile(body.fileName, {
+        realizadoPor: resolveRequestActor(request, 'IMPORTACAO_XML'),
+      })
 
       sendJson(response, 200, {
         message: 'Importacao de credenciamento termo concluida com sucesso.',
@@ -19784,6 +20954,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === ordemServicoCollectionPath) {
     try {
       const body = await readJsonBody(request)
+      const performedBy = resolveRequestActor(request, 'USUARIO')
       const substitutionSourceCodigo = normalizeCondutorCodigo(body.substitutionSourceCodigo)
       const activationSourceCodigo = normalizeCondutorCodigo(body.activationSourceCodigo)
       const shouldSkipVigenciaValidation = (Number.isInteger(substitutionSourceCodigo) && substitutionSourceCodigo > 0)
@@ -19929,6 +21100,12 @@ const server = createServer(async (request, response) => {
               : null)
 
           if (replacedCodigo !== null) {
+            const replacedItem = await fetchOrdemServicoItemByCodigo(client, replacedCodigo)
+            await insertOrdemServicoHistoricoEntry(client, replacedItem, {
+              acao: 'SUBSTITUICAO',
+              realizadoPor: performedBy,
+            })
+
             await client.query(
               `UPDATE ${ordemServicoTableName}
                SET data_encerramento = (CURRENT_DATE - INTERVAL '1 day')::date,
@@ -19957,6 +21134,12 @@ const server = createServer(async (request, response) => {
           }
 
           if (previousCodigo !== null && !Number.isNaN(Number(previousCodigo))) {
+            const previousItem = await fetchOrdemServicoItemByCodigo(client, Number(previousCodigo))
+            await insertOrdemServicoHistoricoEntry(client, previousItem, {
+              acao: 'SUBSTITUICAO',
+              realizadoPor: performedBy,
+            })
+
             await client.query(
               `UPDATE ${ordemServicoTableName}
                SET data_encerramento = (CURRENT_DATE - INTERVAL '1 day')::date,
@@ -19968,7 +21151,11 @@ const server = createServer(async (request, response) => {
           }
         }
 
-        await rebalanceOrdemServicoRevisions(client)
+        await rebalanceOrdemServicoRevisions(client, {
+          captureHistory: true,
+          acao: 'REBALANCEAMENTO_REVISAO',
+          realizadoPor: performedBy,
+        })
         await syncCondutorVinculosFromOrdemServico(client)
         await syncMonitorVinculosFromOrdemServico(client)
         await syncCredenciamentoTermoValoresByTermos([validationResult.payload.termoAdesao], client)
@@ -19994,7 +21181,9 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === ordemServicoImportXmlPath) {
     try {
       const body = await readJsonBody(request)
-      const result = await importOrdemServicoXmlFile(body.fileName)
+      const result = await importOrdemServicoXmlFile(body.fileName, {
+        realizadoPor: resolveRequestActor(request, 'IMPORTACAO_XML'),
+      })
 
       sendJson(response, 200, {
         message: 'Importacao de OrdemServico concluida com sucesso.',
@@ -20907,7 +22096,8 @@ const server = createServer(async (request, response) => {
           [modalidadeTipoBancadaCodigo, condicao, qtdeCondicao, data, codigo],
         )
 
-        await recalculateSpecialVehicleValues(client)
+        const recalculatedVehicles = await recalculateSpecialVehicleValues(client)
+        await syncCredenciamentoTermoValoresByRecalculatedVehicles(recalculatedVehicles, client)
         const item = await findParametroVeiculoByCodigo(codigo, client)
         await client.query('COMMIT')
 
@@ -21311,10 +22501,14 @@ const server = createServer(async (request, response) => {
         }
 
         const updatedItem = await updateVeiculoByCodigo(client, originalCodigo, validationResult.payload)
-        await syncCredenciamentoTermoValoresByVehicleCrms([existingItem.crm, updatedItem?.crm], client)
-        await recalculateSpecialVehicleValues(client, {
+        const recalculatedVehicles = await recalculateSpecialVehicleValues(client, {
           codigos: [originalCodigo],
         })
+        await syncCredenciamentoTermoValoresByRecalculatedVehicles(
+          recalculatedVehicles,
+          client,
+          [existingItem.crm, updatedItem?.crm],
+        )
         const refreshedItem = await findVeiculoByCodigo(client, originalCodigo)
         await client.query('COMMIT')
 
@@ -21339,6 +22533,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'PUT' && getCredenciamentoTermoCodigoFromUrl(pathname)) {
     try {
       const originalCodigo = Number(getCredenciamentoTermoCodigoFromUrl(pathname))
+      const performedBy = resolveRequestActor(request, 'USUARIO')
 
       if (!Number.isInteger(originalCodigo) || originalCodigo <= 0) {
         sendJson(response, 400, { message: 'Codigo invalido para alteracao.' })
@@ -21374,6 +22569,11 @@ const server = createServer(async (request, response) => {
           sendJson(response, 404, { message: 'Credenciamento termo nao encontrado.' })
           return
         }
+
+        await insertTermoHistoricoEntry(client, existingItem, {
+          acao: 'ALTERACAO_MANUAL',
+          realizadoPor: performedBy,
+        })
 
         const nextDataPublicacao = normalizeRequestValue(validationResult.payload.dataPublicacao)
         const currentDataPublicacao = normalizeRequestValue(existingItem.data_publicacao)
@@ -21453,6 +22653,10 @@ const server = createServer(async (request, response) => {
             client,
             validationResult.payload.termoAdesao,
             validationResult.payload.dataRescisao,
+            {
+              acao: 'ALTERACAO_TERMO',
+              realizadoPor: performedBy,
+            },
           )
         }
 
@@ -21465,7 +22669,10 @@ const server = createServer(async (request, response) => {
         await syncCredenciamentoTermoValoresByTermos([
           existingItem.termo_adesao,
           validationResult.payload.termoAdesao,
-        ], client)
+        ], client, {
+          acao: 'RECALCULO_TERMO',
+          realizadoPor: performedBy,
+        })
 
         await client.query('COMMIT')
 
@@ -21488,6 +22695,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'PATCH' && getCredenciamentoTermoDataAssinaturaCodigoFromUrl(pathname)) {
     try {
       const codigo = Number(getCredenciamentoTermoDataAssinaturaCodigoFromUrl(pathname))
+      const performedBy = resolveRequestActor(request, 'USUARIO')
 
       if (!Number.isInteger(codigo) || codigo <= 0) {
         sendJson(response, 400, { message: 'Codigo invalido.' })
@@ -21507,21 +22715,40 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const updateResult = await pool.query(
-        `UPDATE ${credenciamentoTermoTableName}
-         SET data_assinatura = $2::date,
-             data_modificacao = NOW()
-         WHERE codigo = $1
-         RETURNING ${credenciamentoTermoSelectClause}`,
-        [codigo, dataAssinatura],
-      )
+      const client = await pool.connect()
 
-      if (updateResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Credenciamento termo nao encontrado.' })
-        return
+      try {
+        await client.query('BEGIN')
+        const existingItem = await fetchCredenciamentoTermoItemByCodigo(client, codigo)
+
+        if (!existingItem) {
+          await client.query('ROLLBACK')
+          sendJson(response, 404, { message: 'Credenciamento termo nao encontrado.' })
+          return
+        }
+
+        await insertTermoHistoricoEntry(client, existingItem, {
+          acao: 'ALTERACAO_DATA_ASSINATURA',
+          realizadoPor: performedBy,
+        })
+
+        const updateResult = await client.query(
+          `UPDATE ${credenciamentoTermoTableName}
+           SET data_assinatura = $2::date,
+               data_modificacao = NOW()
+           WHERE codigo = $1
+           RETURNING ${credenciamentoTermoSelectClause}`,
+          [codigo, dataAssinatura],
+        )
+
+        await client.query('COMMIT')
+        sendJson(response, 200, { item: updateResult.rows[0] })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
       }
-
-      sendJson(response, 200, { item: updateResult.rows[0] })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao atualizar data de assinatura.'
       sendJson(response, 500, { message })
@@ -21829,6 +23056,7 @@ const server = createServer(async (request, response) => {
     try {
       const originalCodigo = Number(getOrdemServicoCodigoFromUrl(pathname))
       const body = await readJsonBody(request)
+      const performedBy = resolveRequestActor(request, 'USUARIO')
 
       if (!Number.isInteger(originalCodigo) || originalCodigo <= 0) {
         sendJson(response, 400, { message: 'Codigo original invalido.' })
@@ -21924,6 +23152,12 @@ const server = createServer(async (request, response) => {
       try {
         await client.query('BEGIN')
 
+        const currentItem = await fetchOrdemServicoItemByCodigo(client, originalCodigo)
+        await insertOrdemServicoHistoricoEntry(client, currentItem, {
+          acao: 'ALTERACAO_MANUAL',
+          realizadoPor: performedBy,
+        })
+
         const updateResult = await client.query(
           `UPDATE ${ordemServicoTableName}
            SET codigo = $1,
@@ -22002,7 +23236,11 @@ const server = createServer(async (request, response) => {
           return
         }
 
-        await rebalanceOrdemServicoRevisions(client)
+        await rebalanceOrdemServicoRevisions(client, {
+          captureHistory: true,
+          acao: 'REBALANCEAMENTO_REVISAO',
+          realizadoPor: performedBy,
+        })
         await syncCondutorVinculosFromOrdemServico(client)
         await syncMonitorVinculosFromOrdemServico(client)
         await syncCredenciamentoTermoValoresByTermos([
@@ -22284,7 +23522,8 @@ const server = createServer(async (request, response) => {
           return
         }
 
-        await recalculateSpecialVehicleValues(client)
+        const recalculatedVehicles = await recalculateSpecialVehicleValues(client)
+        await syncCredenciamentoTermoValoresByRecalculatedVehicles(recalculatedVehicles, client)
         await client.query('COMMIT')
 
         sendJson(response, 200, {
@@ -22398,7 +23637,8 @@ const server = createServer(async (request, response) => {
           return
         }
 
-        await recalculateSpecialVehicleValues(client)
+        const recalculatedVehicles = await recalculateSpecialVehicleValues(client)
+        await syncCredenciamentoTermoValoresByRecalculatedVehicles(recalculatedVehicles, client)
         await client.query('COMMIT')
 
         sendJson(response, 200, {
@@ -22734,25 +23974,45 @@ const server = createServer(async (request, response) => {
   if (request.method === 'DELETE' && getCredenciamentoTermoCodigoFromUrl(pathname)) {
     try {
       const codigo = Number(getCredenciamentoTermoCodigoFromUrl(pathname))
+      const performedBy = resolveRequestActor(request, 'USUARIO')
 
       if (!Number.isInteger(codigo) || codigo <= 0) {
         sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
         return
       }
 
-      const deleteResult = await pool.query(
-        `DELETE FROM ${credenciamentoTermoTableName}
-         WHERE codigo = $1
-         RETURNING codigo::text AS codigo`,
-        [codigo],
-      )
+      const client = await pool.connect()
 
-      if (deleteResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Credenciamento termo nao encontrado.' })
-        return
+      try {
+        await client.query('BEGIN')
+        const existingItem = await fetchCredenciamentoTermoItemByCodigo(client, codigo)
+
+        if (!existingItem) {
+          await client.query('ROLLBACK')
+          sendJson(response, 404, { message: 'Credenciamento termo nao encontrado.' })
+          return
+        }
+
+        await insertTermoHistoricoEntry(client, existingItem, {
+          acao: 'EXCLUSAO',
+          realizadoPor: performedBy,
+        })
+
+        const deleteResult = await client.query(
+          `DELETE FROM ${credenciamentoTermoTableName}
+           WHERE codigo = $1
+           RETURNING codigo::text AS codigo`,
+          [codigo],
+        )
+
+        await client.query('COMMIT')
+        sendJson(response, 200, { deletedCodigo: deleteResult.rows[0].codigo })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
       }
-
-      sendJson(response, 200, { deletedCodigo: deleteResult.rows[0].codigo })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao excluir credenciamento termo.'
       sendJson(response, 500, { message })
@@ -22938,6 +24198,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'PATCH' && getOrdemServicoCodigoFromUrl(pathname)) {
     try {
       const codigo = Number(getOrdemServicoCodigoFromUrl(pathname))
+      const performedBy = resolveRequestActor(request, 'USUARIO')
 
       if (!Number.isInteger(codigo) || codigo <= 0) {
         sendJson(response, 400, { message: 'Codigo invalido.' })
@@ -22967,6 +24228,19 @@ const server = createServer(async (request, response) => {
 
       try {
         await client.query('BEGIN')
+
+        const existingItem = await fetchOrdemServicoItemByCodigo(client, codigo)
+
+        if (!existingItem) {
+          await client.query('ROLLBACK')
+          sendJson(response, 404, { message: 'OrdemServico nao encontrada.' })
+          return
+        }
+
+        await insertOrdemServicoHistoricoEntry(client, existingItem, {
+          acao: 'ALTERACAO_SITUACAO',
+          realizadoPor: performedBy,
+        })
 
         const updateResult = await client.query(
           `UPDATE ${ordemServicoTableName}
@@ -23006,6 +24280,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'PATCH' && getOrdemServicoDataEolCodigoFromUrl(pathname)) {
     try {
       const codigo = Number(getOrdemServicoDataEolCodigoFromUrl(pathname))
+      const performedBy = resolveRequestActor(request, 'USUARIO')
 
       if (!Number.isInteger(codigo) || codigo <= 0) {
         sendJson(response, 400, { message: 'Codigo invalido.' })
@@ -23025,21 +24300,40 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const updateResult = await pool.query(
-        `UPDATE ${ordemServicoTableName}
-         SET data_eol = $2::date,
-             data_modificacao = NOW()
-         WHERE codigo = $1
-         RETURNING ${ordemServicoSelectClause}`,
-        [codigo, dataEol],
-      )
+      const client = await pool.connect()
 
-      if (updateResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'OrdemServico nao encontrada.' })
-        return
+      try {
+        await client.query('BEGIN')
+        const existingItem = await fetchOrdemServicoItemByCodigo(client, codigo)
+
+        if (!existingItem) {
+          await client.query('ROLLBACK')
+          sendJson(response, 404, { message: 'OrdemServico nao encontrada.' })
+          return
+        }
+
+        await insertOrdemServicoHistoricoEntry(client, existingItem, {
+          acao: 'ALTERACAO_DATA_EOL',
+          realizadoPor: performedBy,
+        })
+
+        const updateResult = await client.query(
+          `UPDATE ${ordemServicoTableName}
+           SET data_eol = $2::date,
+               data_modificacao = NOW()
+           WHERE codigo = $1
+           RETURNING ${ordemServicoSelectClause}`,
+          [codigo, dataEol],
+        )
+
+        await client.query('COMMIT')
+        sendJson(response, 200, { item: updateResult.rows[0] })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
       }
-
-      sendJson(response, 200, { item: updateResult.rows[0] })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao atualizar data EOL.'
       sendJson(response, 500, { message })
@@ -23051,6 +24345,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'DELETE' && getOrdemServicoCodigoFromUrl(pathname)) {
     try {
       const codigo = Number(getOrdemServicoCodigoFromUrl(pathname))
+      const performedBy = resolveRequestActor(request, 'USUARIO')
 
       if (!Number.isInteger(codigo) || codigo <= 0) {
         sendJson(response, 400, { message: 'Codigo invalido.' })
@@ -23076,6 +24371,12 @@ const server = createServer(async (request, response) => {
           return
         }
 
+        const existingItem = await fetchOrdemServicoItemByCodigo(client, codigo)
+        await insertOrdemServicoHistoricoEntry(client, existingItem, {
+          acao: 'EXCLUSAO',
+          realizadoPor: performedBy,
+        })
+
         const deleteResult = await client.query(
           `DELETE FROM ${ordemServicoTableName}
            WHERE codigo = $1
@@ -23090,7 +24391,11 @@ const server = createServer(async (request, response) => {
           return
         }
 
-        await rebalanceOrdemServicoRevisions(client)
+        await rebalanceOrdemServicoRevisions(client, {
+          captureHistory: true,
+          acao: 'REBALANCEAMENTO_REVISAO',
+          realizadoPor: performedBy,
+        })
         await syncCondutorVinculosFromOrdemServico(client)
         await syncMonitorVinculosFromOrdemServico(client)
         await syncCredenciamentoTermoValoresByTermos([

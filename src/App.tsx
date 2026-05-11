@@ -119,7 +119,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -128,7 +128,7 @@ type TitularSortField = 'codigo' | 'cnpj_cpf' | 'titular'
 type MarcaModeloSortField = 'codigo' | 'descricao'
 type SeguradoraSortField = 'codigo' | 'controle' | 'descricao'
 type FormMode = 'create' | 'edit' | 'view'
-type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'condutor' | 'monitor' | 'veiculo' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
+type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'condutor' | 'monitor' | 'veiculo' | 'operacionalFinanceiro' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
 
 type DashboardDrillDownContext = {
   dreCodigo: string
@@ -204,6 +204,7 @@ const getDefaultCollapsedMenuGroups = (): Record<CollapsedMenuGroup, boolean> =>
   condutor: true,
   monitor: true,
   veiculo: true,
+  operacionalFinanceiro: true,
   acesso: true,
   cadastrosOperacional: true,
   cadastrosFinanceiro: true,
@@ -214,6 +215,7 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'titular':
     case 'credenciada':
     case 'credenciamentoTermo':
+    case 'ordemServicoHistorico':
     case 'ordemServico':
       return ['operacional']
     case 'condutor':
@@ -225,6 +227,9 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'veiculo':
     case 'veiculoHistorico':
       return ['operacional', 'veiculo']
+    case 'termoHistorico':
+    case 'financeiroReprocessamento':
+      return ['operacional', 'operacionalFinanceiro']
     case 'dre':
     case 'modalidade':
     case 'tipoBancada':
@@ -5289,6 +5294,12 @@ function App() {
                 >
                   OrdemServico
                 </li>
+                <li
+                  className={`menu-subitem ${activeView === 'ordemServicoHistorico' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('ordemServicoHistorico')}
+                >
+                  Historico OrdemServico
+                </li>
                 <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'veiculo' ? 'menu-subitem-active' : ''}`}
@@ -5320,6 +5331,38 @@ function App() {
                       onClick={() => setActiveView('veiculoHistorico')}
                     >
                       Historico Veiculo
+                    </li>
+                  </ul>
+                </li>
+                <li className="menu-group menu-subgroup">
+                  <div
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'financeiroReprocessamento' || activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
+                    onClick={() => toggleMenuGroup('operacionalFinanceiro')}
+                    role="button"
+                    aria-expanded={!collapsedMenuGroups.operacionalFinanceiro}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toggleMenuGroup('operacionalFinanceiro')
+                      }
+                    }}
+                  >
+                    <span className="menu-subitem-label">Financeiro</span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.operacionalFinanceiro ? '▸' : '▾'}</span>
+                  </div>
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.operacionalFinanceiro ? 'menu-sublist-hidden' : ''}`}>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('financeiroReprocessamento')}
+                    >
+                      Reprocessar Valores
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('termoHistorico')}
+                    >
+                      Historico Termo
                     </li>
                   </ul>
                 </li>
@@ -9545,6 +9588,60 @@ function App() {
                 className="access-embed-frame"
                 src="/src/veiculoHistorico.html"
                 title="Historico de veiculo"
+              />
+            </div>
+          </>
+        ) : activeView === 'termoHistorico' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Consulta operacional</p>
+              <h2 id="content-title">Historico de Termo</h2>
+              <p className="content-description">
+                Consulte todas as alteracoes gravadas antes de cada ajuste no termo, inclusive mudancas de contrato, importacao, exclusao e edicao manual.
+              </p>
+            </div>
+
+            <div className="access-embed-card">
+              <iframe
+                className="access-embed-frame"
+                src="/src/termoHistorico.html"
+                title="Historico de termo"
+              />
+            </div>
+          </>
+        ) : activeView === 'ordemServicoHistorico' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Consulta operacional</p>
+              <h2 id="content-title">Historico de OrdemServico</h2>
+              <p className="content-description">
+                Consulte todas as alteracoes gravadas antes de cada ajuste da OrdemServico, incluindo importacao, substituicao, cancelamento, exclusao e reequilibrio de revisoes.
+              </p>
+            </div>
+
+            <div className="access-embed-card">
+              <iframe
+                className="access-embed-frame"
+                src="/src/ordemServicoHistorico.html"
+                title="Historico de OrdemServico"
+              />
+            </div>
+          </>
+        ) : activeView === 'financeiroReprocessamento' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Operacional financeiro</p>
+              <h2 id="content-title">Reprocessamento Financeiro</h2>
+              <p className="content-description">
+                Recalcule todos os valores dos veiculos e atualize os respectivos contratos dos termos a partir do menu operacional, com previa e confirmacao antes da execucao.
+              </p>
+            </div>
+
+            <div className="access-embed-card">
+              <iframe
+                className="access-embed-frame"
+                src="/src/financeiroReprocessamento.html"
+                title="Reprocessamento financeiro"
               />
             </div>
           </>

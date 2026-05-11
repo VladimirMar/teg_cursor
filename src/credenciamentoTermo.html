@@ -4460,6 +4460,25 @@
         return `/api/termo?${params.toString()}`;
       };
 
+      const buildTermoHistoricoUrl = (item) => {
+        const params = new URLSearchParams({
+          page: '1',
+          pageSize: '20',
+          sortBy: 'data_evento',
+          sortDirection: 'desc',
+        });
+
+        if (item?.codigo) {
+          params.set('termoCodigo', String(item.codigo));
+        }
+
+        if (item?.termo_adesao) {
+          params.set('termoAdesao', normalizeTermoAdesao(String(item.termo_adesao || '')));
+        }
+
+        return `/src/termoHistorico.html?${params.toString()}`;
+      };
+
       const syncSortIndicators = () => {
         sortIndicator.textContent = currentSortBy === 'termo_adesao'
           ? (currentSortDirection === 'desc' ? '↓' : '↑')
@@ -4490,6 +4509,7 @@
             <td>
               <div class="dsc-grid-actions">
                 <button type="button" class="dsc-grid-action-button" data-action="linked-aditivos" data-codigo="${item.codigo}">Aditivos</button>
+                <button type="button" class="dsc-grid-action-button" data-action="history" data-codigo="${item.codigo}">Historico</button>
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}">Consulta</button>
                 <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Corrigir</button>
                 <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}">Excluir</button>
@@ -5860,6 +5880,23 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
             return;
           }
           await showLinkedAditivos(item);
+          return;
+        }
+
+        if (action === 'history') {
+          if (!item) {
+            return;
+          }
+
+          const historyWindow = window.open(
+            buildTermoHistoricoUrl(item),
+            'termo-historico',
+            'width=1420,height=900,resizable=yes,scrollbars=yes'
+          );
+
+          if (!historyWindow) {
+            window.location.href = buildTermoHistoricoUrl(item);
+          }
           return;
         }
 

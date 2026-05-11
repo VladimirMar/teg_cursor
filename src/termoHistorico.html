@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Historico de termo</title>
+
+    <link rel="stylesheet" href="css/login.css" />
+    <style>
+      .dsc-history-summary {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+
+      .dsc-history-chip {
+        border: 1px solid #d7dce5;
+        border-radius: 999px;
+        padding: 8px 14px;
+        background: #fff;
+        font-size: 0.95rem;
+      }
+
+      .dsc-history-pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .dsc-history-pagination-actions {
+        display: flex;
+        gap: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
+    <main class="dsc-access-page">
+      <section class="dsc-container">
+        <div class="dsc-access-layout">
+          <div class="dsc-access-management-layout">
+            <div class="dsc-access-toolbar">
+              <form class="dsc-access-filter-form" id="termo-historico-filter-form">
+                <input class="dsc-form-control dsc-access-filter-input" id="termo-historico-search" type="text" placeholder="Filtrar por codigo, termo, credenciado, status, acao, usuario ou SEI" />
+                <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
+                <button type="button" class="dsc-btn dsc-btn-white" id="clear-termo-historico-filter-button">Limpar</button>
+              </form>
+            </div>
+
+            <div class="dsc-popup-overlay dsc-hidden" id="termo-historico-form-modal" aria-hidden="true">
+              <div class="dsc-popup-shell dsc-popup-shell-ordem-servico" role="dialog" aria-modal="true" aria-labelledby="termo-historico-form-title">
+                <form class="dsc-card dsc-form dsc-access-form dsc-hidden" id="termo-historico-form">
+                  <div class="dsc-popup-header dsc-popup-header-sticky">
+                    <h2 id="termo-historico-form-title">HISTORICO DE TERMO</h2>
+                    <button type="button" class="dsc-btn dsc-btn-white dsc-popup-compact-close-button" id="close-termo-historico-form-modal-button" aria-label="Fechar formulario de historico de termo">X</button>
+                  </div>
+
+                  <section class="dsc-form-section-card">
+                    <h3 class="dsc-form-section-title">Auditoria</h3>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>ID historico</span><input class="dsc-form-control" id="termo-historico-id" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Codigo termo</span><input class="dsc-form-control" id="termo-historico-termo-codigo" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Acao</span><input class="dsc-form-control" id="termo-historico-acao" type="text" readonly /></label>
+                    </div>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Realizado por</span><input class="dsc-form-control" id="termo-historico-realizado-por" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Data do evento</span><input class="dsc-form-control" id="termo-historico-data-evento" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Inclusao original</span><input class="dsc-form-control" id="termo-historico-data-inclusao-original" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Modificacao original</span><input class="dsc-form-control" id="termo-historico-data-modificacao-original" type="text" readonly /></label>
+                    </div>
+                  </section>
+
+                  <section class="dsc-form-section-card">
+                    <h3 class="dsc-form-section-title">Identificacao</h3>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Termo adesao</span><input class="dsc-form-control" id="termo-historico-termo-adesao" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>SEI</span><input class="dsc-form-control" id="termo-historico-sei" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Aditivo</span><input class="dsc-form-control" id="termo-historico-aditivo" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Status termo</span><input class="dsc-form-control" id="termo-historico-status-termo" type="text" readonly /></label>
+                    </div>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Credenciado</span><input class="dsc-form-control" id="termo-historico-credenciado" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Empresa</span><input class="dsc-form-control" id="termo-historico-empresa" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>CNPJ/CPF</span><input class="dsc-form-control" id="termo-historico-cnpj-cpf" type="text" readonly /></label>
+                    </div>
+                  </section>
+
+                  <section class="dsc-form-section-card">
+                    <h3 class="dsc-form-section-title">Vigencia e contrato</h3>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Inicio vigencia</span><input class="dsc-form-control" id="termo-historico-inicio-vigencia" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Termino vigencia</span><input class="dsc-form-control" id="termo-historico-termino-vigencia" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Data assinatura</span><input class="dsc-form-control" id="termo-historico-data-assinatura" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Data publicacao</span><input class="dsc-form-control" id="termo-historico-data-publicacao" type="text" readonly /></label>
+                    </div>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Valor contrato</span><input class="dsc-form-control" id="termo-historico-valor-contrato" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Valor contrato atualizado</span><input class="dsc-form-control" id="termo-historico-valor-contrato-atualizado" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Tipo termo</span><input class="dsc-form-control" id="termo-historico-tipo-termo" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Mes renovacao</span><input class="dsc-form-control" id="termo-historico-mes-renovacao" type="text" readonly /></label>
+                    </div>
+                  </section>
+
+                  <div class="dsc-login-form-buttons dsc-mt20 dsc-access-form-buttons">
+                    <button type="button" class="dsc-btn dsc-btn-white" id="cancel-termo-historico-button">Fechar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="dsc-card dsc-access-grid-card">
+              <div class="dsc-access-grid-header" style="align-items: flex-start; justify-content: space-between; flex-direction: row;">
+                <div class="dsc-access-grid-header-copy">
+                  <h2>Historico de termos</h2>
+                  <span id="termo-historico-total"></span>
+                </div>
+                <div class="dsc-grid-page-size-field" style="flex-direction: column; align-items: flex-end; justify-content: flex-start; margin-left: auto;">
+                  <span class="dsc-grid-page-size-label">Registros no grid</span>
+                  <select class="dsc-form-control" id="termo-historico-page-size" style="padding: 0; min-height: 38px; border-radius: 14px;">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="dsc-history-summary" id="termo-historico-summary"></div>
+
+              <div class="dsc-access-grid-wrapper">
+                <table class="dsc-access-grid">
+                  <thead>
+                    <tr>
+                      <th>Codigo</th>
+                      <th>Termo</th>
+                      <th>Credenciado</th>
+                      <th>Aditivo</th>
+                      <th>Status termo</th>
+                      <th>Data evento</th>
+                      <th>Acao</th>
+                      <th>Usuario</th>
+                      <th>Valor contrato</th>
+                      <th>Valor atualizado</th>
+                      <th class="dsc-grid-actions-column">Consulta</th>
+                    </tr>
+                  </thead>
+                  <tbody id="termo-historico-grid-body"></tbody>
+                </table>
+
+                <p class="dsc-empty-state dsc-hidden" id="termo-historico-empty-state">Nenhum historico de termo encontrado.</p>
+              </div>
+
+              <p class="dsc-feedback" id="termo-historico-grid-feedback"></p>
+
+              <div class="dsc-history-pagination">
+                <span id="termo-historico-page-label">Pagina 1</span>
+                <div class="dsc-history-pagination-actions">
+                  <button type="button" class="dsc-btn dsc-btn-white" id="termo-historico-prev-page-button">Pagina anterior</button>
+                  <button type="button" class="dsc-btn dsc-btn-white" id="termo-historico-next-page-button">Proxima pagina</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const statusBanner = document.getElementById('status-banner');
+      const filterForm = document.getElementById('termo-historico-filter-form');
+      const searchInput = document.getElementById('termo-historico-search');
+      const clearFilterButton = document.getElementById('clear-termo-historico-filter-button');
+      const pageSizeSelect = document.getElementById('termo-historico-page-size');
+      const totalLabel = document.getElementById('termo-historico-total');
+      const summary = document.getElementById('termo-historico-summary');
+      const gridBody = document.getElementById('termo-historico-grid-body');
+      const emptyState = document.getElementById('termo-historico-empty-state');
+      const gridFeedback = document.getElementById('termo-historico-grid-feedback');
+      const pageLabel = document.getElementById('termo-historico-page-label');
+      const prevPageButton = document.getElementById('termo-historico-prev-page-button');
+      const nextPageButton = document.getElementById('termo-historico-next-page-button');
+      const modal = document.getElementById('termo-historico-form-modal');
+      const form = document.getElementById('termo-historico-form');
+      const closeModalButton = document.getElementById('close-termo-historico-form-modal-button');
+      const cancelButton = document.getElementById('cancel-termo-historico-button');
+
+      const initialParams = new URLSearchParams(window.location.search);
+      let currentPage = Math.max(Number(initialParams.get('page') || '1') || 1, 1);
+      let currentPageSize = Math.max(Number(initialParams.get('pageSize') || '20') || 20, 1);
+      let currentSearch = String(initialParams.get('search') || '').trim();
+      let currentTermoCodigo = String(initialParams.get('termoCodigo') || '').trim();
+      let currentTermoAdesao = String(initialParams.get('termoAdesao') || '').trim();
+      let currentTotalPages = 1;
+
+      const fieldMap = {
+        id: document.getElementById('termo-historico-id'),
+        termo_codigo: document.getElementById('termo-historico-termo-codigo'),
+        acao: document.getElementById('termo-historico-acao'),
+        realizado_por: document.getElementById('termo-historico-realizado-por'),
+        data_evento: document.getElementById('termo-historico-data-evento'),
+        data_inclusao_original: document.getElementById('termo-historico-data-inclusao-original'),
+        data_modificacao_original: document.getElementById('termo-historico-data-modificacao-original'),
+        termo_adesao: document.getElementById('termo-historico-termo-adesao'),
+        sei: document.getElementById('termo-historico-sei'),
+        aditivo: document.getElementById('termo-historico-aditivo'),
+        status_termo: document.getElementById('termo-historico-status-termo'),
+        credenciado: document.getElementById('termo-historico-credenciado'),
+        empresa: document.getElementById('termo-historico-empresa'),
+        cnpj_cpf: document.getElementById('termo-historico-cnpj-cpf'),
+        inicio_vigencia: document.getElementById('termo-historico-inicio-vigencia'),
+        termino_vigencia: document.getElementById('termo-historico-termino-vigencia'),
+        data_assinatura: document.getElementById('termo-historico-data-assinatura'),
+        data_publicacao: document.getElementById('termo-historico-data-publicacao'),
+        valor_contrato: document.getElementById('termo-historico-valor-contrato'),
+        valor_contrato_atualizado: document.getElementById('termo-historico-valor-contrato-atualizado'),
+        tipo_termo: document.getElementById('termo-historico-tipo-termo'),
+        mes_renovacao: document.getElementById('termo-historico-mes-renovacao'),
+      };
+
+      const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      });
+
+      const showBanner = (message, type = 'success') => {
+        if (!message) {
+          statusBanner.textContent = '';
+          statusBanner.className = 'dsc-status-banner dsc-hidden';
+          return;
+        }
+
+        statusBanner.textContent = message;
+        statusBanner.className = `dsc-status-banner ${type === 'error' ? 'dsc-status-banner-error' : ''}`.trim();
+      };
+
+      const formatCurrency = (value) => {
+        const parsedValue = Number.parseFloat(String(value || '0').replace(',', '.'));
+        return Number.isFinite(parsedValue) ? currencyFormatter.format(parsedValue) : '';
+      };
+
+      const formatText = (value) => String(value || '').trim();
+
+      const buildUrl = () => {
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          pageSize: String(currentPageSize),
+          sortBy: 'data_evento',
+          sortDirection: 'desc',
+        });
+
+        if (currentSearch) {
+          params.set('search', currentSearch);
+        }
+
+        if (currentTermoCodigo) {
+          params.set('termoCodigo', currentTermoCodigo);
+        }
+
+        if (currentTermoAdesao) {
+          params.set('termoAdesao', currentTermoAdesao);
+        }
+
+        return `/api/termo-historico?${params.toString()}`;
+      };
+
+      const syncSummary = () => {
+        const chips = [];
+
+        if (currentTermoCodigo) {
+          chips.push(`<span class="dsc-history-chip">Codigo termo: ${currentTermoCodigo}</span>`);
+        }
+
+        if (currentTermoAdesao) {
+          chips.push(`<span class="dsc-history-chip">Termo adesao: ${currentTermoAdesao}</span>`);
+        }
+
+        if (currentSearch) {
+          chips.push(`<span class="dsc-history-chip">Busca: ${currentSearch}</span>`);
+        }
+
+        summary.innerHTML = chips.join('');
+      };
+
+      const fillForm = (item) => {
+        Object.entries(fieldMap).forEach(([fieldName, input]) => {
+          if (!input) {
+            return;
+          }
+
+          if (fieldName === 'valor_contrato' || fieldName === 'valor_contrato_atualizado') {
+            input.value = formatCurrency(item?.[fieldName]);
+            return;
+          }
+
+          input.value = formatText(item?.[fieldName]);
+        });
+      };
+
+      const openModal = (item) => {
+        fillForm(item);
+        form.classList.remove('dsc-hidden');
+        modal.classList.remove('dsc-hidden');
+        modal.setAttribute('aria-hidden', 'false');
+      };
+
+      const closeModal = () => {
+        form.classList.add('dsc-hidden');
+        modal.classList.add('dsc-hidden');
+        modal.setAttribute('aria-hidden', 'true');
+      };
+
+      const renderGrid = (items) => {
+        gridBody.innerHTML = '';
+
+        if (!Array.isArray(items) || !items.length) {
+          emptyState.classList.remove('dsc-hidden');
+          return;
+        }
+
+        emptyState.classList.add('dsc-hidden');
+        items.forEach((item) => {
+          const row = document.createElement('tr');
+          row.dataset.item = JSON.stringify(item);
+          row.innerHTML = `
+            <td>${formatText(item.termo_codigo)}</td>
+            <td>${formatText(item.termo_adesao)}</td>
+            <td>${formatText(item.credenciado)}</td>
+            <td>${formatText(item.aditivo)}</td>
+            <td>${formatText(item.status_termo)}</td>
+            <td>${formatText(item.data_evento)}</td>
+            <td>${formatText(item.acao)}</td>
+            <td>${formatText(item.realizado_por)}</td>
+            <td>${formatCurrency(item.valor_contrato)}</td>
+            <td>${formatCurrency(item.valor_contrato_atualizado)}</td>
+            <td>
+              <button type="button" class="dsc-grid-action-button" data-action="view">Consulta</button>
+            </td>
+          `;
+          gridBody.appendChild(row);
+        });
+      };
+
+      const updatePagination = () => {
+        pageLabel.textContent = `Pagina ${currentPage} de ${currentTotalPages}`;
+        prevPageButton.disabled = currentPage <= 1;
+        nextPageButton.disabled = currentPage >= currentTotalPages;
+      };
+
+      const loadItems = async () => {
+        syncSummary();
+        gridFeedback.textContent = 'Carregando historico de termos...';
+        showBanner('');
+
+        try {
+          const response = await fetch(buildUrl(), {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+          });
+          const payload = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao carregar historico de termos.');
+          }
+
+          currentTotalPages = Math.max(Number(payload.totalPages || 1), 1);
+          totalLabel.textContent = `${Number(payload.total || 0)} registro(s) encontrado(s)`;
+          renderGrid(payload.items || []);
+          updatePagination();
+          gridFeedback.textContent = '';
+        } catch (error) {
+          renderGrid([]);
+          currentTotalPages = 1;
+          updatePagination();
+          gridFeedback.textContent = error instanceof Error ? error.message : 'Falha ao carregar historico de termos.';
+          showBanner(gridFeedback.textContent, 'error');
+        }
+      };
+
+      filterForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        currentSearch = formatText(searchInput.value);
+        currentPage = 1;
+        void loadItems();
+      });
+
+      clearFilterButton.addEventListener('click', () => {
+        currentSearch = '';
+        currentTermoCodigo = '';
+        currentTermoAdesao = '';
+        currentPage = 1;
+        searchInput.value = '';
+        void loadItems();
+      });
+
+      pageSizeSelect.addEventListener('change', () => {
+        currentPageSize = Math.max(Number(pageSizeSelect.value || '20') || 20, 1);
+        currentPage = 1;
+        void loadItems();
+      });
+
+      prevPageButton.addEventListener('click', () => {
+        if (currentPage <= 1) {
+          return;
+        }
+
+        currentPage -= 1;
+        void loadItems();
+      });
+
+      nextPageButton.addEventListener('click', () => {
+        if (currentPage >= currentTotalPages) {
+          return;
+        }
+
+        currentPage += 1;
+        void loadItems();
+      });
+
+      gridBody.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action="view"]');
+        if (!button) {
+          return;
+        }
+
+        const row = button.closest('tr');
+        const item = row?.dataset.item ? JSON.parse(row.dataset.item) : null;
+        if (!item) {
+          return;
+        }
+
+        openModal(item);
+      });
+
+      [closeModalButton, cancelButton].forEach((button) => {
+        button.addEventListener('click', closeModal);
+      });
+
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          closeModal();
+        }
+      });
+
+      searchInput.value = currentSearch;
+      pageSizeSelect.value = String(currentPageSize);
+      syncSummary();
+      void loadItems();
+    </script>
+  </body>
+</html>

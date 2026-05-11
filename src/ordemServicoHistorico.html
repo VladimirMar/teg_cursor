@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Historico de OrdemServico</title>
+
+    <link rel="stylesheet" href="css/login.css" />
+    <style>
+      .dsc-history-summary {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+
+      .dsc-history-chip {
+        border: 1px solid #d7dce5;
+        border-radius: 999px;
+        padding: 8px 14px;
+        background: #fff;
+        font-size: 0.95rem;
+      }
+
+      .dsc-history-pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .dsc-history-pagination-actions {
+        display: flex;
+        gap: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
+    <main class="dsc-access-page">
+      <section class="dsc-container">
+        <div class="dsc-access-layout">
+          <div class="dsc-access-management-layout">
+            <div class="dsc-access-toolbar">
+              <form class="dsc-access-filter-form" id="ordem-servico-historico-filter-form">
+                <input class="dsc-form-control dsc-access-filter-input" id="ordem-servico-historico-search" type="text" placeholder="Filtrar por OS, termo, credenciado, condutor, monitor, acao ou usuario" />
+                <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
+                <button type="button" class="dsc-btn dsc-btn-white" id="clear-ordem-servico-historico-filter-button">Limpar</button>
+              </form>
+            </div>
+
+            <div class="dsc-popup-overlay dsc-hidden" id="ordem-servico-historico-form-modal" aria-hidden="true">
+              <div class="dsc-popup-shell dsc-popup-shell-ordem-servico" role="dialog" aria-modal="true" aria-labelledby="ordem-servico-historico-form-title">
+                <form class="dsc-card dsc-form dsc-access-form dsc-hidden" id="ordem-servico-historico-form">
+                  <div class="dsc-popup-header dsc-popup-header-sticky">
+                    <h2 id="ordem-servico-historico-form-title">HISTORICO DE ORDEMSERVICO</h2>
+                    <button type="button" class="dsc-btn dsc-btn-white dsc-popup-compact-close-button" id="close-ordem-servico-historico-form-modal-button" aria-label="Fechar formulario de historico de OrdemServico">X</button>
+                  </div>
+
+                  <section class="dsc-form-section-card">
+                    <h3 class="dsc-form-section-title">Auditoria</h3>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>ID historico</span><input class="dsc-form-control" id="ordem-servico-historico-id" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Codigo OrdemServico</span><input class="dsc-form-control" id="ordem-servico-historico-codigo" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Acao</span><input class="dsc-form-control" id="ordem-servico-historico-acao" type="text" readonly /></label>
+                    </div>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Realizado por</span><input class="dsc-form-control" id="ordem-servico-historico-realizado-por" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Data do evento</span><input class="dsc-form-control" id="ordem-servico-historico-data-evento" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Inclusao original</span><input class="dsc-form-control" id="ordem-servico-historico-data-inclusao-original" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Modificacao original</span><input class="dsc-form-control" id="ordem-servico-historico-data-modificacao-original" type="text" readonly /></label>
+                    </div>
+                  </section>
+
+                  <section class="dsc-form-section-card">
+                    <h3 class="dsc-form-section-title">Identificacao</h3>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>OS concat</span><input class="dsc-form-control" id="ordem-servico-historico-os-concat" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Termo adesao</span><input class="dsc-form-control" id="ordem-servico-historico-termo-adesao" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Num OS</span><input class="dsc-form-control" id="ordem-servico-historico-num-os" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Revisao</span><input class="dsc-form-control" id="ordem-servico-historico-revisao" type="text" readonly /></label>
+                    </div>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Codigo ACCESS</span><input class="dsc-form-control" id="ordem-servico-historico-codigo-access" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Situacao</span><input class="dsc-form-control" id="ordem-servico-historico-situacao" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Conexao</span><input class="dsc-form-control" id="ordem-servico-historico-conexao" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Anotacao</span><input class="dsc-form-control" id="ordem-servico-historico-anotacao" type="text" readonly /></label>
+                    </div>
+                  </section>
+
+                  <section class="dsc-form-section-card">
+                    <h3 class="dsc-form-section-title">Relacionamentos</h3>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Credenciado</span><input class="dsc-form-control" id="ordem-servico-historico-credenciado" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>CNPJ/CPF</span><input class="dsc-form-control" id="ordem-servico-historico-cnpj-cpf" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>DRE</span><input class="dsc-form-control" id="ordem-servico-historico-dre-codigo" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Descricao DRE</span><input class="dsc-form-control" id="ordem-servico-historico-dre-descricao" type="text" readonly /></label>
+                    </div>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Modalidade</span><input class="dsc-form-control" id="ordem-servico-historico-modalidade-descricao" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Condutor</span><input class="dsc-form-control" id="ordem-servico-historico-condutor" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>CPF condutor</span><input class="dsc-form-control" id="ordem-servico-historico-cpf-condutor" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Monitor</span><input class="dsc-form-control" id="ordem-servico-historico-monitor" type="text" readonly /></label>
+                    </div>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>CPF monitor</span><input class="dsc-form-control" id="ordem-servico-historico-cpf-monitor" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Veiculo placas</span><input class="dsc-form-control" id="ordem-servico-historico-veiculo-placas" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>CRM</span><input class="dsc-form-control" id="ordem-servico-historico-crm" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Uniao termos</span><input class="dsc-form-control" id="ordem-servico-historico-uniao-termos" type="text" readonly /></label>
+                    </div>
+                  </section>
+
+                  <section class="dsc-form-section-card">
+                    <h3 class="dsc-form-section-title">Datas e apoio</h3>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Vigencia OS</span><input class="dsc-form-control" id="ordem-servico-historico-vigencia-os" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Data emissao</span><input class="dsc-form-control" id="ordem-servico-historico-data-emissao" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Data encerramento</span><input class="dsc-form-control" id="ordem-servico-historico-data-encerramento" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Data EOL</span><input class="dsc-form-control" id="ordem-servico-historico-data-eol" type="text" readonly /></label>
+                    </div>
+                    <div class="dsc-form-row">
+                      <label class="dsc-field-group"><span>Tipo troca</span><input class="dsc-form-control" id="ordem-servico-historico-tipo-troca-descricao" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Tipo bancada</span><input class="dsc-form-control" id="ordem-servico-historico-veiculo-tipo-de-bancada" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Veiculo OS especial</span><input class="dsc-form-control" id="ordem-servico-historico-veiculo-os-especial" type="text" readonly /></label>
+                      <label class="dsc-field-group"><span>Ano veiculo</span><input class="dsc-form-control" id="ordem-servico-historico-veiculo-ano" type="text" readonly /></label>
+                    </div>
+                  </section>
+
+                  <div class="dsc-login-form-buttons dsc-mt20 dsc-access-form-buttons">
+                    <button type="button" class="dsc-btn dsc-btn-white" id="cancel-ordem-servico-historico-button">Fechar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="dsc-card dsc-access-grid-card">
+              <div class="dsc-access-grid-header" style="align-items: flex-start; justify-content: space-between; flex-direction: row;">
+                <div class="dsc-access-grid-header-copy">
+                  <h2>Historico de OrdemServico</h2>
+                  <span id="ordem-servico-historico-total"></span>
+                </div>
+                <div class="dsc-grid-page-size-field" style="flex-direction: column; align-items: flex-end; justify-content: flex-start; margin-left: auto;">
+                  <span class="dsc-grid-page-size-label">Registros no grid</span>
+                  <select class="dsc-form-control" id="ordem-servico-historico-page-size" style="padding: 0; min-height: 38px; border-radius: 14px;">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="dsc-history-summary" id="ordem-servico-historico-summary"></div>
+
+              <div class="dsc-access-grid-wrapper">
+                <table class="dsc-access-grid">
+                  <thead>
+                    <tr>
+                      <th>OS concat</th>
+                      <th>Credenciado</th>
+                      <th>Condutor</th>
+                      <th>Monitor</th>
+                      <th>Veiculo placas</th>
+                      <th>Situacao</th>
+                      <th>Data evento</th>
+                      <th>Acao</th>
+                      <th>Usuario</th>
+                      <th class="dsc-grid-actions-column">Consulta</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ordem-servico-historico-grid-body"></tbody>
+                </table>
+
+                <p class="dsc-empty-state dsc-hidden" id="ordem-servico-historico-empty-state">Nenhum historico de OrdemServico encontrado.</p>
+              </div>
+
+              <p class="dsc-feedback" id="ordem-servico-historico-grid-feedback"></p>
+
+              <div class="dsc-history-pagination">
+                <span id="ordem-servico-historico-page-label">Pagina 1</span>
+                <div class="dsc-history-pagination-actions">
+                  <button type="button" class="dsc-btn dsc-btn-white" id="ordem-servico-historico-prev-page-button">Pagina anterior</button>
+                  <button type="button" class="dsc-btn dsc-btn-white" id="ordem-servico-historico-next-page-button">Proxima pagina</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const statusBanner = document.getElementById('status-banner');
+      const filterForm = document.getElementById('ordem-servico-historico-filter-form');
+      const searchInput = document.getElementById('ordem-servico-historico-search');
+      const clearFilterButton = document.getElementById('clear-ordem-servico-historico-filter-button');
+      const pageSizeSelect = document.getElementById('ordem-servico-historico-page-size');
+      const totalLabel = document.getElementById('ordem-servico-historico-total');
+      const summary = document.getElementById('ordem-servico-historico-summary');
+      const gridBody = document.getElementById('ordem-servico-historico-grid-body');
+      const emptyState = document.getElementById('ordem-servico-historico-empty-state');
+      const gridFeedback = document.getElementById('ordem-servico-historico-grid-feedback');
+      const pageLabel = document.getElementById('ordem-servico-historico-page-label');
+      const prevPageButton = document.getElementById('ordem-servico-historico-prev-page-button');
+      const nextPageButton = document.getElementById('ordem-servico-historico-next-page-button');
+      const modal = document.getElementById('ordem-servico-historico-form-modal');
+      const form = document.getElementById('ordem-servico-historico-form');
+      const closeModalButton = document.getElementById('close-ordem-servico-historico-form-modal-button');
+      const cancelButton = document.getElementById('cancel-ordem-servico-historico-button');
+
+      const initialParams = new URLSearchParams(window.location.search);
+      let currentPage = Math.max(Number(initialParams.get('page') || '1') || 1, 1);
+      let currentPageSize = Math.max(Number(initialParams.get('pageSize') || '20') || 20, 1);
+      let currentSearch = String(initialParams.get('search') || '').trim();
+      let currentOrdemServicoCodigo = String(initialParams.get('ordemServicoCodigo') || '').trim();
+      let currentTermoAdesao = String(initialParams.get('termoAdesao') || '').trim();
+      let currentTotalPages = 1;
+
+      const fieldMap = {
+        id: document.getElementById('ordem-servico-historico-id'),
+        ordem_servico_codigo: document.getElementById('ordem-servico-historico-codigo'),
+        acao: document.getElementById('ordem-servico-historico-acao'),
+        realizado_por: document.getElementById('ordem-servico-historico-realizado-por'),
+        data_evento: document.getElementById('ordem-servico-historico-data-evento'),
+        data_inclusao_original: document.getElementById('ordem-servico-historico-data-inclusao-original'),
+        data_modificacao_original: document.getElementById('ordem-servico-historico-data-modificacao-original'),
+        os_concat: document.getElementById('ordem-servico-historico-os-concat'),
+        termo_adesao: document.getElementById('ordem-servico-historico-termo-adesao'),
+        num_os: document.getElementById('ordem-servico-historico-num-os'),
+        revisao: document.getElementById('ordem-servico-historico-revisao'),
+        codigo_access: document.getElementById('ordem-servico-historico-codigo-access'),
+        situacao: document.getElementById('ordem-servico-historico-situacao'),
+        conexao: document.getElementById('ordem-servico-historico-conexao'),
+        anotacao: document.getElementById('ordem-servico-historico-anotacao'),
+        credenciado: document.getElementById('ordem-servico-historico-credenciado'),
+        cnpj_cpf: document.getElementById('ordem-servico-historico-cnpj-cpf'),
+        dre_codigo: document.getElementById('ordem-servico-historico-dre-codigo'),
+        dre_descricao: document.getElementById('ordem-servico-historico-dre-descricao'),
+        modalidade_descricao: document.getElementById('ordem-servico-historico-modalidade-descricao'),
+        condutor: document.getElementById('ordem-servico-historico-condutor'),
+        cpf_condutor: document.getElementById('ordem-servico-historico-cpf-condutor'),
+        monitor: document.getElementById('ordem-servico-historico-monitor'),
+        cpf_monitor: document.getElementById('ordem-servico-historico-cpf-monitor'),
+        veiculo_placas: document.getElementById('ordem-servico-historico-veiculo-placas'),
+        crm: document.getElementById('ordem-servico-historico-crm'),
+        uniao_termos: document.getElementById('ordem-servico-historico-uniao-termos'),
+        vigencia_os: document.getElementById('ordem-servico-historico-vigencia-os'),
+        data_emissao: document.getElementById('ordem-servico-historico-data-emissao'),
+        data_encerramento: document.getElementById('ordem-servico-historico-data-encerramento'),
+        data_eol: document.getElementById('ordem-servico-historico-data-eol'),
+        tipo_troca_descricao: document.getElementById('ordem-servico-historico-tipo-troca-descricao'),
+        veiculo_tipo_de_bancada: document.getElementById('ordem-servico-historico-veiculo-tipo-de-bancada'),
+        veiculo_os_especial: document.getElementById('ordem-servico-historico-veiculo-os-especial'),
+        veiculo_ano: document.getElementById('ordem-servico-historico-veiculo-ano'),
+      };
+
+      const showBanner = (message, type = 'success') => {
+        if (!message) {
+          statusBanner.textContent = '';
+          statusBanner.className = 'dsc-status-banner dsc-hidden';
+          return;
+        }
+
+        statusBanner.textContent = message;
+        statusBanner.className = `dsc-status-banner ${type === 'error' ? 'dsc-status-banner-error' : ''}`.trim();
+      };
+
+      const formatText = (value) => String(value || '').trim();
+
+      const buildUrl = () => {
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          pageSize: String(currentPageSize),
+          sortBy: 'data_evento',
+          sortDirection: 'desc',
+        });
+
+        if (currentSearch) {
+          params.set('search', currentSearch);
+        }
+
+        if (currentOrdemServicoCodigo) {
+          params.set('ordemServicoCodigo', currentOrdemServicoCodigo);
+        }
+
+        if (currentTermoAdesao) {
+          params.set('termoAdesao', currentTermoAdesao);
+        }
+
+        return `/api/ordem-servico-historico?${params.toString()}`;
+      };
+
+      const syncSummary = () => {
+        const chips = [];
+
+        if (currentOrdemServicoCodigo) {
+          chips.push(`<span class="dsc-history-chip">Codigo OS: ${currentOrdemServicoCodigo}</span>`);
+        }
+
+        if (currentTermoAdesao) {
+          chips.push(`<span class="dsc-history-chip">Termo adesao: ${currentTermoAdesao}</span>`);
+        }
+
+        if (currentSearch) {
+          chips.push(`<span class="dsc-history-chip">Busca: ${currentSearch}</span>`);
+        }
+
+        summary.innerHTML = chips.join('');
+      };
+
+      const fillForm = (item) => {
+        Object.entries(fieldMap).forEach(([fieldName, input]) => {
+          if (!input) {
+            return;
+          }
+
+          input.value = formatText(item?.[fieldName]);
+        });
+      };
+
+      const openModal = (item) => {
+        fillForm(item);
+        form.classList.remove('dsc-hidden');
+        modal.classList.remove('dsc-hidden');
+        modal.setAttribute('aria-hidden', 'false');
+      };
+
+      const closeModal = () => {
+        form.classList.add('dsc-hidden');
+        modal.classList.add('dsc-hidden');
+        modal.setAttribute('aria-hidden', 'true');
+      };
+
+      const renderGrid = (items) => {
+        gridBody.innerHTML = '';
+
+        if (!Array.isArray(items) || !items.length) {
+          emptyState.classList.remove('dsc-hidden');
+          return;
+        }
+
+        emptyState.classList.add('dsc-hidden');
+        items.forEach((item) => {
+          const row = document.createElement('tr');
+          row.dataset.item = JSON.stringify(item);
+          row.innerHTML = `
+            <td>${formatText(item.os_concat)}</td>
+            <td>${formatText(item.credenciado)}</td>
+            <td>${formatText(item.condutor)}</td>
+            <td>${formatText(item.monitor)}</td>
+            <td>${formatText(item.veiculo_placas)}</td>
+            <td>${formatText(item.situacao)}</td>
+            <td>${formatText(item.data_evento)}</td>
+            <td>${formatText(item.acao)}</td>
+            <td>${formatText(item.realizado_por)}</td>
+            <td>
+              <button type="button" class="dsc-grid-action-button" data-action="view">Consulta</button>
+            </td>
+          `;
+          gridBody.appendChild(row);
+        });
+      };
+
+      const updatePagination = () => {
+        pageLabel.textContent = `Pagina ${currentPage} de ${currentTotalPages}`;
+        prevPageButton.disabled = currentPage <= 1;
+        nextPageButton.disabled = currentPage >= currentTotalPages;
+      };
+
+      const loadItems = async () => {
+        syncSummary();
+        gridFeedback.textContent = 'Carregando historico de OrdemServico...';
+        showBanner('');
+
+        try {
+          const response = await fetch(buildUrl(), {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+          });
+          const payload = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao carregar historico de OrdemServico.');
+          }
+
+          currentTotalPages = Math.max(Number(payload.totalPages || 1), 1);
+          totalLabel.textContent = `${Number(payload.total || 0)} registro(s) encontrado(s)`;
+          renderGrid(payload.items || []);
+          updatePagination();
+          gridFeedback.textContent = '';
+        } catch (error) {
+          renderGrid([]);
+          currentTotalPages = 1;
+          updatePagination();
+          gridFeedback.textContent = error instanceof Error ? error.message : 'Falha ao carregar historico de OrdemServico.';
+          showBanner(gridFeedback.textContent, 'error');
+        }
+      };
+
+      filterForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        currentSearch = formatText(searchInput.value);
+        currentPage = 1;
+        void loadItems();
+      });
+
+      clearFilterButton.addEventListener('click', () => {
+        currentSearch = '';
+        currentOrdemServicoCodigo = '';
+        currentTermoAdesao = '';
+        currentPage = 1;
+        searchInput.value = '';
+        void loadItems();
+      });
+
+      pageSizeSelect.addEventListener('change', () => {
+        currentPageSize = Math.max(Number(pageSizeSelect.value || '20') || 20, 1);
+        currentPage = 1;
+        void loadItems();
+      });
+
+      prevPageButton.addEventListener('click', () => {
+        if (currentPage <= 1) {
+          return;
+        }
+
+        currentPage -= 1;
+        void loadItems();
+      });
+
+      nextPageButton.addEventListener('click', () => {
+        if (currentPage >= currentTotalPages) {
+          return;
+        }
+
+        currentPage += 1;
+        void loadItems();
+      });
+
+      gridBody.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action="view"]');
+        if (!button) {
+          return;
+        }
+
+        const row = button.closest('tr');
+        const item = row?.dataset.item ? JSON.parse(row.dataset.item) : null;
+        if (!item) {
+          return;
+        }
+
+        openModal(item);
+      });
+
+      [closeModalButton, cancelButton].forEach((button) => {
+        button.addEventListener('click', closeModal);
+      });
+
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          closeModal();
+        }
+      });
+
+      searchInput.value = currentSearch;
+      pageSizeSelect.value = String(currentPageSize);
+      syncSummary();
+      void loadItems();
+    </script>
+  </body>
+</html>
