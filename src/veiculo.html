@@ -251,16 +251,12 @@
                   <fieldset class="dsc-field-group dsc-radio-field-group dsc-field-group-veiculo-os-especial">
                     <span>OS especial</span>
                     <div class="dsc-radio-group" id="veiculo-os-especial-group">
-                      <label class="dsc-radio-option" for="veiculo-os-especial-branco">
-                        <input id="veiculo-os-especial-branco" type="radio" name="veiculo-os-especial" value="" checked />
-                        <span>Em branco</span>
-                      </label>
                       <label class="dsc-radio-option" for="veiculo-os-especial-sim">
                         <input id="veiculo-os-especial-sim" type="radio" name="veiculo-os-especial" value="Sim" />
                         <span>Sim</span>
                       </label>
                       <label class="dsc-radio-option" for="veiculo-os-especial-nao">
-                        <input id="veiculo-os-especial-nao" type="radio" name="veiculo-os-especial" value="Não" />
+                        <input id="veiculo-os-especial-nao" type="radio" name="veiculo-os-especial" value="Não" checked />
                         <span>N&atilde;o</span>
                       </label>
                     </div>
@@ -976,11 +972,13 @@
 
       const getSelectedOsEspecial = () => {
         const selectedRadio = osEspecialRadios.find((radio) => radio.checked);
-        return selectedRadio ? selectedRadio.value : '';
+        return selectedRadio ? selectedRadio.value : 'Não';
       };
 
       const setSelectedOsEspecial = (value) => {
-        const selectedRadio = osEspecialRadios.find((radio) => normalizeKey(radio.value) === normalizeKey(value)) || osEspecialRadios[0];
+        const selectedRadio = osEspecialRadios.find((radio) => normalizeKey(radio.value) === normalizeKey(value))
+          || osEspecialRadios.find((radio) => normalizeKey(radio.value) === normalizeKey('Não'))
+          || osEspecialRadios[0];
         osEspecialRadios.forEach((radio) => {
           radio.checked = radio === selectedRadio;
         });
@@ -1589,7 +1587,7 @@
         renderMarcaModeloOptions('');
         renderTipoDeVeiculoOptions('');
         renderTipoDeBancadaOptions('');
-        setSelectedOsEspecial('');
+        setSelectedOsEspecial('Não');
         editingCodigo = null;
         formMode = 'create';
         setFormReadOnly(false);
@@ -1792,7 +1790,7 @@
         renderMarcaModeloOptions('');
         renderTipoDeVeiculoOptions('');
         renderTipoDeBancadaOptions('');
-        setSelectedOsEspecial('');
+        setSelectedOsEspecial('Não');
         clearTitularLookupState();
         renderTitularSuggestions([]);
         resetMessages();

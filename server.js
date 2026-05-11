@@ -3870,7 +3870,7 @@ const normalizeOsEspecial = (value) => {
   const normalizedValue = normalizeRequestValue(value)
 
   if (!normalizedValue) {
-    return ''
+    return 'Não'
   }
 
   const normalizedKey = normalizedValue
