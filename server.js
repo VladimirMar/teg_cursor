@@ -1356,6 +1356,23 @@ const ensureTipoBancadaEntriesFromVeiculo = async (executor = pool) => {
   }
 }
 
+const ensureDefaultTipoBancadaEntries = async (executor = pool) => {
+  const defaultDescriptions = ['Acessível', 'Convencional', 'Creche']
+
+  for (const descricao of defaultDescriptions) {
+    await executor.query(
+      `INSERT INTO tipo_bancada (descricao)
+       SELECT CAST($1 AS varchar(255))
+       WHERE NOT EXISTS (
+         SELECT 1
+         FROM tipo_bancada
+         WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER(CAST($1 AS text))
+       )`,
+      [descricao],
+    )
+  }
+}
+
 const deriveModalidadeDescricaoFromDreDescricao = (dreDescricao) => {
   const normalizedDescricao = normalizeRequestValue(dreDescricao).toUpperCase().slice(0, 255)
   const normalizedKey = normalizedDescricao
@@ -5792,19 +5809,114 @@ const listActiveOrdemServicoItemsByTermoAdesao = async (executor, termoAdesao) =
   return result.rows
 }
 
-const listOrdemServicoRevisionRebalanceCandidates = async (executor) => {
+const normalizeOrdemServicoScopeEntry = (value) => {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const termoAdesao = normalizeOrdemServicoTermoAdesao(value.termoAdesao ?? value.termo_adesao ?? '')
+  const numOs = normalizeRequestValue(value.numOs ?? value.num_os ?? '')
+  const revisao = normalizeRequestValue(value.revisao ?? '') || ordemServicoSemRevisaoLabel
+
+  if (!termoAdesao || !numOs) {
+    return null
+  }
+
+  return {
+    termoAdesao,
+    numOs,
+    revisao,
+  }
+}
+
+const buildOrdemServicoScope = (...values) => {
+  const scope = []
+  const scopeKeys = new Set()
+
+  for (const value of values.flat()) {
+    const entry = normalizeOrdemServicoScopeEntry(value)
+
+    if (!entry) {
+      continue
+    }
+
+    const key = `${entry.termoAdesao.replace(/\D/g, '')}|${entry.numOs}|${entry.revisao}`
+
+    if (scopeKeys.has(key)) {
+      continue
+    }
+
+    scopeKeys.add(key)
+    scope.push(entry)
+  }
+
+  return scope
+}
+
+const buildOrdemServicoScopeParams = (scope) => {
+  if (!Array.isArray(scope) || !scope.length) {
+    return null
+  }
+
+  return {
+    termoAdesoes: scope.map((entry) => entry.termoAdesao),
+    numOs: scope.map((entry) => entry.numOs),
+    revisoes: scope.map((entry) => entry.revisao),
+  }
+}
+
+const buildOrdemServicoScopeCondition = (scope, alias, firstParamIndex = 2, revisaoFallbackPlaceholder = '$1') => {
+  if (!Array.isArray(scope) || !scope.length) {
+    return {
+      condition: '',
+      params: [],
+    }
+  }
+
+  const params = []
+  let currentParamIndex = firstParamIndex
+  const conditions = scope.map((entry) => {
+    params.push(entry.termoAdesao, entry.numOs, entry.revisao)
+    const condition = `(
+      REGEXP_REPLACE(COALESCE(BTRIM(${alias}.termo_adesao), ''), '\\D', '', 'g') = REGEXP_REPLACE($${currentParamIndex}, '\\D', '', 'g')
+      AND COALESCE(BTRIM(${alias}.num_os), '') = $${currentParamIndex + 1}
+      AND COALESCE(NULLIF(BTRIM(${alias}.revisao), ''), ${revisaoFallbackPlaceholder}) = $${currentParamIndex + 2}
+    )`
+    currentParamIndex += 3
+    return condition
+  })
+
+  return {
+    condition: conditions.join(' OR '),
+    params,
+  }
+}
+
+const listOrdemServicoRevisionRebalanceCandidates = async (executor, scope = null) => {
+  const queryParams = [ordemServicoSemRevisaoLabel]
+  let scopeClause = ''
+
+  if (Array.isArray(scope) && scope.length) {
+    const scopedCondition = buildOrdemServicoScopeCondition(scope, ordemServicoTableName)
+    queryParams.push(...scopedCondition.params)
+    scopeClause = `
+        AND (${scopedCondition.condition})`
+  }
+
   const result = await executor.query(
     `SELECT ${ordemServicoSelectClause}
        FROM ${ordemServicoTableName}
-      WHERE COALESCE(BTRIM(revisao), '') = ''
-         OR COALESCE(BTRIM(os_concat), '') <> CONCAT(
-           COALESCE(BTRIM(termo_adesao), ''),
-           '-',
-           COALESCE(BTRIM(num_os), ''),
-           COALESCE(NULLIF(BTRIM(revisao), ''), $1)
-         )
+      WHERE (
+             COALESCE(BTRIM(revisao), '') = ''
+          OR COALESCE(BTRIM(os_concat), '') <> CONCAT(
+               COALESCE(BTRIM(termo_adesao), ''),
+               '-',
+               COALESCE(BTRIM(num_os), ''),
+               COALESCE(NULLIF(BTRIM(revisao), ''), $1)
+             )
+            )${scopeClause}
       ORDER BY codigo ASC`,
-    [ordemServicoSemRevisaoLabel],
+    queryParams,
   )
 
   return result.rows
@@ -5879,12 +5991,12 @@ const insertOrdemServicoHistoricoEntry = async (executor, item, { acao, realizad
        NULLIF($9, ''),
        NULLIF($10, '')::date,
        NULLIF($11, '')::date,
-       $12,
+       $12::integer,
        NULLIF($13, ''),
        NULLIF($14, ''),
        NULLIF($15, ''),
        NULLIF($16, ''),
-       $17,
+       $17::integer,
        NULLIF($18, ''),
        NULLIF($19, ''),
        NULLIF($20, ''),
@@ -5893,7 +6005,7 @@ const insertOrdemServicoHistoricoEntry = async (executor, item, { acao, realizad
        NULLIF($23, ''),
        NULLIF($24, ''),
        NULLIF($25, '')::date,
-       $26,
+       $26::integer,
        NULLIF($27, ''),
        NULLIF($28, ''),
        NULLIF($29, ''),
@@ -5901,14 +6013,14 @@ const insertOrdemServicoHistoricoEntry = async (executor, item, { acao, realizad
        NULLIF($31, '')::date,
        NULLIF($32, '')::date,
        NULLIF($33, ''),
-       $34,
+       $34::integer,
       NULLIF($35, ''),
       NULLIF($36, ''),
-      NULLIF($37, ''),
-       $38,
-       $39,
-       $40,
-       $41,
+      $37::integer,
+       $38::integer,
+       $39::integer,
+       $40::integer,
+       $41::integer,
        NULLIF($42, ''),
        NULLIF($43, ''),
        NULLIF($44, '')::date,
@@ -6006,16 +6118,28 @@ const cancelActiveOrdemServicosByTermoAdesao = async (executor, termoAdesao, dat
 }
 
 const rebalanceOrdemServicoRevisions = async (executor, osValues = null) => {
+  const scope = buildOrdemServicoScope(osValues?.scope)
+
   if (osValues && typeof osValues === 'object' && osValues.captureHistory === true) {
-    const candidates = await listOrdemServicoRevisionRebalanceCandidates(executor)
+    const candidates = await listOrdemServicoRevisionRebalanceCandidates(executor, scope)
     await insertOrdemServicoHistoricoEntries(executor, candidates, {
       acao: osValues.acao || 'REBALANCEAMENTO_REVISAO',
       realizadoPor: osValues.realizadoPor || 'SISTEMA',
     })
   }
 
+  const queryParams = [ordemServicoSemRevisaoLabel]
+  let scopeClause = ''
+
+  if (scope.length) {
+    const scopedCondition = buildOrdemServicoScopeCondition(scope, 'os_target')
+    queryParams.push(...scopedCondition.params)
+    scopeClause = `
+       AND (${scopedCondition.condition})`
+  }
+
   return executor.query(
-    `UPDATE ${ordemServicoTableName}
+    `UPDATE ${ordemServicoTableName} AS os_target
      SET revisao = COALESCE(NULLIF(BTRIM(revisao), ''), $1),
          os_concat = CONCAT(
            COALESCE(BTRIM(termo_adesao), ''),
@@ -6023,23 +6147,49 @@ const rebalanceOrdemServicoRevisions = async (executor, osValues = null) => {
            COALESCE(BTRIM(num_os), ''),
            COALESCE(NULLIF(BTRIM(revisao), ''), $1)
          )
-     WHERE COALESCE(BTRIM(revisao), '') = ''
-        OR COALESCE(BTRIM(os_concat), '') <> CONCAT(
-          COALESCE(BTRIM(termo_adesao), ''),
-          '-',
-          COALESCE(BTRIM(num_os), ''),
-          COALESCE(NULLIF(BTRIM(revisao), ''), $1)
-        )`,
-    [ordemServicoSemRevisaoLabel],
+     WHERE (
+            COALESCE(BTRIM(revisao), '') = ''
+         OR COALESCE(BTRIM(os_concat), '') <> CONCAT(
+              COALESCE(BTRIM(termo_adesao), ''),
+              '-',
+              COALESCE(BTRIM(num_os), ''),
+              COALESCE(NULLIF(BTRIM(revisao), ''), $1)
+            )
+           )${scopeClause}`,
+    queryParams,
   )
 }
 
-const syncCondutorVinculosFromOrdemServico = async (executor) => {
-  await executor.query(
-    `DELETE FROM ${vinculoCondutorTableName}
+const syncCondutorVinculosFromOrdemServico = async (executor, scope = null) => {
+  const normalizedScope = buildOrdemServicoScope(scope)
+  const deleteParams = []
+  const insertParams = [ordemServicoSemRevisaoLabel]
+  let deleteWhereClause = `
      WHERE COALESCE(BTRIM(termo_adesao), '') <> ''
         OR COALESCE(BTRIM(num_os), '') <> ''
-        OR COALESCE(BTRIM(revisao), '') <> ''`,
+        OR COALESCE(BTRIM(revisao), '') <> ''`
+  let insertWhereClause = `
+     WHERE COALESCE(BTRIM(os.termo_adesao), '') <> ''
+       AND COALESCE(BTRIM(os.num_os), '') <> ''
+       AND os.termo_codigo IS NOT NULL
+       AND t.credenciada_codigo IS NOT NULL
+       AND os.data_admissao_condutor IS NOT NULL
+       AND c.codigo IS NOT NULL`
+
+  if (normalizedScope.length) {
+    const deleteCondition = buildOrdemServicoScopeCondition(normalizedScope, 'vc', 2, '$1')
+    const insertCondition = buildOrdemServicoScopeCondition(normalizedScope, 'os')
+    deleteParams.push(ordemServicoSemRevisaoLabel, ...deleteCondition.params)
+    insertParams.push(...insertCondition.params)
+    deleteWhereClause = `
+     WHERE ${deleteCondition.condition}`
+    insertWhereClause += `
+       AND (${insertCondition.condition})`
+  }
+
+  await executor.query(
+    `DELETE FROM ${vinculoCondutorTableName} AS vc${deleteWhereClause}`,
+    deleteParams,
   )
 
   await executor.query(
@@ -6064,22 +6214,41 @@ const syncCondutorVinculosFromOrdemServico = async (executor) => {
      LEFT JOIN ${credenciamentoTermoTableName} t ON t.codigo = os.termo_codigo
      LEFT JOIN condutor c
        ON BTRIM(COALESCE(c.cpf_condutor, '')) = BTRIM(COALESCE(os.cpf_condutor, ''))
+     ${insertWhereClause}`,
+    insertParams,
+  )
+}
+
+const syncMonitorVinculosFromOrdemServico = async (executor, scope = null) => {
+  const normalizedScope = buildOrdemServicoScope(scope)
+  const deleteParams = []
+  const insertParams = [ordemServicoSemRevisaoLabel]
+  let deleteWhereClause = `
+     WHERE COALESCE(BTRIM(termo_adesao), '') <> ''
+        OR COALESCE(BTRIM(num_os), '') <> ''
+        OR COALESCE(BTRIM(revisao), '') <> ''`
+  let insertWhereClause = `
      WHERE COALESCE(BTRIM(os.termo_adesao), '') <> ''
        AND COALESCE(BTRIM(os.num_os), '') <> ''
        AND os.termo_codigo IS NOT NULL
        AND t.credenciada_codigo IS NOT NULL
-       AND os.data_admissao_condutor IS NOT NULL
-       AND c.codigo IS NOT NULL`,
-    [ordemServicoSemRevisaoLabel],
-  )
-}
+       AND os.data_admissao_monitor IS NOT NULL
+       AND m.codigo IS NOT NULL`
 
-const syncMonitorVinculosFromOrdemServico = async (executor) => {
+  if (normalizedScope.length) {
+    const deleteCondition = buildOrdemServicoScopeCondition(normalizedScope, 'vm', 2, '$1')
+    const insertCondition = buildOrdemServicoScopeCondition(normalizedScope, 'os')
+    deleteParams.push(ordemServicoSemRevisaoLabel, ...deleteCondition.params)
+    insertParams.push(...insertCondition.params)
+    deleteWhereClause = `
+     WHERE ${deleteCondition.condition}`
+    insertWhereClause += `
+       AND (${insertCondition.condition})`
+  }
+
   await executor.query(
-    `DELETE FROM ${vinculoMonitorTableName}
-     WHERE COALESCE(BTRIM(termo_adesao), '') <> ''
-        OR COALESCE(BTRIM(num_os), '') <> ''
-        OR COALESCE(BTRIM(revisao), '') <> ''`,
+    `DELETE FROM ${vinculoMonitorTableName} AS vm${deleteWhereClause}`,
+    deleteParams,
   )
 
   await executor.query(
@@ -6104,13 +6273,8 @@ const syncMonitorVinculosFromOrdemServico = async (executor) => {
      LEFT JOIN ${credenciamentoTermoTableName} t ON t.codigo = os.termo_codigo
      LEFT JOIN monitor m
        ON BTRIM(COALESCE(m.cpf_monitor, '')) = BTRIM(COALESCE(os.cpf_monitor, ''))
-     WHERE COALESCE(BTRIM(os.termo_adesao), '') <> ''
-       AND COALESCE(BTRIM(os.num_os), '') <> ''
-       AND os.termo_codigo IS NOT NULL
-       AND t.credenciada_codigo IS NOT NULL
-       AND os.data_admissao_monitor IS NOT NULL
-       AND m.codigo IS NOT NULL`,
-    [ordemServicoSemRevisaoLabel],
+     ${insertWhereClause}`,
+    insertParams,
   )
 }
 
@@ -10248,6 +10412,26 @@ const findCredenciamentoTermoByTermoAdesao = async (termoAdesao, executor = pool
   return result.rows[0] ?? null
 }
 
+const findCredenciamentoTermoByCnpjCpf = async (cnpjCpf, executor = pool) => {
+  const digits = extractDocumentDigits(cnpjCpf)
+
+  if (!digits) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT
+        ${credenciamentoTermoSelectClause}
+       FROM ${credenciamentoTermoTableName} t
+      WHERE REGEXP_REPLACE(COALESCE((SELECT cr.cnpj_cpf FROM ${credenciadaTableName} cr WHERE cr.codigo = t.credenciada_codigo), ''), '\\D', '', 'g') = $1
+      ORDER BY t.aditivo DESC, CAST(t.codigo AS integer) DESC
+      LIMIT 1`,
+    [digits],
+  )
+
+  return result.rows[0] ?? null
+}
+
 const findLatestCredenciamentoTermoByTermoAdesao = async (termoAdesao, executor = pool, options = {}) => {
   const normalizedTermo = normalizeOrdemServicoTermoAdesao(termoAdesao)
 
@@ -12208,6 +12392,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE tipo_bancada ALTER COLUMN descricao TYPE varchar(255)')
   await pool.query('UPDATE tipo_bancada SET descricao = BTRIM(CAST(descricao AS text)) WHERE descricao IS NOT NULL')
   await pool.query('ALTER TABLE tipo_bancada ALTER COLUMN descricao SET NOT NULL')
+  await ensureDefaultTipoBancadaEntries()
   await ensureTipoBancadaEntriesFromVeiculo()
   await pool.query('SELECT setval(\'tipo_bancada_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM tipo_bancada), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_bancada_codigo_unique_idx ON tipo_bancada (codigo)')
@@ -17180,16 +17365,23 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === credenciamentoTermoLookupPath) {
     try {
       const termoAdesao = normalizeOrdemServicoTermoAdesao(requestUrl.searchParams.get('termoAdesao') ?? '')
+      const cnpjCpf = normalizeCnpjCpf(requestUrl.searchParams.get('cnpjCpf') ?? '')
 
-      if (!termoAdesao) {
-        sendJson(response, 400, { message: 'Termo e obrigatorio.' })
+      if (!termoAdesao && !cnpjCpf) {
+        sendJson(response, 400, { message: 'Termo ou CNPJ/CPF e obrigatorio.' })
         return
       }
 
-      const item = await findCredenciamentoTermoByTermoAdesao(termoAdesao)
+      const item = termoAdesao
+        ? await findCredenciamentoTermoByTermoAdesao(termoAdesao)
+        : await findCredenciamentoTermoByCnpjCpf(cnpjCpf)
 
       if (!item) {
-        sendJson(response, 404, { message: 'Termo de adesao nao encontrado na tabela termo.' })
+        sendJson(response, 404, {
+          message: termoAdesao
+            ? 'Termo de adesao nao encontrado na tabela termo.'
+            : 'CNPJ/CPF nao encontrado na tabela termo.',
+        })
         return
       }
 
@@ -21151,13 +21343,16 @@ const server = createServer(async (request, response) => {
           }
         }
 
+        const affectedScope = buildOrdemServicoScope(validationResult.payload)
+
         await rebalanceOrdemServicoRevisions(client, {
           captureHistory: true,
           acao: 'REBALANCEAMENTO_REVISAO',
           realizadoPor: performedBy,
+          scope: affectedScope,
         })
-        await syncCondutorVinculosFromOrdemServico(client)
-        await syncMonitorVinculosFromOrdemServico(client)
+        await syncCondutorVinculosFromOrdemServico(client, affectedScope)
+        await syncMonitorVinculosFromOrdemServico(client, affectedScope)
         await syncCredenciamentoTermoValoresByTermos([validationResult.payload.termoAdesao], client)
 
         const item = await fetchOrdemServicoItemByCodigo(client, insertedCodigo)
@@ -23153,6 +23348,7 @@ const server = createServer(async (request, response) => {
         await client.query('BEGIN')
 
         const currentItem = await fetchOrdemServicoItemByCodigo(client, originalCodigo)
+        const affectedScope = buildOrdemServicoScope(currentItem, validationResult.payload)
         await insertOrdemServicoHistoricoEntry(client, currentItem, {
           acao: 'ALTERACAO_MANUAL',
           realizadoPor: performedBy,
@@ -23240,9 +23436,10 @@ const server = createServer(async (request, response) => {
           captureHistory: true,
           acao: 'REBALANCEAMENTO_REVISAO',
           realizadoPor: performedBy,
+          scope: affectedScope,
         })
-        await syncCondutorVinculosFromOrdemServico(client)
-        await syncMonitorVinculosFromOrdemServico(client)
+        await syncCondutorVinculosFromOrdemServico(client, affectedScope)
+        await syncMonitorVinculosFromOrdemServico(client, affectedScope)
         await syncCredenciamentoTermoValoresByTermos([
           existingItem.termo_adesao,
           validationResult.payload.termoAdesao,

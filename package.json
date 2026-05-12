@@ -13,6 +13,7 @@
     "homol:publish": "npm run homol:build",
     "homol:api": "node scripts/start-homologation-api.mjs",
     "homol:web": "node scripts/homologation-web-server.mjs",
+    "homol:repair-config": "node scripts/homologation-control/repair-homologation-reference-data.mjs",
     "homol:start": "powershell -ExecutionPolicy Bypass -File .\\iniciar-homologacao.ps1",
     "homol:stop": "powershell -ExecutionPolicy Bypass -File .\\parar-homologacao.ps1",
     "lint": "eslint .",

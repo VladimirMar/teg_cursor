@@ -7,6 +7,7 @@
     <title>Cadastro de Termo</title>
 
     <link rel="stylesheet" href="css/login.css?v=20260424-termo-aditivo-1" />
+    <script src="/backspace-navigation-guard.js"></script>
     <style>
       #login-section.dsc-container {
         max-width: 1600px;
@@ -226,6 +227,21 @@
         width: 100%;
         box-sizing: border-box;
         padding: 24px 26px;
+      }
+
+      .dsc-cep-lookup-field {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .dsc-cep-lookup-field .dsc-form-control {
+        flex: 1 1 auto;
+      }
+
+      .dsc-cep-lookup-button {
+        min-height: 52px;
+        white-space: nowrap;
       }
 
       body:has(#credenciamento-termo-grid-body) .dsc-access-grid-card {
@@ -564,7 +580,10 @@
                 <div class="dsc-form-row">
                   <label class="dsc-field-group" for="credenciamento-termo-cep">
                     <span>CEP</span>
-                    <input class="dsc-form-control dsc-form-control-auto-filled" id="credenciamento-termo-cep" type="text" inputmode="numeric" placeholder="00000-000" maxlength="9" readonly />
+                    <div class="dsc-cep-lookup-field">
+                      <input class="dsc-form-control dsc-form-control-auto-filled" id="credenciamento-termo-cep" type="text" inputmode="numeric" placeholder="00000-000" maxlength="9" readonly />
+                      <button type="button" class="dsc-btn dsc-btn-white dsc-cep-lookup-button" id="lookup-credenciamento-termo-cep-button">Buscar CEP</button>
+                    </div>
                     <div class="dsc-form-error" id="credenciamento-termo-cep-error"></div>
                   </label>
 
@@ -963,6 +982,7 @@
       const logradouroInput = document.getElementById('credenciamento-termo-logradouro');
       const bairroInput = document.getElementById('credenciamento-termo-bairro');
       const cepEnderecoInput = document.getElementById('credenciamento-termo-cep');
+      const lookupCepButton = document.getElementById('lookup-credenciamento-termo-cep-button');
       const municipioInput = document.getElementById('credenciamento-termo-municipio');
       const especificacaoSeiInput = document.getElementById('credenciamento-termo-especificacao-sei');
       const textoCopiaInput = especificacaoSeiInput;
@@ -4934,10 +4954,6 @@
           bairroInput.value = payload.item.bairro || '';
           municipioInput.value = payload.item.municipio || '';
 
-          if (cepEnderecoInput.value && (!logradouroInput.value || !bairroInput.value || !municipioInput.value)) {
-            await lookupCepAndFillAddress(cepEnderecoInput.value);
-          }
-
           errors.credenciado.textContent = '';
           credenciadoHint.textContent = defaultCredenciadoHintText;
         } catch (error) {
@@ -4980,39 +4996,51 @@
         }
 
         try {
-          const response = await fetch(`/api/credenciada/lookup?cnpjCpf=${encodeURIComponent(cnpjCpf)}`);
-          if (!response.ok) {
-            throw new Error(await getRequestErrorMessage(response, 'Falha ao localizar credenciada.'));
+          let payload = null;
+          let loadedFromTermo = false;
+          const credenciadaResponse = await fetch(`/api/credenciada/lookup?cnpjCpf=${encodeURIComponent(cnpjCpf)}`);
+
+          if (credenciadaResponse.ok) {
+            payload = await credenciadaResponse.json();
+            const credenciadaStatus = normalizeText(payload.item?.status || '', 50);
+
+            if (!payload.item || credenciadaStatus !== 'ATIVO') {
+              throw new Error('Somente credenciadas ativas podem ser selecionadas.');
+            }
+          } else if (credenciadaResponse.status === 404) {
+            const termoResponse = await fetch(`/api/termo/lookup?cnpjCpf=${encodeURIComponent(cnpjCpf)}`);
+
+            if (!termoResponse.ok) {
+              throw new Error(await getRequestErrorMessage(credenciadaResponse, 'Falha ao localizar credenciada.'));
+            }
+
+            payload = await termoResponse.json();
+            loadedFromTermo = true;
+          } else {
+            throw new Error(await getRequestErrorMessage(credenciadaResponse, 'Falha ao localizar credenciada.'));
           }
 
-          const payload = await response.json();
-          const credenciadaStatus = normalizeText(payload.item?.status || '', 50);
+          const item = payload?.item || {};
 
-          if (!payload.item || credenciadaStatus !== 'ATIVO') {
-            throw new Error('Somente credenciadas ativas podem ser selecionadas.');
-          }
-
-          credenciadoInput.value = payload.item.credenciado || '';
-          credenciadaCodigoInput.value = payload.item.codigo || '';
-          cnpjCpfInput.value = payload.item.cnpj_cpf || cnpjCpf;
-          currentTermoTpOptante = payload.item.tp_optante || '';
-          tipoTermoInput.value = normalizeTipoTermoLabel(payload.item.tipo_pessoa || payload.item.tipo_termo || '');
+          credenciadoInput.value = item.credenciado || item.empresa || '';
+          credenciadaCodigoInput.value = item.codigo || item.credenciadaCodigo || item.credenciada_codigo || '';
+          cnpjCpfInput.value = item.cnpj_cpf || item.cnpjCpf || cnpjCpf;
+          currentTermoTpOptante = item.tp_optante || '';
+          tipoTermoInput.value = normalizeTipoTermoLabel(item.tipo_pessoa || item.tipo_termo || item.tipoTermo || '');
           syncEspecificacaoSei();
           syncTextoCopia();
-          representanteInput.value = payload.item.representante || '';
-          cpfRepresentanteInput.value = payload.item.cpf_representante || '';
-          cepEnderecoInput.value = normalizeCep(payload.item.cep || '');
-          logradouroInput.value = payload.item.logradouro || '';
-          bairroInput.value = payload.item.bairro || '';
-          municipioInput.value = payload.item.municipio || '';
-
-          if (cepEnderecoInput.value && (!logradouroInput.value || !bairroInput.value || !municipioInput.value)) {
-            await lookupCepAndFillAddress(cepEnderecoInput.value);
-          }
+          representanteInput.value = item.representante || '';
+          cpfRepresentanteInput.value = item.cpf_representante || item.cpfRepresentante || '';
+          cepEnderecoInput.value = normalizeCep(item.cep || '');
+          logradouroInput.value = item.logradouro || '';
+          bairroInput.value = item.bairro || '';
+          municipioInput.value = item.municipio || '';
 
           errors.cnpjCpf.textContent = '';
           errors.credenciado.textContent = '';
-          credenciadoHint.textContent = defaultCredenciadoHintText;
+          credenciadoHint.textContent = loadedFromTermo
+            ? 'CNPJ/CPF localizado pelo ultimo termo vinculado a este documento.'
+            : defaultCredenciadoHintText;
 
           if (formMode === 'create') {
             seiInput.focus();
@@ -5047,18 +5075,24 @@
         municipioInput.value = '';
       };
 
-      let lastCepLookedUp = '';
-
       const lookupCepAndFillAddress = async (cep) => {
+        const normalizedCep = normalizeCep(cep);
         errors.cep.textContent = '';
-        const response = await fetch(`/api/cep/lookup?cep=${encodeURIComponent(cep)}`);
+        cepEnderecoInput.value = normalizedCep;
+
+        if (!/^\d{5}-\d{3}$/.test(normalizedCep)) {
+          clearAddressFromCep();
+          errors.cep.textContent = 'Informe um CEP valido.';
+          return false;
+        }
+
+        const response = await fetch(`/api/cep/lookup?cep=${encodeURIComponent(normalizedCep)}`);
 
         if (response.ok) {
           const payload = await response.json();
 
           if (payload.item) {
             fillAddressFromCep(payload.item);
-            lastCepLookedUp = cep;
             return true;
           }
 
@@ -5066,24 +5100,26 @@
         }
 
         if (response.status === 404) {
-          const cloudResponse = await fetch(`/api/cep/lookup?cep=${encodeURIComponent(cep)}&cloud=true`);
+          const cloudResponse = await fetch(`/api/cep/lookup?cep=${encodeURIComponent(normalizedCep)}&cloud=true`);
 
           if (cloudResponse.ok) {
             const cloudPayload = await cloudResponse.json();
 
             if (cloudPayload.item) {
               fillAddressFromCep(cloudPayload.item);
-              lastCepLookedUp = cep;
               return true;
             }
           }
         }
 
-        lastCepLookedUp = '';
         clearAddressFromCep();
         errors.cep.textContent = 'CEP nao encontrado.';
         return false;
       };
+
+      lookupCepButton.addEventListener('click', () => {
+        void lookupCepAndFillAddress(cepEnderecoInput.value);
+      });
 
       const collectPayload = () => ({
         codigoXml: normalizeIntegerInput(codigoXmlInput.value, 10),

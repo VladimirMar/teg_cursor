@@ -128,7 +128,7 @@ type TitularSortField = 'codigo' | 'cnpj_cpf' | 'titular'
 type MarcaModeloSortField = 'codigo' | 'descricao'
 type SeguradoraSortField = 'codigo' | 'controle' | 'descricao'
 type FormMode = 'create' | 'edit' | 'view'
-type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'condutor' | 'monitor' | 'veiculo' | 'operacionalFinanceiro' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
+type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
 
 type DashboardDrillDownContext = {
   dreCodigo: string
@@ -203,6 +203,8 @@ const getDefaultCollapsedMenuGroups = (): Record<CollapsedMenuGroup, boolean> =>
   operacional: true,
   condutor: true,
   monitor: true,
+  termo: true,
+  ordemServico: true,
   veiculo: true,
   operacionalFinanceiro: true,
   acesso: true,
@@ -214,10 +216,13 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
   switch (view) {
     case 'titular':
     case 'credenciada':
+      return ['operacional']
     case 'credenciamentoTermo':
+    case 'termoHistorico':
+      return ['operacional', 'termo']
     case 'ordemServicoHistorico':
     case 'ordemServico':
-      return ['operacional']
+      return ['operacional', 'ordemServico']
     case 'condutor':
     case 'vinculoCondutor':
       return ['operacional', 'condutor']
@@ -5282,23 +5287,73 @@ function App() {
                 >
                   Credenciada
                 </li>
-                <li
-                  className={`menu-subitem ${activeView === 'credenciamentoTermo' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('credenciamentoTermo')}
-                >
-                  Termo
+                <li className="menu-group menu-subgroup">
+                  <div
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'credenciamentoTermo' || activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
+                    onClick={() => toggleMenuGroup('termo')}
+                    role="button"
+                    aria-expanded={!collapsedMenuGroups.termo}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toggleMenuGroup('termo')
+                      }
+                    }}
+                  >
+                    <span
+                      className="menu-subitem-label"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setActiveView('credenciamentoTermo')
+                      }}
+                    >
+                      Termo
+                    </span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.termo ? '▸' : '▾'}</span>
+                  </div>
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.termo ? 'menu-sublist-hidden' : ''}`}>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('termoHistorico')}
+                    >
+                      Historico Termo
+                    </li>
+                  </ul>
                 </li>
-                <li
-                  className={`menu-subitem ${activeView === 'ordemServico' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('ordemServico')}
-                >
-                  OrdemServico
-                </li>
-                <li
-                  className={`menu-subitem ${activeView === 'ordemServicoHistorico' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('ordemServicoHistorico')}
-                >
-                  Historico OrdemServico
+                <li className="menu-group menu-subgroup">
+                  <div
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'ordemServico' || activeView === 'ordemServicoHistorico' ? 'menu-subitem-active' : ''}`}
+                    onClick={() => toggleMenuGroup('ordemServico')}
+                    role="button"
+                    aria-expanded={!collapsedMenuGroups.ordemServico}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toggleMenuGroup('ordemServico')
+                      }
+                    }}
+                  >
+                    <span
+                      className="menu-subitem-label"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setActiveView('ordemServico')
+                      }}
+                    >
+                      OrdemServico
+                    </span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.ordemServico ? '▸' : '▾'}</span>
+                  </div>
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.ordemServico ? 'menu-sublist-hidden' : ''}`}>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'ordemServicoHistorico' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('ordemServicoHistorico')}
+                    >
+                      Historico OrdemServico
+                    </li>
+                  </ul>
                 </li>
                 <li className="menu-group menu-subgroup">
                   <div
@@ -5357,12 +5412,6 @@ function App() {
                       onClick={() => setActiveView('financeiroReprocessamento')}
                     >
                       Reprocessar Valores
-                    </li>
-                    <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('termoHistorico')}
-                    >
-                      Historico Termo
                     </li>
                   </ul>
                 </li>

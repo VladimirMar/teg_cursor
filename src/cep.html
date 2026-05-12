@@ -7,9 +7,13 @@
     <title>CADASTRO DE CEP</title>
 
     <link rel="stylesheet" href="css/login.css" />
+    <script src="/backspace-navigation-guard.js"></script>
     <style>
       #cep-form { max-width: 860px; }
       #cep-form .dsc-form-control { min-height: 52px; padding: 14px 18px; box-sizing: border-box; }
+      .dsc-cep-lookup-field { display: flex; align-items: center; gap: 10px; }
+      .dsc-cep-lookup-field .dsc-form-control { flex: 1 1 auto; }
+      .dsc-cep-lookup-button { min-height: 52px; white-space: nowrap; }
     </style>
   </head>
   <body>
@@ -118,7 +122,10 @@
                   <div class="dsc-form-row">
                     <label class="dsc-field-group" for="cep-cep">
                       <span>CEP</span>
-                      <input class="dsc-form-control" id="cep-cep" type="text" inputmode="numeric" placeholder="00000-000" maxlength="9" />
+                      <div class="dsc-cep-lookup-field">
+                        <input class="dsc-form-control" id="cep-cep" type="text" inputmode="numeric" placeholder="00000-000" maxlength="9" />
+                        <button type="button" class="dsc-btn dsc-btn-white dsc-cep-lookup-button" id="lookup-cep-button">Buscar CEP</button>
+                      </div>
                       <div class="dsc-form-error" id="cep-cep-error"></div>
                     </label>
                     <label class="dsc-field-group" for="cep-uf">
@@ -312,6 +319,7 @@
       const municipioInput = document.getElementById('cep-municipio');
       const ufInput = document.getElementById('cep-uf');
       const ibgeInput = document.getElementById('cep-ibge');
+      const lookupCepButton = document.getElementById('lookup-cep-button');
       const saveCepButton = document.getElementById('save-cep-button');
       const cancelCepButton = document.getElementById('cancel-cep-button');
       const closeCepFormModalButton = document.getElementById('close-cep-form-modal-button');
@@ -368,6 +376,7 @@
           el.readOnly = readOnly;
         });
         ufInput.disabled = readOnly;
+        lookupCepButton.disabled = readOnly;
         saveCepButton.style.display = readOnly ? 'none' : '';
       };
 
@@ -898,33 +907,73 @@
       });
 
       // ---- Input normalization ----
-      let lastCepLookedUp = '';
+      let lastLocalCepLookedUp = '';
 
-      cepInput.addEventListener('input', () => {
-        cepInput.value = normalizeCep(cepInput.value);
-        lastCepLookedUp = '';
-      });
-
-      cepInput.addEventListener('blur', async () => {
-        if (editingCep !== null) return; // só na inserção
-        const cep = cepInput.value;
-        if (!/^\d{5}-\d{3}$/.test(cep)) return;
-        if (cep === lastCepLookedUp) return;
-        lastCepLookedUp = cep;
+      const lookupLocalCepWhileTyping = async (cep) => {
+        if (!/^\d{5}-\d{3}$/.test(cep) || cep === lastLocalCepLookedUp) {
+          return;
+        }
 
         try {
-          const res = await fetch(`${API_BASE}/api/cep/lookup?cep=${encodeURIComponent(cep)}&cloud=true`);
-          if (!res.ok) return;
+          const res = await fetch(`${API_BASE}/api/cep/lookup?cep=${encodeURIComponent(cep)}`);
+          if (!res.ok) {
+            return;
+          }
+
           const data = await res.json();
           if (data.item) {
-            editingCep = data.item.cep || cep;
             logradouroInput.value = data.item.logradouro || '';
             bairroInput.value = data.item.bairro || '';
             municipioInput.value = data.item.municipio || '';
             ufInput.value = data.item.uf || '';
             ibgeInput.value = data.item.ibge || '';
+            lastLocalCepLookedUp = cep;
           }
         } catch { /* silencioso */ }
+      };
+
+      cepInput.addEventListener('input', () => {
+        cepInput.value = normalizeCep(cepInput.value);
+        const cep = cepInput.value;
+
+        if (!/^\d{5}-\d{3}$/.test(cep)) {
+          lastLocalCepLookedUp = '';
+          return;
+        }
+
+        void lookupLocalCepWhileTyping(cep);
+      });
+
+      const lookupCepFromButton = async () => {
+        const cep = cepInput.value;
+        clearErrors();
+
+        if (!/^\d{5}-\d{3}$/.test(cep)) {
+          errors.cep.textContent = 'Informe um CEP valido.';
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/api/cep/lookup?cep=${encodeURIComponent(cep)}&cloud=true`);
+          if (!res.ok) {
+            errors.cep.textContent = 'CEP nao encontrado.';
+            return;
+          }
+          const data = await res.json();
+          if (data.item) {
+            logradouroInput.value = data.item.logradouro || '';
+            bairroInput.value = data.item.bairro || '';
+            municipioInput.value = data.item.municipio || '';
+            ufInput.value = data.item.uf || '';
+            ibgeInput.value = data.item.ibge || '';
+            return;
+          }
+          errors.cep.textContent = 'CEP nao encontrado.';
+        } catch { /* silencioso */ }
+      };
+
+      lookupCepButton.addEventListener('click', () => {
+        void lookupCepFromButton();
       });
 
       // ufInput is a select — no input normalization needed

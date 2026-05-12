@@ -7,6 +7,7 @@
     <title>Cadastro de credenciada</title>
 
     <link rel="stylesheet" href="css/login.css" />
+    <script src="/backspace-navigation-guard.js"></script>
     <style>
       #credenciada-form .dsc-form-tab-panel-active {
         display: flex;
@@ -25,6 +26,21 @@
       #credenciada-form-modal .dsc-access-form {
         max-width: none;
         width: min(100%, 1720px);
+      }
+
+      .dsc-cep-lookup-field {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .dsc-cep-lookup-field .dsc-form-control {
+        flex: 1 1 auto;
+      }
+
+      .dsc-cep-lookup-button {
+        min-height: 52px;
+        white-space: nowrap;
       }
 
       #credenciada-form .dsc-form-row-credenciada-top {
@@ -301,7 +317,10 @@
                 <div class="dsc-form-row dsc-form-row-address">
                 <label class="dsc-field-group" for="credenciada-cep">
                   <span>CEP</span>
-                  <input class="dsc-form-control" id="credenciada-cep" type="text" inputmode="numeric" placeholder="00000-000" maxlength="9" />
+                  <div class="dsc-cep-lookup-field">
+                    <input class="dsc-form-control" id="credenciada-cep" type="text" inputmode="numeric" placeholder="00000-000" maxlength="9" />
+                    <button type="button" class="dsc-btn dsc-btn-white dsc-cep-lookup-button" id="lookup-credenciada-cep-button">Buscar CEP</button>
+                  </div>
                   <div class="dsc-form-error" id="credenciada-cep-error"></div>
                 </label>
 
@@ -458,6 +477,7 @@
       const logradouroInput = document.getElementById('credenciada-logradouro');
       const bairroInput = document.getElementById('credenciada-bairro');
       const cepInput = document.getElementById('credenciada-cep');
+      const lookupCepButton = document.getElementById('lookup-credenciada-cep-button');
       const numeroInput = document.getElementById('credenciada-numero');
       const complementoInput = document.getElementById('credenciada-complemento');
       const municipioInput = document.getElementById('credenciada-municipio');
@@ -1459,19 +1479,48 @@
         municipioInput.value = item.municipio || '';
       };
 
-      let lastCepLookedUp = '';
+      let lastLocalCepLookedUp = '';
 
-      cepInput.addEventListener('input', () => {
-        lastCepLookedUp = '';
-      });
-
-      cepInput.addEventListener('blur', async () => {
-        const cep = normalizeCep(cepInput.value);
-        if (!/^\d{5}-\d{3}$/.test(cep)) {
-          lastCepLookedUp = '';
+      const lookupLocalCepWhileTyping = async (cep) => {
+        if (!/^\d{5}-\d{3}$/.test(cep) || cep === lastLocalCepLookedUp) {
           return;
         }
-        if (cep === lastCepLookedUp) return;
+
+        try {
+          const res = await fetch(`/api/cep/lookup?cep=${encodeURIComponent(cep)}`);
+          if (!res.ok) {
+            return;
+          }
+
+          const data = await res.json();
+          if (data.item) {
+            fillAddressFromCep(data.item);
+            lastLocalCepLookedUp = cep;
+          }
+        } catch { /* silencioso */ }
+      };
+
+      cepInput.addEventListener('input', () => {
+        const cep = normalizeCep(cepInput.value);
+        cepInput.value = cep;
+        cepError.textContent = '';
+
+        if (!/^\d{5}-\d{3}$/.test(cep)) {
+          lastLocalCepLookedUp = '';
+          return;
+        }
+
+        void lookupLocalCepWhileTyping(cep);
+      });
+
+      const lookupCepAndFillAddress = async () => {
+        const cep = normalizeCep(cepInput.value);
+        if (!/^\d{5}-\d{3}$/.test(cep)) {
+          cepError.textContent = 'Informe um CEP valido.';
+          return;
+        }
+        cepInput.value = cep;
+        cepError.textContent = '';
 
         try {
           const res = await fetch(`/api/cep/lookup?cep=${encodeURIComponent(cep)}`);
@@ -1479,7 +1528,7 @@
             const data = await res.json();
             if (data.item) {
               fillAddressFromCep(data.item);
-              lastCepLookedUp = cep;
+              cepError.textContent = '';
             }
             return;
           }
@@ -1489,17 +1538,17 @@
               const dataCloud = await resCloud.json();
               if (dataCloud.item) {
                 fillAddressFromCep(dataCloud.item);
-                lastCepLookedUp = cep;
+                cepError.textContent = '';
                 return;
               }
             }
           }
-          lastCepLookedUp = '';
+          cepError.textContent = 'CEP nao encontrado.';
         } catch { /* silencioso */ }
-      });
+      };
 
-      cepInput.addEventListener('input', () => {
-        lastCepLookedUp = '';
+      lookupCepButton.addEventListener('click', () => {
+        void lookupCepAndFillAddress();
       });
 
       emailInput.addEventListener('blur', () => {
