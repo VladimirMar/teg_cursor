@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { FormEvent, MouseEvent } from 'react'
 import './App.css'
+import ApuracaoServicosView from './ApuracaoServicosView'
 import { authenticate } from './services/auth'
 import { createDreItem, deleteDreItem, listDreItemsPaginated, updateDreItem } from './services/dre'
 import type { DreItem } from './services/dre'
@@ -12,6 +13,66 @@ import { createTipoBancadaItem, deleteTipoBancadaItem, listTipoBancadaItemsPagin
 import type { TipoBancadaItem } from './services/tipoBancada'
 import { createTipoPgtoItem, deleteTipoPgtoItem, listTipoPgtoItemsPaginated, updateTipoPgtoItem } from './services/tipoPgto'
 import type { TipoPgtoItem } from './services/tipoPgto'
+import { createTipoEscolaItem, deleteTipoEscolaItem, listTipoEscolaItemsPaginated, updateTipoEscolaItem } from './services/tipoEscola'
+import type { TipoEscolaItem } from './services/tipoEscola'
+import {
+  ALIQUOTA_OPTANTE_TIPO_EMPRESA_OPTIONS,
+  createAliquotaOptanteItem,
+  deleteAliquotaOptanteItem,
+  listAliquotaOptanteItemsPaginated,
+  updateAliquotaOptanteItem,
+} from './services/aliquotaOptante'
+import type {
+  AliquotaOptanteItem,
+  AliquotaOptanteKey,
+  AliquotaOptanteSortField,
+  AliquotaOptanteTipoEmpresa,
+} from './services/aliquotaOptante'
+import {
+  createDiasLetivosItem,
+  deleteDiasLetivosItem,
+  listDiasLetivosItemsPaginated,
+  updateDiasLetivosItem,
+} from './services/diasLetivos'
+import type { DiasLetivosItem, DiasLetivosSortField } from './services/diasLetivos'
+import {
+  APURACAO_FINANCEIRA_STATUS_OPTIONS,
+  createApuracaoFinanceiraItem,
+  deleteApuracaoFinanceiraItem,
+  listApuracaoFinanceiraItemsPaginated,
+  processApuracaoFinanceiraData,
+  updateApuracaoFinanceiraItem,
+} from './services/apuracaoFinanceira'
+import type {
+  ApuracaoFinanceiraItem,
+  ApuracaoFinanceiraKey,
+  ApuracaoFinanceiraProcessResult,
+  ApuracaoFinanceiraSortField,
+  ApuracaoFinanceiraStatus,
+} from './services/apuracaoFinanceira'
+import {
+  APURACAO_TIPO_PESSOA_OPTIONS,
+  formatApuracaoTipoPessoaLabel,
+} from './services/apuracaoTipoPessoa'
+import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
+
+type ApuracaoFinanceiraTipoPessoaFormValue = ApuracaoTipoPessoa | 'TODOS'
+type ApuracaoFinanceiraGridRow = {
+  key: string
+  representativeItem: ApuracaoFinanceiraItem
+  items: ApuracaoFinanceiraItem[]
+  dreCodigos: string[]
+  dreText: string
+  tipoPessoaFormValue: ApuracaoFinanceiraTipoPessoaFormValue
+  tipoPessoaLabel: string
+}
+
+const APURACAO_FINANCEIRA_DELETE_STATUS = 'A processar'
+
+const APURACAO_FINANCEIRA_TIPO_PESSOA_FORM_OPTIONS = [
+  { value: 'TODOS', label: 'Todos' },
+  ...APURACAO_TIPO_PESSOA_OPTIONS,
+] as const
 import {
   createModalidadeTipoBancadaAssociationItem,
   deleteModalidadeTipoBancadaAssociationItem,
@@ -75,7 +136,7 @@ type DashboardBancadaMatrixRow = {
   countsByModalidadeAndTipo: Record<string, Record<string, number>>
 }
 
-type StatusTone = 'idle' | 'error' | 'success'
+type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 
 async function getTermoCountByStatus(statusTermo: string): Promise<number> {
   const params = new URLSearchParams({
@@ -119,16 +180,17 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
+type TipoEscolaSortField = 'codigo' | 'sigla' | 'descricao'
 type DreSortDirection = 'asc' | 'desc'
 type TitularSortField = 'codigo' | 'cnpj_cpf' | 'titular'
 type MarcaModeloSortField = 'codigo' | 'descricao'
 type SeguradoraSortField = 'codigo' | 'controle' | 'descricao'
 type FormMode = 'create' | 'edit' | 'view'
-type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
+type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'operacionalAdministrativo' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
 
 type DashboardDrillDownContext = {
   dreCodigo: string
@@ -148,6 +210,50 @@ const formatModalidadeTipoBancadaLabel = (
   item: Pick<ModalidadeTipoBancadaAssociationItem, 'modalidadeDescricao' | 'tipoBancadaDescricao'>,
 ) => {
   return `${item.modalidadeDescricao} / ${item.tipoBancadaDescricao}`
+}
+
+const normalizeMonthYearInput = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 6)
+
+  if (digits.length <= 2) {
+    return digits
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`
+}
+
+const isValidMonthYear = (value: string) => /^(0[1-9]|1[0-2])\/\d{4}$/.test(value)
+
+const convertMonthYearToDashboardMonth = (value: string) => {
+  if (!isValidMonthYear(value)) {
+    return ''
+  }
+
+  const [month, year] = value.split('/')
+  return `${year}-${month}`
+}
+
+const formatApuracaoFinanceiraKey = (item: Pick<ApuracaoFinanceiraKey, 'mesAno' | 'dreCodigo' | 'revisao' | 'tipoPessoa'>) => {
+  return `${item.mesAno}|${item.dreCodigo}|${item.revisao}|${item.tipoPessoa}`
+}
+
+const formatApuracaoFinanceiraDreLabel = (item: Pick<ApuracaoFinanceiraItem, 'dreCodigo' | 'dreSigla' | 'dreDescricao'>) => {
+  return `${item.dreCodigo} - ${item.dreSigla} - ${item.dreDescricao}`
+}
+
+const formatApuracaoFinanceiraDreOptionLabel = (item: Pick<DreItem, 'codigo' | 'sigla' | 'descricao'>) => {
+  return `${item.codigo} - ${item.sigla} - ${item.descricao}`
+}
+
+const formatAliquotaOptanteKey = (item: Pick<AliquotaOptanteKey, 'data' | 'tipoEmpresa'>) => {
+  return `${item.data}|${item.tipoEmpresa}`
+}
+
+const formatAliquotaOptanteValue = (value: number) => {
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  })
 }
 
 const currencyInputFormatter = new Intl.NumberFormat('pt-BR', {
@@ -201,6 +307,7 @@ const PARAMETRO_VEICULO_CONDICAO_OPTIONS = ['Capacidade', 'Desconto/ Viagem', 'V
 const getDefaultCollapsedMenuGroups = (): Record<CollapsedMenuGroup, boolean> => ({
   cadastros: true,
   operacional: true,
+  operacionalAdministrativo: true,
   condutor: true,
   monitor: true,
   termo: true,
@@ -216,25 +323,27 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
   switch (view) {
     case 'titular':
     case 'credenciada':
-      return ['operacional']
+      return ['operacional', 'operacionalAdministrativo']
     case 'credenciamentoTermo':
     case 'termoHistorico':
-      return ['operacional', 'termo']
+      return ['operacional', 'operacionalAdministrativo', 'termo']
     case 'ordemServicoHistorico':
     case 'ordemServico':
-      return ['operacional', 'ordemServico']
+      return ['operacional', 'operacionalAdministrativo', 'ordemServico']
     case 'condutor':
     case 'vinculoCondutor':
-      return ['operacional', 'condutor']
+      return ['operacional', 'operacionalAdministrativo', 'condutor']
     case 'monitor':
     case 'vinculoMonitor':
-      return ['operacional', 'monitor']
+      return ['operacional', 'operacionalAdministrativo', 'monitor']
     case 'veiculo':
     case 'veiculoHistorico':
-      return ['operacional', 'veiculo']
-    case 'termoHistorico':
-    case 'financeiroReprocessamento':
+      return ['operacional', 'operacionalAdministrativo', 'veiculo']
+    case 'apuracaoFinanceira':
+    case 'apuracaoServicos':
       return ['operacional', 'operacionalFinanceiro']
+    case 'financeiroReprocessamento':
+      return ['operacional', 'operacionalAdministrativo']
     case 'dre':
     case 'modalidade':
     case 'tipoBancada':
@@ -247,6 +356,9 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
       return ['cadastros', 'cadastrosOperacional']
     case 'condicao':
     case 'tipoPgto':
+    case 'tipoEscola':
+    case 'aliquotaOptante':
+    case 'diasLetivos':
     case 'modalBancadaTpPagtoCondicao':
     case 'modalBancadaTpPagtoCondicaoValor':
     case 'kmValor':
@@ -991,6 +1103,103 @@ function App() {
   const [tipoPgtoSortBy, setTipoPgtoSortBy] = useState<DreSortField>('codigo')
   const [tipoPgtoSortDirection, setTipoPgtoSortDirection] = useState<DreSortDirection>('asc')
   const deferredTipoPgtoSearch = useDeferredValue(tipoPgtoSearch)
+  const [tipoEscolaItems, setTipoEscolaItems] = useState<TipoEscolaItem[]>([])
+  const [tipoEscolaSigla, setTipoEscolaSigla] = useState('')
+  const [tipoEscolaSiglaError, setTipoEscolaSiglaError] = useState('')
+  const [tipoEscolaDescricao, setTipoEscolaDescricao] = useState('')
+  const [tipoEscolaDescricaoError, setTipoEscolaDescricaoError] = useState('')
+  const [tipoEscolaStatusMessage, setTipoEscolaStatusMessage] = useState('')
+  const [tipoEscolaStatusTone, setTipoEscolaStatusTone] = useState<StatusTone>('idle')
+  const [isLoadingTipoEscola, setIsLoadingTipoEscola] = useState(false)
+  const [isSavingTipoEscola, setIsSavingTipoEscola] = useState(false)
+  const [isDeletingTipoEscola, setIsDeletingTipoEscola] = useState(false)
+  const [isTipoEscolaFormVisible, setIsTipoEscolaFormVisible] = useState(false)
+  const [editingTipoEscolaCodigo, setEditingTipoEscolaCodigo] = useState<string | null>(null)
+  const [tipoEscolaFormMode, setTipoEscolaFormMode] = useState<FormMode>('create')
+  const [tipoEscolaSearch, setTipoEscolaSearch] = useState('')
+  const [tipoEscolaPage, setTipoEscolaPage] = useState(1)
+  const [tipoEscolaTotalItems, setTipoEscolaTotalItems] = useState(0)
+  const [tipoEscolaTotalPages, setTipoEscolaTotalPages] = useState(1)
+  const [tipoEscolaSortBy, setTipoEscolaSortBy] = useState<TipoEscolaSortField>('codigo')
+  const [tipoEscolaSortDirection, setTipoEscolaSortDirection] = useState<DreSortDirection>('asc')
+  const deferredTipoEscolaSearch = useDeferredValue(tipoEscolaSearch)
+  const [aliquotaOptanteItems, setAliquotaOptanteItems] = useState<AliquotaOptanteItem[]>([])
+  const [aliquotaOptanteData, setAliquotaOptanteData] = useState('')
+  const [aliquotaOptanteDataError, setAliquotaOptanteDataError] = useState('')
+  const [aliquotaOptanteTipoEmpresa, setAliquotaOptanteTipoEmpresa] = useState<AliquotaOptanteTipoEmpresa>(ALIQUOTA_OPTANTE_TIPO_EMPRESA_OPTIONS[0])
+  const [aliquotaOptanteTipoEmpresaError, setAliquotaOptanteTipoEmpresaError] = useState('')
+  const [aliquotaOptanteValor, setAliquotaOptanteValor] = useState('')
+  const [aliquotaOptanteValorError, setAliquotaOptanteValorError] = useState('')
+  const [aliquotaOptanteStatusMessage, setAliquotaOptanteStatusMessage] = useState('')
+  const [aliquotaOptanteStatusTone, setAliquotaOptanteStatusTone] = useState<StatusTone>('idle')
+  const [isLoadingAliquotaOptante, setIsLoadingAliquotaOptante] = useState(false)
+  const [isSavingAliquotaOptante, setIsSavingAliquotaOptante] = useState(false)
+  const [isDeletingAliquotaOptante, setIsDeletingAliquotaOptante] = useState(false)
+  const [isAliquotaOptanteFormVisible, setIsAliquotaOptanteFormVisible] = useState(false)
+  const [editingAliquotaOptanteKey, setEditingAliquotaOptanteKey] = useState<AliquotaOptanteKey | null>(null)
+  const [aliquotaOptanteFormMode, setAliquotaOptanteFormMode] = useState<FormMode>('create')
+  const [aliquotaOptanteSearch, setAliquotaOptanteSearch] = useState('')
+  const [aliquotaOptantePage, setAliquotaOptantePage] = useState(1)
+  const [aliquotaOptanteTotalItems, setAliquotaOptanteTotalItems] = useState(0)
+  const [aliquotaOptanteTotalPages, setAliquotaOptanteTotalPages] = useState(1)
+  const [aliquotaOptanteSortBy, setAliquotaOptanteSortBy] = useState<AliquotaOptanteSortField>('data')
+  const [aliquotaOptanteSortDirection, setAliquotaOptanteSortDirection] = useState<DreSortDirection>('desc')
+  const deferredAliquotaOptanteSearch = useDeferredValue(aliquotaOptanteSearch)
+  const [diasLetivosItems, setDiasLetivosItems] = useState<DiasLetivosItem[]>([])
+  const [diasLetivosData, setDiasLetivosData] = useState('')
+  const [diasLetivosDataError, setDiasLetivosDataError] = useState('')
+  const [diasLetivosQuantidade, setDiasLetivosQuantidade] = useState('')
+  const [diasLetivosQuantidadeError, setDiasLetivosQuantidadeError] = useState('')
+  const [diasLetivosStatusMessage, setDiasLetivosStatusMessage] = useState('')
+  const [diasLetivosStatusTone, setDiasLetivosStatusTone] = useState<StatusTone>('idle')
+  const [isLoadingDiasLetivos, setIsLoadingDiasLetivos] = useState(false)
+  const [isSavingDiasLetivos, setIsSavingDiasLetivos] = useState(false)
+  const [isDeletingDiasLetivos, setIsDeletingDiasLetivos] = useState(false)
+  const [isDiasLetivosFormVisible, setIsDiasLetivosFormVisible] = useState(false)
+  const [editingDiasLetivosData, setEditingDiasLetivosData] = useState<string | null>(null)
+  const [diasLetivosFormMode, setDiasLetivosFormMode] = useState<FormMode>('create')
+  const [diasLetivosSearch, setDiasLetivosSearch] = useState('')
+  const [diasLetivosPage, setDiasLetivosPage] = useState(1)
+  const [diasLetivosTotalItems, setDiasLetivosTotalItems] = useState(0)
+  const [diasLetivosTotalPages, setDiasLetivosTotalPages] = useState(1)
+  const [diasLetivosSortBy, setDiasLetivosSortBy] = useState<DiasLetivosSortField>('data')
+  const [diasLetivosSortDirection, setDiasLetivosSortDirection] = useState<DreSortDirection>('asc')
+  const deferredDiasLetivosSearch = useDeferredValue(diasLetivosSearch)
+  const [apuracaoFinanceiraItems, setApuracaoFinanceiraItems] = useState<ApuracaoFinanceiraItem[]>([])
+  const [apuracaoFinanceiraMesAno, setApuracaoFinanceiraMesAno] = useState('')
+  const [apuracaoFinanceiraMesAnoError, setApuracaoFinanceiraMesAnoError] = useState('')
+  const [apuracaoFinanceiraDreCodigo, setApuracaoFinanceiraDreCodigo] = useState('')
+  const [apuracaoFinanceiraDreCodigoError, setApuracaoFinanceiraDreCodigoError] = useState('')
+  const [apuracaoFinanceiraSelectedDreCodigos, setApuracaoFinanceiraSelectedDreCodigos] = useState<string[]>([])
+  const apuracaoFinanceiraSelectedDreCodigosRef = useRef<string[]>([])
+  const [apuracaoFinanceiraSelectedDresError, setApuracaoFinanceiraSelectedDresError] = useState('')
+  const [apuracaoFinanceiraRevisao, setApuracaoFinanceiraRevisao] = useState('0')
+  const [apuracaoFinanceiraRevisaoError, setApuracaoFinanceiraRevisaoError] = useState('')
+  const [apuracaoFinanceiraTipoPessoa, setApuracaoFinanceiraTipoPessoa] = useState<ApuracaoFinanceiraTipoPessoaFormValue>('TODOS')
+  const [apuracaoFinanceiraTipoPessoaError, setApuracaoFinanceiraTipoPessoaError] = useState('')
+  const [apuracaoFinanceiraSituacao, setApuracaoFinanceiraSituacao] = useState<ApuracaoFinanceiraStatus>(APURACAO_FINANCEIRA_STATUS_OPTIONS[0])
+  const [apuracaoFinanceiraSituacaoError, setApuracaoFinanceiraSituacaoError] = useState('')
+  const [apuracaoFinanceiraStatusMessage, setApuracaoFinanceiraStatusMessage] = useState('')
+  const [apuracaoFinanceiraStatusTone, setApuracaoFinanceiraStatusTone] = useState<StatusTone>('idle')
+  const [apuracaoFinanceiraDreOptions, setApuracaoFinanceiraDreOptions] = useState<DreItem[]>([])
+  const [apuracaoFinanceiraActiveDreOptions, setApuracaoFinanceiraActiveDreOptions] = useState<DreItem[]>([])
+  const [isLoadingApuracaoFinanceiraOptions, setIsLoadingApuracaoFinanceiraOptions] = useState(false)
+  const [isLoadingApuracaoFinanceiraActiveDres, setIsLoadingApuracaoFinanceiraActiveDres] = useState(false)
+  const [isLoadingApuracaoFinanceira, setIsLoadingApuracaoFinanceira] = useState(false)
+  const [isSavingApuracaoFinanceira, setIsSavingApuracaoFinanceira] = useState(false)
+  const [isProcessingApuracaoFinanceira, setIsProcessingApuracaoFinanceira] = useState(false)
+  const [isDeletingApuracaoFinanceira, setIsDeletingApuracaoFinanceira] = useState(false)
+  const [isApuracaoFinanceiraFormVisible, setIsApuracaoFinanceiraFormVisible] = useState(false)
+  const [editingApuracaoFinanceiraKey, setEditingApuracaoFinanceiraKey] = useState<ApuracaoFinanceiraKey | null>(null)
+  const [apuracaoFinanceiraEditingBaseDreCodigos, setApuracaoFinanceiraEditingBaseDreCodigos] = useState<string[]>([])
+  const [apuracaoFinanceiraFormMode, setApuracaoFinanceiraFormMode] = useState<FormMode>('create')
+  const [apuracaoFinanceiraSearch, setApuracaoFinanceiraSearch] = useState('')
+  const [apuracaoFinanceiraPage, setApuracaoFinanceiraPage] = useState(1)
+  const [apuracaoFinanceiraTotalPages, setApuracaoFinanceiraTotalPages] = useState(1)
+  const [apuracaoFinanceiraSortBy, setApuracaoFinanceiraSortBy] = useState<ApuracaoFinanceiraSortField>('mesAno')
+  const [apuracaoFinanceiraSortDirection, setApuracaoFinanceiraSortDirection] = useState<DreSortDirection>('desc')
+  const deferredApuracaoFinanceiraSearch = useDeferredValue(apuracaoFinanceiraSearch)
+  const [apuracaoFinanceiraGridActiveDreCounts, setApuracaoFinanceiraGridActiveDreCounts] = useState<Record<string, number>>({})
   const [tipoBancadaAssociationItems, setTipoBancadaAssociationItems] = useState<ModalidadeTipoBancadaAssociationItem[]>([])
   const [associationModalidadeCodigo, setAssociationModalidadeCodigo] = useState('')
   const [associationTipoBancadaCodigo, setAssociationTipoBancadaCodigo] = useState('')
@@ -1284,19 +1493,19 @@ function App() {
     }
   }, [])
 
-  const handleCloseDashboardDrillDown = () => {
+  const handleCloseDashboardDrillDown = useCallback(() => {
     setIsDashboardDrillDownVisible(false)
     setIsLoadingDashboardDrillDown(false)
     setDashboardDrillDownContext(null)
     setDashboardDrillDownData(null)
     setDashboardDrillDownSearch('')
     setDashboardDrillDownStatusMessage('')
-  }
+  }, [])
 
-  const handleCloseDashboardOsPopup = () => {
+  const handleCloseDashboardOsPopup = useCallback(() => {
     setIsDashboardOsPopupVisible(false)
     setDashboardOsPopupUrl('')
-  }
+  }, [])
 
   const openDashboardTab = (relativePath: string) => {
     const url = `${window.location.origin}${relativePath}`
@@ -1328,7 +1537,7 @@ function App() {
     return () => {
       window.removeEventListener('message', handleDashboardOsPopupMessage)
     }
-  }, [])
+  }, [handleCloseDashboardOsPopup])
 
   useEffect(() => {
     if (!session || activeView !== 'inicio' || (dashboardData && dashboardBancadaData)) {
@@ -1519,6 +1728,220 @@ function App() {
       setIsLoadingTipoPgto(false)
     }
   }, [deferredTipoPgtoSearch, tipoPgtoSortBy, tipoPgtoSortDirection])
+
+  const loadTipoEscolaItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingTipoEscola(true)
+    setTipoEscolaStatusMessage('Carregando registros de tipo de escola...')
+    setTipoEscolaStatusTone('idle')
+
+    try {
+      const result = await listTipoEscolaItemsPaginated({
+        search: deferredTipoEscolaSearch,
+        page: pageToLoad,
+        pageSize: 20,
+        sortBy: tipoEscolaSortBy,
+        sortDirection: tipoEscolaSortDirection,
+      })
+
+      setTipoEscolaItems(result.items)
+      setTipoEscolaTotalItems(result.total)
+      setTipoEscolaTotalPages(result.totalPages)
+      setTipoEscolaPage(result.page)
+      setTipoEscolaSortBy(result.sortBy)
+      setTipoEscolaSortDirection(result.sortDirection)
+      setTipoEscolaStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Tipo Escola.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de tipo de escola.'
+
+      setTipoEscolaStatusTone('error')
+      setTipoEscolaStatusMessage(message)
+    } finally {
+      setIsLoadingTipoEscola(false)
+    }
+  }, [deferredTipoEscolaSearch, tipoEscolaSortBy, tipoEscolaSortDirection])
+
+  const loadAliquotaOptanteItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingAliquotaOptante(true)
+    setAliquotaOptanteStatusMessage('Carregando registros de aliquota optante...')
+    setAliquotaOptanteStatusTone('idle')
+
+    try {
+      const result = await listAliquotaOptanteItemsPaginated({
+        search: deferredAliquotaOptanteSearch,
+        page: pageToLoad,
+        pageSize: 20,
+        sortBy: aliquotaOptanteSortBy,
+        sortDirection: aliquotaOptanteSortDirection,
+      })
+
+      setAliquotaOptanteItems(result.items)
+      setAliquotaOptanteTotalItems(result.total)
+      setAliquotaOptanteTotalPages(result.totalPages)
+      setAliquotaOptantePage(result.page)
+      setAliquotaOptanteSortBy(result.sortBy)
+      setAliquotaOptanteSortDirection(result.sortDirection)
+      setAliquotaOptanteStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Aliquota Optante.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de aliquota optante.'
+
+      setAliquotaOptanteStatusTone('error')
+      setAliquotaOptanteStatusMessage(message)
+    } finally {
+      setIsLoadingAliquotaOptante(false)
+    }
+  }, [aliquotaOptanteSortBy, aliquotaOptanteSortDirection, deferredAliquotaOptanteSearch])
+
+  const loadDiasLetivosItems = useCallback(async (pageToLoad: number) => {
+    setIsLoadingDiasLetivos(true)
+    setDiasLetivosStatusMessage('Carregando registros de dias letivos...')
+    setDiasLetivosStatusTone('idle')
+
+    try {
+      const result = await listDiasLetivosItemsPaginated({
+        search: deferredDiasLetivosSearch,
+        page: pageToLoad,
+        pageSize: 20,
+        sortBy: diasLetivosSortBy,
+        sortDirection: diasLetivosSortDirection,
+      })
+
+      setDiasLetivosItems(result.items)
+      setDiasLetivosTotalItems(result.total)
+      setDiasLetivosTotalPages(result.totalPages)
+      setDiasLetivosPage(result.page)
+      setDiasLetivosSortBy(result.sortBy)
+      setDiasLetivosSortDirection(result.sortDirection)
+      setDiasLetivosStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Dias Letivos.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de dias letivos.'
+
+      setDiasLetivosStatusTone('error')
+      setDiasLetivosStatusMessage(message)
+    } finally {
+      setIsLoadingDiasLetivos(false)
+    }
+  }, [deferredDiasLetivosSearch, diasLetivosSortBy, diasLetivosSortDirection])
+
+  const loadApuracaoFinanceiraDreOptions = useCallback(async () => {
+    setIsLoadingApuracaoFinanceiraOptions(true)
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage('Carregando opcoes de DRE...')
+
+    try {
+      const result = await listDreItemsPaginated({
+        page: 1,
+        pageSize: 500,
+        sortBy: 'descricao',
+        sortDirection: 'asc',
+      })
+
+      setApuracaoFinanceiraDreOptions(result.items)
+      setApuracaoFinanceiraStatusMessage('')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar as DREs da apuracao financeira.'
+
+      setApuracaoFinanceiraStatusTone('error')
+      setApuracaoFinanceiraStatusMessage(message)
+    } finally {
+      setIsLoadingApuracaoFinanceiraOptions(false)
+    }
+  }, [])
+
+  const loadApuracaoFinanceiraActiveDreOptions = useCallback(async (mesAno: string) => {
+    if (!isValidMonthYear(mesAno)) {
+      setApuracaoFinanceiraActiveDreOptions([])
+      setApuracaoFinanceiraSelectedDreCodigos([])
+      setApuracaoFinanceiraSelectedDresError('')
+      return
+    }
+
+    setIsLoadingApuracaoFinanceiraActiveDres(true)
+    setApuracaoFinanceiraSelectedDresError('')
+
+    try {
+      const dashboardMonth = convertMonthYearToDashboardMonth(mesAno)
+      const result = await getOrdemServicoDashboardAtivos(dashboardMonth)
+      const activeOperationalCodes = new Set(
+        result.rows
+          .map((item) => item.dreCodigo.trim())
+          .filter((item) => item && item !== 'SEM DRE'),
+      )
+
+      const nextOptions = apuracaoFinanceiraDreOptions.filter((item) => activeOperationalCodes.has(item.sigla))
+      const selectedDreCodigos = apuracaoFinanceiraSelectedDreCodigosRef.current
+      const preservedSelectedOptions = apuracaoFinanceiraDreOptions.filter((item) => (
+        selectedDreCodigos.includes(item.codigo)
+        && !nextOptions.some((option) => option.codigo === item.codigo)
+      ))
+      const mergedOptions = [...nextOptions, ...preservedSelectedOptions]
+
+      mergedOptions.sort((left, right) => formatApuracaoFinanceiraDreOptionLabel(left).localeCompare(formatApuracaoFinanceiraDreOptionLabel(right), 'pt-BR'))
+      setApuracaoFinanceiraActiveDreOptions(mergedOptions)
+      setApuracaoFinanceiraSelectedDreCodigos((currentSelected) => currentSelected.filter((codigo) => mergedOptions.some((item) => item.codigo === codigo)))
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar as DREs ativas da apuracao financeira.'
+
+      setApuracaoFinanceiraActiveDreOptions([])
+      setApuracaoFinanceiraSelectedDresError(message)
+    } finally {
+      setIsLoadingApuracaoFinanceiraActiveDres(false)
+    }
+  }, [apuracaoFinanceiraDreOptions])
+
+  const loadApuracaoFinanceiraItems = useCallback(async (
+    pageToLoad: number,
+    options?: {
+      preserveStatusMessage?: boolean
+    },
+  ) => {
+    const preserveStatusMessage = options?.preserveStatusMessage ?? false
+
+    setIsLoadingApuracaoFinanceira(true)
+
+    if (!preserveStatusMessage) {
+      setApuracaoFinanceiraStatusMessage('Carregando registros de apuracao financeira...')
+      setApuracaoFinanceiraStatusTone('idle')
+    }
+
+    try {
+      const result = await listApuracaoFinanceiraItemsPaginated({
+        search: deferredApuracaoFinanceiraSearch,
+        page: pageToLoad,
+        pageSize: 20,
+        sortBy: apuracaoFinanceiraSortBy,
+        sortDirection: apuracaoFinanceiraSortDirection,
+      })
+
+      setApuracaoFinanceiraItems(result.items)
+      setApuracaoFinanceiraTotalPages(result.totalPages)
+      setApuracaoFinanceiraPage(result.page)
+      setApuracaoFinanceiraSortBy(result.sortBy)
+      setApuracaoFinanceiraSortDirection(result.sortDirection)
+
+      if (!preserveStatusMessage) {
+        setApuracaoFinanceiraStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Apuracao Financeira.')
+      }
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao carregar os registros de apuracao financeira.'
+
+      setApuracaoFinanceiraStatusTone('error')
+      setApuracaoFinanceiraStatusMessage(message)
+    } finally {
+      setIsLoadingApuracaoFinanceira(false)
+    }
+  }, [apuracaoFinanceiraSortBy, apuracaoFinanceiraSortDirection, deferredApuracaoFinanceiraSearch])
 
   const loadAssociationOptions = useCallback(async () => {
     setIsLoadingAssociationOptions(true)
@@ -2518,6 +2941,121 @@ function App() {
   }, [activeView, loadTipoPgtoItems, session, tipoPgtoPage])
 
   useEffect(() => {
+    if (!session || activeView !== 'tipoEscola') {
+      return
+    }
+
+    void loadTipoEscolaItems(tipoEscolaPage)
+  }, [activeView, loadTipoEscolaItems, session, tipoEscolaPage])
+
+  useEffect(() => {
+    if (!session || activeView !== 'aliquotaOptante') {
+      return
+    }
+
+    void loadAliquotaOptanteItems(aliquotaOptantePage)
+  }, [activeView, aliquotaOptantePage, loadAliquotaOptanteItems, session])
+
+  useEffect(() => {
+    if (!session || activeView !== 'diasLetivos') {
+      return
+    }
+
+    void loadDiasLetivosItems(diasLetivosPage)
+  }, [activeView, diasLetivosPage, loadDiasLetivosItems, session])
+
+  useEffect(() => {
+    apuracaoFinanceiraSelectedDreCodigosRef.current = apuracaoFinanceiraSelectedDreCodigos
+  }, [apuracaoFinanceiraSelectedDreCodigos])
+
+  useEffect(() => {
+    if (!session || activeView !== 'apuracaoFinanceira') {
+      return
+    }
+
+    void loadApuracaoFinanceiraDreOptions()
+    void loadApuracaoFinanceiraItems(apuracaoFinanceiraPage)
+  }, [activeView, apuracaoFinanceiraPage, loadApuracaoFinanceiraDreOptions, loadApuracaoFinanceiraItems, session])
+
+  useEffect(() => {
+    if (
+      !session
+      || activeView !== 'apuracaoFinanceira'
+      || !isApuracaoFinanceiraFormVisible
+      || apuracaoFinanceiraFormMode === 'view'
+    ) {
+      return
+    }
+
+    void loadApuracaoFinanceiraActiveDreOptions(apuracaoFinanceiraMesAno)
+  }, [
+    activeView,
+    apuracaoFinanceiraFormMode,
+    apuracaoFinanceiraMesAno,
+    isApuracaoFinanceiraFormVisible,
+    loadApuracaoFinanceiraActiveDreOptions,
+    session,
+  ])
+
+  useEffect(() => {
+    if (!session || activeView !== 'apuracaoFinanceira' || apuracaoFinanceiraItems.length === 0 || apuracaoFinanceiraDreOptions.length === 0) {
+      return
+    }
+
+    const mesAnoToLoad = [...new Set(
+      apuracaoFinanceiraItems
+        .map((item) => item.mesAno)
+        .filter((item) => isValidMonthYear(item) && apuracaoFinanceiraGridActiveDreCounts[item] === undefined),
+    )]
+
+    if (mesAnoToLoad.length === 0) {
+      return
+    }
+
+    let isCancelled = false
+
+    const loadGridActiveDreCounts = async () => {
+      const nextEntries = await Promise.all(
+        mesAnoToLoad.map(async (mesAno) => {
+          try {
+            const result = await getOrdemServicoDashboardAtivos(convertMonthYearToDashboardMonth(mesAno))
+            const activeOperationalCodes = new Set(
+              result.rows
+                .map((item) => item.dreCodigo.trim())
+                .filter((item) => item && item !== 'SEM DRE'),
+            )
+
+            const activeCount = apuracaoFinanceiraDreOptions.filter((item) => activeOperationalCodes.has(item.sigla)).length
+            return [mesAno, activeCount] as const
+          } catch {
+            return [mesAno, 0] as const
+          }
+        }),
+      )
+
+      if (isCancelled) {
+        return
+      }
+
+      setApuracaoFinanceiraGridActiveDreCounts((current) => {
+        const next = { ...current }
+
+        nextEntries.forEach(([mesAno, activeCount]) => {
+          next[mesAno] = activeCount
+        })
+
+        return next
+      })
+    }
+
+    void loadGridActiveDreCounts()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeView, apuracaoFinanceiraDreOptions, apuracaoFinanceiraGridActiveDreCounts, apuracaoFinanceiraItems, session])
+
+  useEffect(() => {
     if (!session || activeView !== 'modalBancadaTpPagtoCondicao') {
       return
     }
@@ -2797,23 +3335,23 @@ function App() {
     setSmokeReportActionMessage('Download do relatorio JSON iniciado.')
   }
 
-  const resetDreForm = () => {
+  const resetDreForm = useCallback(() => {
     setDreSigla('')
     setDreSiglaError('')
     setDreDescricao('')
     setDreDescricaoError('')
     setEditingDreCodigo(null)
     setDreFormMode('create')
-  }
+  }, [])
 
-  const resetModalidadeForm = () => {
+  const resetModalidadeForm = useCallback(() => {
     setModalidadeDescricao('')
     setModalidadeDescricaoError('')
     setEditingModalidadeCodigo(null)
     setModalidadeFormMode('create')
-  }
+  }, [])
 
-  const resetCondicaoForm = () => {
+  const resetCondicaoForm = useCallback(() => {
     setCondicaoDescricao('')
     setCondicaoDescricaoError('')
     setCondicaoQtdeIni('')
@@ -2822,21 +3360,69 @@ function App() {
     setCondicaoQtdeFimError('')
     setEditingCondicaoCodigo(null)
     setCondicaoFormMode('create')
-  }
+  }, [])
 
-  const resetTipoBancadaForm = () => {
+  const resetTipoBancadaForm = useCallback(() => {
     setTipoBancadaDescricao('')
     setTipoBancadaDescricaoError('')
     setEditingTipoBancadaCodigo(null)
     setTipoBancadaFormMode('create')
-  }
+  }, [])
 
-  const resetTipoPgtoForm = () => {
+  const resetTipoPgtoForm = useCallback(() => {
     setTipoPgtoDescricao('')
     setTipoPgtoDescricaoError('')
     setEditingTipoPgtoCodigo(null)
     setTipoPgtoFormMode('create')
-  }
+  }, [])
+
+  const resetTipoEscolaForm = useCallback(() => {
+    setTipoEscolaSigla('')
+    setTipoEscolaSiglaError('')
+    setTipoEscolaDescricao('')
+    setTipoEscolaDescricaoError('')
+    setEditingTipoEscolaCodigo(null)
+    setTipoEscolaFormMode('create')
+  }, [])
+
+  const resetAliquotaOptanteForm = useCallback(() => {
+    setAliquotaOptanteData('')
+    setAliquotaOptanteDataError('')
+    setAliquotaOptanteTipoEmpresa(ALIQUOTA_OPTANTE_TIPO_EMPRESA_OPTIONS[0])
+    setAliquotaOptanteTipoEmpresaError('')
+    setAliquotaOptanteValor('')
+    setAliquotaOptanteValorError('')
+    setEditingAliquotaOptanteKey(null)
+    setAliquotaOptanteFormMode('create')
+  }, [])
+
+  const resetDiasLetivosForm = useCallback(() => {
+    setDiasLetivosData('')
+    setDiasLetivosDataError('')
+    setDiasLetivosQuantidade('')
+    setDiasLetivosQuantidadeError('')
+    setEditingDiasLetivosData(null)
+    setDiasLetivosFormMode('create')
+  }, [])
+
+  const resetApuracaoFinanceiraForm = useCallback(() => {
+    setApuracaoFinanceiraMesAno('')
+    setApuracaoFinanceiraMesAnoError('')
+    setApuracaoFinanceiraDreCodigo('')
+    setApuracaoFinanceiraDreCodigoError('')
+    setApuracaoFinanceiraSelectedDreCodigos([])
+    setApuracaoFinanceiraSelectedDresError('')
+    setApuracaoFinanceiraActiveDreOptions([])
+    setApuracaoFinanceiraRevisao('0')
+    setApuracaoFinanceiraRevisaoError('')
+    setApuracaoFinanceiraTipoPessoa('TODOS')
+    setApuracaoFinanceiraTipoPessoaError('')
+    setApuracaoFinanceiraSituacao(APURACAO_FINANCEIRA_STATUS_OPTIONS[0])
+    setApuracaoFinanceiraSituacaoError('')
+    setApuracaoFinanceiraEditingBaseDreCodigos([])
+    setEditingApuracaoFinanceiraKey(null)
+    setApuracaoFinanceiraFormMode('create')
+  }, [])
 
   const resetModalBancadaTpPagtoCondicaoForm = () => {
     setModalBancadaTpPagtoCondicaoAssociationCodigo('')
@@ -2854,30 +3440,30 @@ function App() {
     setModalBancadaTpPagtoCondicaoValorFormMode('create')
   }
 
-  const resetKmValorForm = () => {
+  const resetKmValorForm = useCallback(() => {
     setKmValorCondicaoCodigo('')
     setKmValorData('')
     setKmValorValor('')
     setEditingKmValorCodigo(null)
     setKmValorFormMode('create')
-  }
+  }, [])
 
-  const resetContinuaValorForm = () => {
+  const resetContinuaValorForm = useCallback(() => {
     setContinuaValorTipo('')
     setContinuaValorData('')
     setContinuaValorValor('')
     setEditingContinuaValorCodigo(null)
     setContinuaValorFormMode('create')
-  }
+  }, [])
 
-  const resetParametroVeiculoForm = () => {
+  const resetParametroVeiculoForm = useCallback(() => {
     setParametroVeiculoModalidadeTipoBancadaCodigo('')
     setParametroVeiculoCondicao('')
     setParametroVeiculoQtdeCondicao('')
     setParametroVeiculoData('')
     setEditingParametroVeiculoCodigo(null)
     setParametroVeiculoFormMode('create')
-  }
+  }, [])
 
   const handleStartInsertDre = () => {
     resetDreForm()
@@ -2917,6 +3503,55 @@ function App() {
     setTipoPgtoStatusTone('idle')
     setTipoPgtoStatusMessage('')
     setIsTipoPgtoFormVisible(true)
+  }
+
+  const handleStartInsertTipoEscola = () => {
+    resetTipoEscolaForm()
+    setTipoEscolaFormMode('create')
+    setTipoEscolaStatusTone('idle')
+    setTipoEscolaStatusMessage('')
+    setIsTipoEscolaFormVisible(true)
+  }
+
+  const handleStartInsertAliquotaOptante = () => {
+    resetAliquotaOptanteForm()
+    setAliquotaOptanteFormMode('create')
+    setAliquotaOptanteStatusTone('idle')
+    setAliquotaOptanteStatusMessage('')
+    setIsAliquotaOptanteFormVisible(true)
+  }
+
+  const handleStartInsertDiasLetivos = () => {
+    resetDiasLetivosForm()
+    setDiasLetivosFormMode('create')
+    setDiasLetivosStatusTone('idle')
+    setDiasLetivosStatusMessage('')
+    setIsDiasLetivosFormVisible(true)
+  }
+
+  const handleStartInsertApuracaoFinanceira = () => {
+    resetApuracaoFinanceiraForm()
+    setApuracaoFinanceiraFormMode('create')
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage('')
+    setIsApuracaoFinanceiraFormVisible(true)
+  }
+
+  const handleToggleApuracaoFinanceiraSelectedDre = (codigo: string) => {
+    setApuracaoFinanceiraSelectedDreCodigos((currentSelected) => (
+      currentSelected.includes(codigo)
+        ? currentSelected.filter((item) => item !== codigo)
+        : [...currentSelected, codigo]
+    ))
+    setApuracaoFinanceiraSelectedDresError('')
+  }
+
+  const handleToggleAllApuracaoFinanceiraDres = () => {
+    const allSelected = apuracaoFinanceiraActiveDreOptions.length > 0
+      && apuracaoFinanceiraSelectedDreCodigos.length === apuracaoFinanceiraActiveDreOptions.length
+
+    setApuracaoFinanceiraSelectedDreCodigos(allSelected ? [] : apuracaoFinanceiraActiveDreOptions.map((item) => item.codigo))
+    setApuracaoFinanceiraSelectedDresError('')
   }
 
   const handleStartInsertModalBancadaTpPagtoCondicao = () => {
@@ -3017,6 +3652,54 @@ function App() {
   const handleClearTipoPgtoFilter = () => {
     setTipoPgtoSearch('')
     setTipoPgtoPage(1)
+  }
+
+  const handleFilterTipoEscolaSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setTipoEscolaPage(1)
+    setTipoEscolaStatusMessage('Aplicando filtro de tipo de escola...')
+    setTipoEscolaStatusTone('idle')
+  }
+
+  const handleClearTipoEscolaFilter = () => {
+    setTipoEscolaSearch('')
+    setTipoEscolaPage(1)
+  }
+
+  const handleFilterAliquotaOptanteSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAliquotaOptantePage(1)
+    setAliquotaOptanteStatusMessage('Aplicando filtro de aliquota optante...')
+    setAliquotaOptanteStatusTone('idle')
+  }
+
+  const handleClearAliquotaOptanteFilter = () => {
+    setAliquotaOptanteSearch('')
+    setAliquotaOptantePage(1)
+  }
+
+  const handleFilterDiasLetivosSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setDiasLetivosPage(1)
+    setDiasLetivosStatusMessage('Aplicando filtro de dias letivos...')
+    setDiasLetivosStatusTone('idle')
+  }
+
+  const handleClearDiasLetivosFilter = () => {
+    setDiasLetivosSearch('')
+    setDiasLetivosPage(1)
+  }
+
+  const handleFilterApuracaoFinanceiraSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setApuracaoFinanceiraPage(1)
+    setApuracaoFinanceiraStatusMessage('Aplicando filtro da apuracao financeira...')
+    setApuracaoFinanceiraStatusTone('idle')
+  }
+
+  const handleClearApuracaoFinanceiraFilter = () => {
+    setApuracaoFinanceiraSearch('')
+    setApuracaoFinanceiraPage(1)
   }
 
   const handleFilterModalBancadaTpPagtoCondicaoSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -3194,6 +3877,90 @@ function App() {
     return tipoPgtoSortDirection === 'asc' ? '↑' : '↓'
   }
 
+  const handleSortTipoEscola = (field: TipoEscolaSortField) => {
+    setTipoEscolaPage(1)
+    setTipoEscolaSortBy((currentField) => {
+      if (currentField === field) {
+        setTipoEscolaSortDirection((currentDirection) => currentDirection === 'asc' ? 'desc' : 'asc')
+        return currentField
+      }
+
+      setTipoEscolaSortDirection('asc')
+      return field
+    })
+  }
+
+  const getTipoEscolaSortIndicator = (field: TipoEscolaSortField) => {
+    if (tipoEscolaSortBy !== field) {
+      return '↕'
+    }
+
+    return tipoEscolaSortDirection === 'asc' ? '↑' : '↓'
+  }
+
+  const handleSortAliquotaOptante = (field: AliquotaOptanteSortField) => {
+    setAliquotaOptantePage(1)
+    setAliquotaOptanteSortBy((currentField) => {
+      if (currentField === field) {
+        setAliquotaOptanteSortDirection((currentDirection) => currentDirection === 'asc' ? 'desc' : 'asc')
+        return currentField
+      }
+
+      setAliquotaOptanteSortDirection(field === 'data' ? 'desc' : 'asc')
+      return field
+    })
+  }
+
+  const getAliquotaOptanteSortIndicator = (field: AliquotaOptanteSortField) => {
+    if (aliquotaOptanteSortBy !== field) {
+      return '↕'
+    }
+
+    return aliquotaOptanteSortDirection === 'asc' ? '↑' : '↓'
+  }
+
+  const handleSortDiasLetivos = (field: DiasLetivosSortField) => {
+    setDiasLetivosPage(1)
+    setDiasLetivosSortBy((currentField) => {
+      if (currentField === field) {
+        setDiasLetivosSortDirection((currentDirection) => currentDirection === 'asc' ? 'desc' : 'asc')
+        return currentField
+      }
+
+      setDiasLetivosSortDirection(field === 'data' ? 'asc' : 'desc')
+      return field
+    })
+  }
+
+  const getDiasLetivosSortIndicator = (field: DiasLetivosSortField) => {
+    if (diasLetivosSortBy !== field) {
+      return '↕'
+    }
+
+    return diasLetivosSortDirection === 'asc' ? '↑' : '↓'
+  }
+
+  const handleSortApuracaoFinanceira = (field: ApuracaoFinanceiraSortField) => {
+    setApuracaoFinanceiraPage(1)
+    setApuracaoFinanceiraSortBy((currentField) => {
+      if (currentField === field) {
+        setApuracaoFinanceiraSortDirection((currentDirection) => currentDirection === 'asc' ? 'desc' : 'asc')
+        return currentField
+      }
+
+      setApuracaoFinanceiraSortDirection(field === 'mesAno' ? 'desc' : 'asc')
+      return field
+    })
+  }
+
+  const getApuracaoFinanceiraSortIndicator = (field: ApuracaoFinanceiraSortField) => {
+    if (apuracaoFinanceiraSortBy !== field) {
+      return '↕'
+    }
+
+    return apuracaoFinanceiraSortDirection === 'asc' ? '↑' : '↓'
+  }
+
   const handleSortTipoBancada = (field: DreSortField) => {
     setTipoBancadaPage(1)
     setTipoBancadaSortBy((currentField) => {
@@ -3239,12 +4006,12 @@ function App() {
     setIsDreFormVisible(true)
   }
 
-  const handleCancelDreForm = () => {
+  const handleCancelDreForm = useCallback(() => {
     resetDreForm()
     setIsDreFormVisible(false)
     setDreStatusTone('idle')
     setDreStatusMessage('')
-  }
+  }, [resetDreForm])
 
   const handleStartEditModalidade = (item: ModalidadeItem) => {
     setEditingModalidadeCodigo(item.codigo)
@@ -3406,19 +4173,19 @@ function App() {
     setIsParametroVeiculoFormVisible(true)
   }
 
-  const handleCancelModalidadeForm = () => {
+  const handleCancelModalidadeForm = useCallback(() => {
     resetModalidadeForm()
     setIsModalidadeFormVisible(false)
     setModalidadeStatusTone('idle')
     setModalidadeStatusMessage('')
-  }
+  }, [resetModalidadeForm])
 
-  const handleCancelCondicaoForm = () => {
+  const handleCancelCondicaoForm = useCallback(() => {
     resetCondicaoForm()
     setIsCondicaoFormVisible(false)
     setCondicaoStatusTone('idle')
     setCondicaoStatusMessage('')
-  }
+  }, [resetCondicaoForm])
 
   const handleCancelModalBancadaTpPagtoCondicaoForm = () => {
     resetModalBancadaTpPagtoCondicaoForm()
@@ -3434,26 +4201,26 @@ function App() {
     setModalBancadaTpPagtoCondicaoValorStatusMessage('')
   }
 
-  const handleCancelKmValorForm = () => {
+  const handleCancelKmValorForm = useCallback(() => {
     resetKmValorForm()
     setIsKmValorFormVisible(false)
     setKmValorStatusTone('idle')
     setKmValorStatusMessage('')
-  }
+  }, [resetKmValorForm])
 
-  const handleCancelContinuaValorForm = () => {
+  const handleCancelContinuaValorForm = useCallback(() => {
     resetContinuaValorForm()
     setIsContinuaValorFormVisible(false)
     setContinuaValorStatusTone('idle')
     setContinuaValorStatusMessage('')
-  }
+  }, [resetContinuaValorForm])
 
-  const handleCancelParametroVeiculoForm = () => {
+  const handleCancelParametroVeiculoForm = useCallback(() => {
     resetParametroVeiculoForm()
     setIsParametroVeiculoFormVisible(false)
     setParametroVeiculoStatusTone('idle')
     setParametroVeiculoStatusMessage('')
-  }
+  }, [resetParametroVeiculoForm])
 
   useEffect(() => {
     if (!isKmValorFormVisible) {
@@ -3558,19 +4325,244 @@ function App() {
     setIsTipoPgtoFormVisible(true)
   }
 
-  const handleCancelTipoBancadaForm = () => {
+  const handleStartEditTipoEscola = (item: TipoEscolaItem) => {
+    setEditingTipoEscolaCodigo(item.codigo)
+    setTipoEscolaFormMode('edit')
+    setTipoEscolaSigla(item.sigla)
+    setTipoEscolaSiglaError('')
+    setTipoEscolaDescricao(item.descricao)
+    setTipoEscolaDescricaoError('')
+    setTipoEscolaStatusTone('idle')
+    setTipoEscolaStatusMessage(`Alterando registro ${item.codigo}.`)
+    setIsTipoEscolaFormVisible(true)
+  }
+
+  const handleStartViewTipoEscola = (item: TipoEscolaItem) => {
+    setEditingTipoEscolaCodigo(item.codigo)
+    setTipoEscolaFormMode('view')
+    setTipoEscolaSigla(item.sigla)
+    setTipoEscolaSiglaError('')
+    setTipoEscolaDescricao(item.descricao)
+    setTipoEscolaDescricaoError('')
+    setTipoEscolaStatusTone('idle')
+    setTipoEscolaStatusMessage(`Consulta do registro ${item.codigo}.`)
+    setIsTipoEscolaFormVisible(true)
+  }
+
+  const handleStartEditAliquotaOptante = (item: AliquotaOptanteItem) => {
+    setEditingAliquotaOptanteKey({ data: item.data, tipoEmpresa: item.tipoEmpresa })
+    setAliquotaOptanteFormMode('edit')
+    setAliquotaOptanteData(item.data)
+    setAliquotaOptanteDataError('')
+    setAliquotaOptanteTipoEmpresa(item.tipoEmpresa)
+    setAliquotaOptanteTipoEmpresaError('')
+    setAliquotaOptanteValor(item.aliquota.toFixed(4))
+    setAliquotaOptanteValorError('')
+    setAliquotaOptanteStatusTone('idle')
+    setAliquotaOptanteStatusMessage(`Alterando registro ${item.data}.`)
+    setIsAliquotaOptanteFormVisible(true)
+  }
+
+  const handleStartViewAliquotaOptante = (item: AliquotaOptanteItem) => {
+    setEditingAliquotaOptanteKey({ data: item.data, tipoEmpresa: item.tipoEmpresa })
+    setAliquotaOptanteFormMode('view')
+    setAliquotaOptanteData(item.data)
+    setAliquotaOptanteDataError('')
+    setAliquotaOptanteTipoEmpresa(item.tipoEmpresa)
+    setAliquotaOptanteTipoEmpresaError('')
+    setAliquotaOptanteValor(item.aliquota.toFixed(4))
+    setAliquotaOptanteValorError('')
+    setAliquotaOptanteStatusTone('idle')
+    setAliquotaOptanteStatusMessage(`Consulta do registro ${item.data}.`)
+    setIsAliquotaOptanteFormVisible(true)
+  }
+
+  const handleStartEditDiasLetivos = (item: DiasLetivosItem) => {
+    setEditingDiasLetivosData(item.data)
+    setDiasLetivosFormMode('edit')
+    setDiasLetivosData(item.data)
+    setDiasLetivosDataError('')
+    setDiasLetivosQuantidade(String(item.diasLetivos))
+    setDiasLetivosQuantidadeError('')
+    setDiasLetivosStatusTone('idle')
+    setDiasLetivosStatusMessage(`Alterando registro ${item.data}.`)
+    setIsDiasLetivosFormVisible(true)
+  }
+
+  const handleStartViewDiasLetivos = (item: DiasLetivosItem) => {
+    setEditingDiasLetivosData(item.data)
+    setDiasLetivosFormMode('view')
+    setDiasLetivosData(item.data)
+    setDiasLetivosDataError('')
+    setDiasLetivosQuantidade(String(item.diasLetivos))
+    setDiasLetivosQuantidadeError('')
+    setDiasLetivosStatusTone('idle')
+    setDiasLetivosStatusMessage(`Consulta do registro ${item.data}.`)
+    setIsDiasLetivosFormVisible(true)
+  }
+
+  const handleStartViewApuracaoFinanceira = (row: ApuracaoFinanceiraGridRow) => {
+    const item = row.representativeItem
+
+    setEditingApuracaoFinanceiraKey({
+      mesAno: item.mesAno,
+      dreCodigo: item.dreCodigo,
+      revisao: item.revisao,
+      tipoPessoa: item.tipoPessoa,
+    })
+    setApuracaoFinanceiraFormMode('view')
+    setApuracaoFinanceiraMesAno(item.mesAno)
+    setApuracaoFinanceiraMesAnoError('')
+    setApuracaoFinanceiraDreCodigo(item.dreCodigo)
+    setApuracaoFinanceiraDreCodigoError('')
+    setApuracaoFinanceiraSelectedDreCodigos(row.dreCodigos)
+    setApuracaoFinanceiraSelectedDresError('')
+    setApuracaoFinanceiraActiveDreOptions([])
+    setApuracaoFinanceiraRevisao(String(item.revisao))
+    setApuracaoFinanceiraRevisaoError('')
+    setApuracaoFinanceiraTipoPessoa(row.tipoPessoaFormValue)
+    setApuracaoFinanceiraTipoPessoaError('')
+    setApuracaoFinanceiraSituacao(item.situacao)
+    setApuracaoFinanceiraSituacaoError('')
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage(`Consulta do registro ${item.mesAno} / ${row.dreText} / ${item.revisao} / ${row.tipoPessoaLabel}.`)
+    setIsApuracaoFinanceiraFormVisible(true)
+  }
+
+  const handleStartEditApuracaoFinanceira = (row: ApuracaoFinanceiraGridRow) => {
+    const item = row.representativeItem
+    const initialDreCodigos = row.dreCodigos.length > 0 ? row.dreCodigos : [item.dreCodigo]
+
+    setEditingApuracaoFinanceiraKey({
+      mesAno: item.mesAno,
+      dreCodigo: item.dreCodigo,
+      revisao: item.revisao,
+      tipoPessoa: item.tipoPessoa,
+    })
+    setApuracaoFinanceiraFormMode('edit')
+    setApuracaoFinanceiraMesAno(item.mesAno)
+    setApuracaoFinanceiraMesAnoError('')
+    setApuracaoFinanceiraDreCodigo(item.dreCodigo)
+    setApuracaoFinanceiraDreCodigoError('')
+    setApuracaoFinanceiraSelectedDreCodigos(initialDreCodigos)
+    setApuracaoFinanceiraSelectedDresError('')
+    setApuracaoFinanceiraActiveDreOptions([])
+    setApuracaoFinanceiraEditingBaseDreCodigos(initialDreCodigos)
+    setApuracaoFinanceiraRevisao(String(item.revisao))
+    setApuracaoFinanceiraRevisaoError('')
+    setApuracaoFinanceiraTipoPessoa(row.tipoPessoaFormValue)
+    setApuracaoFinanceiraTipoPessoaError('')
+    setApuracaoFinanceiraSituacao(item.situacao)
+    setApuracaoFinanceiraSituacaoError('')
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage(`Alterando registro ${item.mesAno} / ${row.dreText} / ${item.revisao} / ${row.tipoPessoaLabel}.`)
+    setIsApuracaoFinanceiraFormVisible(true)
+  }
+
+  const handleCancelTipoBancadaForm = useCallback(() => {
     resetTipoBancadaForm()
     setIsTipoBancadaFormVisible(false)
     setTipoBancadaStatusTone('idle')
     setTipoBancadaStatusMessage('')
-  }
+  }, [resetTipoBancadaForm])
 
-  const handleCancelTipoPgtoForm = () => {
+  const handleCancelTipoPgtoForm = useCallback(() => {
     resetTipoPgtoForm()
     setIsTipoPgtoFormVisible(false)
     setTipoPgtoStatusTone('idle')
     setTipoPgtoStatusMessage('')
-  }
+  }, [resetTipoPgtoForm])
+
+  const handleCancelTipoEscolaForm = useCallback(() => {
+    resetTipoEscolaForm()
+    setIsTipoEscolaFormVisible(false)
+    setTipoEscolaStatusTone('idle')
+    setTipoEscolaStatusMessage('')
+  }, [resetTipoEscolaForm])
+
+  const handleCancelAliquotaOptanteForm = useCallback(() => {
+    resetAliquotaOptanteForm()
+    setIsAliquotaOptanteFormVisible(false)
+    setAliquotaOptanteStatusTone('idle')
+    setAliquotaOptanteStatusMessage('')
+  }, [resetAliquotaOptanteForm])
+
+  const handleCancelDiasLetivosForm = useCallback(() => {
+    resetDiasLetivosForm()
+    setIsDiasLetivosFormVisible(false)
+    setDiasLetivosStatusTone('idle')
+    setDiasLetivosStatusMessage('')
+  }, [resetDiasLetivosForm])
+
+  const handleCancelApuracaoFinanceiraForm = useCallback(() => {
+    resetApuracaoFinanceiraForm()
+    setIsApuracaoFinanceiraFormVisible(false)
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage('')
+  }, [resetApuracaoFinanceiraForm])
+
+  useEffect(() => {
+    if (!isApuracaoFinanceiraFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingApuracaoFinanceira) {
+        handleCancelApuracaoFinanceiraForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelApuracaoFinanceiraForm, isApuracaoFinanceiraFormVisible, isSavingApuracaoFinanceira])
+
+  useEffect(() => {
+    if (!isAliquotaOptanteFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingAliquotaOptante) {
+        handleCancelAliquotaOptanteForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelAliquotaOptanteForm, isAliquotaOptanteFormVisible, isSavingAliquotaOptante])
+
+  useEffect(() => {
+    if (!isDiasLetivosFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingDiasLetivos) {
+        handleCancelDiasLetivosForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelDiasLetivosForm, isDiasLetivosFormVisible, isSavingDiasLetivos])
 
   useEffect(() => {
     if (!isModalidadeFormVisible) {
@@ -3634,6 +4626,27 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [handleCancelTipoPgtoForm, isSavingTipoPgto, isTipoPgtoFormVisible])
+
+  useEffect(() => {
+    if (!isTipoEscolaFormVisible) {
+      return
+    }
+
+    document.body.classList.add('management-modal-open')
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSavingTipoEscola) {
+        handleCancelTipoEscolaForm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.classList.remove('management-modal-open')
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleCancelTipoEscolaForm, isSavingTipoEscola, isTipoEscolaFormVisible])
 
   useEffect(() => {
     if (!isCondicaoFormVisible) {
@@ -3980,6 +4993,492 @@ function App() {
     }
   }
 
+  const handleCreateTipoEscola = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (tipoEscolaFormMode === 'view') {
+      setTipoEscolaStatusTone('idle')
+      setTipoEscolaStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    const normalizedSigla = tipoEscolaSigla.trim().toUpperCase()
+    const normalizedDescricao = tipoEscolaDescricao.trim()
+    const editingCodigo = editingTipoEscolaCodigo
+    let hasError = false
+
+    setTipoEscolaSiglaError('')
+    setTipoEscolaDescricaoError('')
+
+    if (!normalizedSigla) {
+      setTipoEscolaSiglaError('Sigla e obrigatoria.')
+      hasError = true
+    }
+
+    if (!normalizedDescricao) {
+      setTipoEscolaDescricaoError('Nome do tipo de escola e obrigatorio.')
+      hasError = true
+    }
+
+    if (hasError) {
+      setTipoEscolaStatusTone('error')
+      setTipoEscolaStatusMessage('Corrija os campos do tipo de escola para continuar.')
+      return
+    }
+
+    setIsSavingTipoEscola(true)
+    setTipoEscolaStatusTone('idle')
+    setTipoEscolaStatusMessage(editingCodigo ? 'Alterando registro do tipo de escola...' : 'Gravando registro do tipo de escola...')
+
+    try {
+      const savedItem = editingCodigo
+        ? await updateTipoEscolaItem(editingCodigo, {
+            sigla: normalizedSigla,
+            descricao: normalizedDescricao,
+          })
+        : await createTipoEscolaItem({
+            sigla: normalizedSigla,
+            descricao: normalizedDescricao,
+          })
+
+      void savedItem
+      resetTipoEscolaForm()
+      setIsTipoEscolaFormVisible(false)
+      setTipoEscolaStatusTone('success')
+      setTipoEscolaStatusMessage(editingCodigo ? 'Registro do tipo de escola alterado com sucesso.' : 'Registro do tipo de escola cadastrado com sucesso.')
+      await loadTipoEscolaItems(editingCodigo ? tipoEscolaPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao cadastrar registro do tipo de escola.'
+
+      setTipoEscolaStatusTone('error')
+      setTipoEscolaStatusMessage(message)
+    } finally {
+      setIsSavingTipoEscola(false)
+    }
+  }
+
+  const handleCreateAliquotaOptante = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (aliquotaOptanteFormMode === 'view') {
+      setAliquotaOptanteStatusTone('idle')
+      setAliquotaOptanteStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    const normalizedData = aliquotaOptanteData.trim()
+    const normalizedAliquota = aliquotaOptanteValor.trim().replace(',', '.')
+  const editingKey = editingAliquotaOptanteKey
+    let hasError = false
+
+    setAliquotaOptanteDataError('')
+    setAliquotaOptanteTipoEmpresaError('')
+    setAliquotaOptanteValorError('')
+
+    if (!normalizedData) {
+      setAliquotaOptanteDataError('Data e obrigatoria.')
+      hasError = true
+    }
+
+    if (!ALIQUOTA_OPTANTE_TIPO_EMPRESA_OPTIONS.includes(aliquotaOptanteTipoEmpresa)) {
+      setAliquotaOptanteTipoEmpresaError('Tipo empresa e obrigatorio.')
+      hasError = true
+    }
+
+    if (!normalizedAliquota || Number.isNaN(Number(normalizedAliquota))) {
+      setAliquotaOptanteValorError('Aliquota e obrigatoria.')
+      hasError = true
+    }
+
+    if (hasError) {
+      setAliquotaOptanteStatusTone('error')
+      setAliquotaOptanteStatusMessage('Corrija os campos de aliquota optante para continuar.')
+      return
+    }
+
+    setIsSavingAliquotaOptante(true)
+    setAliquotaOptanteStatusTone('idle')
+    setAliquotaOptanteStatusMessage(editingKey ? 'Alterando registro de aliquota optante...' : 'Gravando registro de aliquota optante...')
+
+    try {
+      const savedItem = editingKey
+        ? await updateAliquotaOptanteItem(editingKey, {
+            data: normalizedData,
+            tipoEmpresa: aliquotaOptanteTipoEmpresa,
+            aliquota: normalizedAliquota,
+          })
+        : await createAliquotaOptanteItem({
+            data: normalizedData,
+            tipoEmpresa: aliquotaOptanteTipoEmpresa,
+            aliquota: normalizedAliquota,
+          })
+
+      void savedItem
+      resetAliquotaOptanteForm()
+      setIsAliquotaOptanteFormVisible(false)
+      setAliquotaOptanteStatusTone('success')
+      setAliquotaOptanteStatusMessage(editingKey ? 'Registro de aliquota optante alterado com sucesso.' : 'Registro de aliquota optante cadastrado com sucesso.')
+      await loadAliquotaOptanteItems(editingKey ? aliquotaOptantePage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao cadastrar registro de aliquota optante.'
+
+      setAliquotaOptanteStatusTone('error')
+      setAliquotaOptanteStatusMessage(message)
+    } finally {
+      setIsSavingAliquotaOptante(false)
+    }
+  }
+
+  const handleCreateDiasLetivos = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (diasLetivosFormMode === 'view') {
+      setDiasLetivosStatusTone('idle')
+      setDiasLetivosStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    const normalizedData = normalizeMonthYearInput(diasLetivosData.trim())
+    const normalizedQuantidade = diasLetivosQuantidade.trim()
+    const parsedQuantidade = Number.parseInt(normalizedQuantidade, 10)
+    const editingData = editingDiasLetivosData
+    let hasError = false
+
+    setDiasLetivosDataError('')
+    setDiasLetivosQuantidadeError('')
+
+    if (!normalizedData) {
+      setDiasLetivosDataError('Competencia e obrigatoria.')
+      hasError = true
+    } else if (!isValidMonthYear(normalizedData)) {
+      setDiasLetivosDataError('Competencia deve estar no formato MM/AAAA.')
+      hasError = true
+    }
+
+    if (!normalizedQuantidade || !Number.isInteger(parsedQuantidade) || parsedQuantidade < 0) {
+      setDiasLetivosQuantidadeError('Dias letivos deve ser um numero inteiro maior ou igual a zero.')
+      hasError = true
+    }
+
+    if (hasError) {
+      setDiasLetivosStatusTone('error')
+      setDiasLetivosStatusMessage('Corrija os campos de dias letivos para continuar.')
+      return
+    }
+
+    setIsSavingDiasLetivos(true)
+    setDiasLetivosStatusTone('idle')
+    setDiasLetivosStatusMessage(editingData ? 'Alterando registro de dias letivos...' : 'Gravando registro de dias letivos...')
+
+    try {
+      const savedItem = editingData
+        ? await updateDiasLetivosItem(editingData, {
+            data: normalizedData,
+            diasLetivos: String(parsedQuantidade),
+          })
+        : await createDiasLetivosItem({
+            data: normalizedData,
+            diasLetivos: String(parsedQuantidade),
+          })
+
+      void savedItem
+      resetDiasLetivosForm()
+      setIsDiasLetivosFormVisible(false)
+      setDiasLetivosStatusTone('success')
+      setDiasLetivosStatusMessage(editingData ? 'Registro de dias letivos alterado com sucesso.' : 'Registro de dias letivos cadastrado com sucesso.')
+      await loadDiasLetivosItems(editingData ? diasLetivosPage : 1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao cadastrar registro de dias letivos.'
+
+      setDiasLetivosStatusTone('error')
+      setDiasLetivosStatusMessage(message)
+    } finally {
+      setIsSavingDiasLetivos(false)
+    }
+  }
+
+  const validateApuracaoFinanceiraSubmission = (options?: {
+    allowTodosInEdit?: boolean
+  }) => {
+    const allowTodosInEdit = options?.allowTodosInEdit ?? false
+
+    if (apuracaoFinanceiraFormMode === 'view') {
+      setApuracaoFinanceiraStatusTone('idle')
+      setApuracaoFinanceiraStatusMessage('Consulta em modo somente leitura.')
+      return null
+    }
+
+    const normalizedMesAno = normalizeMonthYearInput(apuracaoFinanceiraMesAno)
+    const normalizedSelectedDreCodigos = [...new Set(apuracaoFinanceiraSelectedDreCodigos)]
+    const normalizedRevisao = Number.parseInt(apuracaoFinanceiraRevisao.trim(), 10)
+    const editingKey = editingApuracaoFinanceiraKey
+    let hasError = false
+
+    setApuracaoFinanceiraMesAnoError('')
+    setApuracaoFinanceiraDreCodigoError('')
+    setApuracaoFinanceiraSelectedDresError('')
+    setApuracaoFinanceiraRevisaoError('')
+    setApuracaoFinanceiraTipoPessoaError('')
+    setApuracaoFinanceiraSituacaoError('')
+
+    if (!isValidMonthYear(normalizedMesAno)) {
+      setApuracaoFinanceiraMesAnoError('Mes/ano invalido. Use o formato mm/aaaa.')
+      hasError = true
+    }
+
+    if (normalizedSelectedDreCodigos.length === 0) {
+      setApuracaoFinanceiraSelectedDresError('DRE devera ser selecionada.')
+      hasError = true
+    }
+
+    if (!Number.isInteger(normalizedRevisao) || normalizedRevisao < 0) {
+      setApuracaoFinanceiraRevisaoError('Revisao deve ser um numero inteiro maior ou igual a zero.')
+      hasError = true
+    }
+
+    if (!APURACAO_FINANCEIRA_TIPO_PESSOA_FORM_OPTIONS.some((item) => item.value === apuracaoFinanceiraTipoPessoa)) {
+      setApuracaoFinanceiraTipoPessoaError('Tipo pessoa invalido.')
+      hasError = true
+    }
+
+    if (editingKey && apuracaoFinanceiraTipoPessoa === 'TODOS' && !allowTodosInEdit) {
+      setApuracaoFinanceiraTipoPessoaError('Selecione PF ou PJ/Cooperativa para alterar um registro existente.')
+      hasError = true
+    }
+
+    if (!APURACAO_FINANCEIRA_STATUS_OPTIONS.includes(apuracaoFinanceiraSituacao)) {
+      setApuracaoFinanceiraSituacaoError('Situacao invalida.')
+      hasError = true
+    }
+
+    if (hasError) {
+      setApuracaoFinanceiraStatusTone('error')
+      setApuracaoFinanceiraStatusMessage('Corrija os campos da apuracao financeira para continuar.')
+      return null
+    }
+
+    return {
+      editingKey,
+      normalizedMesAno,
+      normalizedDreCodigo: editingKey
+        ? (normalizedSelectedDreCodigos.includes(editingKey.dreCodigo) ? editingKey.dreCodigo : normalizedSelectedDreCodigos[0] ?? '')
+        : '',
+      normalizedSelectedDreCodigos,
+      normalizedRevisao,
+      normalizedTipoPessoas: apuracaoFinanceiraTipoPessoa === 'TODOS'
+        ? APURACAO_TIPO_PESSOA_OPTIONS.map((item) => item.value)
+        : [apuracaoFinanceiraTipoPessoa],
+    }
+  }
+
+  const handleCreateApuracaoFinanceira = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (
+      apuracaoFinanceiraFormMode === 'edit'
+      && apuracaoFinanceiraTipoPessoa === 'TODOS'
+      && ['A processar', 'Processado'].includes(apuracaoFinanceiraSituacao)
+    ) {
+      await handleProcessApuracaoFinanceira()
+      return
+    }
+
+    const submission = validateApuracaoFinanceiraSubmission()
+
+    if (!submission) {
+      return
+    }
+
+    const {
+      editingKey,
+      normalizedMesAno,
+      normalizedDreCodigo,
+      normalizedSelectedDreCodigos,
+      normalizedRevisao,
+      normalizedTipoPessoas,
+    } = submission
+
+    setIsSavingApuracaoFinanceira(true)
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage(editingKey ? 'Alterando registro da apuracao financeira...' : 'Gravando registro da apuracao financeira...')
+
+    try {
+      if (editingKey) {
+        const savedItem = await updateApuracaoFinanceiraItem(editingKey, {
+            mesAno: normalizedMesAno,
+            dreCodigo: normalizedDreCodigo,
+            revisao: normalizedRevisao,
+            tipoPessoa: normalizedTipoPessoas[0],
+            situacao: apuracaoFinanceiraSituacao,
+          })
+
+        const additionalDreCodigos = normalizedSelectedDreCodigos.filter((dreCodigo) => (
+          dreCodigo !== normalizedDreCodigo
+          && !apuracaoFinanceiraEditingBaseDreCodigos.includes(dreCodigo)
+        ))
+
+        const additionalCreationResults = await Promise.allSettled(
+          additionalDreCodigos.map((dreCodigo) => createApuracaoFinanceiraItem({
+            mesAno: normalizedMesAno,
+            dreCodigo,
+            revisao: normalizedRevisao,
+            tipoPessoa: normalizedTipoPessoas[0],
+            situacao: apuracaoFinanceiraSituacao,
+          })),
+        )
+
+        const additionalSuccessCount = additionalCreationResults.filter((result) => result.status === 'fulfilled').length
+        const additionalFailureMessages = additionalCreationResults
+          .map((result) => (result.status === 'rejected' && result.reason instanceof Error ? result.reason.message : 'Falha ao cadastrar DRE adicional.'))
+          .filter((message, index, messages) => messages.indexOf(message) === index)
+
+        void savedItem
+        resetApuracaoFinanceiraForm()
+        setIsApuracaoFinanceiraFormVisible(false)
+        setApuracaoFinanceiraStatusTone('success')
+        setApuracaoFinanceiraStatusMessage(
+          additionalFailureMessages.length > 0
+            ? `Registro da apuracao financeira alterado com sucesso. ${additionalSuccessCount} DRE(s) adicional(is) incluída(s). Falhas: ${additionalFailureMessages.join(' | ')}`
+            : additionalSuccessCount > 0
+              ? `Registro da apuracao financeira alterado com sucesso. ${additionalSuccessCount} DRE(s) adicional(is) incluída(s).`
+              : 'Registro da apuracao financeira alterado com sucesso.',
+        )
+        await loadApuracaoFinanceiraItems(apuracaoFinanceiraPage)
+        return
+      }
+
+      const creationResults = await Promise.allSettled(
+        normalizedSelectedDreCodigos.flatMap((dreCodigo) => (
+          normalizedTipoPessoas.map((tipoPessoa) => createApuracaoFinanceiraItem({
+            mesAno: normalizedMesAno,
+            dreCodigo,
+            revisao: normalizedRevisao,
+            tipoPessoa,
+            situacao: apuracaoFinanceiraSituacao,
+          }))
+        )),
+      )
+
+      const successfulCreations = creationResults.filter((result) => result.status === 'fulfilled')
+      const failedCreations = creationResults.filter((result) => result.status === 'rejected')
+
+      if (successfulCreations.length === 0) {
+        throw new Error(
+          failedCreations[0]?.status === 'rejected'
+            ? (failedCreations[0].reason instanceof Error ? failedCreations[0].reason.message : 'Falha ao cadastrar registros da apuracao financeira.')
+            : 'Falha ao cadastrar registros da apuracao financeira.',
+        )
+      }
+
+      const failureMessages = failedCreations
+        .map((result) => (result.status === 'rejected' && result.reason instanceof Error ? result.reason.message : 'Falha ao cadastrar registro.'))
+        .filter((message, index, messages) => messages.indexOf(message) === index)
+
+      resetApuracaoFinanceiraForm()
+      setIsApuracaoFinanceiraFormVisible(false)
+      setApuracaoFinanceiraStatusTone('success')
+      setApuracaoFinanceiraStatusMessage(
+        failedCreations.length > 0
+          ? `${successfulCreations.length} registro(s) da apuracao financeira cadastrados com sucesso. ${failedCreations.length} falharam: ${failureMessages.join(' | ')}`
+          : `${successfulCreations.length} registro(s) da apuracao financeira cadastrados com sucesso.`,
+      )
+      await loadApuracaoFinanceiraItems(1)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao cadastrar registro da apuracao financeira.'
+
+      setApuracaoFinanceiraStatusTone('error')
+      setApuracaoFinanceiraStatusMessage(message)
+    } finally {
+      setIsSavingApuracaoFinanceira(false)
+    }
+  }
+
+  const handleProcessApuracaoFinanceira = async () => {
+    const submission = validateApuracaoFinanceiraSubmission({ allowTodosInEdit: true })
+
+    if (!submission) {
+      return
+    }
+
+    setIsProcessingApuracaoFinanceira(true)
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage(
+      submission.editingKey
+        ? 'Reprocessando dados da apuracao financeira...'
+        : 'Processando dados da apuracao financeira...',
+    )
+
+    try {
+      const summaries: ApuracaoFinanceiraProcessResult[] = []
+
+      for (const tipoPessoa of submission.normalizedTipoPessoas) {
+        const summary = await processApuracaoFinanceiraData({
+          mesAno: submission.normalizedMesAno,
+          revisao: submission.normalizedRevisao,
+          tipoPessoa,
+          situacao: apuracaoFinanceiraSituacao,
+          dreCodigos: submission.normalizedSelectedDreCodigos,
+          replaceExistingDreCodigos: submission.editingKey ? submission.normalizedSelectedDreCodigos : undefined,
+          replaceExistingTipoPessoa: submission.editingKey ? tipoPessoa : undefined,
+        }, {
+          name: session?.displayName ?? null,
+          email: session?.email ?? null,
+        })
+
+        summaries.push(summary)
+      }
+
+      const summary = summaries.reduce<ApuracaoFinanceiraProcessResult>((accumulator, current) => ({
+        ...accumulator,
+        totalTipoEscola: accumulator.totalTipoEscola + current.totalTipoEscola,
+        totalActiveOrdemServicos: accumulator.totalActiveOrdemServicos + current.totalActiveOrdemServicos,
+        totalCreatedApuracaoServicos: accumulator.totalCreatedApuracaoServicos + current.totalCreatedApuracaoServicos,
+        totalExistingApuracaoServicos: accumulator.totalExistingApuracaoServicos + current.totalExistingApuracaoServicos,
+        processedDres: [...accumulator.processedDres, ...current.processedDres],
+      }), {
+        ...summaries[0],
+        totalProcessedDres: submission.normalizedSelectedDreCodigos.length,
+        totalTipoEscola: 0,
+        totalActiveOrdemServicos: 0,
+        totalCreatedApuracaoServicos: 0,
+        totalExistingApuracaoServicos: 0,
+        processedDres: [],
+      })
+      const processedDresMessage = summary.processedDres
+        .map((item) => `${item.dreSigla || item.dreCodigo} / ${formatApuracaoTipoPessoaLabel(item.tipoPessoa)}: ${item.createdApuracaoServicosCount}`)
+        .join('; ')
+      const successMessage = submission.editingKey
+        ? `${summary.totalProcessedDres} DRE(s) reprocessadas, registros anteriores removidos e ${summary.totalCreatedApuracaoServicos} registro(s) recalculado(s) em Apuracao Servicos. Inclusoes por DRE/pessoa: ${processedDresMessage || 'nenhuma'}.`
+        : `${summary.totalProcessedDres} DRE(s) processadas, ${summary.totalActiveOrdemServicos} OS ativa(s) e ${summary.totalCreatedApuracaoServicos} registro(s) novo(s) em Apuracao Servicos. Inclusoes por DRE/pessoa: ${processedDresMessage || 'nenhuma'}.`
+
+      resetApuracaoFinanceiraForm()
+      setIsApuracaoFinanceiraFormVisible(false)
+      setApuracaoFinanceiraStatusTone('success')
+      setApuracaoFinanceiraStatusMessage(successMessage)
+      await loadApuracaoFinanceiraItems(1, { preserveStatusMessage: true })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao processar dados da apuracao financeira.'
+      const statusCode = error instanceof Error && typeof (error as Error & { statusCode?: number }).statusCode === 'number'
+        ? (error as Error & { statusCode?: number }).statusCode
+        : null
+
+      setApuracaoFinanceiraStatusTone(statusCode === 409 ? 'warning' : 'error')
+      setApuracaoFinanceiraStatusMessage(message)
+    } finally {
+      setIsProcessingApuracaoFinanceira(false)
+    }
+  }
+
   const handleDeleteDre = async (item: DreItem) => {
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
@@ -4164,14 +5663,184 @@ function App() {
     }
   }
 
-  const resetTitularForm = () => {
+  const handleDeleteTipoEscola = async (item: TipoEscolaItem) => {
+    const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingTipoEscola(true)
+    setTipoEscolaStatusTone('idle')
+    setTipoEscolaStatusMessage(`Excluindo registro ${item.codigo}...`)
+
+    try {
+      const deletedCodigo = await deleteTipoEscolaItem(item.codigo)
+      setTipoEscolaItems((currentItems) => currentItems.filter((currentItem) => currentItem.codigo !== deletedCodigo))
+
+      if (editingTipoEscolaCodigo === item.codigo) {
+        resetTipoEscolaForm()
+        setIsTipoEscolaFormVisible(false)
+      }
+
+      setTipoEscolaStatusTone('success')
+      setTipoEscolaStatusMessage('Registro do tipo de escola excluido com sucesso.')
+      const nextPage = tipoEscolaItems.length === 1 && tipoEscolaPage > 1 ? tipoEscolaPage - 1 : tipoEscolaPage
+      await loadTipoEscolaItems(nextPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir registro do tipo de escola.'
+
+      setTipoEscolaStatusTone('error')
+      setTipoEscolaStatusMessage(message)
+    } finally {
+      setIsDeletingTipoEscola(false)
+    }
+  }
+
+  const handleDeleteAliquotaOptante = async (item: AliquotaOptanteItem) => {
+    const confirmed = window.confirm(`Excluir o registro ${item.data} / ${item.tipoEmpresa}?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingAliquotaOptante(true)
+    setAliquotaOptanteStatusTone('idle')
+    setAliquotaOptanteStatusMessage(`Excluindo registro ${item.data} / ${item.tipoEmpresa}...`)
+
+    try {
+      const deletedKey = await deleteAliquotaOptanteItem({ data: item.data, tipoEmpresa: item.tipoEmpresa })
+      setAliquotaOptanteItems((currentItems) => currentItems.filter((currentItem) => formatAliquotaOptanteKey(currentItem) !== formatAliquotaOptanteKey(deletedKey)))
+
+      if (editingAliquotaOptanteKey && formatAliquotaOptanteKey(editingAliquotaOptanteKey) === formatAliquotaOptanteKey(item)) {
+        resetAliquotaOptanteForm()
+        setIsAliquotaOptanteFormVisible(false)
+      }
+
+      setAliquotaOptanteStatusTone('success')
+      setAliquotaOptanteStatusMessage('Registro de aliquota optante excluido com sucesso.')
+      const nextPage = aliquotaOptanteItems.length === 1 && aliquotaOptantePage > 1 ? aliquotaOptantePage - 1 : aliquotaOptantePage
+      await loadAliquotaOptanteItems(nextPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir registro de aliquota optante.'
+
+      setAliquotaOptanteStatusTone('error')
+      setAliquotaOptanteStatusMessage(message)
+    } finally {
+      setIsDeletingAliquotaOptante(false)
+    }
+  }
+
+  const handleDeleteDiasLetivos = async (item: DiasLetivosItem) => {
+    const confirmed = window.confirm(`Excluir o registro ${item.data}?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingDiasLetivos(true)
+    setDiasLetivosStatusTone('idle')
+    setDiasLetivosStatusMessage(`Excluindo registro ${item.data}...`)
+
+    try {
+      const deletedData = await deleteDiasLetivosItem(item.data)
+      setDiasLetivosItems((currentItems) => currentItems.filter((currentItem) => currentItem.data !== deletedData))
+
+      if (editingDiasLetivosData === item.data) {
+        resetDiasLetivosForm()
+        setIsDiasLetivosFormVisible(false)
+      }
+
+      setDiasLetivosStatusTone('success')
+      setDiasLetivosStatusMessage('Registro de dias letivos excluido com sucesso.')
+      const nextPage = diasLetivosItems.length === 1 && diasLetivosPage > 1 ? diasLetivosPage - 1 : diasLetivosPage
+      await loadDiasLetivosItems(nextPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir registro de dias letivos.'
+
+      setDiasLetivosStatusTone('error')
+      setDiasLetivosStatusMessage(message)
+    } finally {
+      setIsDeletingDiasLetivos(false)
+    }
+  }
+
+  const handleDeleteApuracaoFinanceira = async (row: ApuracaoFinanceiraGridRow) => {
+    if (row.representativeItem.situacao !== APURACAO_FINANCEIRA_DELETE_STATUS) {
+      setApuracaoFinanceiraStatusTone('error')
+      setApuracaoFinanceiraStatusMessage(`A exclusao so e permitida quando a situacao estiver ${APURACAO_FINANCEIRA_DELETE_STATUS}.`)
+      return
+    }
+
+    const confirmed = window.confirm(`Excluir ${row.items.length} registro(s) do grupo ${row.representativeItem.mesAno} / ${row.dreText} / ${row.representativeItem.revisao} / ${row.tipoPessoaLabel}?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingApuracaoFinanceira(true)
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage(`Excluindo ${row.items.length} registro(s) da apuracao financeira...`)
+
+    try {
+      const deleteResults = await Promise.allSettled(
+        row.items.map((item) => deleteApuracaoFinanceiraItem({
+          mesAno: item.mesAno,
+          dreCodigo: item.dreCodigo,
+          revisao: item.revisao,
+          tipoPessoa: item.tipoPessoa,
+        })),
+      )
+      const deletedKeys = deleteResults
+        .filter((result): result is PromiseFulfilledResult<ApuracaoFinanceiraKey> => result.status === 'fulfilled')
+        .map((result) => result.value)
+
+      if (deletedKeys.length === 0) {
+        throw new Error('Falha ao excluir registro da apuracao financeira.')
+      }
+
+      const deletedKeySet = new Set(deletedKeys.map((item) => formatApuracaoFinanceiraKey(item)))
+      setApuracaoFinanceiraItems((currentItems) => currentItems.filter((currentItem) => !deletedKeySet.has(formatApuracaoFinanceiraKey(currentItem))))
+
+      if (editingApuracaoFinanceiraKey && row.items.some((item) => formatApuracaoFinanceiraKey(editingApuracaoFinanceiraKey) === formatApuracaoFinanceiraKey(item))) {
+        resetApuracaoFinanceiraForm()
+        setIsApuracaoFinanceiraFormVisible(false)
+      }
+
+      setApuracaoFinanceiraStatusTone('success')
+      setApuracaoFinanceiraStatusMessage(
+        deletedKeys.length === row.items.length
+          ? 'Registro da apuracao financeira excluido com sucesso.'
+          : `${deletedKeys.length} registro(s) da apuracao financeira excluido(s) com sucesso.`,
+      )
+      const nextPage = apuracaoFinanceiraItems.length === 1 && apuracaoFinanceiraPage > 1 ? apuracaoFinanceiraPage - 1 : apuracaoFinanceiraPage
+      await loadApuracaoFinanceiraItems(nextPage)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao excluir registro da apuracao financeira.'
+
+      setApuracaoFinanceiraStatusTone('error')
+      setApuracaoFinanceiraStatusMessage(message)
+    } finally {
+      setIsDeletingApuracaoFinanceira(false)
+    }
+  }
+
+  const resetTitularForm = useCallback(() => {
     setTitularCnpjCpf('')
     setTitularNome('')
     setTitularCnpjCpfError('')
     setTitularNomeError('')
     setEditingTitularCodigo(null)
     setTitularFormMode('create')
-  }
+  }, [])
 
   const handleStartInsertTitular = () => {
     resetTitularForm()
@@ -4238,12 +5907,12 @@ function App() {
     setIsTitularFormVisible(true)
   }
 
-  const handleCancelTitularForm = () => {
+  const handleCancelTitularForm = useCallback(() => {
     resetTitularForm()
     setIsTitularFormVisible(false)
     setTitularStatusTone('idle')
     setTitularStatusMessage('')
-  }
+  }, [resetTitularForm])
 
   const handleCreateTitular = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -4347,12 +6016,12 @@ function App() {
     }
   }
 
-  const resetMarcaModeloForm = () => {
+  const resetMarcaModeloForm = useCallback(() => {
     setMarcaModeloDescricao('')
     setMarcaModeloDescricaoError('')
     setEditingMarcaModeloCodigo(null)
     setMarcaModeloFormMode('create')
-  }
+  }, [])
 
   const handleStartInsertMarcaModelo = () => {
     resetMarcaModeloForm()
@@ -4415,12 +6084,12 @@ function App() {
     setIsMarcaModeloFormVisible(true)
   }
 
-  const handleCancelMarcaModeloForm = () => {
+  const handleCancelMarcaModeloForm = useCallback(() => {
     resetMarcaModeloForm()
     setIsMarcaModeloFormVisible(false)
     setMarcaModeloStatusTone('idle')
     setMarcaModeloStatusMessage('')
-  }
+  }, [resetMarcaModeloForm])
 
   const handleCreateMarcaModelo = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -4515,14 +6184,14 @@ function App() {
     }
   }
 
-  const resetSeguradoraForm = () => {
+  const resetSeguradoraForm = useCallback(() => {
     setSeguradoraControle('')
     setSeguradoraLista('')
     setSeguradoraControleError('')
     setSeguradoraListaError('')
     setEditingSeguradoraCodigo(null)
     setSeguradoraFormMode('create')
-  }
+  }, [])
 
   const handleStartInsertSeguradora = () => {
     resetSeguradoraForm()
@@ -4589,12 +6258,12 @@ function App() {
     setIsSeguradoraFormVisible(true)
   }
 
-  const handleCancelSeguradoraForm = () => {
+  const handleCancelSeguradoraForm = useCallback(() => {
     resetSeguradoraForm()
     setIsSeguradoraFormVisible(false)
     setSeguradoraStatusTone('idle')
     setSeguradoraStatusMessage('')
-  }
+  }, [resetSeguradoraForm])
 
   useEffect(() => {
     const hasOpenManagementModal = isDreFormVisible
@@ -4892,6 +6561,84 @@ function App() {
   const canGoToNextTipoBancadaPage = tipoBancadaPage < tipoBancadaTotalPages
   const canGoToPreviousTipoPgtoPage = tipoPgtoPage > 1
   const canGoToNextTipoPgtoPage = tipoPgtoPage < tipoPgtoTotalPages
+  const canGoToPreviousTipoEscolaPage = tipoEscolaPage > 1
+  const canGoToNextTipoEscolaPage = tipoEscolaPage < tipoEscolaTotalPages
+  const canGoToPreviousAliquotaOptantePage = aliquotaOptantePage > 1
+  const canGoToNextAliquotaOptantePage = aliquotaOptantePage < aliquotaOptanteTotalPages
+  const canGoToPreviousDiasLetivosPage = diasLetivosPage > 1
+  const canGoToNextDiasLetivosPage = diasLetivosPage < diasLetivosTotalPages
+  const canGoToPreviousApuracaoFinanceiraPage = apuracaoFinanceiraPage > 1
+  const canGoToNextApuracaoFinanceiraPage = apuracaoFinanceiraPage < apuracaoFinanceiraTotalPages
+  const apuracaoFinanceiraGridRows = (() => {
+    const groups = new Map<string, {
+      representativeItem: ApuracaoFinanceiraItem
+      items: ApuracaoFinanceiraItem[]
+      labels: string[]
+      codes: Set<string>
+      tipoPessoas: Set<ApuracaoTipoPessoa>
+      mesAno: string
+    }>()
+
+    apuracaoFinanceiraItems.forEach((item) => {
+      const groupKey = `${item.mesAno}|${item.revisao}|${item.situacao}`
+      const currentGroup = groups.get(groupKey) ?? {
+        representativeItem: item,
+        items: [],
+        labels: [],
+        codes: new Set<string>(),
+        tipoPessoas: new Set<ApuracaoTipoPessoa>(),
+        mesAno: item.mesAno,
+      }
+
+      if (!currentGroup.codes.has(item.dreCodigo)) {
+        currentGroup.codes.add(item.dreCodigo)
+        currentGroup.labels.push(item.dreSigla || item.dreDescricao || item.dreCodigo)
+      }
+
+      currentGroup.items.push(item)
+      currentGroup.tipoPessoas.add(item.tipoPessoa)
+
+      groups.set(groupKey, currentGroup)
+    })
+
+    return Array.from(groups.entries()).map<ApuracaoFinanceiraGridRow>(([key, group]) => {
+      const activeCount = apuracaoFinanceiraGridActiveDreCounts[group.mesAno] ?? 0
+      const orderedTipoPessoas = APURACAO_TIPO_PESSOA_OPTIONS
+        .map((item) => item.value)
+        .filter((tipoPessoa) => group.tipoPessoas.has(tipoPessoa))
+      const tipoPessoaFormValue: ApuracaoFinanceiraTipoPessoaFormValue = orderedTipoPessoas.length > 1 ? 'TODOS' : (orderedTipoPessoas[0] ?? 'TODOS')
+
+      return {
+        key,
+        representativeItem: group.representativeItem,
+        items: group.items,
+        dreCodigos: Array.from(group.codes),
+        dreText: activeCount > 0 && group.codes.size === activeCount ? 'Todas' : group.labels.join(' / '),
+        tipoPessoaFormValue,
+        tipoPessoaLabel: tipoPessoaFormValue === 'TODOS' ? 'Todos' : formatApuracaoTipoPessoaLabel(tipoPessoaFormValue),
+      }
+    })
+  })()
+  const apuracaoFinanceiraSelectedDreDisplayValue = (() => {
+    if (apuracaoFinanceiraSelectedDreCodigos.length > 0) {
+      const selectedOptions = apuracaoFinanceiraDreOptions.filter((item) => apuracaoFinanceiraSelectedDreCodigos.includes(item.codigo))
+      const activeCount = apuracaoFinanceiraGridActiveDreCounts[apuracaoFinanceiraMesAno] ?? 0
+
+      if (activeCount > 0 && selectedOptions.length === activeCount) {
+        return 'Todas'
+      }
+
+      if (selectedOptions.length > 0) {
+        return selectedOptions.map((item) => formatApuracaoFinanceiraDreOptionLabel(item)).join(' / ')
+      }
+    }
+
+    return formatApuracaoFinanceiraDreLabel({
+      dreCodigo: apuracaoFinanceiraDreCodigo,
+      dreSigla: apuracaoFinanceiraDreOptions.find((item) => item.codigo === apuracaoFinanceiraDreCodigo)?.sigla ?? '',
+      dreDescricao: apuracaoFinanceiraDreOptions.find((item) => item.codigo === apuracaoFinanceiraDreCodigo)?.descricao ?? '',
+    })
+  })()
   const canGoToPreviousModalBancadaTpPagtoCondicaoPage = modalBancadaTpPagtoCondicaoPage > 1
   const canGoToNextModalBancadaTpPagtoCondicaoPage = modalBancadaTpPagtoCondicaoPage < modalBancadaTpPagtoCondicaoTotalPages
   const canGoToPreviousModalBancadaTpPagtoCondicaoValorPage = modalBancadaTpPagtoCondicaoValorPage > 1
@@ -5109,18 +6856,6 @@ function App() {
     scheduleSidebarAutoHide()
   }
 
-  const toggleSidebar = () => {
-    if (isSidebarVisible) {
-      isSidebarHoveredRef.current = false
-      clearSidebarAutoHideTimeout()
-      setIsSidebarVisible(false)
-      return
-    }
-
-    setIsSidebarVisible(true)
-    scheduleSidebarAutoHide()
-  }
-
   const handleContentPanelClick = (event: MouseEvent<HTMLElement>) => {
     if (!isSidebarVisible) {
       return
@@ -5140,15 +6875,7 @@ function App() {
   return (
     <div className="app-layout">
       <header className={`navbar ${isSidebarVisible ? '' : 'navbar-hidden'}`}>
-        <button 
-          type="button" 
-          className="navbar-toggle" 
-          onClick={toggleSidebar}
-          aria-label={isSidebarVisible ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
-        >
-          {isSidebarVisible ? '☰' : '☰'}
-        </button>
-        <h1 className="navbar-title" onClick={() => setActiveView('inicio')} style={{ cursor: 'pointer' }}>
+        <h1 className="navbar-title">
           Sistema TEG
         </h1>
       </header>
@@ -5207,13 +6934,31 @@ function App() {
                 <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.operacional ? '▸' : '▾'}</span>
               </button>
               <ul className={`menu-sublist ${collapsedMenuGroups.operacional ? 'menu-sublist-hidden' : ''}`}>
-                <li
-                  className={`menu-subitem ${activeView === 'titular' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('titular')}
-                >
-                  Titular do CRM
-                </li>
                 <li className="menu-group menu-subgroup">
+                  <div
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'titular' || activeView === 'condutor' || activeView === 'vinculoCondutor' || activeView === 'monitor' || activeView === 'vinculoMonitor' || activeView === 'credenciada' || activeView === 'credenciamentoTermo' || activeView === 'termoHistorico' || activeView === 'ordemServico' || activeView === 'ordemServicoHistorico' || activeView === 'veiculo' || activeView === 'veiculoHistorico' || activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
+                    onClick={() => toggleMenuGroup('operacionalAdministrativo')}
+                    role="button"
+                    aria-expanded={!collapsedMenuGroups.operacionalAdministrativo}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toggleMenuGroup('operacionalAdministrativo')
+                      }
+                    }}
+                  >
+                    <span className="menu-subitem-label">Administrativo</span>
+                    <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.operacionalAdministrativo ? '▸' : '▾'}</span>
+                  </div>
+                  <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.operacionalAdministrativo ? 'menu-sublist-hidden' : ''}`}>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'titular' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('titular')}
+                    >
+                      Titular do CRM
+                    </li>
+                    <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'condutor' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('condutor')}
@@ -5247,7 +6992,7 @@ function App() {
                     </li>
                   </ul>
                 </li>
-                <li className="menu-group menu-subgroup">
+                    <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'monitor' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('monitor')}
@@ -5281,13 +7026,13 @@ function App() {
                     </li>
                   </ul>
                 </li>
-                <li
-                  className={`menu-subitem ${activeView === 'credenciada' ? 'menu-subitem-active' : ''}`}
-                  onClick={() => setActiveView('credenciada')}
-                >
-                  Credenciada
-                </li>
-                <li className="menu-group menu-subgroup">
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'credenciada' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('credenciada')}
+                    >
+                      Credenciada
+                    </li>
+                    <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'credenciamentoTermo' || activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('termo')}
@@ -5321,7 +7066,7 @@ function App() {
                     </li>
                   </ul>
                 </li>
-                <li className="menu-group menu-subgroup">
+                    <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'ordemServico' || activeView === 'ordemServicoHistorico' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('ordemServico')}
@@ -5342,7 +7087,7 @@ function App() {
                         setActiveView('ordemServico')
                       }}
                     >
-                      OrdemServico
+                      Ordem de Servico
                     </span>
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.ordemServico ? '▸' : '▾'}</span>
                   </div>
@@ -5351,11 +7096,11 @@ function App() {
                       className={`menu-subitem menu-subitem-nested ${activeView === 'ordemServicoHistorico' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('ordemServicoHistorico')}
                     >
-                      Historico OrdemServico
+                      Historico Ordem de Servico
                     </li>
                   </ul>
                 </li>
-                <li className="menu-group menu-subgroup">
+                    <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'veiculo' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('veiculo')}
@@ -5389,9 +7134,17 @@ function App() {
                     </li>
                   </ul>
                 </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('financeiroReprocessamento')}
+                    >
+                      Reprocessar Valores
+                    </li>
+                  </ul>
+                </li>
                 <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem menu-subitem-toggle ${activeView === 'financeiroReprocessamento' || activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalFinanceiro')}
                     role="button"
                     aria-expanded={!collapsedMenuGroups.operacionalFinanceiro}
@@ -5408,10 +7161,16 @@ function App() {
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.operacionalFinanceiro ? 'menu-sublist-hidden' : ''}`}>
                     <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('financeiroReprocessamento')}
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoFinanceira' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('apuracaoFinanceira')}
                     >
-                      Reprocessar Valores
+                      Apuracao Financeira
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoServicos' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('apuracaoServicos')}
+                    >
+                      Apuracao Servicos
                     </li>
                   </ul>
                 </li>
@@ -5547,6 +7306,24 @@ function App() {
                       onClick={() => setActiveView('tipoPgto')}
                     >
                       Tipo de Pagamento
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'tipoEscola' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('tipoEscola')}
+                    >
+                      Tipo Escola
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'aliquotaOptante' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('aliquotaOptante')}
+                    >
+                      Aliquota Optante
+                    </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'diasLetivos' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('diasLetivos')}
+                    >
+                      Dias Letivos
                     </li>
                   </ul>
                 </li>
@@ -7049,6 +8826,492 @@ function App() {
               </div>
             </div>
           </>
+        ) : activeView === 'tipoEscola' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Tipo Escola</h2>
+              <p className="content-description">
+                Cadastre e consulte os registros de Tipo Escola no mesmo modelo da DRE.
+                O codigo e gerado automaticamente, a sigla e obrigatoria e o nome do tipo de escola nao pode se repetir.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertTipoEscola}
+                  disabled={isSavingTipoEscola || isDeletingTipoEscola}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterTipoEscolaSubmit}>
+                  <input
+                    className="management-filter-input"
+                    type="text"
+                    placeholder="Filtrar por codigo, sigla ou nome"
+                    value={tipoEscolaSearch}
+                    onChange={(event) => setTipoEscolaSearch(event.target.value)}
+                  />
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearTipoEscolaFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isTipoEscolaFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingTipoEscola) {
+                      handleCancelTipoEscolaForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="tipo-escola-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateTipoEscola} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="tipo-escola-modal-title">TIPO ESCOLA</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelTipoEscolaForm}
+                          disabled={isSavingTipoEscola}
+                          aria-label="Fechar formulario de tipo de escola"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {tipoEscolaFormMode === 'view' ? 'Consulta de registro' : editingTipoEscolaCodigo ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="tipo-escola-descricao">
+                        <span>Sigla</span>
+                        <input
+                          id="tipo-escola-sigla"
+                          name="sigla"
+                          type="text"
+                          value={tipoEscolaSigla}
+                          onChange={(event) => setTipoEscolaSigla(event.target.value.toUpperCase().slice(0, 20))}
+                          disabled={isSavingTipoEscola || tipoEscolaFormMode === 'view'}
+                          aria-invalid={Boolean(tipoEscolaSiglaError)}
+                        />
+                        {tipoEscolaSiglaError ? <strong className="field-error">{tipoEscolaSiglaError}</strong> : null}
+                      </label>
+
+                      <label className="field-group" htmlFor="tipo-escola-descricao">
+                        <span>Nome Tipo Escola</span>
+                        <input
+                          id="tipo-escola-descricao"
+                          name="descricao"
+                          type="text"
+                          value={tipoEscolaDescricao}
+                          onChange={(event) => setTipoEscolaDescricao(event.target.value)}
+                          disabled={isSavingTipoEscola || tipoEscolaFormMode === 'view'}
+                          aria-invalid={Boolean(tipoEscolaDescricaoError)}
+                        />
+                        {tipoEscolaDescricaoError ? <strong className="field-error">{tipoEscolaDescricaoError}</strong> : null}
+                      </label>
+
+                      <p className={`status-message status-${tipoEscolaStatusTone}`} aria-live="polite">
+                        {tipoEscolaStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {tipoEscolaFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingTipoEscola}>
+                            {isSavingTipoEscola ? 'Salvando...' : editingTipoEscolaCodigo ? 'Salvar alteracao' : 'Salvar Tipo Escola'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelTipoEscolaForm} disabled={isSavingTipoEscola}>
+                          {tipoEscolaFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingTipoEscola ? 'Atualizando...' : `${tipoEscolaTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortTipoEscola('codigo')}>
+                            Codigo <span>{getTipoEscolaSortIndicator('codigo')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortTipoEscola('sigla')}>
+                            Sigla <span>{getTipoEscolaSortIndicator('sigla')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortTipoEscola('descricao')}>
+                            Nome Tipo Escola <span>{getTipoEscolaSortIndicator('descricao')}</span>
+                          </button>
+                        </th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tipoEscolaItems.map((item) => (
+                        <tr key={item.codigo}>
+                          <td>{item.codigo}</td>
+                          <td>{item.sigla}</td>
+                          <td>{item.descricao}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button type="button" className="row-action-button" onClick={() => handleStartViewTipoEscola(item)}>
+                                Consulta
+                              </button>
+                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoEscola(item)}>
+                                Alterar
+                              </button>
+                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoEscola(item)}>
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {!isLoadingTipoEscola && tipoEscolaItems.length === 0 ? (
+                    <p className="management-empty-state">Nenhum registro de tipo de escola encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${tipoEscolaStatusTone}`} aria-live="polite">
+                  {isTipoEscolaFormVisible ? '' : tipoEscolaStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoEscolaPage(1)}
+                    disabled={!canGoToPreviousTipoEscolaPage || isLoadingTipoEscola}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoEscolaPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousTipoEscolaPage || isLoadingTipoEscola}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {tipoEscolaPage} de {tipoEscolaTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoEscolaPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextTipoEscolaPage || isLoadingTipoEscola}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setTipoEscolaPage(tipoEscolaTotalPages)}
+                    disabled={!canGoToNextTipoEscolaPage || isLoadingTipoEscola}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'aliquotaOptante' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Aliquota Optante</h2>
+              <p className="content-description">
+                Cadastre aliquotas por data com tipo de empresa obrigatorio e valor decimal com quatro casas.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertAliquotaOptante}
+                  disabled={isSavingAliquotaOptante || isDeletingAliquotaOptante}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterAliquotaOptanteSubmit}>
+                  <input
+                    className="management-filter-input"
+                    type="text"
+                    placeholder="Filtrar por data, tipo empresa ou aliquota"
+                    value={aliquotaOptanteSearch}
+                    onChange={(event) => setAliquotaOptanteSearch(event.target.value)}
+                  />
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearAliquotaOptanteFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isAliquotaOptanteFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingAliquotaOptante) {
+                      handleCancelAliquotaOptanteForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="aliquota-optante-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateAliquotaOptante} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="aliquota-optante-modal-title">ALIQUOTA OPTANTE</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelAliquotaOptanteForm}
+                          disabled={isSavingAliquotaOptante}
+                          aria-label="Fechar formulario de aliquota optante"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {aliquotaOptanteFormMode === 'view' ? 'Consulta de registro' : editingAliquotaOptanteKey ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="aliquota-optante-data">
+                        <span>Data</span>
+                        <input
+                          id="aliquota-optante-data"
+                          type="date"
+                          value={aliquotaOptanteData}
+                          onChange={(event) => setAliquotaOptanteData(event.target.value)}
+                          disabled={isSavingAliquotaOptante || aliquotaOptanteFormMode === 'view'}
+                          aria-invalid={Boolean(aliquotaOptanteDataError)}
+                        />
+                        {aliquotaOptanteDataError ? <strong className="field-error">{aliquotaOptanteDataError}</strong> : null}
+                      </label>
+
+                      <label className="field-group" htmlFor="aliquota-optante-tipo-empresa">
+                        <span>Tipo Empresa</span>
+                        <select
+                          id="aliquota-optante-tipo-empresa"
+                          value={aliquotaOptanteTipoEmpresa}
+                          onChange={(event) => setAliquotaOptanteTipoEmpresa(event.target.value as AliquotaOptanteTipoEmpresa)}
+                          disabled={isSavingAliquotaOptante || aliquotaOptanteFormMode === 'view'}
+                        >
+                          {ALIQUOTA_OPTANTE_TIPO_EMPRESA_OPTIONS.map((item) => (
+                            <option key={item} value={item}>{item}</option>
+                          ))}
+                        </select>
+                        {aliquotaOptanteTipoEmpresaError ? <strong className="field-error">{aliquotaOptanteTipoEmpresaError}</strong> : null}
+                      </label>
+
+                      <label className="field-group" htmlFor="aliquota-optante-valor">
+                        <span>Aliquota</span>
+                        <input
+                          id="aliquota-optante-valor"
+                          type="number"
+                          min="0"
+                          step="0.0001"
+                          value={aliquotaOptanteValor}
+                          onChange={(event) => setAliquotaOptanteValor(event.target.value)}
+                          disabled={isSavingAliquotaOptante || aliquotaOptanteFormMode === 'view'}
+                          aria-invalid={Boolean(aliquotaOptanteValorError)}
+                        />
+                        {aliquotaOptanteValorError ? <strong className="field-error">{aliquotaOptanteValorError}</strong> : null}
+                      </label>
+
+                      <p className={`status-message status-${aliquotaOptanteStatusTone}`} aria-live="polite">
+                        {aliquotaOptanteStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {aliquotaOptanteFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingAliquotaOptante}>
+                            {isSavingAliquotaOptante ? 'Salvando...' : editingAliquotaOptanteKey ? 'Salvar alteracao' : 'Salvar Aliquota Optante'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelAliquotaOptanteForm} disabled={isSavingAliquotaOptante}>
+                          {aliquotaOptanteFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingAliquotaOptante ? 'Atualizando...' : `${aliquotaOptanteTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortAliquotaOptante('data')}>
+                            Data <span>{getAliquotaOptanteSortIndicator('data')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortAliquotaOptante('tipoEmpresa')}>
+                            Tipo Empresa <span>{getAliquotaOptanteSortIndicator('tipoEmpresa')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortAliquotaOptante('aliquota')}>
+                            Aliquota <span>{getAliquotaOptanteSortIndicator('aliquota')}</span>
+                          </button>
+                        </th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aliquotaOptanteItems.map((item) => (
+                        <tr key={formatAliquotaOptanteKey(item)}>
+                          <td>{item.data}</td>
+                          <td>{item.tipoEmpresa}</td>
+                          <td>{formatAliquotaOptanteValue(item.aliquota)}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button type="button" className="row-action-button" onClick={() => handleStartViewAliquotaOptante(item)}>
+                                Consulta
+                              </button>
+                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditAliquotaOptante(item)}>
+                                Alterar
+                              </button>
+                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteAliquotaOptante(item)}>
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {!isLoadingAliquotaOptante && aliquotaOptanteItems.length === 0 ? (
+                    <p className="management-empty-state">Nenhum registro de aliquota optante encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${aliquotaOptanteStatusTone}`} aria-live="polite">
+                  {isAliquotaOptanteFormVisible ? '' : aliquotaOptanteStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setAliquotaOptantePage(1)}
+                    disabled={!canGoToPreviousAliquotaOptantePage || isLoadingAliquotaOptante}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setAliquotaOptantePage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousAliquotaOptantePage || isLoadingAliquotaOptante}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {aliquotaOptantePage} de {aliquotaOptanteTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setAliquotaOptantePage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextAliquotaOptantePage || isLoadingAliquotaOptante}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setAliquotaOptantePage(aliquotaOptanteTotalPages)}
+                    disabled={!canGoToNextAliquotaOptantePage || isLoadingAliquotaOptante}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'apuracaoServicos' ? (
+          <ApuracaoServicosView />
         ) : activeView === 'modalBancadaTpPagtoCondicao' ? (
           <>
             <div className="content-copy">
@@ -7628,6 +9891,238 @@ function App() {
                     className="secondary-button management-pagination-button management-pagination-button-icon"
                     onClick={() => setModalBancadaTpPagtoCondicaoValorPage(modalBancadaTpPagtoCondicaoValorTotalPages)}
                     disabled={!canGoToNextModalBancadaTpPagtoCondicaoValorPage || isLoadingModalBancadaTpPagtoCondicaoValorItems}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'diasLetivos' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Cadastro financeiro</p>
+              <h2 id="content-title">Dias Letivos</h2>
+              <p className="content-description">
+                Cadastre a quantidade de dias letivos por data de referencia. A tabela ja inicia com os dados mensais informados para 2025.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertDiasLetivos}
+                  disabled={isSavingDiasLetivos || isDeletingDiasLetivos}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterDiasLetivosSubmit}>
+                  <input
+                    className="management-filter-input"
+                    type="text"
+                    placeholder="Filtrar por competencia ou dias letivos"
+                    value={diasLetivosSearch}
+                    onChange={(event) => setDiasLetivosSearch(event.target.value)}
+                  />
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearDiasLetivosFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isDiasLetivosFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingDiasLetivos) {
+                      handleCancelDiasLetivosForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="dias-letivos-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateDiasLetivos} noValidate>
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <h2 id="dias-letivos-modal-title">DIAS LETIVOS</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelDiasLetivosForm}
+                          disabled={isSavingDiasLetivos}
+                          aria-label="Fechar formulario de dias letivos"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {diasLetivosFormMode === 'view' ? 'Consulta de registro' : editingDiasLetivosData ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <label className="field-group" htmlFor="dias-letivos-data">
+                        <span>Competencia (MM/AAAA)</span>
+                        <input
+                          id="dias-letivos-data"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="MM/AAAA"
+                          maxLength={7}
+                          autoComplete="off"
+                          value={diasLetivosData}
+                          onChange={(event) => setDiasLetivosData(normalizeMonthYearInput(event.target.value))}
+                          disabled={isSavingDiasLetivos || diasLetivosFormMode === 'view'}
+                          aria-invalid={Boolean(diasLetivosDataError)}
+                        />
+                        {diasLetivosDataError ? <strong className="field-error">{diasLetivosDataError}</strong> : null}
+                      </label>
+
+                      <label className="field-group" htmlFor="dias-letivos-quantidade">
+                        <span>Dias Letivos</span>
+                        <input
+                          id="dias-letivos-quantidade"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={diasLetivosQuantidade}
+                          onChange={(event) => setDiasLetivosQuantidade(event.target.value)}
+                          disabled={isSavingDiasLetivos || diasLetivosFormMode === 'view'}
+                          aria-invalid={Boolean(diasLetivosQuantidadeError)}
+                        />
+                        {diasLetivosQuantidadeError ? <strong className="field-error">{diasLetivosQuantidadeError}</strong> : null}
+                      </label>
+
+                      <p className={`status-message status-${diasLetivosStatusTone}`} aria-live="polite">
+                        {diasLetivosStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {diasLetivosFormMode !== 'view' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingDiasLetivos}>
+                            {isSavingDiasLetivos ? 'Salvando...' : editingDiasLetivosData ? 'Salvar alteracao' : 'Salvar Dias Letivos'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelDiasLetivosForm} disabled={isSavingDiasLetivos}>
+                          {diasLetivosFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingDiasLetivos ? 'Atualizando...' : `${diasLetivosTotalItems} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortDiasLetivos('data')}>
+                                    Competencia <span>{getDiasLetivosSortIndicator('data')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortDiasLetivos('diasLetivos')}>
+                            Dias Letivos <span>{getDiasLetivosSortIndicator('diasLetivos')}</span>
+                          </button>
+                        </th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {diasLetivosItems.map((item) => (
+                        <tr key={item.data}>
+                          <td>{item.data}</td>
+                          <td>{item.diasLetivos}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button type="button" className="row-action-button" onClick={() => handleStartViewDiasLetivos(item)}>
+                                Consulta
+                              </button>
+                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditDiasLetivos(item)}>
+                                Alterar
+                              </button>
+                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteDiasLetivos(item)}>
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {!isLoadingDiasLetivos && diasLetivosItems.length === 0 ? (
+                    <p className="management-empty-state">Nenhum registro de dias letivos encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${diasLetivosStatusTone}`} aria-live="polite">
+                  {isDiasLetivosFormVisible ? '' : diasLetivosStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setDiasLetivosPage(1)}
+                    disabled={!canGoToPreviousDiasLetivosPage || isLoadingDiasLetivos}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setDiasLetivosPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousDiasLetivosPage || isLoadingDiasLetivos}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {diasLetivosPage} de {diasLetivosTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setDiasLetivosPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextDiasLetivosPage || isLoadingDiasLetivos}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setDiasLetivosPage(diasLetivosTotalPages)}
+                    disabled={!canGoToNextDiasLetivosPage || isLoadingDiasLetivos}
                     title="Ultimo registro"
                     aria-label="Ultimo registro"
                   >
@@ -9674,6 +12169,359 @@ function App() {
                 src="/src/ordemServicoHistorico.html"
                 title="Historico de OrdemServico"
               />
+            </div>
+          </>
+        ) : activeView === 'apuracaoFinanceira' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Operacional financeiro</p>
+              <h2 id="content-title">Apuracao Financeira</h2>
+              <p className="content-description">
+                Cadastre apuracoes financeiras por mes/ano, DRE e revisao com situacao controlada por tipo pessoa.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleStartInsertApuracaoFinanceira}
+                  disabled={isSavingApuracaoFinanceira || isDeletingApuracaoFinanceira || isLoadingApuracaoFinanceiraOptions}
+                >
+                  Inserir registro
+                </button>
+
+                <form className="management-filter-form" onSubmit={handleFilterApuracaoFinanceiraSubmit}>
+                  <input
+                    className="management-filter-input"
+                    type="text"
+                    placeholder="Filtrar por mes/ano, DRE ou situacao"
+                    value={apuracaoFinanceiraSearch}
+                    onChange={(event) => setApuracaoFinanceiraSearch(event.target.value)}
+                  />
+                  <button type="submit" className="secondary-button management-filter-button">
+                    Filtrar
+                  </button>
+                  <button type="button" className="secondary-button management-filter-button" onClick={handleClearApuracaoFinanceiraFilter}>
+                    Limpar
+                  </button>
+                </form>
+              </div>
+
+              {isApuracaoFinanceiraFormVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isSavingApuracaoFinanceira) {
+                      handleCancelApuracaoFinanceiraForm()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="apuracao-financeira-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <form
+                      className={`management-card management-form dre-form management-modal-form-card${apuracaoFinanceiraStatusTone === 'warning' ? ' apuracao-financeira-lock-warning' : ''}`}
+                      onSubmit={handleCreateApuracaoFinanceira}
+                      noValidate
+                    >
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Operacional financeiro</p>
+                          <h2 id="apuracao-financeira-modal-title">APURACAO FINANCEIRA</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCancelApuracaoFinanceiraForm}
+                          disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}
+                          aria-label="Fechar formulario de apuracao financeira"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        {apuracaoFinanceiraFormMode === 'view' ? 'Consulta de registro' : editingApuracaoFinanceiraKey ? 'Alterar registro' : 'Novo registro'}
+                      </p>
+
+                      <div className="apuracao-financeira-inline-fields">
+                        <label className="field-group" htmlFor="apuracao-financeira-mes-ano">
+                          <span>Mes/Ano</span>
+                          <input
+                            id="apuracao-financeira-mes-ano"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="mm/aaaa"
+                            value={apuracaoFinanceiraMesAno}
+                            onChange={(event) => setApuracaoFinanceiraMesAno(normalizeMonthYearInput(event.target.value))}
+                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || apuracaoFinanceiraFormMode !== 'create'}
+                            aria-invalid={Boolean(apuracaoFinanceiraMesAnoError)}
+                          />
+                          {apuracaoFinanceiraMesAnoError ? <strong className="field-error">{apuracaoFinanceiraMesAnoError}</strong> : null}
+                        </label>
+
+                        <label className="field-group" htmlFor="apuracao-financeira-revisao">
+                          <span>Revisao</span>
+                          <input
+                            id="apuracao-financeira-revisao"
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={apuracaoFinanceiraRevisao}
+                            onChange={(event) => setApuracaoFinanceiraRevisao(event.target.value)}
+                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || apuracaoFinanceiraFormMode !== 'create'}
+                            aria-invalid={Boolean(apuracaoFinanceiraRevisaoError)}
+                          />
+                          {apuracaoFinanceiraRevisaoError ? <strong className="field-error">{apuracaoFinanceiraRevisaoError}</strong> : null}
+                        </label>
+                      </div>
+
+                      <label className="field-group" htmlFor="apuracao-financeira-dre">
+                        {apuracaoFinanceiraFormMode !== 'view' ? (
+                          <>
+                            <span>DREs ativas</span>
+                            <div className="apuracao-financeira-dre-toolbar">
+                              <button
+                                type="button"
+                                className="secondary-button apuracao-financeira-dre-toggle"
+                                onClick={handleToggleAllApuracaoFinanceiraDres}
+                                disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isLoadingApuracaoFinanceiraActiveDres || apuracaoFinanceiraActiveDreOptions.length === 0}
+                              >
+                                {apuracaoFinanceiraActiveDreOptions.length > 0 && apuracaoFinanceiraSelectedDreCodigos.length === apuracaoFinanceiraActiveDreOptions.length
+                                  ? 'Desselecionar todas'
+                                  : 'Selecionar todas'}
+                              </button>
+                            </div>
+                            <div className="apuracao-financeira-dre-selector" aria-live="polite">
+                              {isValidMonthYear(apuracaoFinanceiraMesAno) && isLoadingApuracaoFinanceiraActiveDres ? (
+                                <p className="apuracao-financeira-dre-hint">Carregando DREs ativas...</p>
+                              ) : isValidMonthYear(apuracaoFinanceiraMesAno) && apuracaoFinanceiraActiveDreOptions.length === 0 ? (
+                                <p className="apuracao-financeira-dre-hint">Nenhuma DRE ativa encontrada para o mes/ano informado.</p>
+                              ) : isValidMonthYear(apuracaoFinanceiraMesAno) ? (
+                                apuracaoFinanceiraActiveDreOptions.map((item) => (
+                                  <label key={item.codigo} className="apuracao-financeira-dre-option">
+                                    <input
+                                      type="checkbox"
+                                      checked={apuracaoFinanceiraSelectedDreCodigos.includes(item.codigo)}
+                                      onChange={() => handleToggleApuracaoFinanceiraSelectedDre(item.codigo)}
+                                      disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}
+                                    />
+                                    <span>{formatApuracaoFinanceiraDreOptionLabel(item)}</span>
+                                  </label>
+                                ))
+                              ) : null}
+                            </div>
+                            {apuracaoFinanceiraSelectedDresError ? <strong className="field-error">{apuracaoFinanceiraSelectedDresError}</strong> : null}
+                          </>
+                        ) : (
+                          <>
+                            <span>DRE</span>
+                            <input
+                              id="apuracao-financeira-dre"
+                              type="text"
+                              value={apuracaoFinanceiraSelectedDreDisplayValue}
+                              readOnly
+                              disabled
+                            />
+                            {apuracaoFinanceiraDreCodigoError ? <strong className="field-error">{apuracaoFinanceiraDreCodigoError}</strong> : null}
+                          </>
+                        )}
+                      </label>
+
+                      <label className="field-group" htmlFor="apuracao-financeira-tipo-pessoa">
+                        <span>Tipo Pessoa</span>
+                        <select
+                          id="apuracao-financeira-tipo-pessoa"
+                          value={apuracaoFinanceiraTipoPessoa}
+                          onChange={(event) => setApuracaoFinanceiraTipoPessoa(event.target.value as ApuracaoFinanceiraTipoPessoaFormValue)}
+                          disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || apuracaoFinanceiraFormMode === 'view'}
+                        >
+                          {APURACAO_FINANCEIRA_TIPO_PESSOA_FORM_OPTIONS.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                        {apuracaoFinanceiraTipoPessoaError ? <strong className="field-error">{apuracaoFinanceiraTipoPessoaError}</strong> : null}
+                      </label>
+
+                      <label className="field-group" htmlFor="apuracao-financeira-situacao">
+                        <span>Situacao</span>
+                        <select
+                          id="apuracao-financeira-situacao"
+                          value={apuracaoFinanceiraSituacao}
+                          onChange={(event) => setApuracaoFinanceiraSituacao(event.target.value as ApuracaoFinanceiraStatus)}
+                          disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || apuracaoFinanceiraFormMode === 'view'}
+                        >
+                          {APURACAO_FINANCEIRA_STATUS_OPTIONS.map((item) => (
+                            <option key={item} value={item}>
+                              {item}
+                            </option>
+                          ))}
+                        </select>
+                        {apuracaoFinanceiraSituacaoError ? <strong className="field-error">{apuracaoFinanceiraSituacaoError}</strong> : null}
+                      </label>
+
+                      {apuracaoFinanceiraFormMode !== 'view' && ['A processar', 'Processado'].includes(apuracaoFinanceiraSituacao) ? (
+                        <div className="button-row apuracao-financeira-process-row">
+                          <button
+                            type="button"
+                            className="secondary-button apuracao-financeira-process-button"
+                            onClick={handleProcessApuracaoFinanceira}
+                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}
+                          >
+                            {isProcessingApuracaoFinanceira ? 'Re-apurando...' : apuracaoFinanceiraFormMode === 'edit' ? 'Reprocessar alteracao' : 'Re-apurar ordens de servicos'}
+                          </button>
+                        </div>
+                      ) : null}
+
+                      <p className={`status-message status-${apuracaoFinanceiraStatusTone}`} aria-live="polite">
+                        {apuracaoFinanceiraStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        {apuracaoFinanceiraFormMode === 'create' ? (
+                          <button type="submit" className="primary-button" disabled={isSavingApuracaoFinanceira}>
+                            {isSavingApuracaoFinanceira ? 'Salvando...' : 'Salvar Apuracao Financeira'}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={handleCancelApuracaoFinanceiraForm} disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}>
+                          {apuracaoFinanceiraFormMode === 'view' ? 'Fechar' : 'Cancelar'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="management-card management-grid-card dre-list-card">
+                <div className="management-grid-header">
+                  <h2>Registros cadastrados</h2>
+                  <span>
+                    {isLoadingApuracaoFinanceira ? 'Atualizando...' : `${apuracaoFinanceiraGridRows.length} item(ns) encontrados`}
+                  </span>
+                </div>
+
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortApuracaoFinanceira('mesAno')}>
+                            Mes/Ano <span>{getApuracaoFinanceiraSortIndicator('mesAno')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortApuracaoFinanceira('revisao')}>
+                            Revisao <span>{getApuracaoFinanceiraSortIndicator('revisao')}</span>
+                          </button>
+                        </th>
+                        <th>DRE</th>
+                        <th>
+                          Tipo Pessoa
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortApuracaoFinanceira('situacao')}>
+                            Situacao <span>{getApuracaoFinanceiraSortIndicator('situacao')}</span>
+                          </button>
+                        </th>
+                        <th className="dre-actions-column">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apuracaoFinanceiraGridRows.map((row) => (
+                        <tr key={row.key}>
+                          <td>{row.representativeItem.mesAno}</td>
+                          <td>{row.representativeItem.revisao}</td>
+                          <td>{row.dreText}</td>
+                          <td>{row.tipoPessoaLabel}</td>
+                          <td>{row.representativeItem.situacao}</td>
+                          <td>
+                            <div className="dre-row-actions">
+                              <button type="button" className="row-action-button" onClick={() => handleStartViewApuracaoFinanceira(row)}>
+                                Consulta
+                              </button>
+                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditApuracaoFinanceira(row)}>
+                                Alterar
+                              </button>
+                              <button
+                                type="button"
+                                className="row-action-button row-action-delete"
+                                onClick={() => handleDeleteApuracaoFinanceira(row)}
+                                disabled={row.representativeItem.situacao !== APURACAO_FINANCEIRA_DELETE_STATUS || isDeletingApuracaoFinanceira}
+                                title={row.representativeItem.situacao === APURACAO_FINANCEIRA_DELETE_STATUS ? 'Excluir registro' : `Exclusao disponivel apenas em ${APURACAO_FINANCEIRA_DELETE_STATUS}`}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {!isLoadingApuracaoFinanceira && apuracaoFinanceiraGridRows.length === 0 ? (
+                    <p className="management-empty-state">Nenhum registro de apuracao financeira encontrado.</p>
+                  ) : null}
+                </div>
+
+                <p className={`status-message status-${apuracaoFinanceiraStatusTone}`} aria-live="polite">
+                  {isApuracaoFinanceiraFormVisible ? '' : apuracaoFinanceiraStatusMessage}
+                </p>
+
+                <div className="management-pagination">
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setApuracaoFinanceiraPage(1)}
+                    disabled={!canGoToPreviousApuracaoFinanceiraPage || isLoadingApuracaoFinanceira}
+                    title="Primeiro registro"
+                    aria-label="Primeiro registro"
+                  >
+                    |◀
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setApuracaoFinanceiraPage((currentPage) => currentPage - 1)}
+                    disabled={!canGoToPreviousApuracaoFinanceiraPage || isLoadingApuracaoFinanceira}
+                    title="Registro anterior"
+                    aria-label="Registro anterior"
+                  >
+                    ◀
+                  </button>
+                  <span className="management-pagination-info">
+                    Pagina {apuracaoFinanceiraPage} de {apuracaoFinanceiraTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setApuracaoFinanceiraPage((currentPage) => currentPage + 1)}
+                    disabled={!canGoToNextApuracaoFinanceiraPage || isLoadingApuracaoFinanceira}
+                    title="Proximo registro"
+                    aria-label="Proximo registro"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button management-pagination-button management-pagination-button-icon"
+                    onClick={() => setApuracaoFinanceiraPage(apuracaoFinanceiraTotalPages)}
+                    disabled={!canGoToNextApuracaoFinanceiraPage || isLoadingApuracaoFinanceira}
+                    title="Ultimo registro"
+                    aria-label="Ultimo registro"
+                  >
+                    ▶|
+                  </button>
+                </div>
+              </div>
             </div>
           </>
         ) : activeView === 'financeiroReprocessamento' ? (

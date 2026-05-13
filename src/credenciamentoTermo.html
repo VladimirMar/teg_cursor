@@ -1065,6 +1065,7 @@
         credenciado: document.getElementById('credenciamento-termo-credenciado-error'),
         credenciadaCodigo: document.getElementById('credenciamento-termo-credenciada-codigo-error'),
         cnpjCpf: document.getElementById('credenciamento-termo-cnpj-cpf-error'),
+        tpOptante: document.getElementById('credenciamento-termo-credenciado-error'),
         situacaoPublicacao: document.getElementById('credenciamento-termo-situacao-publicacao-error'),
         situacaoEmissao: document.getElementById('credenciamento-termo-situacao-emissao-error'),
         statusTermo: document.getElementById('credenciamento-termo-status-termo-error'),
@@ -1096,6 +1097,7 @@
         credenciado: credenciadoInput,
         credenciadaCodigo: credenciadaCodigoInput,
         cnpjCpf: cnpjCpfInput,
+        tpOptante: credenciadoInput,
         situacaoPublicacao: situacaoPublicacaoInput,
         situacaoEmissao: situacaoEmissaoInput,
         statusTermo: firstStatusTermoOptionInput,
@@ -4035,6 +4037,28 @@
         });
         feedback.textContent = '';
       };
+      const getCredenciadaLookupDiagnostic = () => {
+        const cnpjCpf = normalizeCnpjCpf(cnpjCpfInput.value);
+        const digits = getDocumentDigits(cnpjCpf);
+
+        if (!digits) {
+          return {
+            field: 'cnpjCpf',
+            message: 'Informe o CNPJ/CPF da credenciada para localizar um cadastro ativo.',
+            feedbackMessage: 'Informe o CNPJ/CPF da credenciada para continuar.',
+          };
+        }
+
+        const specificMessage = String(errors.cnpjCpf.textContent || errors.credenciado.textContent || '').trim();
+
+        return {
+          field: 'cnpjCpf',
+          message: specificMessage || 'O CNPJ/CPF informado nao localizou uma credenciada ativa.',
+          feedbackMessage: specificMessage
+            ? `Nao foi possivel vincular uma credenciada ativa ao CNPJ/CPF informado. ${specificMessage}`
+            : 'Nao foi possivel vincular uma credenciada ativa ao CNPJ/CPF informado.',
+        };
+      };
       const revealFirstFormError = (errorMap = {}) => {
         const firstErrorEntry = Object.entries(errorMap).find(([key, value]) => errors[key] && value);
 
@@ -5058,7 +5082,9 @@
           municipioInput.value = '';
           syncEspecificacaoSei();
           syncTextoCopia();
-          errors.cnpjCpf.textContent = error instanceof Error ? error.message : 'Falha ao localizar credenciada.';
+          const errorMessage = error instanceof Error ? error.message : 'Falha ao localizar credenciada.';
+          errors.cnpjCpf.textContent = errorMessage;
+          errors.credenciado.textContent = errorMessage;
           credenciadoHint.textContent = defaultCredenciadoHintText;
         }
       };
@@ -5171,9 +5197,15 @@
         }
 
         if (!payload.credenciadaCodigo) {
-          errors.credenciado.textContent = 'Informe o credenciado (codigo da credenciada e obrigatorio).';
-          feedback.textContent = 'Corrija os campos do credenciamento termo para continuar.';
-          revealFirstFormError({ credenciado: errors.credenciado.textContent });
+          const diagnostic = getCredenciadaLookupDiagnostic();
+          if (diagnostic.field === 'cnpjCpf') {
+            errors.cnpjCpf.textContent = diagnostic.message;
+            errors.credenciado.textContent = diagnostic.message;
+          } else {
+            errors.credenciado.textContent = diagnostic.message;
+          }
+          feedback.textContent = diagnostic.feedbackMessage;
+          revealFirstFormError({ [diagnostic.field]: diagnostic.message });
           return;
         }
 
@@ -5219,13 +5251,20 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
             const responsePayload = await response.json().catch(() => ({}));
             const responseMessage = responsePayload.message || 'Falha ao salvar o registro.';
             if (responsePayload.errors) {
+              const normalizedResponseErrors = { ...responsePayload.errors };
               Object.entries(responsePayload.errors).forEach(([key, value]) => {
                 if (errors[key]) {
                   errors[key].textContent = value;
+                  return;
+                }
+
+                if (key === 'tpOptante') {
+                  errors.credenciado.textContent = value;
+                  normalizedResponseErrors.credenciado = value;
                 }
               });
               feedback.textContent = responseMessage;
-              revealFirstFormError(responsePayload.errors);
+              revealFirstFormError(normalizedResponseErrors);
             }
             feedback.textContent = responseMessage;
             throw new Error(responseMessage);

@@ -352,6 +352,61 @@ const getTipoPgtoCodigoFromUrl = (url) => {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+const getTipoEscolaCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/tipo-escola\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getAliquotaOptanteKeyFromUrl = (url) => {
+  const match = url.match(/^\/api\/aliquota-optante\/([^/]+)\/([^/]+)$/)
+
+  if (!match) {
+    return null
+  }
+
+  return {
+    data: decodeURIComponent(match[1]),
+    tipoEmpresa: decodeURIComponent(match[2]),
+  }
+}
+
+const getDiasLetivosDataFromUrl = (url) => {
+  const match = url.match(/^\/api\/dias-letivos\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getApuracaoFinanceiraKeyFromUrl = (url) => {
+  const match = url.match(/^\/api\/apuracao-financeira\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)$/)
+
+  if (!match) {
+    return null
+  }
+
+  return {
+    mesAno: decodeURIComponent(match[1]),
+    dreCodigo: decodeURIComponent(match[2]),
+    revisao: decodeURIComponent(match[3]),
+    tipoPessoa: decodeURIComponent(match[4]),
+  }
+}
+
+const getApuracaoServicosKeyFromUrl = (url) => {
+  const match = url.match(/^\/api\/apuracao-servicos\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)$/)
+
+  if (!match) {
+    return null
+  }
+
+  return {
+    mesAno: decodeURIComponent(match[1]),
+    dreCodigo: decodeURIComponent(match[2]),
+    ordemServicoCodigo: decodeURIComponent(match[3]),
+    revisao: decodeURIComponent(match[4]),
+    tipoEscolaCodigo: decodeURIComponent(match[5]),
+    tipoPessoa: decodeURIComponent(match[6]),
+  }
+}
+
 const getModalidadeTipoBancadaAssociationCodigoFromUrl = (url) => {
   const match = url.match(/^\/api\/modalidade-tipo-bancada\/([^/]+)$/)
   return match ? decodeURIComponent(match[1]) : null
@@ -397,6 +452,37 @@ const normalizeContinuaTipo = (value) => {
   }
 
   return ''
+}
+
+const normalizeAliquotaOptanteTipoEmpresa = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  if (normalizedValue === 'cooperativa') {
+    return 'Cooperativa'
+  }
+
+  if (normalizedValue === 'outros') {
+    return 'Outros'
+  }
+
+  return ''
+}
+
+const normalizeFourDecimalValue = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return NaN
+  }
+
+  const parsed = /^-?\d+(?:\.\d+)?$/.test(normalizedValue)
+    ? Number(normalizedValue)
+    : Number(normalizedValue.replace(/\./g, '').replace(',', '.'))
+
+  return Number.isFinite(parsed) ? Number(parsed.toFixed(4)) : NaN
 }
 
 const normalizeParametroVeiculoCondicao = (value) => {
@@ -1000,6 +1086,209 @@ const tipoBancadaSelectClause = `
 const tipoPgtoSelectClause = `
   CAST(codigo AS text) AS codigo,
   BTRIM(CAST(descricao AS text)) AS descricao`
+
+const tipoEscolaSelectClause = `
+  CAST(codigo AS text) AS codigo,
+  COALESCE(BTRIM(sigla), '') AS sigla,
+  BTRIM(CAST(descricao AS text)) AS descricao`
+
+const aliquotaOptanteSelectClause = `
+  TO_CHAR(data, 'YYYY-MM-DD') AS data,
+  BTRIM(tipo_empresa) AS tipo_empresa,
+  TO_CHAR(aliquota, 'FM9999999990.0000') AS aliquota`
+
+const diasLetivosSelectClause = `
+  TO_CHAR(data, 'MM/YYYY') AS data,
+  dias_letivos`
+
+const apuracaoFinanceiraStatusOptions = [
+  'A processar',
+  'Processado',
+  'Em digitacao',
+  'Digitado',
+  'Em aprovacao',
+  'Aprovado SME',
+  'Aguardando calculo',
+  'Calculado',
+  'Em liquidacao',
+  'Liquidado',
+  'Concluido',
+]
+
+const apuracaoTipoPessoaOptions = ['PF', 'PJ']
+
+const normalizeApuracaoTipoPessoa = (value) => {
+  const normalized = normalizeCredenciadaTipoPessoaValue(value)
+
+  if (normalized === 'PF') {
+    return 'PF'
+  }
+
+  if (normalized === 'PJ' || normalized === 'CO') {
+    return 'PJ'
+  }
+
+  return ''
+}
+
+const resolveApuracaoProcessingTipoPessoa = (tipoPessoa, cnpjCpf) => {
+  const normalized = normalizeCredenciadaTipoPessoaValue(tipoPessoa)
+
+  if (normalized === 'PF') {
+    return 'PF'
+  }
+
+  if (normalized === 'PJ' || normalized === 'CO') {
+    return 'PJ'
+  }
+
+  const documentDigits = normalizeRequestValue(cnpjCpf).replace(/\D/g, '')
+
+  if (documentDigits.length === 11) {
+    return 'PF'
+  }
+
+  if (documentDigits.length === 14) {
+    return 'PJ'
+  }
+
+  return ''
+}
+
+const matchesApuracaoProcessingTipoPessoa = (selectedTipoPessoa, resolvedTipoPessoa) => {
+  if (!selectedTipoPessoa) {
+    return true
+  }
+
+  if (selectedTipoPessoa === 'PF') {
+    return resolvedTipoPessoa === 'PF'
+  }
+
+  if (selectedTipoPessoa === 'PJ') {
+    return resolvedTipoPessoa !== 'PF' && resolvedTipoPessoa !== ''
+  }
+
+  return false
+}
+
+const normalizeApuracaoFinanceiraMesAno = (value) => {
+  const digits = normalizeRequestValue(value).replace(/\D/g, '').slice(0, 6)
+
+  if (digits.length <= 2) {
+    return digits
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`
+}
+
+const isValidApuracaoFinanceiraMesAno = (value) => /^(0[1-9]|1[0-2])\/\d{4}$/.test(value)
+
+const buildApuracaoFinanceiraMonthRange = (value) => {
+  const mesAno = normalizeApuracaoFinanceiraMesAno(value)
+
+  if (!isValidApuracaoFinanceiraMesAno(mesAno)) {
+    return null
+  }
+
+  return buildYearMonthDateRange(`${mesAno.slice(3)}-${mesAno.slice(0, 2)}`)
+}
+
+const normalizeDiasLetivosMesAno = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return ''
+  }
+
+  if (/^(0[1-9]|1[0-2])\/\d{4}$/.test(normalizedValue)) {
+    const [month, year] = normalizedValue.split('/')
+    return `${year}-${month}-01`
+  }
+
+  if (/^\d{4}-\d{2}$/.test(normalizedValue)) {
+    return `${normalizedValue}-01`
+  }
+
+  if (isDateInputValid(normalizedValue)) {
+    return `${normalizedValue.slice(0, 7)}-01`
+  }
+
+  return ''
+}
+
+const normalizeApuracaoFinanceiraStatus = (value) => {
+  const normalizedValue = normalizeRequestValue(value).toUpperCase()
+
+  if (normalizedValue === 'EM PROCESSAMENTO') {
+    return 'A processar'
+  }
+
+  return apuracaoFinanceiraStatusOptions.find((item) => item.toUpperCase() === normalizedValue) ?? ''
+}
+
+const apuracaoFinanceiraMesAnoOrderClause = "SUBSTRING(apuracao_financeira.mes_ano FROM 4 FOR 4) || SUBSTRING(apuracao_financeira.mes_ano FROM 1 FOR 2)"
+
+const apuracaoFinanceiraSelectClause = `
+  BTRIM(apuracao_financeira.mes_ano) AS mes_ano,
+  CAST(apuracao_financeira.dre_codigo AS text) AS dre_codigo,
+  COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+  BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+  apuracao_financeira.revisao AS revisao,
+  COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') AS tipo_pessoa,
+  BTRIM(apuracao_financeira.situacao) AS situacao,
+  COALESCE(CAST(apuracao_financeira.data_inclusao AS text), '') AS data_inclusao,
+  COALESCE(CAST(apuracao_financeira.data_alteracao AS text), '') AS data_alteracao`
+
+const apuracaoServicosMesAnoOrderClause = "SUBSTRING(apuracao_servicos.mes_ano FROM 4 FOR 4) || SUBSTRING(apuracao_servicos.mes_ano FROM 1 FOR 2)"
+
+const apuracaoServicosSelectClause = `
+  BTRIM(apuracao_servicos.mes_ano) AS mes_ano,
+  CAST(apuracao_servicos.dre_codigo AS text) AS dre_codigo,
+  apuracao_servicos.ordem_servico_codigo::text AS ordem_servico_codigo,
+  apuracao_servicos.revisao AS revisao,
+  CAST(apuracao_servicos.tipo_escola_codigo AS text) AS tipo_escola_codigo,
+  COALESCE(BTRIM(apuracao_servicos.tipo_pessoa), '') AS tipo_pessoa,
+  COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+  BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+  COALESCE(BTRIM(tipo_escola.sigla), '') AS tipo_escola_sigla,
+  BTRIM(CAST(tipo_escola.descricao AS text)) AS tipo_escola_descricao,
+  COALESCE(BTRIM(ordem_servico_item.os_concat), '') AS ordem_servico_os_concat,
+  COALESCE(BTRIM(ordem_servico_item.termo_adesao), '') AS ordem_servico_termo_adesao,
+  COALESCE(BTRIM(ordem_servico_item.num_os), '') AS ordem_servico_num_os,
+  apuracao_servicos.nc_pres AS nc_pres,
+  apuracao_servicos.cad AS cad,
+  apuracao_servicos.ac_nc AS ac_nc,
+  apuracao_servicos.ac_cad AS ac_cad,
+  apuracao_servicos.cont_nc AS cont_nc,
+  apuracao_servicos.cont_cad AS cont_cad,
+  TO_CHAR(apuracao_servicos.km, 'FM9999999990.0000') AS km,
+  COALESCE(CAST(apuracao_servicos.data_inclusao AS text), '') AS data_inclusao,
+  COALESCE(CAST(apuracao_servicos.data_alteracao AS text), '') AS data_alteracao`
+
+const mapApuracaoServicosRow = (row) => ({
+  mesAno: normalizeRequestValue(row?.mes_ano),
+  dreCodigo: normalizeRequestValue(row?.dre_codigo),
+  tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa) || 'PF',
+  dreSigla: normalizeRequestValue(row?.dre_sigla),
+  dreDescricao: normalizeRequestValue(row?.dre_descricao),
+  ordemServicoCodigo: normalizeRequestValue(row?.ordem_servico_codigo),
+  ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
+  ordemServicoTermoAdesao: normalizeRequestValue(row?.ordem_servico_termo_adesao),
+  ordemServicoNumOs: normalizeRequestValue(row?.ordem_servico_num_os),
+  revisao: Number(row?.revisao) || 0,
+  tipoEscolaCodigo: normalizeRequestValue(row?.tipo_escola_codigo),
+  tipoEscolaSigla: normalizeRequestValue(row?.tipo_escola_sigla),
+  tipoEscolaDescricao: normalizeRequestValue(row?.tipo_escola_descricao),
+  naoCadeirantePresencial: Number(row?.nc_pres) || 0,
+  cadeirante: Number(row?.cad) || 0,
+  atendimentoComplementarNaoCadeirante: Number(row?.ac_nc) || 0,
+  atendimentoComplementarCadeirante: Number(row?.ac_cad) || 0,
+  continuaNaoCadeirante: Number(row?.cont_nc) || 0,
+  continuaCadeirante: Number(row?.cont_cad) || 0,
+  kilometragem: normalizeRequestValue(row?.km),
+  dataInclusao: normalizeRequestValue(row?.data_inclusao),
+  dataAlteracao: normalizeRequestValue(row?.data_alteracao),
+})
 
 const modalidadeTipoBancadaAssociationSelectClause = `
   CAST(associacao.codigo AS text) AS codigo,
@@ -2182,6 +2471,390 @@ const listActiveOrdemServicoDashboardByMonth = async (referenceMonth, executor =
       totalModalidades: modalidades.length,
     },
   }
+}
+
+const findDreByApuracaoIdentifier = async (dreIdentifier, executor = pool) => {
+  const normalizedIdentifier = normalizeRequestValue(dreIdentifier)
+
+  if (!normalizedIdentifier) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT
+       codigo::text AS codigo,
+       COALESCE(BTRIM(sigla), '') AS sigla,
+       COALESCE(BTRIM(codigo_operacional), '') AS codigo_operacional,
+       BTRIM(CAST(descricao AS text)) AS descricao
+     FROM dre
+     WHERE CAST(codigo AS text) = $1
+        OR UPPER(BTRIM(COALESCE(sigla, ''))) = UPPER($1)
+        OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = UPPER($1)
+     ORDER BY codigo ASC
+     LIMIT 1`,
+    [normalizedIdentifier],
+  )
+
+  if (result.rowCount === 0) {
+    return null
+  }
+
+  const row = result.rows[0]
+
+  return {
+    codigo: normalizeRequestValue(row?.codigo),
+    sigla: normalizeRequestValue(row?.sigla),
+    codigoOperacional: normalizeDreOperationalCode(row?.codigo_operacional || row?.sigla || row?.codigo),
+    descricao: normalizeRequestValue(row?.descricao),
+  }
+}
+
+const listTipoEscolaAtivaItems = async (executor = pool) => {
+  const result = await executor.query(
+    `SELECT
+       codigo::text AS codigo,
+       COALESCE(BTRIM(sigla), '') AS sigla,
+       BTRIM(CAST(descricao AS text)) AS descricao
+     FROM tipo_escola
+     ORDER BY UPPER(BTRIM(CAST(descricao AS text))) ASC,
+              codigo ASC`,
+  )
+
+  return result.rows.map((row) => ({
+    codigo: normalizeRequestValue(row?.codigo),
+    sigla: normalizeRequestValue(row?.sigla),
+    descricao: normalizeRequestValue(row?.descricao),
+  }))
+}
+
+const listActiveOrdemServicoOptionsByApuracao = async ({ mesAno, dreCodigo, tipoPessoa }, executor = pool) => {
+  const monthRange = buildApuracaoFinanceiraMonthRange(mesAno)
+
+  if (!monthRange) {
+    throw new Error('Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  const dreRecord = await findDreByApuracaoIdentifier(dreCodigo, executor)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+
+  if (dreCodigo && !dreRecord) {
+    return []
+  }
+
+  const normalizedDreCodigo = dreRecord?.codigoOperacional ?? ''
+  const values = [monthRange.monthStart, monthRange.monthEnd]
+  const filters = [
+    `COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date) <= $2::date`,
+    `COALESCE(
+      os.data_encerramento,
+      os.data_eol,
+      CASE
+        WHEN UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO' THEN 'infinity'::date
+        ELSE COALESCE(os.data_modificacao::date, os.data_inclusao::date, os.data_emissao, os.vigencia_os)
+      END
+    ) >= $1::date`,
+  ]
+
+  if (normalizedDreCodigo) {
+    values.push(normalizedDreCodigo)
+    filters.push(`BTRIM(COALESCE(os.dre_codigo, '')) = $${values.length}`)
+  }
+
+  const result = await executor.query(
+    `SELECT
+       os.codigo::text AS codigo,
+       COALESCE(BTRIM(os.os_concat), '') AS os_concat,
+       COALESCE(BTRIM(os.termo_adesao), '') AS termo_adesao,
+       COALESCE(BTRIM(os.num_os), '') AS num_os,
+       COALESCE(BTRIM(os.revisao), '') AS revisao,
+       COALESCE(BTRIM(os.dre_codigo), '') AS dre_codigo,
+       COALESCE(BTRIM(os.dre_descricao), '') AS dre_descricao,
+       COALESCE(BTRIM(os.modalidade_descricao), '') AS modalidade_descricao,
+       COALESCE(BTRIM((SELECT cr.tipo_pessoa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS tipo_pessoa,
+       COALESCE(BTRIM((SELECT cr.cnpj_cpf FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS cnpj_cpf
+     FROM ${ordemServicoTableName} os
+     WHERE ${filters.join('\n       AND ')}
+     ORDER BY UPPER(BTRIM(COALESCE(os.termo_adesao, ''))) ASC,
+              UPPER(BTRIM(COALESCE(os.num_os, ''))) ASC,
+              UPPER(BTRIM(COALESCE(os.revisao, ''))) ASC,
+              os.codigo ASC`,
+    values,
+  )
+
+  return result.rows
+    .map((row) => {
+      const normalizedTipoPessoaItem = resolveApuracaoProcessingTipoPessoa(row?.tipo_pessoa, row?.cnpj_cpf)
+
+      return {
+        codigo: normalizeRequestValue(row?.codigo),
+        osConcat: normalizeRequestValue(row?.os_concat),
+        termoAdesao: normalizeRequestValue(row?.termo_adesao),
+        numOs: normalizeRequestValue(row?.num_os),
+        revisao: normalizeRequestValue(row?.revisao),
+        dreCodigo: normalizeRequestValue(row?.dre_codigo),
+        dreDescricao: normalizeRequestValue(row?.dre_descricao),
+        modalidadeDescricao: normalizeRequestValue(row?.modalidade_descricao),
+        tipoPessoa: normalizedTipoPessoaItem,
+      }
+    })
+    .filter((item) => matchesApuracaoProcessingTipoPessoa(normalizedTipoPessoa, item.tipoPessoa))
+}
+
+const findActiveOrdemServicoOptionByCodigo = async ({ mesAno, dreCodigo, ordemServicoCodigo, tipoPessoa }, executor = pool) => {
+  const options = await listActiveOrdemServicoOptionsByApuracao({ mesAno, dreCodigo, tipoPessoa }, executor)
+  return options.find((item) => item.codigo === normalizeRequestValue(ordemServicoCodigo)) ?? null
+}
+
+const createHttpError = (statusCode, message) => {
+  const error = new Error(message)
+  error.statusCode = statusCode
+  return error
+}
+
+const acquireApuracaoFinanceiraProcessingLock = async ({ mesAno, usuario }) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedUsuario = normalizeAuditActor(usuario || 'USUARIO') || 'USUARIO'
+
+  if (!normalizedMesAno) {
+    throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  await pool.query(
+    `DELETE FROM apuracao_financeira_processamento_lock
+     WHERE data_inclusao < NOW() - INTERVAL '2 hours'`,
+  )
+
+  const insertResult = await pool.query(
+    `INSERT INTO apuracao_financeira_processamento_lock (mes_ano, usuario)
+     VALUES ($1, $2)
+     ON CONFLICT (mes_ano) DO NOTHING
+     RETURNING mes_ano`,
+    [normalizedMesAno, normalizedUsuario],
+  )
+
+  if (insertResult.rowCount > 0) {
+    return {
+      mesAno: normalizedMesAno,
+      usuario: normalizedUsuario,
+    }
+  }
+
+  const existingResult = await pool.query(
+    `SELECT usuario
+     FROM apuracao_financeira_processamento_lock
+     WHERE mes_ano = $1
+     LIMIT 1`,
+    [normalizedMesAno],
+  )
+
+  const existingUsuario = normalizeAuditActor(existingResult.rows[0]?.usuario || 'USUARIO') || 'USUARIO'
+  throw createHttpError(409, `O usuario ${existingUsuario} ja esta realizando o processamento do mes/ano ${normalizedMesAno}.`)
+}
+
+const releaseApuracaoFinanceiraProcessingLock = async ({ mesAno }) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+
+  if (!normalizedMesAno) {
+    return
+  }
+
+  await pool.query(
+    `DELETE FROM apuracao_financeira_processamento_lock
+     WHERE mes_ano = $1`,
+    [normalizedMesAno],
+  )
+}
+
+const processApuracaoFinanceiraSelections = async ({
+  mesAno,
+  revisao,
+  situacao,
+  dreCodigos,
+  tipoPessoa,
+  replaceExistingDreCodigos,
+  replaceExistingTipoPessoa,
+}, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedSituacao = normalizeApuracaoFinanceiraStatus(situacao)
+  const normalizedRevisao = normalizeIntegerValue(revisao)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const normalizedDreCodigos = [...new Set(
+    (Array.isArray(dreCodigos) ? dreCodigos : [])
+      .map((item) => normalizeRequestValue(item))
+      .filter(Boolean),
+  )]
+  const normalizedReplaceExistingDreCodigos = [...new Set(
+    (Array.isArray(replaceExistingDreCodigos) ? replaceExistingDreCodigos : [])
+      .map((item) => normalizeRequestValue(item))
+      .filter(Boolean),
+  )]
+  const normalizedReplaceExistingTipoPessoa = normalizeApuracaoTipoPessoa(replaceExistingTipoPessoa) || normalizedTipoPessoa
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
+
+  if (!monthRange) {
+    throw new Error('Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  if (!Number.isInteger(normalizedRevisao) || normalizedRevisao < 0) {
+    throw new Error('Revisao invalida.')
+  }
+
+  if (!normalizedTipoPessoa) {
+    throw new Error('Tipo pessoa invalido.')
+  }
+
+  if (!['A processar', 'Processado'].includes(normalizedSituacao)) {
+    throw new Error('A situacao deve ser A processar ou Processado para liberar o processamento de dados.')
+  }
+
+  if (normalizedDreCodigos.length === 0) {
+    throw new Error('Selecione ao menos uma DRE para processar.')
+  }
+
+  if (normalizedReplaceExistingDreCodigos.length > 0) {
+    await executor.query(
+      `DELETE FROM apuracao_servicos
+       WHERE mes_ano = $1
+         AND revisao = $2
+         AND BTRIM(tipo_pessoa) = $3
+         AND CAST(dre_codigo AS text) = ANY($4::text[])`,
+      [normalizedMesAno, normalizedRevisao, normalizedReplaceExistingTipoPessoa, normalizedReplaceExistingDreCodigos],
+    )
+
+    await executor.query(
+      `DELETE FROM apuracao_financeira
+       WHERE mes_ano = $1
+         AND revisao = $2
+         AND BTRIM(tipo_pessoa) = $3
+         AND CAST(dre_codigo AS text) = ANY($4::text[])`,
+      [normalizedMesAno, normalizedRevisao, normalizedReplaceExistingTipoPessoa, normalizedReplaceExistingDreCodigos],
+    )
+  }
+
+  const dreRecords = []
+
+  for (const dreCodigo of normalizedDreCodigos) {
+    const dreRecord = await findDreByApuracaoIdentifier(dreCodigo, executor)
+
+    if (!dreRecord) {
+      throw new Error(`DRE nao encontrada: ${dreCodigo}.`)
+    }
+
+    dreRecords.push(dreRecord)
+  }
+
+  const tipoEscolaItems = await listTipoEscolaAtivaItems(executor)
+
+  if (tipoEscolaItems.length === 0) {
+    throw new Error('Nenhum tipo de escola ativo encontrado para processamento.')
+  }
+
+  const summary = {
+    mesAno: normalizedMesAno,
+    revisao: normalizedRevisao,
+    tipoPessoa: normalizedTipoPessoa,
+    situacao: normalizedSituacao,
+    totalProcessedDres: dreRecords.length,
+    totalTipoEscola: tipoEscolaItems.length,
+    totalActiveOrdemServicos: 0,
+    totalCreatedApuracaoServicos: 0,
+    totalExistingApuracaoServicos: 0,
+    processedDres: [],
+  }
+
+  for (const dreRecord of dreRecords) {
+    await executor.query(
+      `INSERT INTO apuracao_financeira (mes_ano, dre_codigo, revisao, tipo_pessoa, situacao)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (mes_ano, dre_codigo, revisao, tipo_pessoa)
+       DO UPDATE SET situacao = EXCLUDED.situacao,
+                     data_alteracao = NOW()`,
+      [normalizedMesAno, dreRecord.codigo, normalizedRevisao, normalizedTipoPessoa, normalizedSituacao],
+    )
+
+    const activeOrdemServicoItems = await listActiveOrdemServicoOptionsByApuracao({
+      mesAno: normalizedMesAno,
+      dreCodigo: dreRecord.codigo,
+      tipoPessoa: normalizedTipoPessoa,
+    }, executor)
+
+    const createdRows = activeOrdemServicoItems.length > 0
+      ? await executor.query(
+        `INSERT INTO apuracao_servicos (
+           mes_ano,
+           dre_codigo,
+           ordem_servico_codigo,
+           revisao,
+           tipo_escola_codigo,
+           tipo_pessoa,
+           nc_pres,
+           cad,
+           ac_nc,
+           ac_cad,
+           cont_nc,
+           cont_cad,
+           km
+         )
+         SELECT
+           $1,
+           $2::integer,
+           os.codigo,
+           $3::integer,
+           tipo_escola.codigo,
+           $4,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0
+         FROM ${ordemServicoTableName} os
+         CROSS JOIN tipo_escola
+         WHERE COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date) <= $5::date
+           AND COALESCE(
+             os.data_encerramento,
+             os.data_eol,
+             CASE
+               WHEN UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO' THEN 'infinity'::date
+               ELSE COALESCE(os.data_modificacao::date, os.data_inclusao::date, os.data_emissao, os.vigencia_os)
+             END
+           ) >= $6::date
+           AND BTRIM(COALESCE(os.dre_codigo, '')) = $7
+         ON CONFLICT (mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
+         DO NOTHING
+         RETURNING 1`,
+        [
+          normalizedMesAno,
+          dreRecord.codigo,
+          normalizedRevisao,
+          normalizedTipoPessoa,
+          monthRange.monthStart,
+          monthRange.monthEnd,
+          dreRecord.codigoOperacional,
+        ],
+      )
+      : { rowCount: 0 }
+
+    const totalPotentialRows = activeOrdemServicoItems.length * tipoEscolaItems.length
+    const createdApuracaoServicosCount = createdRows.rowCount ?? 0
+    const existingApuracaoServicosCount = Math.max(totalPotentialRows - createdApuracaoServicosCount, 0)
+
+    summary.totalActiveOrdemServicos += activeOrdemServicoItems.length
+    summary.totalCreatedApuracaoServicos += createdApuracaoServicosCount
+    summary.totalExistingApuracaoServicos += existingApuracaoServicosCount
+    summary.processedDres.push({
+      dreCodigo: dreRecord.codigo,
+      dreSigla: dreRecord.sigla || dreRecord.codigoOperacional,
+      dreDescricao: dreRecord.descricao,
+      tipoPessoa: normalizedTipoPessoa,
+      activeOrdemServicoCount: activeOrdemServicoItems.length,
+      createdApuracaoServicosCount,
+      existingApuracaoServicosCount,
+    })
+  }
+
+  return summary
 }
 
 const listActiveOrdemServicoDashboardBancadaByMonth = async (referenceMonth, executor = pool) => {
@@ -12423,6 +13096,184 @@ const ensureDatabaseSchema = async () => {
   await pool.query('SELECT setval(\'tipo_pgto_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM tipo_pgto), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_pgto_codigo_unique_idx ON tipo_pgto (codigo)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_pgto_descricao_unique_idx ON tipo_pgto (UPPER(BTRIM(descricao)))')
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS tipo_escola_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tipo_escola (
+      codigo integer PRIMARY KEY DEFAULT nextval('tipo_escola_codigo_seq'),
+      sigla varchar(20),
+      descricao varchar(255) NOT NULL
+    )
+  `)
+  await pool.query('ALTER TABLE tipo_escola ADD COLUMN IF NOT EXISTS sigla varchar(20)')
+  await pool.query('ALTER TABLE tipo_escola ADD COLUMN IF NOT EXISTS descricao varchar(255)')
+  await pool.query('ALTER TABLE tipo_escola ALTER COLUMN codigo SET DEFAULT nextval(\'tipo_escola_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE tipo_escola_codigo_seq OWNED BY tipo_escola.codigo')
+  await pool.query('ALTER TABLE tipo_escola ALTER COLUMN sigla TYPE varchar(20)')
+  await pool.query('ALTER TABLE tipo_escola ALTER COLUMN descricao TYPE varchar(255)')
+  await pool.query('UPDATE tipo_escola SET sigla = UPPER(BTRIM(sigla)) WHERE sigla IS NOT NULL')
+  await pool.query(`
+    UPDATE tipo_escola
+    SET sigla = UPPER(BTRIM(SUBSTRING(descricao FROM '\\(([^)]+)\\)')))
+    WHERE COALESCE(BTRIM(sigla), '') = ''
+      AND descricao ~ '\\([^)]+\\)'
+  `)
+  await pool.query('UPDATE tipo_escola SET descricao = BTRIM(CAST(descricao AS text)) WHERE descricao IS NOT NULL')
+  await pool.query('ALTER TABLE tipo_escola ALTER COLUMN sigla SET NOT NULL')
+  await pool.query('ALTER TABLE tipo_escola ALTER COLUMN descricao SET NOT NULL')
+  await pool.query('SELECT setval(\'tipo_escola_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM tipo_escola), 0), 1), true)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_escola_codigo_unique_idx ON tipo_escola (codigo)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_escola_sigla_unique_idx ON tipo_escola (UPPER(BTRIM(sigla)))')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS tipo_escola_descricao_unique_idx ON tipo_escola (UPPER(BTRIM(descricao)))')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS aliquota_optante (
+      data date NOT NULL,
+      tipo_empresa varchar(30) NOT NULL,
+      aliquota numeric(12, 4) NOT NULL
+    )
+  `)
+  await pool.query('ALTER TABLE aliquota_optante ADD COLUMN IF NOT EXISTS data date')
+  await pool.query('ALTER TABLE aliquota_optante ADD COLUMN IF NOT EXISTS tipo_empresa varchar(30)')
+  await pool.query('ALTER TABLE aliquota_optante ADD COLUMN IF NOT EXISTS aliquota numeric(12, 4)')
+  await pool.query('ALTER TABLE aliquota_optante ALTER COLUMN tipo_empresa TYPE varchar(30)')
+  await pool.query('ALTER TABLE aliquota_optante ALTER COLUMN aliquota TYPE numeric(12, 4)')
+  await pool.query('UPDATE aliquota_optante SET tipo_empresa = BTRIM(tipo_empresa) WHERE tipo_empresa IS NOT NULL')
+  await pool.query('ALTER TABLE aliquota_optante ALTER COLUMN data SET NOT NULL')
+  await pool.query('ALTER TABLE aliquota_optante ALTER COLUMN tipo_empresa SET NOT NULL')
+  await pool.query('ALTER TABLE aliquota_optante ALTER COLUMN aliquota SET NOT NULL')
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'aliquota_optante_tipo_empresa_chk'
+          AND conrelid = 'aliquota_optante'::regclass
+      ) THEN
+        ALTER TABLE aliquota_optante
+        ADD CONSTRAINT aliquota_optante_tipo_empresa_chk CHECK (BTRIM(tipo_empresa) IN ('Cooperativa', 'Outros'));
+      END IF;
+    END $$;
+  `)
+  await pool.query('ALTER TABLE aliquota_optante DROP CONSTRAINT IF EXISTS aliquota_optante_pkey')
+  await pool.query('ALTER TABLE aliquota_optante DROP CONSTRAINT IF EXISTS aliquota_optante_pk')
+  await pool.query('DROP INDEX IF EXISTS aliquota_optante_data_tipo_empresa_unique_idx')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS aliquota_optante_data_tipo_empresa_unique_idx ON aliquota_optante (data, tipo_empresa)')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS dias_letivos (
+      data date PRIMARY KEY,
+      dias_letivos integer NOT NULL,
+      CONSTRAINT dias_letivos_qtde_chk CHECK (dias_letivos >= 0)
+    )
+  `)
+  await pool.query('ALTER TABLE dias_letivos ADD COLUMN IF NOT EXISTS data date')
+  await pool.query('ALTER TABLE dias_letivos ADD COLUMN IF NOT EXISTS dias_letivos integer')
+  await pool.query('ALTER TABLE dias_letivos ALTER COLUMN data SET NOT NULL')
+  await pool.query('UPDATE dias_letivos SET dias_letivos = 0 WHERE dias_letivos IS NULL')
+  await pool.query('ALTER TABLE dias_letivos ALTER COLUMN dias_letivos SET NOT NULL')
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'dias_letivos_qtde_chk'
+          AND conrelid = 'dias_letivos'::regclass
+      ) THEN
+        ALTER TABLE dias_letivos
+        ADD CONSTRAINT dias_letivos_qtde_chk CHECK (dias_letivos >= 0);
+      END IF;
+    END $$;
+  `)
+  await pool.query(`
+    INSERT INTO dias_letivos (data, dias_letivos)
+    VALUES
+      ('2025-01-01', 0),
+      ('2025-02-01', 18),
+      ('2025-03-01', 18),
+      ('2025-04-01', 20),
+      ('2025-05-01', 20),
+      ('2025-06-01', 19),
+      ('2025-07-01', 13),
+      ('2025-08-01', 21),
+      ('2025-09-01', 22),
+      ('2025-10-01', 21),
+      ('2025-11-01', 18),
+      ('2025-12-01', 14)
+    ON CONFLICT (data) DO UPDATE
+    SET dias_letivos = EXCLUDED.dias_letivos
+  `)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS apuracao_financeira (
+      mes_ano varchar(7) NOT NULL,
+      dre_codigo integer NOT NULL REFERENCES dre(codigo) ON DELETE RESTRICT,
+      revisao integer NOT NULL DEFAULT 0,
+      tipo_pessoa varchar(2) NOT NULL DEFAULT 'PF',
+      situacao varchar(40) NOT NULL,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_alteracao timestamp without time zone,
+      CONSTRAINT apuracao_financeira_pk PRIMARY KEY (mes_ano, dre_codigo, revisao, tipo_pessoa)
+    )
+  `)
+  await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS mes_ano varchar(7)')
+  await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS dre_codigo integer')
+  await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS revisao integer')
+  await pool.query("ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS tipo_pessoa varchar(2) DEFAULT 'PF'")
+  await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS situacao varchar(40)')
+  await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
+  await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS data_alteracao timestamp without time zone')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN mes_ano TYPE varchar(7)')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN revisao SET DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN tipo_pessoa TYPE varchar(2)')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN situacao TYPE varchar(40)')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('UPDATE apuracao_financeira SET mes_ano = BTRIM(mes_ano) WHERE mes_ano IS NOT NULL')
+  await pool.query(`
+    UPDATE apuracao_financeira
+    SET situacao = BTRIM(situacao)
+    WHERE situacao IS NOT NULL
+  `)
+  await pool.query(`
+    UPDATE apuracao_financeira
+    SET situacao = 'A processar'
+    WHERE UPPER(BTRIM(COALESCE(situacao, ''))) = 'AGUARDANDO PROCESSAMENTO'
+  `)
+  await pool.query(`
+    UPDATE apuracao_financeira
+    SET situacao = 'A processar'
+    WHERE UPPER(BTRIM(COALESCE(situacao, ''))) = 'EM PROCESSAMENTO'
+  `)
+  await pool.query('UPDATE apuracao_financeira SET revisao = 0 WHERE revisao IS NULL OR revisao < 0')
+  await pool.query("UPDATE apuracao_financeira SET tipo_pessoa = 'PF' WHERE COALESCE(BTRIM(tipo_pessoa), '') = ''")
+  await pool.query("UPDATE apuracao_financeira SET tipo_pessoa = 'PF' WHERE UPPER(BTRIM(tipo_pessoa)) = 'CO'")
+  await pool.query("UPDATE apuracao_financeira SET tipo_pessoa = 'PJ' WHERE UPPER(BTRIM(tipo_pessoa)) IN ('PJ', 'PESSOA JURIDICA', 'JURIDICA', 'COOPERATIVA')")
+  await pool.query("UPDATE apuracao_financeira SET tipo_pessoa = 'PF' WHERE UPPER(BTRIM(tipo_pessoa)) IN ('PF', 'PESSOA FISICA', 'FISICA')")
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN mes_ano SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN dre_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN revisao SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN tipo_pessoa SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN situacao SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN data_inclusao SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_apuracao_financeira_fk')
+  await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_pk')
+  await pool.query('ALTER TABLE apuracao_financeira DROP CONSTRAINT IF EXISTS apuracao_financeira_pk')
+  await pool.query('ALTER TABLE apuracao_financeira ADD CONSTRAINT apuracao_financeira_pk PRIMARY KEY (mes_ano, dre_codigo, revisao, tipo_pessoa)')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS apuracao_financeira_processamento_lock (
+      mes_ano varchar(7) PRIMARY KEY,
+      usuario varchar(255) NOT NULL,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW()
+    )
+  `)
+  await pool.query('ALTER TABLE apuracao_financeira_processamento_lock ADD COLUMN IF NOT EXISTS usuario varchar(255)')
+  await pool.query('ALTER TABLE apuracao_financeira_processamento_lock ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
+  await pool.query('ALTER TABLE apuracao_financeira_processamento_lock ALTER COLUMN mes_ano TYPE varchar(7)')
+  await pool.query('ALTER TABLE apuracao_financeira_processamento_lock ALTER COLUMN usuario TYPE varchar(255)')
+  await pool.query('ALTER TABLE apuracao_financeira_processamento_lock ALTER COLUMN usuario SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_financeira_processamento_lock ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('ALTER TABLE apuracao_financeira_processamento_lock ALTER COLUMN data_inclusao SET NOT NULL')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_financeira_dre_idx ON apuracao_financeira (dre_codigo)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_financeira_tipo_pessoa_idx ON apuracao_financeira (tipo_pessoa)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_financeira_situacao_idx ON apuracao_financeira (UPPER(BTRIM(situacao)))')
   await pool.query('CREATE SEQUENCE IF NOT EXISTS modalidade_tipo_bancada_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query(`
     CREATE TABLE IF NOT EXISTS modalidade_tipo_bancada (
@@ -14075,6 +14926,126 @@ const ensureDatabaseSchema = async () => {
   await pool.query(`CREATE INDEX IF NOT EXISTS ordem_servico_monitor_idx ON ${ordemServicoTableName} (cpf_monitor)`)
   await pool.query(`CREATE INDEX IF NOT EXISTS ordem_servico_veiculo_idx ON ${ordemServicoTableName} (crm)`)
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS apuracao_servicos (
+      mes_ano varchar(7) NOT NULL,
+      dre_codigo integer NOT NULL REFERENCES dre(codigo) ON DELETE RESTRICT,
+      ordem_servico_codigo integer NOT NULL REFERENCES ${ordemServicoTableName}(codigo) ON DELETE RESTRICT,
+      revisao integer NOT NULL DEFAULT 0,
+      tipo_escola_codigo integer NOT NULL REFERENCES tipo_escola(codigo) ON DELETE RESTRICT,
+      tipo_pessoa varchar(2) NOT NULL DEFAULT 'PF',
+      nc_pres integer NOT NULL DEFAULT 0,
+      cad integer NOT NULL DEFAULT 0,
+      ac_nc integer NOT NULL DEFAULT 0,
+      ac_cad integer NOT NULL DEFAULT 0,
+      cont_nc integer NOT NULL DEFAULT 0,
+      cont_cad integer NOT NULL DEFAULT 0,
+      km numeric(14, 4) NOT NULL DEFAULT 0,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_alteracao timestamp without time zone,
+      CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
+    )
+  `)
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS mes_ano varchar(7)')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS dre_codigo integer')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS ordem_servico_codigo integer')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS revisao integer')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS tipo_escola_codigo integer')
+  await pool.query("ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS tipo_pessoa varchar(2) DEFAULT 'PF'")
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS nc_pres integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cad integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS ac_nc integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS ac_cad integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cont_nc integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cont_cad integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS km numeric(14, 4) DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS data_alteracao timestamp without time zone')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN mes_ano TYPE varchar(7)')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN revisao SET DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN tipo_pessoa TYPE varchar(2)')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN km TYPE numeric(14, 4) USING COALESCE(km, 0)::numeric(14, 4)')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('UPDATE apuracao_servicos SET mes_ano = BTRIM(mes_ano) WHERE mes_ano IS NOT NULL')
+  await pool.query('UPDATE apuracao_servicos SET revisao = 0 WHERE revisao IS NULL OR revisao < 0')
+  await pool.query(`
+    UPDATE apuracao_servicos aps
+    SET tipo_pessoa = COALESCE(
+      CASE
+        WHEN normalize_type.normalized_type IN ('PJ', 'CO') THEN 'PJ'
+        WHEN normalize_type.normalized_type = 'PF' THEN 'PF'
+        ELSE NULL
+      END,
+      'PF'
+    )
+    FROM (
+      SELECT
+        os.codigo AS ordem_servico_codigo,
+        CASE
+          WHEN UPPER(BTRIM(COALESCE(cr.tipo_pessoa, ''))) IN ('PESSOA JURIDICA', 'JURIDICA', 'PJ', 'COOPERATIVA', 'CO') THEN 'PJ'
+          WHEN UPPER(BTRIM(COALESCE(cr.tipo_pessoa, ''))) IN ('PESSOA FISICA', 'FISICA', 'PF') THEN 'PF'
+          ELSE CASE WHEN LENGTH(REGEXP_REPLACE(COALESCE(cr.cnpj_cpf, ''), '\\D', '', 'g')) = 14 THEN 'PJ' ELSE 'PF' END
+        END AS normalized_type
+      FROM ${ordemServicoTableName} os
+      LEFT JOIN ${credenciamentoTermoTableName} ct ON ct.codigo = os.termo_codigo
+      LEFT JOIN credenciada cr ON cr.codigo = ct.credenciada_codigo
+    ) normalize_type
+    WHERE aps.ordem_servico_codigo = normalize_type.ordem_servico_codigo
+  `)
+  await pool.query("UPDATE apuracao_servicos SET tipo_pessoa = 'PF' WHERE COALESCE(BTRIM(tipo_pessoa), '') = ''")
+  await pool.query(`
+    INSERT INTO apuracao_financeira (mes_ano, dre_codigo, revisao, tipo_pessoa, situacao, data_inclusao, data_alteracao)
+    SELECT DISTINCT
+      ap.mes_ano,
+      ap.dre_codigo,
+      ap.revisao,
+      aps.tipo_pessoa,
+      ap.situacao,
+      ap.data_inclusao,
+      ap.data_alteracao
+    FROM apuracao_financeira ap
+    INNER JOIN apuracao_servicos aps
+      ON aps.mes_ano = ap.mes_ano
+     AND aps.dre_codigo = ap.dre_codigo
+     AND aps.revisao = ap.revisao
+    WHERE COALESCE(BTRIM(aps.tipo_pessoa), '') <> ''
+      AND COALESCE(BTRIM(aps.tipo_pessoa), '') <> COALESCE(BTRIM(ap.tipo_pessoa), '')
+    ON CONFLICT DO NOTHING
+  `)
+  await pool.query('UPDATE apuracao_servicos SET nc_pres = 0 WHERE nc_pres IS NULL OR nc_pres < 0')
+  await pool.query('UPDATE apuracao_servicos SET cad = 0 WHERE cad IS NULL OR cad < 0')
+  await pool.query('UPDATE apuracao_servicos SET ac_nc = 0 WHERE ac_nc IS NULL OR ac_nc < 0')
+  await pool.query('UPDATE apuracao_servicos SET ac_cad = 0 WHERE ac_cad IS NULL OR ac_cad < 0')
+  await pool.query('UPDATE apuracao_servicos SET cont_nc = 0 WHERE cont_nc IS NULL OR cont_nc < 0')
+  await pool.query('UPDATE apuracao_servicos SET cont_cad = 0 WHERE cont_cad IS NULL OR cont_cad < 0')
+  await pool.query('UPDATE apuracao_servicos SET km = 0 WHERE km IS NULL OR km < 0')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN mes_ano SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN dre_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN ordem_servico_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN revisao SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN tipo_escola_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN tipo_pessoa SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN nc_pres SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cad SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN ac_nc SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN ac_cad SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cont_nc SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cont_cad SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN km SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN data_inclusao SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ADD CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)')
+  await pool.query(`
+    ALTER TABLE apuracao_servicos
+    ADD CONSTRAINT apuracao_servicos_apuracao_financeira_fk
+    FOREIGN KEY (mes_ano, dre_codigo, revisao, tipo_pessoa)
+    REFERENCES apuracao_financeira (mes_ano, dre_codigo, revisao, tipo_pessoa)
+    ON DELETE RESTRICT
+  `)
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_dre_idx ON apuracao_servicos (dre_codigo)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_os_idx ON apuracao_servicos (ordem_servico_codigo)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_tipo_pessoa_idx ON apuracao_servicos (tipo_pessoa)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_tipo_escola_idx ON apuracao_servicos (tipo_escola_codigo)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_mes_ano_idx ON apuracao_servicos (mes_ano)')
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS ${ordemServicoImportRecusaTableName} (
       id bigserial PRIMARY KEY,
       arquivo_xml varchar(255) NOT NULL,
@@ -14454,6 +15425,459 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao consultar a tabela tipo_pgto.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/tipo-escola') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'codigo')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'asc').toLowerCase() === 'desc'
+        ? 'DESC'
+        : 'ASC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const numericCodigoOrderClause = `
+        CASE WHEN CAST(codigo AS text) ~ '^[0-9]+$' THEN 0 ELSE 1 END ASC,
+        CASE WHEN CAST(codigo AS text) ~ '^[0-9]+$' THEN CAST(codigo AS bigint) END ${sortDirection},
+        CAST(codigo AS text) ${sortDirection}
+      `
+      const orderByClause = sortBy === 'descricao'
+        ? `BTRIM(CAST(descricao AS text)) ${sortDirection}, ${numericCodigoOrderClause}`
+        : sortBy === 'sigla'
+          ? `COALESCE(BTRIM(sigla), '') ${sortDirection}, ${numericCodigoOrderClause}`
+          : numericCodigoOrderClause
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(codigo AS text) ILIKE $${values.length}
+          OR COALESCE(BTRIM(sigla), '') ILIKE UPPER($${values.length})
+          OR BTRIM(CAST(descricao AS text)) ILIKE $${values.length}
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM tipo_escola ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${tipoEscolaSelectClause}
+         FROM tipo_escola
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: sortBy === 'descricao' || sortBy === 'sigla' ? sortBy : 'codigo',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a tabela tipo_escola.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/aliquota-optante') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'data')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
+        ? 'ASC'
+        : 'DESC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const orderByClause = sortBy === 'tipoEmpresa'
+        ? `BTRIM(tipo_empresa) ${sortDirection}, data DESC`
+        : sortBy === 'aliquota'
+          ? `aliquota ${sortDirection}, data DESC`
+          : `data ${sortDirection}`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          TO_CHAR(data, 'YYYY-MM-DD') ILIKE $${values.length}
+          OR BTRIM(tipo_empresa) ILIKE $${values.length}
+          OR TO_CHAR(aliquota, 'FM9999999990.0000') ILIKE $${values.length}
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM aliquota_optante ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${aliquotaOptanteSelectClause}
+         FROM aliquota_optante
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: ['data', 'tipoEmpresa', 'aliquota'].includes(sortBy) ? sortBy : 'data',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a tabela aliquota_optante.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/dias-letivos') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'data')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'asc').toLowerCase() === 'desc'
+        ? 'DESC'
+        : 'ASC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const orderByClause = sortBy === 'diasLetivos'
+        ? `dias_letivos ${sortDirection}, data ASC`
+        : `data ${sortDirection}`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          TO_CHAR(data, 'MM/YYYY') ILIKE $${values.length}
+          OR CAST(dias_letivos AS text) ILIKE $${values.length}
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM dias_letivos ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${diasLetivosSelectClause}
+         FROM dias_letivos
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: sortBy === 'diasLetivos' ? 'diasLetivos' : 'data',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a tabela dias_letivos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/apuracao-financeira') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'mesAno')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
+        ? 'ASC'
+        : 'DESC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const orderByClause = sortBy === 'dreCodigo'
+        ? `apuracao_financeira.dre_codigo ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.revisao DESC`
+        : sortBy === 'dreDescricao'
+          ? `BTRIM(CAST(dre.descricao AS text)) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.revisao DESC`
+          : sortBy === 'tipoPessoa'
+            ? `BTRIM(apuracao_financeira.tipo_pessoa) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+          : sortBy === 'revisao'
+            ? `apuracao_financeira.revisao ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+            : sortBy === 'situacao'
+              ? `BTRIM(apuracao_financeira.situacao) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+              : sortBy === 'dataInclusao'
+                ? `apuracao_financeira.data_inclusao ${sortDirection} NULLS LAST, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+                : sortBy === 'dataAlteracao'
+                  ? `apuracao_financeira.data_alteracao ${sortDirection} NULLS LAST, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+                  : `${apuracaoFinanceiraMesAnoOrderClause} ${sortDirection}, apuracao_financeira.dre_codigo ASC, apuracao_financeira.revisao ASC`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          BTRIM(apuracao_financeira.mes_ano) ILIKE $${values.length}
+          OR CAST(apuracao_financeira.dre_codigo AS text) ILIKE $${values.length}
+          OR COALESCE(BTRIM(dre.sigla), '') ILIKE UPPER($${values.length})
+          OR BTRIM(CAST(dre.descricao AS text)) ILIKE $${values.length}
+          OR BTRIM(apuracao_financeira.tipo_pessoa) ILIKE UPPER($${values.length})
+          OR BTRIM(apuracao_financeira.situacao) ILIKE $${values.length}
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM apuracao_financeira
+         INNER JOIN dre ON dre.codigo = apuracao_financeira.dre_codigo
+         ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${apuracaoFinanceiraSelectClause}
+         FROM apuracao_financeira
+         INNER JOIN dre ON dre.codigo = apuracao_financeira.dre_codigo
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows.map((row) => ({
+          mesAno: row.mes_ano,
+          dreCodigo: row.dre_codigo,
+          dreSigla: row.dre_sigla,
+          dreDescricao: row.dre_descricao,
+          revisao: Number(row.revisao) || 0,
+          tipoPessoa: normalizeApuracaoTipoPessoa(row.tipo_pessoa) || 'PF',
+          situacao: row.situacao,
+          dataInclusao: row.data_inclusao,
+          dataAlteracao: row.data_alteracao,
+        })),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: ['mesAno', 'dreCodigo', 'dreDescricao', 'revisao', 'tipoPessoa', 'situacao', 'dataInclusao', 'dataAlteracao'].includes(sortBy) ? sortBy : 'mesAno',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a tabela apuracao_financeira.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/apuracao-servicos/ordem-servico-options') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeDreOperationalCode(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      const items = await listActiveOrdemServicoOptionsByApuracao({ mesAno, dreCodigo, tipoPessoa })
+
+      sendJson(response, 200, { items })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar as opcoes de ordem de servico.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/apuracao-servicos') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeDreOperationalCode(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const revisaoFilter = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const tipoEscolaCodigo = normalizeIntegerValue(requestUrl.searchParams.get('tipoEscolaCodigo') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'mesAno')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
+        ? 'ASC'
+        : 'DESC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const orderByClause = sortBy === 'dreCodigo'
+        ? `apuracao_servicos.dre_codigo ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.revisao DESC`
+        : sortBy === 'dreDescricao'
+          ? `BTRIM(CAST(dre.descricao AS text)) ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.revisao DESC`
+          : sortBy === 'ordemServicoCodigo'
+            ? `apuracao_servicos.ordem_servico_codigo ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+            : sortBy === 'tipoEscolaDescricao'
+              ? `BTRIM(CAST(tipo_escola.descricao AS text)) ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+              : sortBy === 'tipoPessoa'
+                ? `BTRIM(apuracao_servicos.tipo_pessoa) ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+              : sortBy === 'revisao'
+                ? `apuracao_servicos.revisao ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+                : sortBy === 'dataInclusao'
+                  ? `apuracao_servicos.data_inclusao ${sortDirection} NULLS LAST, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+                  : sortBy === 'dataAlteracao'
+                    ? `apuracao_servicos.data_alteracao ${sortDirection} NULLS LAST, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+                    : `${apuracaoServicosMesAnoOrderClause} ${sortDirection}, apuracao_servicos.dre_codigo ASC, apuracao_servicos.revisao ASC, apuracao_servicos.ordem_servico_codigo ASC`
+
+      if (mesAno) {
+        values.push(mesAno)
+        filters.push(`apuracao_servicos.mes_ano = $${values.length}`)
+      }
+
+      if (dreCodigo) {
+        values.push(dreCodigo)
+        filters.push(`CAST(apuracao_servicos.dre_codigo AS text) = $${values.length}`)
+      }
+
+      if (revisaoFilter !== null) {
+        if (!Number.isInteger(revisaoFilter) || revisaoFilter < 0) {
+          sendJson(response, 400, { message: 'Revisao invalida.' })
+          return
+        }
+
+        values.push(revisaoFilter)
+        filters.push(`apuracao_servicos.revisao = $${values.length}`)
+      }
+
+      if (tipoEscolaCodigo !== null) {
+        if (!Number.isInteger(tipoEscolaCodigo) || tipoEscolaCodigo <= 0) {
+          sendJson(response, 400, { message: 'Tipo de escola invalido.' })
+          return
+        }
+
+        values.push(tipoEscolaCodigo)
+        filters.push(`apuracao_servicos.tipo_escola_codigo = $${values.length}`)
+      }
+
+      if (tipoPessoa) {
+        values.push(tipoPessoa)
+        filters.push(`BTRIM(apuracao_servicos.tipo_pessoa) = $${values.length}`)
+      }
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          BTRIM(apuracao_servicos.mes_ano) ILIKE $${values.length}
+          OR CAST(apuracao_servicos.dre_codigo AS text) ILIKE $${values.length}
+          OR COALESCE(BTRIM(dre.sigla), '') ILIKE UPPER($${values.length})
+          OR BTRIM(CAST(dre.descricao AS text)) ILIKE $${values.length}
+          OR CAST(apuracao_servicos.ordem_servico_codigo AS text) ILIKE $${values.length}
+          OR COALESCE(BTRIM(ordem_servico_item.os_concat), '') ILIKE $${values.length}
+          OR COALESCE(BTRIM(ordem_servico_item.termo_adesao), '') ILIKE $${values.length}
+          OR COALESCE(BTRIM(ordem_servico_item.num_os), '') ILIKE $${values.length}
+          OR COALESCE(BTRIM(tipo_escola.sigla), '') ILIKE UPPER($${values.length})
+          OR BTRIM(CAST(tipo_escola.descricao AS text)) ILIKE $${values.length}
+          OR BTRIM(apuracao_servicos.tipo_pessoa) ILIKE UPPER($${values.length})
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const fromClause = `
+        FROM apuracao_servicos
+        INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
+        INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
+        INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo`
+
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         ${fromClause}
+         ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${apuracaoServicosSelectClause}
+         ${fromClause}
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows.map(mapApuracaoServicosRow),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: ['mesAno', 'dreCodigo', 'dreDescricao', 'ordemServicoCodigo', 'tipoEscolaDescricao', 'revisao', 'dataInclusao', 'dataAlteracao'].includes(sortBy) ? sortBy : 'mesAno',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a tabela apuracao_servicos.'
 
       sendJson(response, 500, { message })
     }
@@ -19000,6 +20424,516 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'POST' && pathname === '/api/tipo-escola') {
+    try {
+      const body = await readJsonBody(request)
+      const sigla = normalizeRequestValue(body.sigla).toUpperCase().slice(0, 20)
+      const descricao = normalizeRequestValue(body.descricao)
+
+      if (!sigla) {
+        sendJson(response, 400, { message: 'Sigla e obrigatoria.' })
+        return
+      }
+
+      if (!descricao) {
+        sendJson(response, 400, { message: 'Descricao e obrigatoria.' })
+        return
+      }
+
+      const duplicateSiglaResult = await pool.query(
+        'SELECT 1 FROM tipo_escola WHERE UPPER(BTRIM(sigla)) = UPPER($1) LIMIT 1',
+        [sigla],
+      )
+
+      if (duplicateSiglaResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Sigla ja cadastrada.' })
+        return
+      }
+
+      const duplicateDescriptionResult = await pool.query(
+        'SELECT 1 FROM tipo_escola WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1) LIMIT 1',
+        [descricao],
+      )
+
+      if (duplicateDescriptionResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Descricao ja cadastrada.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO tipo_escola (sigla, descricao)
+         VALUES ($1, $2)
+         RETURNING ${tipoEscolaSelectClause}`,
+        [sigla, descricao],
+      )
+
+      sendJson(response, 201, {
+        item: insertResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar o registro tipo_escola.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/aliquota-optante') {
+    try {
+      const body = await readJsonBody(request)
+      const data = normalizeRequestValue(body.data)
+      const tipoEmpresa = normalizeAliquotaOptanteTipoEmpresa(body.tipoEmpresa)
+      const aliquota = normalizeFourDecimalValue(body.aliquota)
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (!tipoEmpresa) {
+        sendJson(response, 400, { message: 'Tipo empresa e obrigatorio.' })
+        return
+      }
+
+      if (!Number.isFinite(aliquota)) {
+        sendJson(response, 400, { message: 'Aliquota invalida.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        'SELECT 1 FROM aliquota_optante WHERE data = $1::date AND BTRIM(tipo_empresa) = $2 LIMIT 1',
+        [data, tipoEmpresa],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe uma aliquota optante para esta data e tipo empresa.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO aliquota_optante (data, tipo_empresa, aliquota)
+         VALUES ($1::date, $2, $3)
+         RETURNING ${aliquotaOptanteSelectClause}`,
+        [data, tipoEmpresa, aliquota],
+      )
+
+      sendJson(response, 201, {
+        item: insertResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar o registro aliquota_optante.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/dias-letivos') {
+    try {
+      const body = await readJsonBody(request)
+      const data = normalizeDiasLetivosMesAno(body.data)
+      const diasLetivos = normalizeIntegerValue(body.diasLetivos)
+
+      if (!data) {
+        sendJson(response, 400, { message: 'Competencia invalida. Informe MM/YYYY.' })
+        return
+      }
+
+      if (!Number.isInteger(diasLetivos) || diasLetivos < 0) {
+        sendJson(response, 400, { message: 'Dias letivos invalido.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        'SELECT 1 FROM dias_letivos WHERE data = $1::date LIMIT 1',
+        [data],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Data ja cadastrada.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO dias_letivos (data, dias_letivos)
+         VALUES ($1::date, $2)
+         RETURNING ${diasLetivosSelectClause}`,
+        [data, diasLetivos],
+      )
+
+      sendJson(response, 201, {
+        item: insertResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar o registro dias_letivos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/apuracao-financeira') {
+    try {
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dreCodigo = normalizeRequestValue(body.dreCodigo)
+      const revisao = Number.parseInt(normalizeRequestValue(body.revisao), 10)
+      const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa) || 'PF'
+      const situacao = normalizeApuracaoFinanceiraStatus(body.situacao)
+
+      if (!isValidApuracaoFinanceiraMesAno(mesAno)) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dreCodigo) {
+        sendJson(response, 400, { message: 'DRE e obrigatoria.' })
+        return
+      }
+
+      if (!Number.isInteger(revisao) || revisao < 0) {
+        sendJson(response, 400, { message: 'Revisao invalida.' })
+        return
+      }
+
+      if (!tipoPessoa) {
+        sendJson(response, 400, { message: 'Tipo pessoa invalido.' })
+        return
+      }
+
+      if (!tipoPessoa) {
+        sendJson(response, 400, { message: 'Tipo pessoa invalido.' })
+        return
+      }
+
+      if (!situacao) {
+        sendJson(response, 400, { message: 'Situacao invalida.' })
+        return
+      }
+
+      const dreResult = await pool.query(
+        'SELECT 1 FROM dre WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [dreCodigo],
+      )
+
+      if (dreResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'DRE nao encontrada.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM apuracao_financeira
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4
+         LIMIT 1`,
+        [mesAno, dreCodigo, revisao, tipoPessoa],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe uma apuracao financeira com esta chave.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO apuracao_financeira (mes_ano, dre_codigo, revisao, tipo_pessoa, situacao)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, revisao, tipo_pessoa`,
+        [mesAno, dreCodigo, revisao, tipoPessoa, situacao],
+      )
+
+      const insertedKey = insertResult.rows[0]
+      const itemResult = await pool.query(
+        `SELECT ${apuracaoFinanceiraSelectClause}
+         FROM apuracao_financeira
+         INNER JOIN dre ON dre.codigo = apuracao_financeira.dre_codigo
+         WHERE apuracao_financeira.mes_ano = $1
+           AND CAST(apuracao_financeira.dre_codigo AS text) = $2
+           AND apuracao_financeira.revisao = $3
+           AND BTRIM(apuracao_financeira.tipo_pessoa) = $4`,
+        [insertedKey.mes_ano, insertedKey.dre_codigo, insertedKey.revisao, insertedKey.tipo_pessoa],
+      )
+
+      sendJson(response, 201, {
+        item: {
+          mesAno: itemResult.rows[0].mes_ano,
+          dreCodigo: itemResult.rows[0].dre_codigo,
+          dreSigla: itemResult.rows[0].dre_sigla,
+          dreDescricao: itemResult.rows[0].dre_descricao,
+          revisao: Number(itemResult.rows[0].revisao) || 0,
+          tipoPessoa: normalizeApuracaoTipoPessoa(itemResult.rows[0].tipo_pessoa) || 'PF',
+          situacao: itemResult.rows[0].situacao,
+          dataInclusao: itemResult.rows[0].data_inclusao,
+          dataAlteracao: itemResult.rows[0].data_alteracao,
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar a apuracao financeira.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/apuracao-financeira/processar') {
+    const performedBy = resolveRequestActor(request, 'USUARIO')
+    let processingLock = null
+    const client = await pool.connect()
+
+    try {
+      const body = await readJsonBody(request)
+      processingLock = await acquireApuracaoFinanceiraProcessingLock({
+        mesAno: body.mesAno,
+        usuario: performedBy,
+      })
+
+      await client.query('BEGIN')
+      const summary = await processApuracaoFinanceiraSelections({
+        mesAno: body.mesAno,
+        revisao: body.revisao,
+        situacao: body.situacao,
+        dreCodigos: body.dreCodigos,
+        tipoPessoa: body.tipoPessoa,
+        replaceExistingDreCodigos: body.replaceExistingDreCodigos,
+        replaceExistingTipoPessoa: body.replaceExistingTipoPessoa,
+      }, client)
+      await client.query('COMMIT')
+
+      sendJson(response, 200, { summary })
+    } catch (error) {
+      await client.query('ROLLBACK')
+
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao processar os dados da apuracao financeira.'
+      const statusCode = error instanceof Error && typeof error.statusCode === 'number'
+        ? error.statusCode
+        : 500
+
+      sendJson(response, statusCode, { message })
+    } finally {
+      if (processingLock) {
+        await releaseApuracaoFinanceiraProcessingLock(processingLock)
+      }
+      client.release()
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/apuracao-servicos') {
+    try {
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dreCodigo = normalizeDreOperationalCode(body.dreCodigo)
+      const ordemServicoCodigo = normalizeIntegerValue(body.ordemServicoCodigo)
+      const revisao = normalizeIntegerValue(body.revisao)
+      const tipoEscolaCodigo = normalizeIntegerValue(body.tipoEscolaCodigo)
+      const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa)
+      const naoCadeirantePresencial = normalizeIntegerValue(body.naoCadeirantePresencial)
+      const cadeirante = normalizeIntegerValue(body.cadeirante)
+      const atendimentoComplementarNaoCadeirante = normalizeIntegerValue(body.atendimentoComplementarNaoCadeirante)
+      const atendimentoComplementarCadeirante = normalizeIntegerValue(body.atendimentoComplementarCadeirante)
+      const continuaNaoCadeirante = normalizeIntegerValue(body.continuaNaoCadeirante)
+      const continuaCadeirante = normalizeIntegerValue(body.continuaCadeirante)
+      const kilometragem = normalizeFourDecimalValue(body.kilometragem)
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dreCodigo) {
+        sendJson(response, 400, { message: 'DRE obrigatoria.' })
+        return
+      }
+
+      if (!Number.isInteger(ordemServicoCodigo) || ordemServicoCodigo <= 0) {
+        sendJson(response, 400, { message: 'Ordem de servico invalida.' })
+        return
+      }
+
+      if (!Number.isInteger(revisao) || revisao < 0) {
+        sendJson(response, 400, { message: 'Revisao invalida.' })
+        return
+      }
+
+      if (!Number.isInteger(tipoEscolaCodigo) || tipoEscolaCodigo <= 0) {
+        sendJson(response, 400, { message: 'Tipo de escola invalido.' })
+        return
+      }
+
+      if (!tipoPessoa) {
+        sendJson(response, 400, { message: 'Tipo pessoa invalido.' })
+        return
+      }
+
+      const integerFields = [
+        ['Nao cadeirante presencial', naoCadeirantePresencial],
+        ['Cadeirante', cadeirante],
+        ['Atendimento complementar nao cadeirante', atendimentoComplementarNaoCadeirante],
+        ['Atendimento complementar cadeirante', atendimentoComplementarCadeirante],
+        ['Continua nao cadeirante', continuaNaoCadeirante],
+        ['Continua cadeirante', continuaCadeirante],
+      ]
+
+      for (const [label, value] of integerFields) {
+        if (!Number.isInteger(value) || value < 0) {
+          sendJson(response, 400, { message: `${label} invalido.` })
+          return
+        }
+      }
+
+      if (!Number.isFinite(kilometragem) || kilometragem < 0) {
+        sendJson(response, 400, { message: 'Kilometragem invalida.' })
+        return
+      }
+
+      const dreResult = await pool.query(
+        'SELECT 1 FROM dre WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [dreCodigo],
+      )
+
+      if (dreResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'DRE nao encontrada.' })
+        return
+      }
+
+      const apuracaoFinanceiraResult = await pool.query(
+        `SELECT 1
+         FROM apuracao_financeira
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4
+         LIMIT 1`,
+        [mesAno, dreCodigo, revisao, tipoPessoa],
+      )
+
+      if (apuracaoFinanceiraResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Apuracao financeira da chave informada nao encontrada.' })
+        return
+      }
+
+      const tipoEscolaResult = await pool.query(
+        'SELECT 1 FROM tipo_escola WHERE codigo = $1 LIMIT 1',
+        [tipoEscolaCodigo],
+      )
+
+      if (tipoEscolaResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Tipo de escola nao encontrado.' })
+        return
+      }
+
+      const activeOrdemServico = await findActiveOrdemServicoOptionByCodigo({
+        mesAno,
+        dreCodigo,
+        ordemServicoCodigo,
+        tipoPessoa,
+      })
+
+      if (!activeOrdemServico) {
+        sendJson(response, 400, { message: 'A ordem de servico informada nao esta ativa para o mes/ano e DRE selecionados.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM apuracao_servicos
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND ordem_servico_codigo = $3
+           AND revisao = $4
+           AND tipo_escola_codigo = $5
+           AND BTRIM(tipo_pessoa) = $6
+         LIMIT 1`,
+        [mesAno, dreCodigo, ordemServicoCodigo, revisao, tipoEscolaCodigo, tipoPessoa],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe uma apuracao de servicos com esta chave.' })
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO apuracao_servicos (
+          mes_ano,
+          dre_codigo,
+          ordem_servico_codigo,
+          revisao,
+          tipo_escola_codigo,
+          tipo_pessoa,
+          nc_pres,
+          cad,
+          ac_nc,
+          ac_cad,
+          cont_nc,
+          cont_cad,
+          km
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
+        [
+          mesAno,
+          dreCodigo,
+          ordemServicoCodigo,
+          revisao,
+          tipoEscolaCodigo,
+          tipoPessoa,
+          naoCadeirantePresencial,
+          cadeirante,
+          atendimentoComplementarNaoCadeirante,
+          atendimentoComplementarCadeirante,
+          continuaNaoCadeirante,
+          continuaCadeirante,
+          kilometragem,
+        ],
+      )
+
+      const insertedKey = insertResult.rows[0]
+      const itemResult = await pool.query(
+        `SELECT ${apuracaoServicosSelectClause}
+         FROM apuracao_servicos
+         INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
+         INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
+         INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo
+         WHERE apuracao_servicos.mes_ano = $1
+           AND CAST(apuracao_servicos.dre_codigo AS text) = $2
+           AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $3
+           AND apuracao_servicos.revisao = $4
+           AND CAST(apuracao_servicos.tipo_escola_codigo AS text) = $5
+           AND BTRIM(apuracao_servicos.tipo_pessoa) = $6`,
+        [insertedKey.mes_ano, insertedKey.dre_codigo, insertedKey.ordem_servico_codigo, insertedKey.revisao, insertedKey.tipo_escola_codigo, insertedKey.tipo_pessoa],
+      )
+
+      sendJson(response, 201, {
+        item: mapApuracaoServicosRow(itemResult.rows[0]),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar a apuracao de servicos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'POST' && pathname === '/api/modalidade-tipo-bancada') {
     try {
       const body = await readJsonBody(request)
@@ -21893,6 +23827,617 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'PUT' && getTipoEscolaCodigoFromUrl(pathname)) {
+    try {
+      const originalCodigo = getTipoEscolaCodigoFromUrl(pathname)
+      const body = await readJsonBody(request)
+      const sigla = normalizeRequestValue(body.sigla).toUpperCase().slice(0, 20)
+      const descricao = normalizeRequestValue(body.descricao)
+
+      if (!originalCodigo) {
+        sendJson(response, 400, { message: 'Codigo original invalido.' })
+        return
+      }
+
+      if (!sigla) {
+        sendJson(response, 400, { message: 'Sigla e obrigatoria.' })
+        return
+      }
+
+      if (!descricao) {
+        sendJson(response, 400, { message: 'Descricao e obrigatoria.' })
+        return
+      }
+
+      const duplicateSiglaResult = await pool.query(
+        'SELECT 1 FROM tipo_escola WHERE UPPER(BTRIM(sigla)) = UPPER($1) AND CAST(codigo AS text) <> $2 LIMIT 1',
+        [sigla, originalCodigo],
+      )
+
+      if (duplicateSiglaResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Sigla ja cadastrada.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM tipo_escola WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [originalCodigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro do tipo de escola nao encontrado.' })
+        return
+      }
+
+      const duplicateDescriptionResult = await pool.query(
+        'SELECT 1 FROM tipo_escola WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1) AND CAST(codigo AS text) <> $2 LIMIT 1',
+        [descricao, originalCodigo],
+      )
+
+      if (duplicateDescriptionResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Descricao ja cadastrada.' })
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE tipo_escola
+         SET sigla = $1,
+             descricao = $2
+         WHERE CAST(codigo AS text) = $3
+         RETURNING ${tipoEscolaSelectClause}`,
+        [sigla, descricao, originalCodigo],
+      )
+
+      sendJson(response, 200, {
+        item: updateResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar o registro tipo_escola.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getAliquotaOptanteKeyFromUrl(pathname)) {
+    try {
+      const originalKey = getAliquotaOptanteKeyFromUrl(pathname)
+      const body = await readJsonBody(request)
+      const data = normalizeRequestValue(body.data)
+      const tipoEmpresa = normalizeAliquotaOptanteTipoEmpresa(body.tipoEmpresa)
+      const aliquota = normalizeFourDecimalValue(body.aliquota)
+
+      if (!originalKey || !isDateInputValid(originalKey.data)) {
+        sendJson(response, 400, { message: 'Chave original invalida.' })
+        return
+      }
+
+      const originalTipoEmpresa = normalizeAliquotaOptanteTipoEmpresa(originalKey.tipoEmpresa)
+
+      if (!originalTipoEmpresa) {
+        sendJson(response, 400, { message: 'Tipo empresa original invalido.' })
+        return
+      }
+
+      if (!isDateInputValid(data)) {
+        sendJson(response, 400, { message: 'Data invalida.' })
+        return
+      }
+
+      if (!tipoEmpresa) {
+        sendJson(response, 400, { message: 'Tipo empresa e obrigatorio.' })
+        return
+      }
+
+      if (!Number.isFinite(aliquota)) {
+        sendJson(response, 400, { message: 'Aliquota invalida.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM aliquota_optante WHERE data = $1::date AND BTRIM(tipo_empresa) = $2 LIMIT 1',
+        [originalKey.data, originalTipoEmpresa],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de aliquota optante nao encontrado.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM aliquota_optante
+         WHERE data = $1::date
+           AND BTRIM(tipo_empresa) = $2
+           AND NOT (data = $3::date AND BTRIM(tipo_empresa) = $4)
+         LIMIT 1`,
+        [data, tipoEmpresa, originalKey.data, originalTipoEmpresa],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe uma aliquota optante para esta data e tipo empresa.' })
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE aliquota_optante
+         SET data = $1::date,
+             tipo_empresa = $2,
+             aliquota = $3
+         WHERE data = $4::date
+           AND BTRIM(tipo_empresa) = $5
+         RETURNING ${aliquotaOptanteSelectClause}`,
+        [data, tipoEmpresa, aliquota, originalKey.data, originalTipoEmpresa],
+      )
+
+      sendJson(response, 200, {
+        item: updateResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar aliquota_optante.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getDiasLetivosDataFromUrl(pathname)) {
+    try {
+      const originalData = normalizeDiasLetivosMesAno(getDiasLetivosDataFromUrl(pathname))
+      const body = await readJsonBody(request)
+      const data = normalizeDiasLetivosMesAno(body.data)
+      const diasLetivos = normalizeIntegerValue(body.diasLetivos)
+
+      if (!originalData) {
+        sendJson(response, 400, { message: 'Competencia original invalida.' })
+        return
+      }
+
+      if (!data) {
+        sendJson(response, 400, { message: 'Competencia invalida. Informe MM/YYYY.' })
+        return
+      }
+
+      if (!Number.isInteger(diasLetivos) || diasLetivos < 0) {
+        sendJson(response, 400, { message: 'Dias letivos invalido.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM dias_letivos WHERE data = $1::date LIMIT 1',
+        [originalData],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de dias letivos nao encontrado.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        'SELECT 1 FROM dias_letivos WHERE data = $1::date AND data <> $2::date LIMIT 1',
+        [data, originalData],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Data ja cadastrada.' })
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE dias_letivos
+         SET data = $1::date,
+             dias_letivos = $2
+         WHERE data = $3::date
+         RETURNING ${diasLetivosSelectClause}`,
+        [data, diasLetivos, originalData],
+      )
+
+      sendJson(response, 200, {
+        item: updateResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar dias_letivos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getApuracaoFinanceiraKeyFromUrl(pathname)) {
+    try {
+      const originalKey = getApuracaoFinanceiraKeyFromUrl(pathname)
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dreCodigo = normalizeRequestValue(body.dreCodigo)
+      const revisao = Number.parseInt(normalizeRequestValue(body.revisao), 10)
+      const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa) || 'PF'
+      const situacao = normalizeApuracaoFinanceiraStatus(body.situacao)
+
+      if (!originalKey) {
+        sendJson(response, 400, { message: 'Chave original invalida.' })
+        return
+      }
+
+      if (!isValidApuracaoFinanceiraMesAno(mesAno)) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dreCodigo) {
+        sendJson(response, 400, { message: 'DRE e obrigatoria.' })
+        return
+      }
+
+      if (!Number.isInteger(revisao) || revisao < 0) {
+        sendJson(response, 400, { message: 'Revisao invalida.' })
+        return
+      }
+
+      if (!situacao) {
+        sendJson(response, 400, { message: 'Situacao invalida.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        `SELECT 1
+         FROM apuracao_financeira
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4
+         LIMIT 1`,
+        [originalKey.mesAno, originalKey.dreCodigo, Number.parseInt(originalKey.revisao, 10), normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF'],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Apuracao financeira nao encontrada.' })
+        return
+      }
+
+      const dreResult = await pool.query(
+        'SELECT 1 FROM dre WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [dreCodigo],
+      )
+
+      if (dreResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'DRE nao encontrada.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM apuracao_financeira
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4
+           AND NOT (
+             mes_ano = $5
+             AND CAST(dre_codigo AS text) = $6
+             AND revisao = $7
+             AND BTRIM(tipo_pessoa) = $8
+           )
+         LIMIT 1`,
+        [mesAno, dreCodigo, revisao, tipoPessoa, originalKey.mesAno, originalKey.dreCodigo, Number.parseInt(originalKey.revisao, 10), normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF'],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe uma apuracao financeira com esta chave.' })
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE apuracao_financeira
+         SET mes_ano = $1,
+             dre_codigo = $2,
+             revisao = $3,
+             tipo_pessoa = $4,
+             situacao = $5,
+             data_alteracao = NOW()
+         WHERE mes_ano = $6
+           AND CAST(dre_codigo AS text) = $7
+           AND revisao = $8
+           AND BTRIM(tipo_pessoa) = $9
+         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, revisao, tipo_pessoa`,
+        [mesAno, dreCodigo, revisao, tipoPessoa, situacao, originalKey.mesAno, originalKey.dreCodigo, Number.parseInt(originalKey.revisao, 10), normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF'],
+      )
+
+      const updatedKey = updateResult.rows[0]
+      const itemResult = await pool.query(
+        `SELECT ${apuracaoFinanceiraSelectClause}
+         FROM apuracao_financeira
+         INNER JOIN dre ON dre.codigo = apuracao_financeira.dre_codigo
+         WHERE apuracao_financeira.mes_ano = $1
+           AND CAST(apuracao_financeira.dre_codigo AS text) = $2
+           AND apuracao_financeira.revisao = $3
+           AND BTRIM(apuracao_financeira.tipo_pessoa) = $4`,
+        [updatedKey.mes_ano, updatedKey.dre_codigo, updatedKey.revisao, updatedKey.tipo_pessoa],
+      )
+
+      sendJson(response, 200, {
+        item: {
+          mesAno: itemResult.rows[0].mes_ano,
+          dreCodigo: itemResult.rows[0].dre_codigo,
+          dreSigla: itemResult.rows[0].dre_sigla,
+          dreDescricao: itemResult.rows[0].dre_descricao,
+          revisao: Number(itemResult.rows[0].revisao) || 0,
+          tipoPessoa: normalizeApuracaoTipoPessoa(itemResult.rows[0].tipo_pessoa) || 'PF',
+          situacao: itemResult.rows[0].situacao,
+          dataInclusao: itemResult.rows[0].data_inclusao,
+          dataAlteracao: itemResult.rows[0].data_alteracao,
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar a apuracao financeira.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getApuracaoServicosKeyFromUrl(pathname)) {
+    try {
+      const originalKey = getApuracaoServicosKeyFromUrl(pathname)
+
+      if (!originalKey) {
+        sendJson(response, 400, { message: 'Chave original invalida.' })
+        return
+      }
+
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dreCodigo = normalizeDreOperationalCode(body.dreCodigo)
+      const ordemServicoCodigo = normalizeIntegerValue(body.ordemServicoCodigo)
+      const revisao = normalizeIntegerValue(body.revisao)
+      const tipoEscolaCodigo = normalizeIntegerValue(body.tipoEscolaCodigo)
+      const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa) || 'PF'
+      const naoCadeirantePresencial = normalizeIntegerValue(body.naoCadeirantePresencial)
+      const cadeirante = normalizeIntegerValue(body.cadeirante)
+      const atendimentoComplementarNaoCadeirante = normalizeIntegerValue(body.atendimentoComplementarNaoCadeirante)
+      const atendimentoComplementarCadeirante = normalizeIntegerValue(body.atendimentoComplementarCadeirante)
+      const continuaNaoCadeirante = normalizeIntegerValue(body.continuaNaoCadeirante)
+      const continuaCadeirante = normalizeIntegerValue(body.continuaCadeirante)
+      const kilometragem = normalizeFourDecimalValue(body.kilometragem)
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dreCodigo) {
+        sendJson(response, 400, { message: 'DRE obrigatoria.' })
+        return
+      }
+
+      if (!Number.isInteger(ordemServicoCodigo) || ordemServicoCodigo <= 0) {
+        sendJson(response, 400, { message: 'Ordem de servico invalida.' })
+        return
+      }
+
+      if (!Number.isInteger(revisao) || revisao < 0) {
+        sendJson(response, 400, { message: 'Revisao invalida.' })
+        return
+      }
+
+      if (!Number.isInteger(tipoEscolaCodigo) || tipoEscolaCodigo <= 0) {
+        sendJson(response, 400, { message: 'Tipo de escola invalido.' })
+        return
+      }
+
+      const integerFields = [
+        ['Nao cadeirante presencial', naoCadeirantePresencial],
+        ['Cadeirante', cadeirante],
+        ['Atendimento complementar nao cadeirante', atendimentoComplementarNaoCadeirante],
+        ['Atendimento complementar cadeirante', atendimentoComplementarCadeirante],
+        ['Continua nao cadeirante', continuaNaoCadeirante],
+        ['Continua cadeirante', continuaCadeirante],
+      ]
+
+      for (const [label, value] of integerFields) {
+        if (!Number.isInteger(value) || value < 0) {
+          sendJson(response, 400, { message: `${label} invalido.` })
+          return
+        }
+      }
+
+      if (!Number.isFinite(kilometragem) || kilometragem < 0) {
+        sendJson(response, 400, { message: 'Kilometragem invalida.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        `SELECT 1
+         FROM apuracao_servicos
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND CAST(ordem_servico_codigo AS text) = $3
+           AND revisao = $4
+           AND CAST(tipo_escola_codigo AS text) = $5
+           AND BTRIM(tipo_pessoa) = $6
+         LIMIT 1`,
+        [originalKey.mesAno, originalKey.dreCodigo, originalKey.ordemServicoCodigo, Number.parseInt(originalKey.revisao, 10), originalKey.tipoEscolaCodigo, normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF'],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Apuracao de servicos nao encontrada.' })
+        return
+      }
+
+      const dreResult = await pool.query(
+        'SELECT 1 FROM dre WHERE CAST(codigo AS text) = $1 LIMIT 1',
+        [dreCodigo],
+      )
+
+      if (dreResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'DRE nao encontrada.' })
+        return
+      }
+
+      const apuracaoFinanceiraResult = await pool.query(
+        `SELECT 1
+         FROM apuracao_financeira
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4
+         LIMIT 1`,
+        [mesAno, dreCodigo, revisao, tipoPessoa],
+      )
+
+      if (apuracaoFinanceiraResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Apuracao financeira da chave informada nao encontrada.' })
+        return
+      }
+
+      const tipoEscolaResult = await pool.query(
+        'SELECT 1 FROM tipo_escola WHERE codigo = $1 LIMIT 1',
+        [tipoEscolaCodigo],
+      )
+
+      if (tipoEscolaResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Tipo de escola nao encontrado.' })
+        return
+      }
+
+      const activeOrdemServico = await findActiveOrdemServicoOptionByCodigo({
+        mesAno,
+        dreCodigo,
+        ordemServicoCodigo,
+        tipoPessoa,
+      })
+
+      if (!activeOrdemServico) {
+        sendJson(response, 400, { message: 'A ordem de servico informada nao esta ativa para o mes/ano e DRE selecionados.' })
+        return
+      }
+
+      const duplicateResult = await pool.query(
+        `SELECT 1
+         FROM apuracao_servicos
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND ordem_servico_codigo = $3
+           AND revisao = $4
+           AND tipo_escola_codigo = $5
+           AND BTRIM(tipo_pessoa) = $6
+           AND NOT (
+             mes_ano = $7
+             AND CAST(dre_codigo AS text) = $8
+             AND CAST(ordem_servico_codigo AS text) = $9
+             AND revisao = $10
+             AND CAST(tipo_escola_codigo AS text) = $11
+             AND BTRIM(tipo_pessoa) = $12
+           )
+         LIMIT 1`,
+        [
+          mesAno,
+          dreCodigo,
+          ordemServicoCodigo,
+          revisao,
+          tipoEscolaCodigo,
+          tipoPessoa,
+          originalKey.mesAno,
+          originalKey.dreCodigo,
+          originalKey.ordemServicoCodigo,
+          Number.parseInt(originalKey.revisao, 10),
+          originalKey.tipoEscolaCodigo,
+          normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF',
+        ],
+      )
+
+      if (duplicateResult.rowCount > 0) {
+        sendJson(response, 409, { message: 'Ja existe uma apuracao de servicos com esta chave.' })
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE apuracao_servicos
+         SET mes_ano = $1,
+             dre_codigo = $2,
+             ordem_servico_codigo = $3,
+             revisao = $4,
+             tipo_escola_codigo = $5,
+             tipo_pessoa = $6,
+             nc_pres = $7,
+             cad = $8,
+             ac_nc = $9,
+             ac_cad = $10,
+             cont_nc = $11,
+             cont_cad = $12,
+             km = $13,
+             data_alteracao = NOW()
+         WHERE mes_ano = $14
+           AND CAST(dre_codigo AS text) = $15
+           AND CAST(ordem_servico_codigo AS text) = $16
+           AND revisao = $17
+           AND CAST(tipo_escola_codigo AS text) = $18
+           AND BTRIM(tipo_pessoa) = $19
+         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
+        [
+          mesAno,
+          dreCodigo,
+          ordemServicoCodigo,
+          revisao,
+          tipoEscolaCodigo,
+          tipoPessoa,
+          naoCadeirantePresencial,
+          cadeirante,
+          atendimentoComplementarNaoCadeirante,
+          atendimentoComplementarCadeirante,
+          continuaNaoCadeirante,
+          continuaCadeirante,
+          kilometragem,
+          originalKey.mesAno,
+          originalKey.dreCodigo,
+          originalKey.ordemServicoCodigo,
+          Number.parseInt(originalKey.revisao, 10),
+          originalKey.tipoEscolaCodigo,
+          normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF',
+        ],
+      )
+
+      const updatedKey = updateResult.rows[0]
+      const itemResult = await pool.query(
+        `SELECT ${apuracaoServicosSelectClause}
+         FROM apuracao_servicos
+         INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
+         INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
+         INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo
+         WHERE apuracao_servicos.mes_ano = $1
+           AND CAST(apuracao_servicos.dre_codigo AS text) = $2
+           AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $3
+           AND apuracao_servicos.revisao = $4
+           AND CAST(apuracao_servicos.tipo_escola_codigo AS text) = $5
+           AND BTRIM(apuracao_servicos.tipo_pessoa) = $6`,
+        [updatedKey.mes_ano, updatedKey.dre_codigo, updatedKey.ordem_servico_codigo, updatedKey.revisao, updatedKey.tipo_escola_codigo, updatedKey.tipo_pessoa],
+      )
+
+      sendJson(response, 200, {
+        item: mapApuracaoServicosRow(itemResult.rows[0]),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar a apuracao de servicos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'PUT' && getTitularCodigoFromUrl(pathname)) {
     try {
       const originalCodigo = getTitularCodigoFromUrl(pathname)
@@ -23654,6 +26199,224 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao excluir a associacao de modalidade x tipo de bancada.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getTipoEscolaCodigoFromUrl(pathname)) {
+    try {
+      const codigo = getTipoEscolaCodigoFromUrl(pathname)
+
+      if (!codigo) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM tipo_escola WHERE CAST(codigo AS text) = $1 RETURNING CAST(codigo AS text) AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro do tipo de escola nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir o registro tipo_escola.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getAliquotaOptanteKeyFromUrl(pathname)) {
+    try {
+      const key = getAliquotaOptanteKeyFromUrl(pathname)
+
+      if (!key || !isDateInputValid(key.data)) {
+        sendJson(response, 400, { message: 'Chave invalida para exclusao.' })
+        return
+      }
+
+      const tipoEmpresa = normalizeAliquotaOptanteTipoEmpresa(key.tipoEmpresa)
+
+      if (!tipoEmpresa) {
+        sendJson(response, 400, { message: 'Tipo empresa invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        `DELETE FROM aliquota_optante
+         WHERE data = $1::date
+           AND BTRIM(tipo_empresa) = $2
+         RETURNING TO_CHAR(data, 'YYYY-MM-DD') AS data, BTRIM(tipo_empresa) AS tipo_empresa`,
+        [key.data, tipoEmpresa],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de aliquota optante nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedKey: {
+          data: deleteResult.rows[0].data,
+          tipo_empresa: deleteResult.rows[0].tipo_empresa,
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir aliquota_optante.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getDiasLetivosDataFromUrl(pathname)) {
+    try {
+      const data = normalizeDiasLetivosMesAno(getDiasLetivosDataFromUrl(pathname))
+
+      if (!data) {
+        sendJson(response, 400, { message: 'Competencia invalida para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM dias_letivos WHERE data = $1::date RETURNING TO_CHAR(data, \'MM/YYYY\') AS data',
+        [data],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Registro de dias letivos nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedData: deleteResult.rows[0].data,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir dias_letivos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getApuracaoFinanceiraKeyFromUrl(pathname)) {
+    try {
+      const key = getApuracaoFinanceiraKeyFromUrl(pathname)
+
+      if (!key) {
+        sendJson(response, 400, { message: 'Chave invalida para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        `DELETE FROM apuracao_financeira
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4
+           AND BTRIM(situacao) = 'A processar'
+         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, revisao, tipo_pessoa`,
+        [key.mesAno, key.dreCodigo, Number.parseInt(key.revisao, 10), normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        const existingResult = await pool.query(
+          `SELECT 1
+           FROM apuracao_financeira
+           WHERE mes_ano = $1
+             AND CAST(dre_codigo AS text) = $2
+             AND revisao = $3
+             AND BTRIM(tipo_pessoa) = $4`,
+          [key.mesAno, key.dreCodigo, Number.parseInt(key.revisao, 10), normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'],
+        )
+
+        if (existingResult.rowCount > 0) {
+          sendJson(response, 409, { message: 'A exclusao so e permitida quando a situacao estiver A processar.' })
+          return
+        }
+
+        sendJson(response, 404, { message: 'Apuracao financeira nao encontrada.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedKey: {
+          mesAno: deleteResult.rows[0].mes_ano,
+          dreCodigo: deleteResult.rows[0].dre_codigo,
+          revisao: Number(deleteResult.rows[0].revisao) || 0,
+          tipoPessoa: normalizeApuracaoTipoPessoa(deleteResult.rows[0].tipo_pessoa) || 'PF',
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir a apuracao financeira.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getApuracaoServicosKeyFromUrl(pathname)) {
+    try {
+      const key = getApuracaoServicosKeyFromUrl(pathname)
+
+      if (!key) {
+        sendJson(response, 400, { message: 'Chave invalida para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        `DELETE FROM apuracao_servicos
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND CAST(ordem_servico_codigo AS text) = $3
+           AND revisao = $4
+           AND CAST(tipo_escola_codigo AS text) = $5
+           AND BTRIM(tipo_pessoa) = $6
+         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
+        [key.mesAno, key.dreCodigo, key.ordemServicoCodigo, Number.parseInt(key.revisao, 10), key.tipoEscolaCodigo, normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Apuracao de servicos nao encontrada.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedKey: {
+          mesAno: deleteResult.rows[0].mes_ano,
+          dreCodigo: deleteResult.rows[0].dre_codigo,
+          ordemServicoCodigo: deleteResult.rows[0].ordem_servico_codigo,
+          revisao: Number(deleteResult.rows[0].revisao) || 0,
+          tipoEscolaCodigo: deleteResult.rows[0].tipo_escola_codigo,
+          tipoPessoa: normalizeApuracaoTipoPessoa(deleteResult.rows[0].tipo_pessoa) || 'PF',
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir a apuracao de servicos.'
 
       sendJson(response, 500, { message })
     }
