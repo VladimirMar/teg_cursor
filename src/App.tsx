@@ -37,11 +37,9 @@ import {
 import type { DiasLetivosItem, DiasLetivosSortField } from './services/diasLetivos'
 import {
   APURACAO_FINANCEIRA_STATUS_OPTIONS,
-  createApuracaoFinanceiraItem,
   deleteApuracaoFinanceiraItem,
   listApuracaoFinanceiraItemsPaginated,
   processApuracaoFinanceiraData,
-  updateApuracaoFinanceiraItem,
 } from './services/apuracaoFinanceira'
 import type {
   ApuracaoFinanceiraItem,
@@ -243,6 +241,10 @@ const formatApuracaoFinanceiraDreLabel = (item: Pick<ApuracaoFinanceiraItem, 'dr
 
 const formatApuracaoFinanceiraDreOptionLabel = (item: Pick<DreItem, 'codigo' | 'sigla' | 'descricao'>) => {
   return `${item.codigo} - ${item.sigla} - ${item.descricao}`
+}
+
+const formatApuracaoFinanceiraDreShortLabel = (item: Pick<DreItem, 'codigo' | 'sigla' | 'descricao'>) => {
+  return item.sigla || item.descricao || item.codigo
 }
 
 const formatAliquotaOptanteKey = (item: Pick<AliquotaOptanteKey, 'data' | 'tipoEmpresa'>) => {
@@ -1186,12 +1188,11 @@ function App() {
   const [isLoadingApuracaoFinanceiraOptions, setIsLoadingApuracaoFinanceiraOptions] = useState(false)
   const [isLoadingApuracaoFinanceiraActiveDres, setIsLoadingApuracaoFinanceiraActiveDres] = useState(false)
   const [isLoadingApuracaoFinanceira, setIsLoadingApuracaoFinanceira] = useState(false)
-  const [isSavingApuracaoFinanceira, setIsSavingApuracaoFinanceira] = useState(false)
+  const isSavingApuracaoFinanceira = false
   const [isProcessingApuracaoFinanceira, setIsProcessingApuracaoFinanceira] = useState(false)
   const [isDeletingApuracaoFinanceira, setIsDeletingApuracaoFinanceira] = useState(false)
   const [isApuracaoFinanceiraFormVisible, setIsApuracaoFinanceiraFormVisible] = useState(false)
   const [editingApuracaoFinanceiraKey, setEditingApuracaoFinanceiraKey] = useState<ApuracaoFinanceiraKey | null>(null)
-  const [apuracaoFinanceiraEditingBaseDreCodigos, setApuracaoFinanceiraEditingBaseDreCodigos] = useState<string[]>([])
   const [apuracaoFinanceiraFormMode, setApuracaoFinanceiraFormMode] = useState<FormMode>('create')
   const [apuracaoFinanceiraSearch, setApuracaoFinanceiraSearch] = useState('')
   const [apuracaoFinanceiraPage, setApuracaoFinanceiraPage] = useState(1)
@@ -3419,7 +3420,6 @@ function App() {
     setApuracaoFinanceiraTipoPessoaError('')
     setApuracaoFinanceiraSituacao(APURACAO_FINANCEIRA_STATUS_OPTIONS[0])
     setApuracaoFinanceiraSituacaoError('')
-    setApuracaoFinanceiraEditingBaseDreCodigos([])
     setEditingApuracaoFinanceiraKey(null)
     setApuracaoFinanceiraFormMode('create')
   }, [])
@@ -4429,36 +4429,6 @@ function App() {
     setIsApuracaoFinanceiraFormVisible(true)
   }
 
-  const handleStartEditApuracaoFinanceira = (row: ApuracaoFinanceiraGridRow) => {
-    const item = row.representativeItem
-    const initialDreCodigos = row.dreCodigos.length > 0 ? row.dreCodigos : [item.dreCodigo]
-
-    setEditingApuracaoFinanceiraKey({
-      mesAno: item.mesAno,
-      dreCodigo: item.dreCodigo,
-      revisao: item.revisao,
-      tipoPessoa: item.tipoPessoa,
-    })
-    setApuracaoFinanceiraFormMode('edit')
-    setApuracaoFinanceiraMesAno(item.mesAno)
-    setApuracaoFinanceiraMesAnoError('')
-    setApuracaoFinanceiraDreCodigo(item.dreCodigo)
-    setApuracaoFinanceiraDreCodigoError('')
-    setApuracaoFinanceiraSelectedDreCodigos(initialDreCodigos)
-    setApuracaoFinanceiraSelectedDresError('')
-    setApuracaoFinanceiraActiveDreOptions([])
-    setApuracaoFinanceiraEditingBaseDreCodigos(initialDreCodigos)
-    setApuracaoFinanceiraRevisao(String(item.revisao))
-    setApuracaoFinanceiraRevisaoError('')
-    setApuracaoFinanceiraTipoPessoa(row.tipoPessoaFormValue)
-    setApuracaoFinanceiraTipoPessoaError('')
-    setApuracaoFinanceiraSituacao(item.situacao)
-    setApuracaoFinanceiraSituacaoError('')
-    setApuracaoFinanceiraStatusTone('idle')
-    setApuracaoFinanceiraStatusMessage(`Alterando registro ${item.mesAno} / ${row.dreText} / ${item.revisao} / ${row.tipoPessoaLabel}.`)
-    setIsApuracaoFinanceiraFormVisible(true)
-  }
-
   const handleCancelTipoBancadaForm = useCallback(() => {
     resetTipoBancadaForm()
     setIsTipoBancadaFormVisible(false)
@@ -5277,134 +5247,59 @@ function App() {
     }
   }
 
-  const handleCreateApuracaoFinanceira = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (
-      apuracaoFinanceiraFormMode === 'edit'
-      && apuracaoFinanceiraTipoPessoa === 'TODOS'
-      && ['A processar', 'Processado'].includes(apuracaoFinanceiraSituacao)
-    ) {
-      await handleProcessApuracaoFinanceira()
-      return
+  const validateApuracaoFinanceiraPreviousRevision = useCallback(async (options: {
+    mesAno: string
+    revisao: number
+    dreCodigos: string[]
+    tipoPessoas: ApuracaoTipoPessoa[]
+  }) => {
+    if (options.revisao <= 0) {
+      return true
     }
 
-    const submission = validateApuracaoFinanceiraSubmission()
+    const previousRevision = options.revisao - 1
 
-    if (!submission) {
-      return
-    }
+    for (const tipoPessoa of options.tipoPessoas) {
+      for (const dreCodigo of options.dreCodigos) {
+        const result = await listApuracaoFinanceiraItemsPaginated({
+          mesAno: options.mesAno,
+          dreCodigo,
+          revisao: previousRevision,
+          tipoPessoa,
+          page: 1,
+          pageSize: 1,
+        })
 
-    const {
-      editingKey,
-      normalizedMesAno,
-      normalizedDreCodigo,
-      normalizedSelectedDreCodigos,
-      normalizedRevisao,
-      normalizedTipoPessoas,
-    } = submission
+        const previousItem = result.items[0]
 
-    setIsSavingApuracaoFinanceira(true)
-    setApuracaoFinanceiraStatusTone('idle')
-    setApuracaoFinanceiraStatusMessage(editingKey ? 'Alterando registro da apuracao financeira...' : 'Gravando registro da apuracao financeira...')
-
-    try {
-      if (editingKey) {
-        const savedItem = await updateApuracaoFinanceiraItem(editingKey, {
-            mesAno: normalizedMesAno,
-            dreCodigo: normalizedDreCodigo,
-            revisao: normalizedRevisao,
-            tipoPessoa: normalizedTipoPessoas[0],
-            situacao: apuracaoFinanceiraSituacao,
-          })
-
-        const additionalDreCodigos = normalizedSelectedDreCodigos.filter((dreCodigo) => (
-          dreCodigo !== normalizedDreCodigo
-          && !apuracaoFinanceiraEditingBaseDreCodigos.includes(dreCodigo)
-        ))
-
-        const additionalCreationResults = await Promise.allSettled(
-          additionalDreCodigos.map((dreCodigo) => createApuracaoFinanceiraItem({
-            mesAno: normalizedMesAno,
-            dreCodigo,
-            revisao: normalizedRevisao,
-            tipoPessoa: normalizedTipoPessoas[0],
-            situacao: apuracaoFinanceiraSituacao,
-          })),
-        )
-
-        const additionalSuccessCount = additionalCreationResults.filter((result) => result.status === 'fulfilled').length
-        const additionalFailureMessages = additionalCreationResults
-          .map((result) => (result.status === 'rejected' && result.reason instanceof Error ? result.reason.message : 'Falha ao cadastrar DRE adicional.'))
-          .filter((message, index, messages) => messages.indexOf(message) === index)
-
-        void savedItem
-        resetApuracaoFinanceiraForm()
-        setIsApuracaoFinanceiraFormVisible(false)
-        setApuracaoFinanceiraStatusTone('success')
-        setApuracaoFinanceiraStatusMessage(
-          additionalFailureMessages.length > 0
-            ? `Registro da apuracao financeira alterado com sucesso. ${additionalSuccessCount} DRE(s) adicional(is) incluída(s). Falhas: ${additionalFailureMessages.join(' | ')}`
-            : additionalSuccessCount > 0
-              ? `Registro da apuracao financeira alterado com sucesso. ${additionalSuccessCount} DRE(s) adicional(is) incluída(s).`
-              : 'Registro da apuracao financeira alterado com sucesso.',
-        )
-        await loadApuracaoFinanceiraItems(apuracaoFinanceiraPage)
-        return
+        if (!previousItem || previousItem.situacao !== 'Concluido') {
+          const dreOption = apuracaoFinanceiraDreOptions.find((item) => item.codigo === dreCodigo)
+          const dreLabel = dreOption ? formatApuracaoFinanceiraDreShortLabel(dreOption) : dreCodigo
+          setApuracaoFinanceiraStatusTone('warning')
+          setApuracaoFinanceiraStatusMessage(`A revisao anterior numero ${previousRevision} nao foi concluida para a DRE ${dreLabel}.`)
+          return false
+        }
       }
-
-      const creationResults = await Promise.allSettled(
-        normalizedSelectedDreCodigos.flatMap((dreCodigo) => (
-          normalizedTipoPessoas.map((tipoPessoa) => createApuracaoFinanceiraItem({
-            mesAno: normalizedMesAno,
-            dreCodigo,
-            revisao: normalizedRevisao,
-            tipoPessoa,
-            situacao: apuracaoFinanceiraSituacao,
-          }))
-        )),
-      )
-
-      const successfulCreations = creationResults.filter((result) => result.status === 'fulfilled')
-      const failedCreations = creationResults.filter((result) => result.status === 'rejected')
-
-      if (successfulCreations.length === 0) {
-        throw new Error(
-          failedCreations[0]?.status === 'rejected'
-            ? (failedCreations[0].reason instanceof Error ? failedCreations[0].reason.message : 'Falha ao cadastrar registros da apuracao financeira.')
-            : 'Falha ao cadastrar registros da apuracao financeira.',
-        )
-      }
-
-      const failureMessages = failedCreations
-        .map((result) => (result.status === 'rejected' && result.reason instanceof Error ? result.reason.message : 'Falha ao cadastrar registro.'))
-        .filter((message, index, messages) => messages.indexOf(message) === index)
-
-      resetApuracaoFinanceiraForm()
-      setIsApuracaoFinanceiraFormVisible(false)
-      setApuracaoFinanceiraStatusTone('success')
-      setApuracaoFinanceiraStatusMessage(
-        failedCreations.length > 0
-          ? `${successfulCreations.length} registro(s) da apuracao financeira cadastrados com sucesso. ${failedCreations.length} falharam: ${failureMessages.join(' | ')}`
-          : `${successfulCreations.length} registro(s) da apuracao financeira cadastrados com sucesso.`,
-      )
-      await loadApuracaoFinanceiraItems(1)
-    } catch (error) {
-      const message = error instanceof Error
-        ? error.message
-        : 'Falha ao cadastrar registro da apuracao financeira.'
-
-      setApuracaoFinanceiraStatusTone('error')
-      setApuracaoFinanceiraStatusMessage(message)
-    } finally {
-      setIsSavingApuracaoFinanceira(false)
     }
-  }
+
+    return true
+  }, [apuracaoFinanceiraDreOptions])
 
   const handleProcessApuracaoFinanceira = async () => {
     const submission = validateApuracaoFinanceiraSubmission({ allowTodosInEdit: true })
 
     if (!submission) {
+      return
+    }
+
+    const previousRevisionIsValid = await validateApuracaoFinanceiraPreviousRevision({
+      mesAno: submission.normalizedMesAno,
+      revisao: submission.normalizedRevisao,
+      dreCodigos: submission.normalizedSelectedDreCodigos,
+      tipoPessoas: submission.normalizedTipoPessoas,
+    })
+
+    if (!previousRevisionIsValid) {
       return
     }
 
@@ -6569,56 +6464,15 @@ function App() {
   const canGoToNextDiasLetivosPage = diasLetivosPage < diasLetivosTotalPages
   const canGoToPreviousApuracaoFinanceiraPage = apuracaoFinanceiraPage > 1
   const canGoToNextApuracaoFinanceiraPage = apuracaoFinanceiraPage < apuracaoFinanceiraTotalPages
-  const apuracaoFinanceiraGridRows = (() => {
-    const groups = new Map<string, {
-      representativeItem: ApuracaoFinanceiraItem
-      items: ApuracaoFinanceiraItem[]
-      labels: string[]
-      codes: Set<string>
-      tipoPessoas: Set<ApuracaoTipoPessoa>
-      mesAno: string
-    }>()
-
-    apuracaoFinanceiraItems.forEach((item) => {
-      const groupKey = `${item.mesAno}|${item.revisao}|${item.situacao}`
-      const currentGroup = groups.get(groupKey) ?? {
-        representativeItem: item,
-        items: [],
-        labels: [],
-        codes: new Set<string>(),
-        tipoPessoas: new Set<ApuracaoTipoPessoa>(),
-        mesAno: item.mesAno,
-      }
-
-      if (!currentGroup.codes.has(item.dreCodigo)) {
-        currentGroup.codes.add(item.dreCodigo)
-        currentGroup.labels.push(item.dreSigla || item.dreDescricao || item.dreCodigo)
-      }
-
-      currentGroup.items.push(item)
-      currentGroup.tipoPessoas.add(item.tipoPessoa)
-
-      groups.set(groupKey, currentGroup)
-    })
-
-    return Array.from(groups.entries()).map<ApuracaoFinanceiraGridRow>(([key, group]) => {
-      const activeCount = apuracaoFinanceiraGridActiveDreCounts[group.mesAno] ?? 0
-      const orderedTipoPessoas = APURACAO_TIPO_PESSOA_OPTIONS
-        .map((item) => item.value)
-        .filter((tipoPessoa) => group.tipoPessoas.has(tipoPessoa))
-      const tipoPessoaFormValue: ApuracaoFinanceiraTipoPessoaFormValue = orderedTipoPessoas.length > 1 ? 'TODOS' : (orderedTipoPessoas[0] ?? 'TODOS')
-
-      return {
-        key,
-        representativeItem: group.representativeItem,
-        items: group.items,
-        dreCodigos: Array.from(group.codes),
-        dreText: activeCount > 0 && group.codes.size === activeCount ? 'Todas' : group.labels.join(' / '),
-        tipoPessoaFormValue,
-        tipoPessoaLabel: tipoPessoaFormValue === 'TODOS' ? 'Todos' : formatApuracaoTipoPessoaLabel(tipoPessoaFormValue),
-      }
-    })
-  })()
+  const apuracaoFinanceiraGridRows = apuracaoFinanceiraItems.map<ApuracaoFinanceiraGridRow>((item) => ({
+    key: formatApuracaoFinanceiraKey(item),
+    representativeItem: item,
+    items: [item],
+    dreCodigos: [item.dreCodigo],
+    dreText: formatApuracaoFinanceiraDreLabel(item),
+    tipoPessoaFormValue: item.tipoPessoa,
+    tipoPessoaLabel: formatApuracaoTipoPessoaLabel(item.tipoPessoa),
+  }))
   const apuracaoFinanceiraSelectedDreDisplayValue = (() => {
     if (apuracaoFinanceiraSelectedDreCodigos.length > 0) {
       const selectedOptions = apuracaoFinanceiraDreOptions.filter((item) => apuracaoFinanceiraSelectedDreCodigos.includes(item.codigo))
@@ -12228,7 +12082,7 @@ function App() {
                   >
                     <form
                       className={`management-card management-form dre-form management-modal-form-card${apuracaoFinanceiraStatusTone === 'warning' ? ' apuracao-financeira-lock-warning' : ''}`}
-                      onSubmit={handleCreateApuracaoFinanceira}
+                      onSubmit={(event) => event.preventDefault()}
                       noValidate
                     >
                       <div className="management-modal-header">
@@ -12369,27 +12223,19 @@ function App() {
                         {apuracaoFinanceiraSituacaoError ? <strong className="field-error">{apuracaoFinanceiraSituacaoError}</strong> : null}
                       </label>
 
-                      {apuracaoFinanceiraFormMode !== 'view' && ['A processar', 'Processado'].includes(apuracaoFinanceiraSituacao) ? (
-                        <div className="button-row apuracao-financeira-process-row">
-                          <button
-                            type="button"
-                            className="secondary-button apuracao-financeira-process-button"
-                            onClick={handleProcessApuracaoFinanceira}
-                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}
-                          >
-                            {isProcessingApuracaoFinanceira ? 'Re-apurando...' : apuracaoFinanceiraFormMode === 'edit' ? 'Reprocessar alteracao' : 'Re-apurar ordens de servicos'}
-                          </button>
-                        </div>
-                      ) : null}
-
                       <p className={`status-message status-${apuracaoFinanceiraStatusTone}`} aria-live="polite">
                         {apuracaoFinanceiraStatusMessage}
                       </p>
 
                       <div className="button-row dre-button-row management-modal-footer">
-                        {apuracaoFinanceiraFormMode === 'create' ? (
-                          <button type="submit" className="primary-button" disabled={isSavingApuracaoFinanceira}>
-                            {isSavingApuracaoFinanceira ? 'Salvando...' : 'Salvar Apuracao Financeira'}
+                        {apuracaoFinanceiraFormMode !== 'view' && ['A processar', 'Processado'].includes(apuracaoFinanceiraSituacao) ? (
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={handleProcessApuracaoFinanceira}
+                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}
+                          >
+                            {isProcessingApuracaoFinanceira ? 'Processando...' : 'Processamento'}
                           </button>
                         ) : null}
                         <button type="button" className="secondary-button" onClick={handleCancelApuracaoFinanceiraForm} disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}>
@@ -12447,9 +12293,6 @@ function App() {
                             <div className="dre-row-actions">
                               <button type="button" className="row-action-button" onClick={() => handleStartViewApuracaoFinanceira(row)}>
                                 Consulta
-                              </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditApuracaoFinanceira(row)}>
-                                Alterar
                               </button>
                               <button
                                 type="button"

@@ -47,60 +47,6 @@ body:has(#emissao-parametro-grid-body) .dsc-container {
   max-width: 1620px;
 }
 
-body:has(#ordem-servico-grid-body) .dsc-container,
-body:has(#ordem-servico-rejection-grid-body) .dsc-container {
-  width: calc(100vw - 12px);
-  max-width: none;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: calc(100vh - 12px);
-  overflow: hidden;
-  padding: 6px;
-}
-
-body:has(#ordem-servico-grid-body) #login-section {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-layout,
-body:has(#ordem-servico-grid-body) .dsc-access-management-layout {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-  width: 100%;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-toolbar {
-  gap: 8px;
-}
-
-body:has(#ordem-servico-grid-body) #ordem-servico-filter-form {
-  flex-wrap: nowrap;
-  align-items: stretch;
-  gap: 8px;
-}
-
-body:has(#ordem-servico-grid-body) #ordem-servico-filter-form .dsc-access-insert-button {
-  min-width: 138px;
-}
-
-body:has(#ordem-servico-grid-body) #ordem-servico-filter-form .dsc-access-import-button {
-  min-width: 118px;
-}
-
-body:has(#ordem-servico-grid-body) #ordem-servico-filter-form .dsc-btn {
-  min-width: 96px;
-}
-
 .dsc-status-banner {
   position: sticky;
   top: 0;
@@ -2212,30 +2158,6 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid-card {
   min-height: 0;
 }
 
-body:has(#ordem-servico-grid-body) .dsc-access-grid-card {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
-  padding: 8px 10px;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid-header {
-  margin-bottom: 6px;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid-header h2 {
-  font-size: 1rem;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid-top-scroll {
-  height: 12px;
-  margin-bottom: 4px;
-  padding-bottom: 0;
-}
-
 .dsc-access-grid-header {
   display: flex;
   align-items: flex-start;
@@ -2273,17 +2195,6 @@ body:has(#ordem-servico-grid-body) .dsc-access-grid-top-scroll {
   white-space: nowrap;
 }
 
-body:has(#ordem-servico-grid-body) .dsc-grid-page-size-label {
-  text-align: right;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-grid-page-size-field .dsc-form-control {
-  width: 88px;
-  min-height: 38px;
-  padding: 0;
-  border-radius: 14px;
-}
-
 #ordem-servico-page-size {
   min-height: 38px;
   padding: 0;
@@ -2318,32 +2229,11 @@ body:has(#ordem-servico-grid-body) .dsc-grid-page-size-field .dsc-form-control {
 }
 
 #ordem-servico-grid-wrapper {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: auto;
-  max-height: none;
-  overflow-y: auto;
   overflow-x: auto;
 }
 
 #ordem-servico-grid-feedback:empty {
   display: none;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-pagination {
-  margin-top: 6px;
-  gap: 6px;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-pagination .dsc-btn {
-  min-height: 28px;
-  min-width: 84px;
-  padding: 4px 8px;
-  font-size: 0.78rem;
-}
-
-body:has(#ordem-servico-grid-body) #ordem-servico-pagination-info {
-  font-size: 0.8rem;
 }
 
 .dsc-access-grid {
@@ -2524,28 +2414,6 @@ body:has(#ordem-servico-grid-body) .dsc-access-grid {
   width: 100%;
   min-width: 1200px;
   table-layout: fixed;
-  font-size: 0.72rem;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid th,
-body:has(#ordem-servico-grid-body) .dsc-access-grid td {
-  padding: 2px 3px;
-  font-size: 0.72rem;
-  line-height: 1.05;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid th {
-  font-size: 0.68rem;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-grid-actions {
-  gap: 2px;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-grid-action-button {
-  padding: 2px 5px;
-  font-size: 0.62rem;
-  line-height: 1;
 }
 
 body:has(#ordem-servico-grid-body) .dsc-grid-actions-column {

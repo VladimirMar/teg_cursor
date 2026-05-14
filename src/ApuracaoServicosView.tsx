@@ -6,7 +6,6 @@ import { listTipoEscolaItemsPaginated } from './services/tipoEscola'
 import type { TipoEscolaItem } from './services/tipoEscola'
 import {
   createApuracaoServicosItem,
-  deleteApuracaoServicosItem,
   listApuracaoServicosItemsPaginated,
   listApuracaoServicosOrdemServicoOptions,
   updateApuracaoServicosItem,
@@ -64,21 +63,80 @@ const parseFourDecimalInput = (value: string) => {
   return Number.isFinite(parsed) ? Number(parsed.toFixed(4)) : Number.NaN
 }
 
-const formatAuditDateTime = (value: string) => {
-  if (!value) {
-    return ''
+const formatDreDisplayLabel = (item: Pick<DreItem, 'sigla' | 'descricao'>) => {
+  return [item.sigla, item.descricao].filter(Boolean).join(' - ')
+}
+
+const formatTipoEscolaDisplayLabel = (item: Pick<TipoEscolaItem, 'sigla' | 'descricao'>) => {
+  return [item.sigla, item.descricao].filter(Boolean).join(' - ')
+}
+
+const formatDreFormDisplayLabel = (item: Pick<ApuracaoServicosItem, 'dreSigla' | 'dreDescricao'>) => {
+  return [item.dreSigla, item.dreDescricao].filter(Boolean).join(' - ')
+}
+
+const formatTipoEscolaFormDisplayLabel = (item: Pick<ApuracaoServicosItem, 'tipoEscolaSigla' | 'tipoEscolaDescricao'>) => {
+  return [item.tipoEscolaSigla, item.tipoEscolaDescricao].filter(Boolean).join(' - ')
+}
+
+const formatOrdemServicoFormDisplayLabel = (item: Pick<ApuracaoServicosItem, 'ordemServicoOsConcat' | 'ordemServicoTermoAdesao' | 'ordemServicoNumOs'>) => {
+  return item.ordemServicoOsConcat || [item.ordemServicoTermoAdesao, item.ordemServicoNumOs].filter(Boolean).join(' / ')
+}
+
+const formatOrdemServicoDisplayLabel = (item: ApuracaoServicosOrdemServicoOption) => {
+  const mainLabel = item.osConcat || [item.termoAdesao, item.numOs, item.revisao].filter(Boolean).join(' / ')
+  const suffix = [item.modalidadeDescricao, item.dreDescricao].filter(Boolean).join(' - ')
+  return suffix ? `${mainLabel} - ${suffix}` : mainLabel
+}
+
+const findDreByDisplayValue = (items: DreItem[], value: string) => {
+  const normalizedValue = value.trim().toLowerCase()
+  if (!normalizedValue) {
+    return null
   }
 
-  const parsedDate = new Date(value)
+  return items.find((item) => {
+    return item.codigo.toLowerCase() === normalizedValue
+      || formatDreOptionLabel(item).toLowerCase() === normalizedValue
+      || formatDreDisplayLabel(item).toLowerCase() === normalizedValue
+  }) ?? null
+}
 
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value
+const findTipoEscolaByDisplayValue = (items: TipoEscolaItem[], value: string) => {
+  const normalizedValue = value.trim().toLowerCase()
+  if (!normalizedValue) {
+    return null
   }
 
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'medium',
-  }).format(parsedDate)
+  return items.find((item) => {
+    return item.codigo.toLowerCase() === normalizedValue
+      || formatTipoEscolaOptionLabel(item).toLowerCase() === normalizedValue
+      || formatTipoEscolaDisplayLabel(item).toLowerCase() === normalizedValue
+  }) ?? null
+}
+
+const findOrdemServicoByDisplayValue = (items: ApuracaoServicosOrdemServicoOption[], value: string) => {
+  const normalizedValue = value.trim().toLowerCase()
+  if (!normalizedValue) {
+    return null
+  }
+
+  return items.find((item) => {
+    return item.codigo.toLowerCase() === normalizedValue
+      || formatOrdemServicoOptionLabel(item).toLowerCase() === normalizedValue
+      || formatOrdemServicoDisplayLabel(item).toLowerCase() === normalizedValue
+  }) ?? null
+}
+
+const findTipoPessoaByDisplayValue = (value: string) => {
+  const normalizedValue = value.trim().toLowerCase()
+  if (!normalizedValue) {
+    return null
+  }
+
+  return APURACAO_TIPO_PESSOA_OPTIONS.find((item) => {
+    return item.value.toLowerCase() === normalizedValue || item.label.toLowerCase() === normalizedValue
+  }) ?? null
 }
 
 const formatApuracaoServicosKey = (item: Pick<ApuracaoServicosKey, 'mesAno' | 'dreCodigo' | 'ordemServicoCodigo' | 'revisao' | 'tipoEscolaCodigo' | 'tipoPessoa'>) => {
@@ -94,11 +152,11 @@ const formatTipoEscolaOptionLabel = (item: Pick<TipoEscolaItem, 'codigo' | 'sigl
 }
 
 const formatDreGridLabel = (item: Pick<ApuracaoServicosItem, 'dreCodigo' | 'dreSigla' | 'dreDescricao'>) => {
-  return `${item.dreCodigo} - ${item.dreSigla} - ${item.dreDescricao}`
+  return item.dreSigla || item.dreDescricao || item.dreCodigo
 }
 
 const formatTipoEscolaGridLabel = (item: Pick<ApuracaoServicosItem, 'tipoEscolaCodigo' | 'tipoEscolaSigla' | 'tipoEscolaDescricao'>) => {
-  return `${item.tipoEscolaCodigo} - ${item.tipoEscolaSigla} - ${item.tipoEscolaDescricao}`
+  return item.tipoEscolaSigla || item.tipoEscolaDescricao || item.tipoEscolaCodigo
 }
 
 const formatOrdemServicoOptionLabel = (item: ApuracaoServicosOrdemServicoOption) => {
@@ -109,7 +167,7 @@ const formatOrdemServicoOptionLabel = (item: ApuracaoServicosOrdemServicoOption)
 
 const formatOrdemServicoGridLabel = (item: Pick<ApuracaoServicosItem, 'ordemServicoCodigo' | 'ordemServicoOsConcat' | 'ordemServicoTermoAdesao' | 'ordemServicoNumOs'>) => {
   const descriptor = item.ordemServicoOsConcat || [item.ordemServicoTermoAdesao, item.ordemServicoNumOs].filter(Boolean).join(' / ')
-  return descriptor ? `${item.ordemServicoCodigo} - ${descriptor}` : item.ordemServicoCodigo
+  return descriptor || item.ordemServicoCodigo
 }
 
 const getSortIndicator = (sortBy: ApuracaoServicosSortField, currentSortBy: ApuracaoServicosSortField, currentSortDirection: 'asc' | 'desc') => {
@@ -140,6 +198,9 @@ export default function ApuracaoServicosView() {
   const [items, setItems] = useState<ApuracaoServicosItem[]>([])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [filterDreCodigo, setFilterDreCodigo] = useState('')
+  const [filterTipoPessoa, setFilterTipoPessoa] = useState('')
+  const [filterRevisao, setFilterRevisao] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
@@ -149,7 +210,6 @@ export default function ApuracaoServicosView() {
   const [statusTone, setStatusTone] = useState<StatusTone>('idle')
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   const [dreOptions, setDreOptions] = useState<DreItem[]>([])
   const [tipoEscolaOptions, setTipoEscolaOptions] = useState<TipoEscolaItem[]>([])
@@ -163,10 +223,14 @@ export default function ApuracaoServicosView() {
 
   const [mesAno, setMesAno] = useState('')
   const [dreCodigo, setDreCodigo] = useState('')
+  const [dreDisplayValue, setDreDisplayValue] = useState('')
   const [ordemServicoCodigo, setOrdemServicoCodigo] = useState('')
+  const [ordemServicoDisplayValue, setOrdemServicoDisplayValue] = useState('')
   const [revisao, setRevisao] = useState('0')
   const [tipoEscolaCodigo, setTipoEscolaCodigo] = useState('')
+  const [tipoEscolaDisplayValue, setTipoEscolaDisplayValue] = useState('')
   const [tipoPessoa, setTipoPessoa] = useState<ApuracaoTipoPessoa>('PF')
+  const [tipoPessoaDisplayValue, setTipoPessoaDisplayValue] = useState(formatApuracaoTipoPessoaLabel('PF'))
   const [naoCadeirantePresencial, setNaoCadeirantePresencial] = useState('0')
   const [cadeirante, setCadeirante] = useState('0')
   const [atendimentoComplementarNaoCadeirante, setAtendimentoComplementarNaoCadeirante] = useState('0')
@@ -174,21 +238,24 @@ export default function ApuracaoServicosView() {
   const [continuaNaoCadeirante, setContinuaNaoCadeirante] = useState('0')
   const [continuaCadeirante, setContinuaCadeirante] = useState('0')
   const [kilometragem, setKilometragem] = useState('0,0000')
-  const [dataInclusao, setDataInclusao] = useState('')
-  const [dataAlteracao, setDataAlteracao] = useState('')
   const [formErrors, setFormErrors] = useState(emptyFormErrors)
 
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
   const isReadOnly = formMode === 'view'
+  const isKeyFieldLocked = isReadOnly || formMode === 'edit'
 
   const resetForm = useCallback(() => {
     setMesAno('')
     setDreCodigo('')
+    setDreDisplayValue('')
     setOrdemServicoCodigo('')
+    setOrdemServicoDisplayValue('')
     setRevisao('0')
     setTipoEscolaCodigo('')
+    setTipoEscolaDisplayValue('')
     setTipoPessoa('PF')
+    setTipoPessoaDisplayValue(formatApuracaoTipoPessoaLabel('PF'))
     setNaoCadeirantePresencial('0')
     setCadeirante('0')
     setAtendimentoComplementarNaoCadeirante('0')
@@ -196,12 +263,10 @@ export default function ApuracaoServicosView() {
     setContinuaNaoCadeirante('0')
     setContinuaCadeirante('0')
     setKilometragem('0,0000')
-    setDataInclusao('')
-    setDataAlteracao('')
     setFormErrors(emptyFormErrors)
     setEditingKey(null)
     setOrdemServicoOptions([])
-  }, [tipoPessoa])
+  }, [])
 
   const loadItems = useCallback(async (pageToLoad: number) => {
     setIsLoading(true)
@@ -209,8 +274,12 @@ export default function ApuracaoServicosView() {
     setStatusMessage('Carregando registros de apuracao de servicos...')
 
     try {
+      const parsedFilterRevisao = parseNonNegativeInteger(filterRevisao)
       const result = await listApuracaoServicosItemsPaginated({
         search: deferredSearch,
+        dreCodigo: filterDreCodigo,
+        revisao: Number.isInteger(parsedFilterRevisao) ? parsedFilterRevisao : undefined,
+        tipoPessoa: filterTipoPessoa as ApuracaoTipoPessoa | undefined,
         page: pageToLoad,
         pageSize: 20,
         sortBy,
@@ -231,7 +300,7 @@ export default function ApuracaoServicosView() {
     } finally {
       setIsLoading(false)
     }
-  }, [deferredSearch, sortBy, sortDirection])
+  }, [deferredSearch, filterDreCodigo, filterRevisao, filterTipoPessoa, sortBy, sortDirection])
 
   const loadStaticOptions = useCallback(async () => {
     setIsLoadingFormOptions(true)
@@ -272,7 +341,7 @@ export default function ApuracaoServicosView() {
     } finally {
       setIsLoadingOrdemServicoOptions(false)
     }
-  }, [])
+  }, [tipoPessoa])
 
   useEffect(() => {
     void loadStaticOptions()
@@ -297,6 +366,9 @@ export default function ApuracaoServicosView() {
 
   const handleClearFilter = () => {
     setSearch('')
+    setFilterDreCodigo('')
+    setFilterRevisao('')
+    setFilterTipoPessoa('')
     setPage(1)
   }
 
@@ -327,10 +399,14 @@ export default function ApuracaoServicosView() {
     })
     setMesAno(item.mesAno)
     setDreCodigo(item.dreCodigo)
+    setDreDisplayValue(formatDreFormDisplayLabel(item))
     setOrdemServicoCodigo(item.ordemServicoCodigo)
+    setOrdemServicoDisplayValue(formatOrdemServicoFormDisplayLabel(item))
     setRevisao(String(item.revisao))
     setTipoEscolaCodigo(item.tipoEscolaCodigo)
+    setTipoEscolaDisplayValue(formatTipoEscolaFormDisplayLabel(item))
     setTipoPessoa(item.tipoPessoa)
+    setTipoPessoaDisplayValue(formatApuracaoTipoPessoaLabel(item.tipoPessoa))
     setNaoCadeirantePresencial(String(item.naoCadeirantePresencial))
     setCadeirante(String(item.cadeirante))
     setAtendimentoComplementarNaoCadeirante(String(item.atendimentoComplementarNaoCadeirante))
@@ -338,8 +414,6 @@ export default function ApuracaoServicosView() {
     setContinuaNaoCadeirante(String(item.continuaNaoCadeirante))
     setContinuaCadeirante(String(item.continuaCadeirante))
     setKilometragem(item.kilometragem.replace('.', ','))
-    setDataInclusao(item.dataInclusao)
-    setDataAlteracao(item.dataAlteracao)
     setFormErrors(emptyFormErrors)
     setFormMode(nextMode)
     setIsFormVisible(true)
@@ -364,6 +438,34 @@ export default function ApuracaoServicosView() {
     resetForm()
     setStatusTone('idle')
     setStatusMessage('')
+  }
+
+  const handleDreDisplayChange = (value: string) => {
+    setDreDisplayValue(value)
+    const matchedItem = findDreByDisplayValue(dreOptions, value)
+    setDreCodigo(matchedItem?.codigo ?? '')
+    if (!matchedItem) {
+      setOrdemServicoCodigo('')
+      setOrdemServicoDisplayValue('')
+    }
+  }
+
+  const handleOrdemServicoDisplayChange = (value: string) => {
+    setOrdemServicoDisplayValue(value)
+    const matchedItem = findOrdemServicoByDisplayValue(ordemServicoOptions, value)
+    setOrdemServicoCodigo(matchedItem?.codigo ?? '')
+  }
+
+  const handleTipoEscolaDisplayChange = (value: string) => {
+    setTipoEscolaDisplayValue(value)
+    const matchedItem = findTipoEscolaByDisplayValue(tipoEscolaOptions, value)
+    setTipoEscolaCodigo(matchedItem?.codigo ?? '')
+  }
+
+  const handleTipoPessoaDisplayChange = (value: string) => {
+    setTipoPessoaDisplayValue(value)
+    const matchedItem = findTipoPessoaByDisplayValue(value)
+    setTipoPessoa(matchedItem?.value ?? ('' as ApuracaoTipoPessoa))
   }
 
   const buildPayload = (): ApuracaoServicosSaveItem | null => {
@@ -493,33 +595,6 @@ export default function ApuracaoServicosView() {
     }
   }
 
-  const handleDelete = async (item: ApuracaoServicosItem) => {
-    const confirmed = window.confirm(`Deseja excluir a apuracao de servicos ${formatApuracaoServicosKey(item)}?`)
-
-    if (!confirmed) {
-      return
-    }
-
-    setIsDeleting(true)
-    setStatusTone('idle')
-    setStatusMessage('Excluindo registro...')
-
-    try {
-      await deleteApuracaoServicosItem(item)
-      setStatusTone('success')
-      setStatusMessage('Apuracao de servicos excluida com sucesso.')
-      const nextPage = items.length === 1 && page > 1 ? page - 1 : page
-      setPage(nextPage)
-      await loadItems(nextPage)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao excluir a apuracao de servicos.'
-      setStatusTone('error')
-      setStatusMessage(message)
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
   return (
     <>
       <div className="content-copy">
@@ -536,7 +611,7 @@ export default function ApuracaoServicosView() {
             type="button"
             className="primary-button dre-insert-button"
             onClick={handleStartInsert}
-            disabled={isSaving || isDeleting || isLoadingFormOptions}
+            disabled={isSaving || isLoadingFormOptions}
           >
             Inserir registro
           </button>
@@ -549,6 +624,37 @@ export default function ApuracaoServicosView() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
+            <select
+              value={filterDreCodigo}
+              onChange={(event) => setFilterDreCodigo(event.target.value)}
+              disabled={isLoadingFormOptions}
+            >
+              <option value="">Todas as DREs</option>
+              {dreOptions.map((item) => (
+                <option key={item.codigo} value={item.codigo}>
+                  {formatDreOptionLabel(item)}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              placeholder="Revisao"
+              value={filterRevisao}
+              onChange={(event) => setFilterRevisao(normalizeIntegerInput(event.target.value))}
+            />
+            <select
+              value={filterTipoPessoa}
+              onChange={(event) => setFilterTipoPessoa(event.target.value)}
+            >
+              <option value="">Todos os tipos pessoa</option>
+              {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
             <button type="submit" className="secondary-button management-filter-button">
               Filtrar
             </button>
@@ -562,11 +668,6 @@ export default function ApuracaoServicosView() {
           <div
             className="management-modal-overlay"
             role="presentation"
-            onClick={(event) => {
-              if (event.target === event.currentTarget && !isSaving) {
-                handleCancelForm()
-              }
-            }}
           >
             <div
               className="management-modal-shell"
@@ -596,236 +697,229 @@ export default function ApuracaoServicosView() {
                   {formMode === 'view' ? 'Consulta de registro' : editingKey ? 'Alterar registro' : 'Novo registro'}
                 </p>
 
-                <label className="field-group" htmlFor="apuracao-servicos-mes-ano">
-                  <span>Mes/Ano</span>
-                  <input
-                    id="apuracao-servicos-mes-ano"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="mm/aaaa"
-                    value={mesAno}
-                    onChange={(event) => setMesAno(normalizeMonthYearInput(event.target.value))}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.mesAno)}
-                  />
-                  {formErrors.mesAno ? <strong className="field-error">{formErrors.mesAno}</strong> : null}
-                </label>
+                <div className="apuracao-servicos-section-card apuracao-servicos-primary-card">
+                  <div className="apuracao-servicos-meta-row">
+                    <label className="field-group" htmlFor="apuracao-servicos-mes-ano">
+                      <span>Mes/Ano</span>
+                      <input
+                        id="apuracao-servicos-mes-ano"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="mm/aaaa"
+                        value={mesAno}
+                        onChange={(event) => setMesAno(normalizeMonthYearInput(event.target.value))}
+                        disabled={isSaving || isKeyFieldLocked}
+                        aria-invalid={Boolean(formErrors.mesAno)}
+                      />
+                      {formErrors.mesAno ? <strong className="field-error">{formErrors.mesAno}</strong> : null}
+                    </label>
 
-                <label className="field-group" htmlFor="apuracao-servicos-dre">
-                  <span>DRE</span>
-                  <select
-                    id="apuracao-servicos-dre"
-                    value={dreCodigo}
-                    onChange={(event) => setDreCodigo(event.target.value)}
-                    disabled={isSaving || isReadOnly || isLoadingFormOptions}
-                  >
-                    <option value="">Selecione a DRE</option>
-                    {dreOptions.map((item) => (
-                      <option key={item.codigo} value={item.codigo}>
-                        {formatDreOptionLabel(item)}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.dreCodigo ? <strong className="field-error">{formErrors.dreCodigo}</strong> : null}
-                </label>
-
-                <label className="field-group" htmlFor="apuracao-servicos-os">
-                  <span>Ordem de Servico</span>
-                  <select
-                    id="apuracao-servicos-os"
-                    value={ordemServicoCodigo}
-                    onChange={(event) => setOrdemServicoCodigo(event.target.value)}
-                    disabled={isSaving || isReadOnly || isLoadingOrdemServicoOptions || !isValidMonthYear(mesAno) || !dreCodigo}
-                  >
-                    <option value="">Selecione a OS ativa</option>
-                    {ordemServicoOptions.map((item) => (
-                      <option key={item.codigo} value={item.codigo}>
-                        {formatOrdemServicoOptionLabel(item)}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.ordemServicoCodigo ? <strong className="field-error">{formErrors.ordemServicoCodigo}</strong> : null}
-                </label>
-
-                <label className="field-group" htmlFor="apuracao-servicos-revisao">
-                  <span>Revisao</span>
-                  <input
-                    id="apuracao-servicos-revisao"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={revisao}
-                    onChange={(event) => setRevisao(normalizeIntegerInput(event.target.value))}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.revisao)}
-                  />
-                  {formErrors.revisao ? <strong className="field-error">{formErrors.revisao}</strong> : null}
-                </label>
-
-                <label className="field-group" htmlFor="apuracao-servicos-tipo-escola">
-                  <span>Tipo Escola</span>
-                  <select
-                    id="apuracao-servicos-tipo-escola"
-                    value={tipoEscolaCodigo}
-                    onChange={(event) => setTipoEscolaCodigo(event.target.value)}
-                    disabled={isSaving || isReadOnly || isLoadingFormOptions}
-                  >
-                    <option value="">Selecione o tipo de escola</option>
-                    {tipoEscolaOptions.map((item) => (
-                      <option key={item.codigo} value={item.codigo}>
-                        {formatTipoEscolaOptionLabel(item)}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.tipoEscolaCodigo ? <strong className="field-error">{formErrors.tipoEscolaCodigo}</strong> : null}
-                </label>
-
-                <div className="field-group">
-                  <span>Tipo Pessoa</span>
-                  <div className="radio-group" role="radiogroup" aria-label="Tipo pessoa apuracao servicos">
-                    {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
-                      <label key={item.value} className="radio-option">
-                        <input
-                          type="radio"
-                          name="apuracao-servicos-tipo-pessoa"
-                          value={item.value}
-                          checked={tipoPessoa === item.value}
-                          onChange={(event) => setTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
-                          disabled={isSaving || isReadOnly}
-                        />
-                        <span>{item.label}</span>
-                      </label>
-                    ))}
+                    <label className="field-group" htmlFor="apuracao-servicos-revisao">
+                      <span>Revisao</span>
+                      <input
+                        id="apuracao-servicos-revisao"
+                        type="text"
+                        inputMode="numeric"
+                        value={revisao}
+                        onChange={(event) => setRevisao(normalizeIntegerInput(event.target.value))}
+                        disabled={isSaving || isKeyFieldLocked}
+                        aria-invalid={Boolean(formErrors.revisao)}
+                      />
+                      {formErrors.revisao ? <strong className="field-error">{formErrors.revisao}</strong> : null}
+                    </label>
                   </div>
-                  {formErrors.tipoPessoa ? <strong className="field-error">{formErrors.tipoPessoa}</strong> : null}
+
+                  <div className="apuracao-servicos-key-grid">
+                    <label className="field-group" htmlFor="apuracao-servicos-dre">
+                      <span>DRE</span>
+                      <input
+                        id="apuracao-servicos-dre"
+                        type="text"
+                        list="apuracao-servicos-dre-options"
+                        placeholder="Descritivo da DRE"
+                        value={dreDisplayValue}
+                        onChange={(event) => handleDreDisplayChange(event.target.value)}
+                        disabled={isSaving || isKeyFieldLocked || isLoadingFormOptions}
+                        aria-invalid={Boolean(formErrors.dreCodigo)}
+                      />
+                      <datalist id="apuracao-servicos-dre-options">
+                        {dreOptions.map((item) => (
+                            <option key={item.codigo} value={formatDreDisplayLabel(item)} />
+                        ))}
+                      </datalist>
+                      {formErrors.dreCodigo ? <strong className="field-error">{formErrors.dreCodigo}</strong> : null}
+                    </label>
+
+                    <label className="field-group" htmlFor="apuracao-servicos-os">
+                      <span>Ordem de Servico</span>
+                      <input
+                        id="apuracao-servicos-os"
+                        type="text"
+                        list="apuracao-servicos-os-options"
+                        placeholder="Descritivo da OS"
+                        value={ordemServicoDisplayValue}
+                        onChange={(event) => handleOrdemServicoDisplayChange(event.target.value)}
+                        disabled={isSaving || isKeyFieldLocked || isLoadingOrdemServicoOptions || !isValidMonthYear(mesAno) || !dreCodigo}
+                        aria-invalid={Boolean(formErrors.ordemServicoCodigo)}
+                      />
+                      <datalist id="apuracao-servicos-os-options">
+                        {ordemServicoOptions.map((item) => (
+                            <option key={item.codigo} value={formatOrdemServicoDisplayLabel(item)} />
+                        ))}
+                      </datalist>
+                      {formErrors.ordemServicoCodigo ? <strong className="field-error">{formErrors.ordemServicoCodigo}</strong> : null}
+                    </label>
+
+                    <label className="field-group" htmlFor="apuracao-servicos-tipo-escola">
+                      <span>Tipo Escola</span>
+                      <input
+                        id="apuracao-servicos-tipo-escola"
+                        type="text"
+                        list="apuracao-servicos-tipo-escola-options"
+                        placeholder="Descritivo do tipo escola"
+                        value={tipoEscolaDisplayValue}
+                        onChange={(event) => handleTipoEscolaDisplayChange(event.target.value)}
+                        disabled={isSaving || isKeyFieldLocked || isLoadingFormOptions}
+                        aria-invalid={Boolean(formErrors.tipoEscolaCodigo)}
+                      />
+                      <datalist id="apuracao-servicos-tipo-escola-options">
+                        {tipoEscolaOptions.map((item) => (
+                            <option key={item.codigo} value={formatTipoEscolaDisplayLabel(item)} />
+                        ))}
+                      </datalist>
+                      {formErrors.tipoEscolaCodigo ? <strong className="field-error">{formErrors.tipoEscolaCodigo}</strong> : null}
+                    </label>
+
+                    <label className="field-group" htmlFor="apuracao-servicos-tipo-pessoa">
+                      <span>Tipo Pessoa</span>
+                      <input
+                        id="apuracao-servicos-tipo-pessoa"
+                        type="text"
+                        list="apuracao-servicos-tipo-pessoa-options"
+                        placeholder="Descritivo do tipo pessoa"
+                        value={tipoPessoaDisplayValue}
+                        onChange={(event) => handleTipoPessoaDisplayChange(event.target.value)}
+                        disabled={isSaving || isKeyFieldLocked}
+                        aria-invalid={Boolean(formErrors.tipoPessoa)}
+                      />
+                      <datalist id="apuracao-servicos-tipo-pessoa-options">
+                        {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
+                            <option key={item.value} value={item.label} />
+                        ))}
+                      </datalist>
+                      {formErrors.tipoPessoa ? <strong className="field-error">{formErrors.tipoPessoa}</strong> : null}
+                    </label>
+                  </div>
                 </div>
 
-                <label className="field-group" htmlFor="apuracao-servicos-nc-pres">
-                  <span>Nao cadeirante presencial</span>
-                  <input
-                    id="apuracao-servicos-nc-pres"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={naoCadeirantePresencial}
-                    onChange={(event) => setNaoCadeirantePresencial(normalizeIntegerInput(event.target.value))}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.naoCadeirantePresencial)}
-                  />
-                  {formErrors.naoCadeirantePresencial ? <strong className="field-error">{formErrors.naoCadeirantePresencial}</strong> : null}
-                </label>
+                <div className="apuracao-servicos-section-card apuracao-servicos-secondary-card">
+                  <div className="apuracao-servicos-quantity-grid">
+                  <label className="field-group apuracao-servicos-compact-field" htmlFor="apuracao-servicos-nc-pres">
+                    <span>Nao cadeirante<br />presencial</span>
+                    <input
+                      id="apuracao-servicos-nc-pres"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={naoCadeirantePresencial}
+                      onChange={(event) => setNaoCadeirantePresencial(normalizeIntegerInput(event.target.value))}
+                      disabled={isSaving || isReadOnly}
+                      aria-invalid={Boolean(formErrors.naoCadeirantePresencial)}
+                    />
+                    {formErrors.naoCadeirantePresencial ? <strong className="field-error">{formErrors.naoCadeirantePresencial}</strong> : null}
+                  </label>
 
-                <label className="field-group" htmlFor="apuracao-servicos-cad">
-                  <span>Cadeirante</span>
-                  <input
-                    id="apuracao-servicos-cad"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={cadeirante}
-                    onChange={(event) => setCadeirante(normalizeIntegerInput(event.target.value))}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.cadeirante)}
-                  />
-                  {formErrors.cadeirante ? <strong className="field-error">{formErrors.cadeirante}</strong> : null}
-                </label>
+                  <label className="field-group apuracao-servicos-compact-field" htmlFor="apuracao-servicos-cad">
+                    <span>Cadeirante</span>
+                    <input
+                      id="apuracao-servicos-cad"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={cadeirante}
+                      onChange={(event) => setCadeirante(normalizeIntegerInput(event.target.value))}
+                      disabled={isSaving || isReadOnly}
+                      aria-invalid={Boolean(formErrors.cadeirante)}
+                    />
+                    {formErrors.cadeirante ? <strong className="field-error">{formErrors.cadeirante}</strong> : null}
+                  </label>
 
-                <label className="field-group" htmlFor="apuracao-servicos-ac-nc">
-                  <span>Atend. compl. nao cadeirante</span>
-                  <input
-                    id="apuracao-servicos-ac-nc"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={atendimentoComplementarNaoCadeirante}
-                    onChange={(event) => setAtendimentoComplementarNaoCadeirante(normalizeIntegerInput(event.target.value))}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.atendimentoComplementarNaoCadeirante)}
-                  />
-                  {formErrors.atendimentoComplementarNaoCadeirante ? <strong className="field-error">{formErrors.atendimentoComplementarNaoCadeirante}</strong> : null}
-                </label>
+                  <label className="field-group apuracao-servicos-compact-field" htmlFor="apuracao-servicos-ac-nc">
+                    <span>Atend. compl.<br />nao cadeirante</span>
+                    <input
+                      id="apuracao-servicos-ac-nc"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={atendimentoComplementarNaoCadeirante}
+                      onChange={(event) => setAtendimentoComplementarNaoCadeirante(normalizeIntegerInput(event.target.value))}
+                      disabled={isSaving || isReadOnly}
+                      aria-invalid={Boolean(formErrors.atendimentoComplementarNaoCadeirante)}
+                    />
+                    {formErrors.atendimentoComplementarNaoCadeirante ? <strong className="field-error">{formErrors.atendimentoComplementarNaoCadeirante}</strong> : null}
+                  </label>
 
-                <label className="field-group" htmlFor="apuracao-servicos-ac-cad">
-                  <span>Atend. compl. cadeirante</span>
-                  <input
-                    id="apuracao-servicos-ac-cad"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={atendimentoComplementarCadeirante}
-                    onChange={(event) => setAtendimentoComplementarCadeirante(normalizeIntegerInput(event.target.value))}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.atendimentoComplementarCadeirante)}
-                  />
-                  {formErrors.atendimentoComplementarCadeirante ? <strong className="field-error">{formErrors.atendimentoComplementarCadeirante}</strong> : null}
-                </label>
+                  <label className="field-group apuracao-servicos-compact-field" htmlFor="apuracao-servicos-ac-cad">
+                    <span>Atend. compl.<br />cadeirante</span>
+                    <input
+                      id="apuracao-servicos-ac-cad"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={atendimentoComplementarCadeirante}
+                      onChange={(event) => setAtendimentoComplementarCadeirante(normalizeIntegerInput(event.target.value))}
+                      disabled={isSaving || isReadOnly}
+                      aria-invalid={Boolean(formErrors.atendimentoComplementarCadeirante)}
+                    />
+                    {formErrors.atendimentoComplementarCadeirante ? <strong className="field-error">{formErrors.atendimentoComplementarCadeirante}</strong> : null}
+                  </label>
 
-                <label className="field-group" htmlFor="apuracao-servicos-cont-nc">
-                  <span>Continua nao cadeirante</span>
-                  <input
-                    id="apuracao-servicos-cont-nc"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={continuaNaoCadeirante}
-                    onChange={(event) => setContinuaNaoCadeirante(normalizeIntegerInput(event.target.value))}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.continuaNaoCadeirante)}
-                  />
-                  {formErrors.continuaNaoCadeirante ? <strong className="field-error">{formErrors.continuaNaoCadeirante}</strong> : null}
-                </label>
+                  <label className="field-group apuracao-servicos-compact-field" htmlFor="apuracao-servicos-cont-nc">
+                    <span>Continua<br />nao cadeirante</span>
+                    <input
+                      id="apuracao-servicos-cont-nc"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={continuaNaoCadeirante}
+                      onChange={(event) => setContinuaNaoCadeirante(normalizeIntegerInput(event.target.value))}
+                      disabled={isSaving || isReadOnly}
+                      aria-invalid={Boolean(formErrors.continuaNaoCadeirante)}
+                    />
+                    {formErrors.continuaNaoCadeirante ? <strong className="field-error">{formErrors.continuaNaoCadeirante}</strong> : null}
+                  </label>
 
-                <label className="field-group" htmlFor="apuracao-servicos-cont-cad">
-                  <span>Continua cadeirante</span>
-                  <input
-                    id="apuracao-servicos-cont-cad"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={continuaCadeirante}
-                    onChange={(event) => setContinuaCadeirante(normalizeIntegerInput(event.target.value))}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.continuaCadeirante)}
-                  />
-                  {formErrors.continuaCadeirante ? <strong className="field-error">{formErrors.continuaCadeirante}</strong> : null}
-                </label>
+                  <label className="field-group apuracao-servicos-compact-field" htmlFor="apuracao-servicos-cont-cad">
+                    <span>Continua<br />cadeirante</span>
+                    <input
+                      id="apuracao-servicos-cont-cad"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={continuaCadeirante}
+                      onChange={(event) => setContinuaCadeirante(normalizeIntegerInput(event.target.value))}
+                      disabled={isSaving || isReadOnly}
+                      aria-invalid={Boolean(formErrors.continuaCadeirante)}
+                    />
+                    {formErrors.continuaCadeirante ? <strong className="field-error">{formErrors.continuaCadeirante}</strong> : null}
+                  </label>
 
-                <label className="field-group" htmlFor="apuracao-servicos-km">
-                  <span>Kilometragem</span>
-                  <input
-                    id="apuracao-servicos-km"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0,0000"
-                    value={kilometragem}
-                    onChange={(event) => setKilometragem(event.target.value)}
-                    disabled={isSaving || isReadOnly}
-                    aria-invalid={Boolean(formErrors.kilometragem)}
-                  />
-                  {formErrors.kilometragem ? <strong className="field-error">{formErrors.kilometragem}</strong> : null}
-                </label>
-
-                <label className="field-group" htmlFor="apuracao-servicos-data-inclusao">
-                  <span>Data Inclusao</span>
-                  <input
-                    id="apuracao-servicos-data-inclusao"
-                    type="text"
-                    value={formatAuditDateTime(dataInclusao)}
-                    readOnly
-                    disabled
-                  />
-                </label>
-
-                <label className="field-group" htmlFor="apuracao-servicos-data-alteracao">
-                  <span>Data Alteracao</span>
-                  <input
-                    id="apuracao-servicos-data-alteracao"
-                    type="text"
-                    value={formatAuditDateTime(dataAlteracao)}
-                    readOnly
-                    disabled
-                  />
-                </label>
+                  <label className="field-group apuracao-servicos-compact-field" htmlFor="apuracao-servicos-km">
+                    <span>Kilometragem</span>
+                    <input
+                      id="apuracao-servicos-km"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0,0000"
+                      value={kilometragem}
+                      onChange={(event) => setKilometragem(event.target.value)}
+                      disabled={isSaving || isReadOnly}
+                      aria-invalid={Boolean(formErrors.kilometragem)}
+                    />
+                    {formErrors.kilometragem ? <strong className="field-error">{formErrors.kilometragem}</strong> : null}
+                  </label>
+                </div>
+                </div>
 
                 <p className={`status-message status-${statusTone}`} aria-live="polite">
                   {isLoadingOrdemServicoOptions ? 'Carregando ordens de servico ativas...' : statusMessage}
@@ -884,13 +978,6 @@ export default function ApuracaoServicosView() {
                       Tipo Escola <span>{getSortIndicator('tipoEscolaDescricao', sortBy, sortDirection)}</span>
                     </button>
                   </th>
-                  <th>Qtds.</th>
-                  <th>Km</th>
-                  <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('dataAlteracao')}>
-                      Data Alteracao <span>{getSortIndicator('dataAlteracao', sortBy, sortDirection)}</span>
-                    </button>
-                  </th>
                   <th className="dre-actions-column">Acoes</th>
                 </tr>
               </thead>
@@ -904,20 +991,12 @@ export default function ApuracaoServicosView() {
                     <td>{formatApuracaoTipoPessoaLabel(item.tipoPessoa)}</td>
                     <td>{formatTipoEscolaGridLabel(item)}</td>
                     <td>
-                      {item.naoCadeirantePresencial}/{item.cadeirante}/{item.atendimentoComplementarNaoCadeirante}/{item.atendimentoComplementarCadeirante}/{item.continuaNaoCadeirante}/{item.continuaCadeirante}
-                    </td>
-                    <td>{item.kilometragem}</td>
-                    <td>{formatAuditDateTime(item.dataAlteracao || item.dataInclusao)}</td>
-                    <td>
                       <div className="dre-row-actions">
                         <button type="button" className="row-action-button" onClick={() => handleStartView(item)}>
                           Consulta
                         </button>
                         <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEdit(item)}>
                           Alterar
-                        </button>
-                        <button type="button" className="row-action-button row-action-delete" onClick={() => void handleDelete(item)}>
-                          Excluir
                         </button>
                       </div>
                     </td>

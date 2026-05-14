@@ -2611,6 +2611,36 @@ const createHttpError = (statusCode, message) => {
   return error
 }
 
+const ensurePreviousApuracaoFinanceiraRevisionIsConcluded = async ({ mesAno, revisao, tipoPessoa, dreRecords }, executor = pool) => {
+  if (!Number.isInteger(revisao) || revisao <= 0) {
+    return
+  }
+
+  const previousRevision = revisao - 1
+
+  for (const dreRecord of dreRecords) {
+    const previousRevisionResult = await executor.query(
+      `SELECT BTRIM(COALESCE(situacao, '')) AS situacao
+       FROM apuracao_financeira
+       WHERE mes_ano = $1
+         AND CAST(dre_codigo AS text) = $2
+         AND revisao = $3
+         AND BTRIM(tipo_pessoa) = $4
+       LIMIT 1`,
+      [mesAno, dreRecord.codigo, previousRevision, tipoPessoa],
+    )
+
+    const previousSituacao = normalizeApuracaoFinanceiraStatus(previousRevisionResult.rows[0]?.situacao)
+
+    if (previousSituacao !== 'Concluido') {
+      throw createHttpError(
+        409,
+        `A revisao anterior numero ${previousRevision} nao foi concluida para a DRE ${dreRecord.sigla || dreRecord.codigo}.`,
+      )
+    }
+  }
+}
+
 const acquireApuracaoFinanceiraProcessingLock = async ({ mesAno, usuario }) => {
   const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
   const normalizedUsuario = normalizeAuditActor(usuario || 'USUARIO') || 'USUARIO'
@@ -2742,6 +2772,13 @@ const processApuracaoFinanceiraSelections = async ({
 
     dreRecords.push(dreRecord)
   }
+
+  await ensurePreviousApuracaoFinanceiraRevisionIsConcluded({
+    mesAno: normalizedMesAno,
+    revisao: normalizedRevisao,
+    tipoPessoa: normalizedTipoPessoa,
+    dreRecords,
+  }, executor)
 
   const tipoEscolaItems = await listTipoEscolaAtivaItems(executor)
 
@@ -15038,6 +15075,30 @@ const ensureDatabaseSchema = async () => {
   await pool.query('UPDATE apuracao_servicos SET cont_nc = 0 WHERE cont_nc IS NULL OR cont_nc < 0')
   await pool.query('UPDATE apuracao_servicos SET cont_cad = 0 WHERE cont_cad IS NULL OR cont_cad < 0')
   await pool.query('UPDATE apuracao_servicos SET km = 0 WHERE km IS NULL OR km < 0')
+  const duplicateApuracaoServicosResult = await pool.query(`
+    WITH ranked_rows AS (
+      SELECT
+        ctid,
+        ROW_NUMBER() OVER (
+          PARTITION BY
+            BTRIM(mes_ano),
+            dre_codigo,
+            ordem_servico_codigo,
+            COALESCE(revisao, 0),
+            tipo_escola_codigo,
+            COALESCE(BTRIM(tipo_pessoa), 'PF')
+          ORDER BY data_alteracao DESC NULLS LAST, data_inclusao DESC NULLS LAST, ctid DESC
+        ) AS row_number
+      FROM apuracao_servicos
+    )
+    DELETE FROM apuracao_servicos target
+    USING ranked_rows
+    WHERE target.ctid = ranked_rows.ctid
+      AND ranked_rows.row_number > 1
+  `)
+  if (duplicateApuracaoServicosResult.rowCount > 0) {
+    console.warn(`Duplicidades removidas de apuracao_servicos: ${duplicateApuracaoServicosResult.rowCount}`)
+  }
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN mes_ano SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN dre_codigo SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN ordem_servico_codigo SET NOT NULL')
@@ -15655,8 +15716,12 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === '/api/apuracao-financeira') {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeDreOperationalCode(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const revisaoFilter = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
-      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
       const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'mesAno')
       const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
         ? 'ASC'
@@ -15670,15 +15735,15 @@ const server = createServer(async (request, response) => {
           ? `BTRIM(CAST(dre.descricao AS text)) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.revisao DESC`
           : sortBy === 'tipoPessoa'
             ? `BTRIM(apuracao_financeira.tipo_pessoa) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-          : sortBy === 'revisao'
-            ? `apuracao_financeira.revisao ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-            : sortBy === 'situacao'
-              ? `BTRIM(apuracao_financeira.situacao) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-              : sortBy === 'dataInclusao'
-                ? `apuracao_financeira.data_inclusao ${sortDirection} NULLS LAST, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-                : sortBy === 'dataAlteracao'
-                  ? `apuracao_financeira.data_alteracao ${sortDirection} NULLS LAST, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-                  : `${apuracaoFinanceiraMesAnoOrderClause} ${sortDirection}, apuracao_financeira.dre_codigo ASC, apuracao_financeira.revisao ASC`
+            : sortBy === 'revisao'
+              ? `apuracao_financeira.revisao ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+              : sortBy === 'situacao'
+                ? `BTRIM(apuracao_financeira.situacao) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+                : sortBy === 'dataInclusao'
+                  ? `apuracao_financeira.data_inclusao ${sortDirection} NULLS LAST, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+                  : sortBy === 'dataAlteracao'
+                    ? `apuracao_financeira.data_alteracao ${sortDirection} NULLS LAST, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+                    : `${apuracaoFinanceiraMesAnoOrderClause} ${sortDirection}, apuracao_financeira.dre_codigo ASC, apuracao_financeira.revisao ASC`
 
       if (search) {
         values.push(`%${search}%`)
@@ -15690,6 +15755,26 @@ const server = createServer(async (request, response) => {
           OR BTRIM(apuracao_financeira.tipo_pessoa) ILIKE UPPER($${values.length})
           OR BTRIM(apuracao_financeira.situacao) ILIKE $${values.length}
         )`)
+      }
+
+      if (mesAno) {
+        values.push(mesAno)
+        filters.push(`BTRIM(apuracao_financeira.mes_ano) = $${values.length}`)
+      }
+
+      if (dreCodigo) {
+        values.push(dreCodigo)
+        filters.push(`CAST(apuracao_financeira.dre_codigo AS text) = $${values.length}`)
+      }
+
+      if (Number.isInteger(revisaoFilter) && revisaoFilter >= 0) {
+        values.push(revisaoFilter)
+        filters.push(`apuracao_financeira.revisao = $${values.length}`)
+      }
+
+      if (tipoPessoa) {
+        values.push(tipoPessoa)
+        filters.push(`BTRIM(apuracao_financeira.tipo_pessoa) = $${values.length}`)
       }
 
       const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''

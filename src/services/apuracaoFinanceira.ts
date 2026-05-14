@@ -99,6 +99,10 @@ type ApuracaoFinanceiraProcessResponse = {
 
 export type ApuracaoFinanceiraListParams = {
   search?: string
+  mesAno?: string
+  dreCodigo?: string
+  revisao?: number
+  tipoPessoa?: ApuracaoTipoPessoa
   page?: number
   pageSize?: number
   sortBy?: ApuracaoFinanceiraSortField
@@ -152,6 +156,22 @@ export async function listApuracaoFinanceiraItemsPaginated(params: ApuracaoFinan
 
   if (params.search?.trim()) {
     queryParams.set('search', params.search.trim())
+  }
+
+  if (params.mesAno?.trim()) {
+    queryParams.set('mesAno', params.mesAno.trim())
+  }
+
+  if (params.dreCodigo?.trim()) {
+    queryParams.set('dreCodigo', params.dreCodigo.trim())
+  }
+
+  if (typeof params.revisao === 'number') {
+    queryParams.set('revisao', String(params.revisao))
+  }
+
+  if (params.tipoPessoa?.trim()) {
+    queryParams.set('tipoPessoa', params.tipoPessoa.trim())
   }
 
   if (params.page) {
