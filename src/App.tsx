@@ -1,7 +1,11 @@
 import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react'
 import type { FormEvent, MouseEvent } from 'react'
 import './App.css'
+import AcessoPaginaView from './AcessoPaginaView'
 import ApuracaoServicosView from './ApuracaoServicosView'
+import ApuracaoServicosStatusView from './ApuracaoServicosStatusView'
+import PerfilAcessoView from './PerfilAcessoView'
+import PerfilView from './PerfilView'
 import { authenticate } from './services/auth'
 import { createDreItem, deleteDreItem, listDreItemsPaginated, updateDreItem } from './services/dre'
 import type { DreItem } from './services/dre'
@@ -178,7 +182,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apuracaoServicosStatus' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -368,6 +372,9 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'parametroVeiculo':
       return ['cadastros', 'cadastrosFinanceiro']
     case 'acesso':
+    case 'acessoPagina':
+    case 'perfil':
+    case 'perfilAcesso':
     case 'loginDre':
       return ['acesso']
     default:
@@ -1180,7 +1187,6 @@ function App() {
   const [apuracaoFinanceiraTipoPessoa, setApuracaoFinanceiraTipoPessoa] = useState<ApuracaoFinanceiraTipoPessoaFormValue>('TODOS')
   const [apuracaoFinanceiraTipoPessoaError, setApuracaoFinanceiraTipoPessoaError] = useState('')
   const [apuracaoFinanceiraSituacao, setApuracaoFinanceiraSituacao] = useState<ApuracaoFinanceiraStatus>(APURACAO_FINANCEIRA_STATUS_OPTIONS[0])
-  const [apuracaoFinanceiraSituacaoError, setApuracaoFinanceiraSituacaoError] = useState('')
   const [apuracaoFinanceiraStatusMessage, setApuracaoFinanceiraStatusMessage] = useState('')
   const [apuracaoFinanceiraStatusTone, setApuracaoFinanceiraStatusTone] = useState<StatusTone>('idle')
   const [apuracaoFinanceiraDreOptions, setApuracaoFinanceiraDreOptions] = useState<DreItem[]>([])
@@ -3419,7 +3425,6 @@ function App() {
     setApuracaoFinanceiraTipoPessoa('TODOS')
     setApuracaoFinanceiraTipoPessoaError('')
     setApuracaoFinanceiraSituacao(APURACAO_FINANCEIRA_STATUS_OPTIONS[0])
-    setApuracaoFinanceiraSituacaoError('')
     setEditingApuracaoFinanceiraKey(null)
     setApuracaoFinanceiraFormMode('create')
   }, [])
@@ -4423,7 +4428,6 @@ function App() {
     setApuracaoFinanceiraTipoPessoa(row.tipoPessoaFormValue)
     setApuracaoFinanceiraTipoPessoaError('')
     setApuracaoFinanceiraSituacao(item.situacao)
-    setApuracaoFinanceiraSituacaoError('')
     setApuracaoFinanceiraStatusTone('idle')
     setApuracaoFinanceiraStatusMessage(`Consulta do registro ${item.mesAno} / ${row.dreText} / ${item.revisao} / ${row.tipoPessoaLabel}.`)
     setIsApuracaoFinanceiraFormVisible(true)
@@ -5195,7 +5199,6 @@ function App() {
     setApuracaoFinanceiraSelectedDresError('')
     setApuracaoFinanceiraRevisaoError('')
     setApuracaoFinanceiraTipoPessoaError('')
-    setApuracaoFinanceiraSituacaoError('')
 
     if (!isValidMonthYear(normalizedMesAno)) {
       setApuracaoFinanceiraMesAnoError('Mes/ano invalido. Use o formato mm/aaaa.')
@@ -5223,7 +5226,6 @@ function App() {
     }
 
     if (!APURACAO_FINANCEIRA_STATUS_OPTIONS.includes(apuracaoFinanceiraSituacao)) {
-      setApuracaoFinanceiraSituacaoError('Situacao invalida.')
       hasError = true
     }
 
@@ -7026,6 +7028,12 @@ function App() {
                     >
                       Apuracao Servicos
                     </li>
+                    <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoServicosStatus' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('apuracaoServicosStatus')}
+                    >
+                      Aprovacao Digitacao
+                    </li>
                   </ul>
                 </li>
               </ul>
@@ -7185,7 +7193,7 @@ function App() {
             </li>
             <li className="menu-group">
               <div
-                className={`menu-item menu-item-toggle ${activeView === 'acesso' ? 'menu-item-active' : ''}`}
+                className={`menu-item menu-item-toggle ${['acesso', 'acessoPagina', 'perfil', 'perfilAcesso', 'loginDre'].includes(activeView) ? 'menu-item-active' : ''}`}
                 onClick={() => toggleMenuGroup('acesso')}
                 role="button"
                 aria-expanded={!collapsedMenuGroups.acesso}
@@ -7209,6 +7217,24 @@ function App() {
                 <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.acesso ? '▸' : '▾'}</span>
               </div>
               <ul className={`menu-sublist ${collapsedMenuGroups.acesso ? 'menu-sublist-hidden' : ''}`}>
+                <li
+                  className={`menu-subitem ${activeView === 'acessoPagina' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('acessoPagina')}
+                >
+                  Acesso Pagina
+                </li>
+                <li
+                  className={`menu-subitem ${activeView === 'perfil' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('perfil')}
+                >
+                  Perfil
+                </li>
+                <li
+                  className={`menu-subitem ${activeView === 'perfilAcesso' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('perfilAcesso')}
+                >
+                  PerfilAcesso
+                </li>
                 <li
                   className={`menu-subitem ${activeView === 'loginDre' ? 'menu-subitem-active' : ''}`}
                   onClick={() => setActiveView('loginDre')}
@@ -7603,7 +7629,7 @@ function App() {
                     <div className="management-card management-modal-form-card dashboard-drilldown-card">
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Dashboard OrdemServico</p>
+                          <p className="management-modal-kicker">Dashboard OrdemServico - DASHDET001</p>
                           <h2 id="dashboard-drilldown-title">
                             {dashboardDrillDownContext
                               ? [
@@ -7729,7 +7755,7 @@ function App() {
                     <div className="management-card management-modal-form-card dashboard-os-popup-card">
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Dashboard OrdemServico</p>
+                          <p className="management-modal-kicker">Dashboard OrdemServico - OSPOPUP002</p>
                           <h2 id="dashboard-os-popup-title">Formulario de OS</h2>
                         </div>
                         <button
@@ -7816,7 +7842,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateDre} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <p className="management-modal-kicker">Cadastro administrativo - DREFORM003</p>
                           <h2 id="dre-modal-title">DRE</h2>
                         </div>
                         <button
@@ -8050,7 +8076,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateModalidade} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <p className="management-modal-kicker">Cadastro administrativo - MODALID004</p>
                           <h2 id="modalidade-modal-title">MODALIDADE</h2>
                         </div>
                         <button
@@ -8265,7 +8291,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateCondicao} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <p className="management-modal-kicker">Cadastro administrativo - CONDICA005</p>
                           <h2 id="condicao-modal-title">CONDICAO</h2>
                         </div>
                         <button
@@ -8524,7 +8550,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateTipoPgto} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - TIPOPAG006</p>
                           <h2 id="tipo-pgto-modal-title">TIPO DE PAGAMENTO</h2>
                         </div>
                         <button
@@ -8739,7 +8765,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateTipoEscola} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - TIPESCO007</p>
                           <h2 id="tipo-escola-modal-title">TIPO ESCOLA</h2>
                         </div>
                         <button
@@ -8973,7 +8999,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateAliquotaOptante} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - ALIQOPT008</p>
                           <h2 id="aliquota-optante-modal-title">ALIQUOTA OPTANTE</h2>
                         </div>
                         <button
@@ -9166,6 +9192,8 @@ function App() {
           </>
         ) : activeView === 'apuracaoServicos' ? (
           <ApuracaoServicosView />
+        ) : activeView === 'apuracaoServicosStatus' ? (
+          <ApuracaoServicosStatusView />
         ) : activeView === 'modalBancadaTpPagtoCondicao' ? (
           <>
             <div className="content-copy">
@@ -9266,7 +9294,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateModalBancadaTpPagtoCondicao} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - MBTPCON009</p>
                           <h2 id="modal-bancada-tp-pagto-condicao-modal-title">MODALIDADE X BANCADA X PAGAMENTO X CONDICAO</h2>
                         </div>
                         <button
@@ -9553,7 +9581,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateModalBancadaTpPagtoCondicaoValor} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - MBTPVAL010</p>
                           <h2 id="modal-bancada-tp-pagto-condicao-valor-modal-title">MODALIDADE X BANCADA X PAGAMENTO X CONDICAO VALOR</h2>
                         </div>
                         <button
@@ -9812,7 +9840,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateDiasLetivos} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - DIALETV011</p>
                           <h2 id="dias-letivos-modal-title">DIAS LETIVOS</h2>
                         </div>
                         <button
@@ -10063,7 +10091,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateKmValor} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - KMVALOR012</p>
                           <h2 id="km-valor-modal-title">KM_VALOR</h2>
                         </div>
                         <button
@@ -10335,7 +10363,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateContinuaValor} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - CNTVALR013</p>
                           <h2 id="continua-valor-modal-title">CONTINUA_VALOR</h2>
                         </div>
                         <button
@@ -10589,7 +10617,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateTipoBancada} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <p className="management-modal-kicker">Cadastro administrativo - TIPBANC014</p>
                           <h2 id="tipo-bancada-modal-title">TIPO DE BANCADA</h2>
                         </div>
                         <button
@@ -10896,7 +10924,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateTitular} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <p className="management-modal-kicker">Cadastro administrativo - TITUCRM015</p>
                           <h2 id="titular-modal-title">TITULAR DO CRM</h2>
                         </div>
                         <button
@@ -11133,7 +11161,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateMarcaModelo} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <p className="management-modal-kicker">Cadastro administrativo - MARCMOD016</p>
                           <h2 id="marca-modelo-modal-title">MARCA/MODELO</h2>
                         </div>
                         <button
@@ -11376,7 +11404,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateParametroVeiculo} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro financeiro</p>
+                          <p className="management-modal-kicker">Cadastro financeiro - PARVEIC017</p>
                           <h2 id="parametro-veiculo-modal-title">PARAMETRO PGTO VEICULO</h2>
                         </div>
                         <button
@@ -11650,7 +11678,7 @@ function App() {
                     <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleCreateSeguradora} noValidate>
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Cadastro administrativo</p>
+                          <p className="management-modal-kicker">Cadastro administrativo - SEGURAD018</p>
                           <h2 id="seguradora-modal-title">SEGURADORAS</h2>
                         </div>
                         <button
@@ -11862,6 +11890,42 @@ function App() {
                 title="Controle de acesso"
               />
             </div>
+          </>
+        ) : activeView === 'perfil' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Seguranca administrativa</p>
+              <h2 id="content-title">Tabela Perfil</h2>
+              <p className="content-description">
+                Consulte, inclua, altere e exclua os perfis operacionais no mesmo layout aplicado ao cadastro de DRE.
+              </p>
+            </div>
+
+            <PerfilView />
+          </>
+        ) : activeView === 'acessoPagina' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Seguranca administrativa</p>
+              <h2 id="content-title">Acesso Pagina</h2>
+              <p className="content-description">
+                Consulte, inclua, altere e exclua acessos de pagina com classificacao entre menu e formulario no mesmo layout aplicado ao cadastro de Perfil.
+              </p>
+            </div>
+
+            <AcessoPaginaView />
+          </>
+        ) : activeView === 'perfilAcesso' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Seguranca administrativa</p>
+              <h2 id="content-title">PerfilAcesso</h2>
+              <p className="content-description">
+                Consulte, inclua, altere e exclua o cruzamento entre Perfil e Acesso Pagina com nivel de permissao por consulta, alteracao, exclusao ou todos.
+              </p>
+            </div>
+
+            <PerfilAcessoView />
           </>
         ) : activeView === 'loginDre' ? (
           <>
@@ -12087,7 +12151,7 @@ function App() {
                     >
                       <div className="management-modal-header">
                         <div>
-                          <p className="management-modal-kicker">Operacional financeiro</p>
+                          <p className="management-modal-kicker">Operacional financeiro - APURFIN019</p>
                           <h2 id="apuracao-financeira-modal-title">APURACAO FINANCEIRA</h2>
                         </div>
                         <button
@@ -12204,23 +12268,6 @@ function App() {
                           ))}
                         </select>
                         {apuracaoFinanceiraTipoPessoaError ? <strong className="field-error">{apuracaoFinanceiraTipoPessoaError}</strong> : null}
-                      </label>
-
-                      <label className="field-group" htmlFor="apuracao-financeira-situacao">
-                        <span>Situacao</span>
-                        <select
-                          id="apuracao-financeira-situacao"
-                          value={apuracaoFinanceiraSituacao}
-                          onChange={(event) => setApuracaoFinanceiraSituacao(event.target.value as ApuracaoFinanceiraStatus)}
-                          disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || apuracaoFinanceiraFormMode === 'view'}
-                        >
-                          {APURACAO_FINANCEIRA_STATUS_OPTIONS.map((item) => (
-                            <option key={item} value={item}>
-                              {item}
-                            </option>
-                          ))}
-                        </select>
-                        {apuracaoFinanceiraSituacaoError ? <strong className="field-error">{apuracaoFinanceiraSituacaoError}</strong> : null}
                       </label>
 
                       <p className={`status-message status-${apuracaoFinanceiraStatusTone}`} aria-live="polite">

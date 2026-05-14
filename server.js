@@ -524,6 +524,26 @@ const getTrocaCodigoFromUrl = (url) => {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+const getPerfilCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/perfil\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getAcessoPaginaCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/acesso-pagina\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getPerfilAcessoCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/perfil-acesso\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getPerfilAcessoPerfilCodigoFromUrl = (url) => {
+  const match = url.match(/^\/api\/perfil-acesso\/perfil\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const getAccessCodigoFromUrl = (url) => {
   const match = url.match(/^\/api\/access\/([^/]+)$/)
   return match ? decodeURIComponent(match[1]) : null
@@ -1101,12 +1121,198 @@ const diasLetivosSelectClause = `
   TO_CHAR(data, 'MM/YYYY') AS data,
   dias_letivos`
 
+const perfilSelectClause = `
+  CAST(codigo AS text) AS codigo,
+  BTRIM(CAST(descricao AS text)) AS descricao`
+
+const acessoPaginaFunctionOptions = ['menu', 'formulario']
+
+const acessoPaginaCatalogItems = [
+  { chaveSistema: 'menu_dashboard', sigla: 'Dashboard', descricao: 'Dashboard', funcao: 'menu' },
+  { chaveSistema: 'menu_operacional_root', sigla: 'Operacional', descricao: 'Operacional', funcao: 'menu' },
+  { chaveSistema: 'menu_operacional_administrativo', sigla: 'Administrativo', descricao: 'Administrativo', funcao: 'menu' },
+  { chaveSistema: 'menu_titular_crm', sigla: 'Titular do CRM', descricao: 'Titular do CRM', funcao: 'menu' },
+  { chaveSistema: 'menu_condutor', sigla: 'Condutor', descricao: 'Condutor', funcao: 'menu' },
+  { chaveSistema: 'menu_vinculo_condutor', sigla: 'Vinculo Condutor', descricao: 'Vinculo Condutor', funcao: 'menu' },
+  { chaveSistema: 'menu_monitor', sigla: 'Monitor', descricao: 'Monitor', funcao: 'menu' },
+  { chaveSistema: 'menu_vinculo_monitor', sigla: 'Vinculo Monitor', descricao: 'Vinculo Monitor', funcao: 'menu' },
+  { chaveSistema: 'menu_credenciada', sigla: 'Credenciada', descricao: 'Credenciada', funcao: 'menu' },
+  { chaveSistema: 'menu_termo', sigla: 'Termo', descricao: 'Termo', funcao: 'menu' },
+  { chaveSistema: 'menu_historico_termo', sigla: 'Historico Termo', descricao: 'Historico Termo', funcao: 'menu' },
+  { chaveSistema: 'menu_ordem_servico', sigla: 'Ordem de Servico', descricao: 'Ordem de Servico', funcao: 'menu' },
+  { chaveSistema: 'menu_historico_ordem_servico', sigla: 'Historico Ordem de Servico', descricao: 'Historico de OrdemServico', funcao: 'menu' },
+  { chaveSistema: 'menu_veiculo', sigla: 'Veiculo', descricao: 'Veiculo', funcao: 'menu' },
+  { chaveSistema: 'menu_historico_veiculo', sigla: 'Historico Veiculo', descricao: 'Historico de Veiculo', funcao: 'menu' },
+  { chaveSistema: 'menu_reprocessar_valores', sigla: 'Reprocessar Valores', descricao: 'Reprocessamento Financeiro', funcao: 'menu' },
+  { chaveSistema: 'menu_operacional_financeiro', sigla: 'Financeiro', descricao: 'Financeiro', funcao: 'menu' },
+  { chaveSistema: 'menu_apuracao_financeira', sigla: 'Apuracao Financeira', descricao: 'Apuracao Financeira', funcao: 'menu' },
+  { chaveSistema: 'menu_apuracao_servicos', sigla: 'Apuracao Servicos', descricao: 'Apuracao Servicos', funcao: 'menu' },
+  { chaveSistema: 'menu_aprovacao_digitacao', sigla: 'Aprovacao Digitacao', descricao: 'Aprovacao Digitacao', funcao: 'menu' },
+  { chaveSistema: 'menu_cadastros_root', sigla: 'Cadastros', descricao: 'Cadastros', funcao: 'menu' },
+  { chaveSistema: 'menu_cadastros_operacional', sigla: 'Operacional', descricao: 'Operacional', funcao: 'menu' },
+  { chaveSistema: 'menu_dre', sigla: 'DRE', descricao: 'Tabela DRE', funcao: 'menu' },
+  { chaveSistema: 'menu_modalidade', sigla: 'Modalidade', descricao: 'Tabela Modalidade', funcao: 'menu' },
+  { chaveSistema: 'menu_tipo_bancada', sigla: 'Tipo de Bancada', descricao: 'Tabela Tipo de Bancada', funcao: 'menu' },
+  { chaveSistema: 'menu_marca_modelo', sigla: 'Marca/Modelo', descricao: 'Tabela Marca/Modelo', funcao: 'menu' },
+  { chaveSistema: 'menu_seguradoras', sigla: 'Seguradoras', descricao: 'Tabela Seguradoras', funcao: 'menu' },
+  { chaveSistema: 'menu_tipo_troca', sigla: 'Tipo de Troca', descricao: 'Tabela Tipo de Troca', funcao: 'menu' },
+  { chaveSistema: 'menu_param_emissao', sigla: 'Param. Emissao', descricao: 'Parametros de Emissao', funcao: 'menu' },
+  { chaveSistema: 'menu_cep', sigla: 'CEP', descricao: 'CEP', funcao: 'menu' },
+  { chaveSistema: 'menu_smoke_test', sigla: 'Smoke Test', descricao: 'Smoke Test da Aplicacao', funcao: 'menu' },
+  { chaveSistema: 'menu_cadastros_financeiro', sigla: 'Financeiro', descricao: 'Financeiro', funcao: 'menu' },
+  { chaveSistema: 'menu_condicao', sigla: 'Condicao', descricao: 'Tabela Condicao', funcao: 'menu' },
+  { chaveSistema: 'menu_modal_bancada_tp_pagto_condicao', sigla: 'Modalidade x Bancada x Pagamento x Condicao', descricao: 'Tabela Modalidade x Bancada x Pagamento x Condicao', funcao: 'menu' },
+  { chaveSistema: 'menu_modal_bancada_tp_pagto_condicao_valor', sigla: 'Modalidade x Bancada x Pagamento x Condicao Valor', descricao: 'Tabela Modalidade x Bancada x Pagamento x Condicao Valor', funcao: 'menu' },
+  { chaveSistema: 'menu_km_valor', sigla: 'Km_Valor', descricao: 'Tabela Km_Valor', funcao: 'menu' },
+  { chaveSistema: 'menu_continua_valor', sigla: 'Continua_Valor', descricao: 'Tabela Continua_Valor', funcao: 'menu' },
+  { chaveSistema: 'menu_parametro_veiculo', sigla: 'Parametro Pgto Veiculo', descricao: 'Parametro Pgto Veiculo', funcao: 'menu' },
+  { chaveSistema: 'menu_tipo_pagamento', sigla: 'Tipo de Pagamento', descricao: 'Tipo de Pagamento', funcao: 'menu' },
+  { chaveSistema: 'menu_tipo_escola', sigla: 'Tipo Escola', descricao: 'Tipo Escola', funcao: 'menu' },
+  { chaveSistema: 'menu_aliquota_optante', sigla: 'Aliquota Optante', descricao: 'Aliquota Optante', funcao: 'menu' },
+  { chaveSistema: 'menu_dias_letivos', sigla: 'Dias Letivos', descricao: 'Dias Letivos', funcao: 'menu' },
+  { chaveSistema: 'menu_controle_acesso', sigla: 'Controle de acesso', descricao: 'Controle de acesso', funcao: 'menu' },
+  { chaveSistema: 'menu_perfil', sigla: 'Perfil', descricao: 'Tabela Perfil', funcao: 'menu' },
+  { chaveSistema: 'menu_perfil_acesso', sigla: 'PerfilAcesso', descricao: 'PerfilAcesso', funcao: 'menu' },
+  { chaveSistema: 'menu_login_dre', sigla: 'Login x DRE', descricao: 'Login x DRE', funcao: 'menu' },
+  { chaveSistema: 'menu_acesso_pagina', sigla: 'Acesso Pagina', descricao: 'Acesso Pagina', funcao: 'menu' },
+  { chaveSistema: 'form_dashdet001', sigla: 'DASHDET001', descricao: 'Detalhe do Dashboard OrdemServico', funcao: 'formulario' },
+  { chaveSistema: 'form_ospopup002', sigla: 'OSPOPUP002', descricao: 'Formulario de OS', funcao: 'formulario' },
+  { chaveSistema: 'form_dreform003', sigla: 'DREFORM003', descricao: 'DRE', funcao: 'formulario' },
+  { chaveSistema: 'form_modalid004', sigla: 'MODALID004', descricao: 'Modalidade', funcao: 'formulario' },
+  { chaveSistema: 'form_condica005', sigla: 'CONDICA005', descricao: 'Condicao', funcao: 'formulario' },
+  { chaveSistema: 'form_tipopag006', sigla: 'TIPOPAG006', descricao: 'Tipo de Pagamento', funcao: 'formulario' },
+  { chaveSistema: 'form_tipesco007', sigla: 'TIPESCO007', descricao: 'Tipo Escola', funcao: 'formulario' },
+  { chaveSistema: 'form_aliqopt008', sigla: 'ALIQOPT008', descricao: 'Aliquota Optante', funcao: 'formulario' },
+  { chaveSistema: 'form_mbtpcon009', sigla: 'MBTPCON009', descricao: 'Modalidade x Bancada x Pagamento x Condicao', funcao: 'formulario' },
+  { chaveSistema: 'form_mbtpval010', sigla: 'MBTPVAL010', descricao: 'Modalidade x Bancada x Pagamento x Condicao Valor', funcao: 'formulario' },
+  { chaveSistema: 'form_dialetv011', sigla: 'DIALETV011', descricao: 'Dias Letivos', funcao: 'formulario' },
+  { chaveSistema: 'form_kmvalor012', sigla: 'KMVALOR012', descricao: 'Km_Valor', funcao: 'formulario' },
+  { chaveSistema: 'form_cntvalr013', sigla: 'CNTVALR013', descricao: 'Continua_Valor', funcao: 'formulario' },
+  { chaveSistema: 'form_tipbanc014', sigla: 'TIPBANC014', descricao: 'Tipo de Bancada', funcao: 'formulario' },
+  { chaveSistema: 'form_titucrm015', sigla: 'TITUCRM015', descricao: 'Titular do CRM', funcao: 'formulario' },
+  { chaveSistema: 'form_marcmod016', sigla: 'MARCMOD016', descricao: 'Marca/Modelo', funcao: 'formulario' },
+  { chaveSistema: 'form_parveic017', sigla: 'PARVEIC017', descricao: 'Parametro Pgto Veiculo', funcao: 'formulario' },
+  { chaveSistema: 'form_segurad018', sigla: 'SEGURAD018', descricao: 'Seguradoras', funcao: 'formulario' },
+  { chaveSistema: 'form_apurfin019', sigla: 'APURFIN019', descricao: 'Apuracao Financeira', funcao: 'formulario' },
+  { chaveSistema: 'form_perfcad020', sigla: 'PERFCAD020', descricao: 'Perfil', funcao: 'formulario' },
+  { chaveSistema: 'form_apursvc021', sigla: 'APURSVC021', descricao: 'APURACAO SERVICOS', funcao: 'formulario' },
+  { chaveSistema: 'form_acespag022', sigla: 'ACESPAG022', descricao: 'Acesso Pagina', funcao: 'formulario' },
+  { chaveSistema: 'form_perfacs023', sigla: 'PERFACS023', descricao: 'PerfilAcesso', funcao: 'formulario' },
+]
+
+const administrativoAllowedAcessoPaginaChaveSistema = [
+  'menu_operacional_root',
+  'menu_operacional_administrativo',
+  'menu_titular_crm',
+  'menu_condutor',
+  'menu_vinculo_condutor',
+  'menu_monitor',
+  'menu_vinculo_monitor',
+  'menu_credenciada',
+  'menu_termo',
+  'menu_historico_termo',
+  'menu_ordem_servico',
+  'menu_historico_ordem_servico',
+  'menu_veiculo',
+  'menu_historico_veiculo',
+  'menu_reprocessar_valores',
+  'menu_cadastros_root',
+  'menu_cadastros_operacional',
+  'menu_dre',
+  'menu_modalidade',
+  'menu_tipo_bancada',
+  'menu_marca_modelo',
+  'menu_seguradoras',
+  'menu_tipo_troca',
+  'menu_param_emissao',
+  'menu_cep',
+  'menu_smoke_test',
+  'form_ospopup002',
+  'form_dreform003',
+  'form_modalid004',
+  'form_tipbanc014',
+  'form_titucrm015',
+  'form_marcmod016',
+  'form_segurad018',
+]
+
+const financeiroAllowedAcessoPaginaChaveSistema = [
+  'menu_operacional_root',
+  'menu_operacional_financeiro',
+  'menu_apuracao_financeira',
+  'menu_apuracao_servicos',
+  'menu_aprovacao_digitacao',
+  'menu_cadastros_root',
+  'menu_cadastros_financeiro',
+  'menu_condicao',
+  'menu_modal_bancada_tp_pagto_condicao',
+  'menu_modal_bancada_tp_pagto_condicao_valor',
+  'menu_km_valor',
+  'menu_continua_valor',
+  'menu_parametro_veiculo',
+  'menu_tipo_pagamento',
+  'menu_tipo_escola',
+  'menu_aliquota_optante',
+  'menu_dias_letivos',
+  'form_condica005',
+  'form_tipopag006',
+  'form_tipesco007',
+  'form_aliqopt008',
+  'form_mbtpcon009',
+  'form_mbtpval010',
+  'form_dialetv011',
+  'form_kmvalor012',
+  'form_cntvalr013',
+  'form_parveic017',
+  'form_apurfin019',
+  'form_apursvc021',
+]
+
+const acessoPaginaSelectClause = `
+  CAST(codigo AS text) AS codigo,
+  BTRIM(CAST(sigla AS text)) AS sigla,
+  BTRIM(CAST(descricao AS text)) AS descricao,
+  LOWER(BTRIM(CAST(funcao AS text))) AS funcao`
+
+const perfilAcessoPermissionOptions = ['consulta', 'alteracao', 'exclusao', 'execucao', 'todos']
+
+const perfilAcessoSelectClause = `
+  CAST(perfil_acesso.codigo AS text) AS codigo,
+  CAST(perfil_acesso.perfil_codigo AS text) AS perfil_codigo,
+  BTRIM(CAST(perfil.descricao AS text)) AS perfil_descricao,
+  CAST(perfil_acesso.acesso_pagina_codigo AS text) AS acesso_pagina_codigo,
+  BTRIM(CAST(acesso_pagina.descricao AS text)) AS acesso_pagina_descricao,
+  LOWER(BTRIM(CAST(acesso_pagina.funcao AS text))) AS acesso_pagina_funcao,
+  LOWER(BTRIM(CAST(perfil_acesso.permissao AS text))) AS permissao`
+
+const accessPerfilLateralClause = `
+  LEFT JOIN LATERAL (
+    SELECT
+      COALESCE(
+        STRING_AGG(BTRIM(CAST(perfil_item.descricao AS text)), ', ' ORDER BY perfil_item.codigo),
+        ''
+      ) AS perfis,
+      COALESCE(
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'codigo', CAST(perfil_item.codigo AS text),
+            'descricao', BTRIM(CAST(perfil_item.descricao AS text))
+          )
+          ORDER BY perfil_item.codigo
+        ) FILTER (WHERE perfil_item.codigo IS NOT NULL),
+        '[]'::json
+      ) AS perfis_items
+    FROM login_perfil associacao
+    INNER JOIN perfil perfil_item ON perfil_item.codigo = associacao.perfil_codigo
+    WHERE associacao.login_codigo = login.codigo
+  ) AS perfil_data ON TRUE`
+
 const apuracaoFinanceiraStatusOptions = [
   'A processar',
   'Processado',
   'Em digitacao',
   'Digitado',
-  'Em aprovacao',
+  'Aprovacao SME',
   'Aprovado SME',
   'Aguardando calculo',
   'Calculado',
@@ -1221,6 +1427,10 @@ const normalizeApuracaoFinanceiraStatus = (value) => {
 
   if (normalizedValue === 'EM PROCESSAMENTO') {
     return 'A processar'
+  }
+
+  if (normalizedValue === 'EM APROVACAO') {
+    return 'Aprovacao SME'
   }
 
   return apuracaoFinanceiraStatusOptions.find((item) => item.toUpperCase() === normalizedValue) ?? ''
@@ -12796,7 +13006,354 @@ const validateAccessPayload = async ({ nome, email, password, originalCodigo = n
   }
 }
 
-const createAccess = async (nome, email, password) => {
+const normalizePerfilCodigos = (value) => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return [...new Set(
+    value
+      .map((item) => normalizeIntegerValue(item))
+      .filter((item) => Number.isInteger(item) && item > 0),
+  )]
+}
+
+const validatePerfilPayload = async ({ descricao, originalCodigo = null }) => {
+  const normalizedDescricao = normalizeRequestValue(descricao)
+
+  if (!normalizedDescricao) {
+    return { status: 400, payload: { message: 'Descricao e obrigatoria.' } }
+  }
+
+  const duplicateResult = await pool.query(
+    `SELECT 1
+     FROM perfil
+     WHERE UPPER(BTRIM(CAST(descricao AS text))) = UPPER($1)
+       AND ($2::int IS NULL OR codigo <> $2)
+     LIMIT 1`,
+    [normalizedDescricao, originalCodigo],
+  )
+
+  if (duplicateResult.rowCount > 0) {
+    return { status: 409, payload: { message: 'Descricao ja cadastrada.' } }
+  }
+
+  return {
+    status: 200,
+    payload: {
+      descricao: normalizedDescricao,
+    },
+  }
+}
+
+const normalizeAcessoPaginaDescricao = (value) => {
+  return normalizeRequestValue(value)
+    .replace(/\s+/g, ' ')
+    .slice(0, 255)
+}
+
+const normalizeAcessoPaginaSigla = (value) => {
+  return normalizeRequestValue(value)
+    .replace(/\s+/g, ' ')
+    .slice(0, 255)
+}
+
+const normalizeAcessoPaginaFuncao = (value) => {
+  const normalizedValue = normalizeRequestValue(value).toLowerCase()
+  return acessoPaginaFunctionOptions.includes(normalizedValue) ? normalizedValue : ''
+}
+
+const validateAcessoPaginaPayload = ({ sigla, descricao, funcao }) => {
+  const normalizedSigla = normalizeAcessoPaginaSigla(sigla)
+  const normalizedDescricao = normalizeAcessoPaginaDescricao(descricao)
+  const normalizedFuncao = normalizeAcessoPaginaFuncao(funcao)
+
+  if (!normalizedSigla) {
+    return { status: 400, payload: { message: 'Sigla e obrigatoria.' } }
+  }
+
+  if (!normalizedDescricao) {
+    return { status: 400, payload: { message: 'Descricao e obrigatoria.' } }
+  }
+
+  if (!normalizedFuncao) {
+    return { status: 400, payload: { message: 'Funcao deve ser menu ou formulario.' } }
+  }
+
+  return {
+    status: 200,
+    payload: {
+      sigla: normalizedSigla,
+      descricao: normalizedDescricao,
+      funcao: normalizedFuncao,
+    },
+  }
+}
+
+const normalizePerfilAcessoPermissao = (value) => {
+  const normalizedValue = normalizeRequestValue(value).toLowerCase()
+  return perfilAcessoPermissionOptions.includes(normalizedValue) ? normalizedValue : ''
+}
+
+const validatePerfilAcessoPayload = async ({ perfilCodigo, acessoPaginaCodigo, permissao, originalCodigo = null }) => {
+  const normalizedPerfilCodigo = normalizeIntegerValue(perfilCodigo)
+  const normalizedAcessoPaginaCodigo = normalizeIntegerValue(acessoPaginaCodigo)
+  const normalizedPermissao = normalizePerfilAcessoPermissao(permissao)
+
+  if (!Number.isInteger(normalizedPerfilCodigo) || normalizedPerfilCodigo <= 0) {
+    return { status: 400, payload: { message: 'Perfil e obrigatorio.' } }
+  }
+
+  if (!Number.isInteger(normalizedAcessoPaginaCodigo) || normalizedAcessoPaginaCodigo <= 0) {
+    return { status: 400, payload: { message: 'Acesso pagina e obrigatorio.' } }
+  }
+
+  if (!normalizedPermissao) {
+    return { status: 400, payload: { message: 'Permissao deve ser consulta, alteracao, exclusao, execucao ou todos.' } }
+  }
+
+  const perfilResult = await pool.query(
+    `SELECT ${perfilSelectClause}
+     FROM perfil
+     WHERE codigo = $1
+     LIMIT 1`,
+    [normalizedPerfilCodigo],
+  )
+
+  if (perfilResult.rowCount === 0) {
+    return { status: 404, payload: { message: 'Perfil nao encontrado.' } }
+  }
+
+  const acessoPaginaResult = await pool.query(
+    `SELECT ${acessoPaginaSelectClause}
+     FROM acesso_pagina
+     WHERE codigo = $1
+     LIMIT 1`,
+    [normalizedAcessoPaginaCodigo],
+  )
+
+  if (acessoPaginaResult.rowCount === 0) {
+    return { status: 404, payload: { message: 'Acesso pagina nao encontrado.' } }
+  }
+
+  const duplicateResult = await pool.query(
+    `SELECT 1
+     FROM perfil_acesso
+     WHERE perfil_codigo = $1
+       AND acesso_pagina_codigo = $2
+       AND ($3::int IS NULL OR codigo <> $3)
+     LIMIT 1`,
+    [normalizedPerfilCodigo, normalizedAcessoPaginaCodigo, originalCodigo],
+  )
+
+  if (duplicateResult.rowCount > 0) {
+    return { status: 409, payload: { message: 'PerfilAcesso ja cadastrado para este perfil e pagina.' } }
+  }
+
+  return {
+    status: 200,
+    payload: {
+      perfilCodigo: normalizedPerfilCodigo,
+      acessoPaginaCodigo: normalizedAcessoPaginaCodigo,
+      permissao: normalizedPermissao,
+    },
+  }
+}
+
+const syncAcessoPaginaCatalog = async (executor = pool) => {
+  for (const item of acessoPaginaCatalogItems) {
+    await executor.query(
+      `INSERT INTO acesso_pagina (chave_sistema, sigla, descricao, funcao)
+       VALUES (
+         CAST($1 AS varchar(120)),
+         CAST($2 AS varchar(255)),
+         CAST($3 AS varchar(255)),
+         CAST($4 AS varchar(20))
+       )
+       ON CONFLICT (chave_sistema)
+       DO UPDATE SET
+         sigla = EXCLUDED.sigla,
+         descricao = EXCLUDED.descricao,
+         funcao = EXCLUDED.funcao`,
+      [item.chaveSistema, item.sigla, item.descricao, item.funcao],
+    )
+  }
+}
+
+const validatePerfilCodigos = async (perfilCodigos) => {
+  const normalizedPerfilCodigos = normalizePerfilCodigos(perfilCodigos)
+
+  const result = await pool.query(
+    `SELECT ${perfilSelectClause}
+     FROM perfil
+     WHERE codigo = ANY($1::int[])
+     ORDER BY codigo ASC`,
+    [normalizedPerfilCodigos],
+  )
+
+  if (result.rowCount !== normalizedPerfilCodigos.length) {
+    return { status: 404, payload: { message: 'Um ou mais perfis nao foram encontrados.' } }
+  }
+
+  return {
+    status: 200,
+    payload: {
+      perfilCodigos: normalizedPerfilCodigos,
+    },
+  }
+}
+
+const syncLoginPerfis = async (client, loginCodigo, perfilCodigos) => {
+  await client.query('DELETE FROM login_perfil WHERE login_codigo = $1', [loginCodigo])
+
+  if (perfilCodigos.length === 0) {
+    return
+  }
+
+  await client.query(
+    `INSERT INTO login_perfil (login_codigo, perfil_codigo)
+     SELECT $1, UNNEST($2::int[])
+     ON CONFLICT DO NOTHING`,
+    [loginCodigo, perfilCodigos],
+  )
+}
+
+const fetchPerfilAcessoItemByCodigo = async (executor, codigo) => {
+  const result = await executor.query(
+    `SELECT ${perfilAcessoSelectClause}
+     FROM perfil_acesso
+     INNER JOIN perfil ON perfil.codigo = perfil_acesso.perfil_codigo
+     INNER JOIN acesso_pagina ON acesso_pagina.codigo = perfil_acesso.acesso_pagina_codigo
+     WHERE perfil_acesso.codigo = $1
+     LIMIT 1`,
+    [codigo],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const fetchPerfilAcessoItemsByPerfilCodigo = async (executor, perfilCodigo) => {
+  const result = await executor.query(
+    `SELECT ${perfilAcessoSelectClause}
+     FROM perfil_acesso
+     INNER JOIN perfil ON perfil.codigo = perfil_acesso.perfil_codigo
+     INNER JOIN acesso_pagina ON acesso_pagina.codigo = perfil_acesso.acesso_pagina_codigo
+     WHERE perfil_acesso.perfil_codigo = $1
+     ORDER BY acesso_pagina.codigo ASC`,
+    [perfilCodigo],
+  )
+
+  return result.rows
+}
+
+const validatePerfilAcessoMatrixPayload = async ({ perfilCodigo, items }) => {
+  const normalizedPerfilCodigo = normalizeIntegerValue(perfilCodigo)
+
+  if (!Number.isInteger(normalizedPerfilCodigo) || normalizedPerfilCodigo <= 0) {
+    return { status: 400, payload: { message: 'Perfil e obrigatorio.' } }
+  }
+
+  const perfilResult = await pool.query(
+    `SELECT ${perfilSelectClause}
+     FROM perfil
+     WHERE codigo = $1
+     LIMIT 1`,
+    [normalizedPerfilCodigo],
+  )
+
+  if (perfilResult.rowCount === 0) {
+    return { status: 404, payload: { message: 'Perfil nao encontrado.' } }
+  }
+
+  if (!Array.isArray(items)) {
+    return { status: 400, payload: { message: 'Lista de permissoes invalida.' } }
+  }
+
+  const normalizedItems = []
+  const seenAcessoPaginaCodigos = new Set()
+
+  for (const item of items) {
+    const normalizedAcessoPaginaCodigo = normalizeIntegerValue(item?.acessoPaginaCodigo)
+    const normalizedPermissao = normalizePerfilAcessoPermissao(item?.permissao)
+
+    if (!Number.isInteger(normalizedAcessoPaginaCodigo) || normalizedAcessoPaginaCodigo <= 0) {
+      return { status: 400, payload: { message: 'Acesso pagina invalido na grade de permissoes.' } }
+    }
+
+    if (!normalizedPermissao) {
+      return { status: 400, payload: { message: 'Permissao invalida na grade de permissoes.' } }
+    }
+
+    if (seenAcessoPaginaCodigos.has(normalizedAcessoPaginaCodigo)) {
+      return { status: 409, payload: { message: 'Acesso pagina duplicado na grade de permissoes.' } }
+    }
+
+    seenAcessoPaginaCodigos.add(normalizedAcessoPaginaCodigo)
+    normalizedItems.push({
+      acessoPaginaCodigo: normalizedAcessoPaginaCodigo,
+      permissao: normalizedPermissao,
+    })
+  }
+
+  if (normalizedItems.length > 0) {
+    const acessoPaginaResult = await pool.query(
+      `SELECT codigo::int AS codigo
+       FROM acesso_pagina
+       WHERE codigo = ANY($1::int[])
+       ORDER BY codigo ASC`,
+      [normalizedItems.map((item) => item.acessoPaginaCodigo)],
+    )
+
+    if (acessoPaginaResult.rowCount !== normalizedItems.length) {
+      return { status: 404, payload: { message: 'Um ou mais acessos pagina nao foram encontrados.' } }
+    }
+  }
+
+  return {
+    status: 200,
+    payload: {
+      perfilCodigo: normalizedPerfilCodigo,
+      perfil: perfilResult.rows[0],
+      items: normalizedItems,
+    },
+  }
+}
+
+const replacePerfilAcessoItemsByPerfilCodigo = async (executor, perfilCodigo, items) => {
+  await executor.query('DELETE FROM perfil_acesso WHERE perfil_codigo = $1', [perfilCodigo])
+
+  if (items.length === 0) {
+    return
+  }
+
+  for (const item of items) {
+    await executor.query(
+      `INSERT INTO perfil_acesso (perfil_codigo, acesso_pagina_codigo, permissao)
+       VALUES ($1, $2, $3)`,
+      [perfilCodigo, item.acessoPaginaCodigo, item.permissao],
+    )
+  }
+}
+
+const fetchAccessItemByCodigo = async (executor, codigo) => {
+  const result = await executor.query(
+    `SELECT
+       login.codigo::text AS codigo,
+       BTRIM(login.nome) AS nome,
+       TRIM(login.email) AS email,
+       COALESCE(perfil_data.perfis, '') AS perfis,
+       COALESCE(perfil_data.perfis_items, '[]'::json) AS perfis_items
+     FROM login
+     ${accessPerfilLateralClause}
+     WHERE login.codigo = $1
+     LIMIT 1`,
+    [codigo],
+  )
+
+  return result.rows[0] ?? null
+}
+
+const createAccess = async (nome, email, password, perfilCodigos = []) => {
   const validationResult = await validateAccessPayload({
     nome,
     email,
@@ -12818,21 +13375,43 @@ const createAccess = async (nome, email, password) => {
     return { status: 409, payload: { message: 'Email ja cadastrado.' } }
   }
 
-  const passwordPayload = createAccessHashPayload(normalizedPassword)
-  const insertResult = await pool.query(
-    `INSERT INTO login (nome, email, password, descricao)
-     VALUES ($1, $2, $3, $4)
-     RETURNING codigo::text AS codigo, BTRIM(nome) AS nome, TRIM(email) AS email`,
-    [normalizedNome, normalizedEmail, passwordPayload.password, passwordPayload.descricao],
-  )
+  const perfilValidationResult = await validatePerfilCodigos(perfilCodigos)
 
-  return {
-    status: 201,
-    payload: {
-      message: 'Acesso cadastrado com sucesso.',
-      item: insertResult.rows[0],
-      user: insertResult.rows[0],
-    },
+  if (perfilValidationResult.status !== 200) {
+    return perfilValidationResult
+  }
+
+  const passwordPayload = createAccessHashPayload(normalizedPassword)
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    const insertResult = await client.query(
+      `INSERT INTO login (nome, email, password, descricao)
+       VALUES ($1, $2, $3, $4)
+       RETURNING codigo`,
+      [normalizedNome, normalizedEmail, passwordPayload.password, passwordPayload.descricao],
+    )
+
+    const createdCodigo = Number(insertResult.rows[0]?.codigo)
+    await syncLoginPerfis(client, createdCodigo, perfilValidationResult.payload.perfilCodigos)
+    const item = await fetchAccessItemByCodigo(client, createdCodigo)
+    await client.query('COMMIT')
+
+    return {
+      status: 201,
+      payload: {
+        message: 'Acesso cadastrado com sucesso.',
+        item,
+        user: item,
+      },
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
   }
 }
 
@@ -13007,6 +13586,122 @@ const ensureDatabaseSchema = async () => {
   await pool.query('UPDATE login SET nome = LEFT(UPPER(BTRIM(nome)), 50) WHERE nome IS NOT NULL')
   await pool.query('ALTER TABLE login ALTER COLUMN codigo SET NOT NULL')
   await pool.query('ALTER TABLE login ALTER COLUMN nome SET NOT NULL')
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS perfil_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS perfil (
+      codigo integer PRIMARY KEY DEFAULT nextval('perfil_codigo_seq'),
+      descricao varchar(255) NOT NULL
+    )
+  `)
+  await pool.query('ALTER TABLE perfil ADD COLUMN IF NOT EXISTS descricao varchar(255)')
+  await pool.query('ALTER TABLE perfil ALTER COLUMN codigo SET DEFAULT nextval(\'perfil_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE perfil_codigo_seq OWNED BY perfil.codigo')
+  await pool.query('ALTER TABLE perfil ALTER COLUMN descricao TYPE varchar(255)')
+  await pool.query('UPDATE perfil SET descricao = BTRIM(CAST(descricao AS text)) WHERE descricao IS NOT NULL')
+  await pool.query('ALTER TABLE perfil ALTER COLUMN descricao SET NOT NULL')
+  await pool.query('SELECT setval(\'perfil_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM perfil), 0), 1), true)')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS login_perfil (
+      login_codigo integer NOT NULL REFERENCES login(codigo) ON DELETE CASCADE,
+      perfil_codigo integer NOT NULL REFERENCES perfil(codigo) ON DELETE RESTRICT,
+      CONSTRAINT login_perfil_pk PRIMARY KEY (login_codigo, perfil_codigo)
+    )
+  `)
+  await pool.query('ALTER TABLE login_perfil ADD COLUMN IF NOT EXISTS login_codigo integer')
+  await pool.query('ALTER TABLE login_perfil ADD COLUMN IF NOT EXISTS perfil_codigo integer')
+  await pool.query('ALTER TABLE login_perfil ALTER COLUMN login_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE login_perfil ALTER COLUMN perfil_codigo SET NOT NULL')
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'login_perfil'
+          AND constraint_name = 'login_perfil_pk'
+      ) THEN
+        ALTER TABLE login_perfil ADD CONSTRAINT login_perfil_pk PRIMARY KEY (login_codigo, perfil_codigo);
+      END IF;
+    END $$;
+  `)
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS acesso_pagina_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS acesso_pagina (
+      codigo integer PRIMARY KEY DEFAULT nextval('acesso_pagina_codigo_seq'),
+      sigla varchar(255),
+      descricao varchar(255) NOT NULL,
+      funcao varchar(20) NOT NULL,
+      chave_sistema varchar(120)
+    )
+  `)
+  await pool.query('ALTER TABLE acesso_pagina ADD COLUMN IF NOT EXISTS sigla varchar(255)')
+  await pool.query('ALTER TABLE acesso_pagina ADD COLUMN IF NOT EXISTS descricao varchar(255)')
+  await pool.query('ALTER TABLE acesso_pagina ADD COLUMN IF NOT EXISTS funcao varchar(20)')
+  await pool.query('ALTER TABLE acesso_pagina ADD COLUMN IF NOT EXISTS chave_sistema varchar(120)')
+  await pool.query('ALTER TABLE acesso_pagina ALTER COLUMN codigo SET DEFAULT nextval(\'acesso_pagina_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE acesso_pagina_codigo_seq OWNED BY acesso_pagina.codigo')
+  await pool.query('ALTER TABLE acesso_pagina ALTER COLUMN sigla TYPE varchar(255)')
+  await pool.query('ALTER TABLE acesso_pagina ALTER COLUMN descricao TYPE varchar(255)')
+  await pool.query('ALTER TABLE acesso_pagina ALTER COLUMN funcao TYPE varchar(20)')
+  await pool.query('UPDATE acesso_pagina SET sigla = BTRIM(CAST(descricao AS text)) WHERE COALESCE(BTRIM(CAST(sigla AS text)), \'\') = \'\' AND descricao IS NOT NULL')
+  await pool.query('UPDATE acesso_pagina SET sigla = BTRIM(CAST(sigla AS text)) WHERE sigla IS NOT NULL')
+  await pool.query('UPDATE acesso_pagina SET descricao = BTRIM(CAST(descricao AS text)) WHERE descricao IS NOT NULL')
+  await pool.query('UPDATE acesso_pagina SET funcao = LOWER(BTRIM(CAST(funcao AS text))) WHERE funcao IS NOT NULL')
+  await pool.query('ALTER TABLE acesso_pagina ALTER COLUMN sigla SET NOT NULL')
+  await pool.query('ALTER TABLE acesso_pagina ALTER COLUMN descricao SET NOT NULL')
+  await pool.query('ALTER TABLE acesso_pagina ALTER COLUMN funcao SET NOT NULL')
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'acesso_pagina'
+          AND constraint_name = 'acesso_pagina_chave_sistema_uk'
+      ) THEN
+        ALTER TABLE acesso_pagina ADD CONSTRAINT acesso_pagina_chave_sistema_uk UNIQUE (chave_sistema);
+      END IF;
+    END $$;
+  `)
+  await syncAcessoPaginaCatalog()
+  await pool.query('SELECT setval(\'acesso_pagina_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM acesso_pagina), 0), 1), true)')
+  await pool.query('CREATE SEQUENCE IF NOT EXISTS perfil_acesso_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS perfil_acesso (
+      codigo integer PRIMARY KEY DEFAULT nextval('perfil_acesso_codigo_seq'),
+      perfil_codigo integer NOT NULL REFERENCES perfil(codigo) ON DELETE RESTRICT,
+      acesso_pagina_codigo integer NOT NULL REFERENCES acesso_pagina(codigo) ON DELETE RESTRICT,
+      permissao varchar(20) NOT NULL
+    )
+  `)
+  await pool.query('ALTER TABLE perfil_acesso ADD COLUMN IF NOT EXISTS perfil_codigo integer')
+  await pool.query('ALTER TABLE perfil_acesso ADD COLUMN IF NOT EXISTS acesso_pagina_codigo integer')
+  await pool.query('ALTER TABLE perfil_acesso ADD COLUMN IF NOT EXISTS permissao varchar(20)')
+  await pool.query('ALTER TABLE perfil_acesso ALTER COLUMN codigo SET DEFAULT nextval(\'perfil_acesso_codigo_seq\')')
+  await pool.query('ALTER SEQUENCE perfil_acesso_codigo_seq OWNED BY perfil_acesso.codigo')
+  await pool.query('ALTER TABLE perfil_acesso ALTER COLUMN permissao TYPE varchar(20)')
+  await pool.query('UPDATE perfil_acesso SET permissao = LOWER(BTRIM(CAST(permissao AS text))) WHERE permissao IS NOT NULL')
+  await pool.query('ALTER TABLE perfil_acesso ALTER COLUMN perfil_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE perfil_acesso ALTER COLUMN acesso_pagina_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE perfil_acesso ALTER COLUMN permissao SET NOT NULL')
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'perfil_acesso'
+          AND constraint_name = 'perfil_acesso_perfil_pagina_uk'
+      ) THEN
+        ALTER TABLE perfil_acesso ADD CONSTRAINT perfil_acesso_perfil_pagina_uk UNIQUE (perfil_codigo, acesso_pagina_codigo);
+      END IF;
+    END $$;
+  `)
+  await pool.query('SELECT setval(\'perfil_acesso_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM perfil_acesso), 0), 1), true)')
+  await pool.query("UPDATE apuracao_financeira SET situacao = 'Aprovacao SME' WHERE UPPER(BTRIM(COALESCE(situacao, ''))) = 'EM APROVACAO'")
   await pool.query('CREATE SEQUENCE IF NOT EXISTS dre_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query(`
     CREATE TABLE IF NOT EXISTS dre (
@@ -15181,7 +15876,9 @@ const ensureDatabaseSchema = async () => {
   }
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS login_nome_unique_idx ON login (UPPER(BTRIM(nome)))')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS login_email_unique_idx ON login (LOWER(TRIM(email)))')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS perfil_descricao_unique_idx ON perfil (UPPER(BTRIM(CAST(descricao AS text))))')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS login_dre_unique_idx ON login_dre (login_codigo, dre_codigo)')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS login_perfil_unique_idx ON login_perfil (login_codigo, perfil_codigo)')
 }
 
 const server = createServer(async (request, response) => {
@@ -15745,6 +16442,7 @@ const server = createServer(async (request, response) => {
       const dreCodigo = normalizeDreOperationalCode(requestUrl.searchParams.get('dreCodigo') ?? '')
       const revisaoFilter = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
       const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+      const situacao = normalizeApuracaoFinanceiraStatus(requestUrl.searchParams.get('situacao') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
       const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
       const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'mesAno')
@@ -15800,6 +16498,11 @@ const server = createServer(async (request, response) => {
       if (tipoPessoa) {
         values.push(tipoPessoa)
         filters.push(`BTRIM(apuracao_financeira.tipo_pessoa) = $${values.length}`)
+      }
+
+      if (situacao) {
+        values.push(situacao)
+        filters.push(`BTRIM(apuracao_financeira.situacao) = $${values.length}`)
       }
 
       const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
@@ -17692,6 +18395,13 @@ const server = createServer(async (request, response) => {
           CAST(codigo AS text) ILIKE $${values.length}
           OR UPPER(BTRIM(nome)) ILIKE UPPER($${values.length})
           OR LOWER(TRIM(email)) ILIKE LOWER($${values.length})
+          OR EXISTS (
+            SELECT 1
+            FROM login_perfil login_perfil_item
+            INNER JOIN perfil perfil_item ON perfil_item.codigo = login_perfil_item.perfil_codigo
+            WHERE login_perfil_item.login_codigo = login.codigo
+              AND UPPER(BTRIM(CAST(perfil_item.descricao AS text))) ILIKE UPPER($${values.length})
+          )
         )`)
       }
 
@@ -17712,8 +18422,14 @@ const server = createServer(async (request, response) => {
         const tailValues = [...values, pageSize]
         result = await pool.query(
           `SELECT * FROM (
-             SELECT codigo::text AS codigo, BTRIM(nome) AS nome, TRIM(email) AS email
+             SELECT
+               login.codigo::text AS codigo,
+               BTRIM(login.nome) AS nome,
+               TRIM(login.email) AS email,
+               COALESCE(perfil_data.perfis, '') AS perfis,
+               COALESCE(perfil_data.perfis_items, '[]'::json) AS perfis_items
              FROM login
+             ${accessPerfilLateralClause}
              ${whereClause}
              ORDER BY codigo DESC
              LIMIT $${tailValues.length}
@@ -17725,8 +18441,14 @@ const server = createServer(async (request, response) => {
         const previousValues = [...values, beforeCodigo, pageSize]
         result = await pool.query(
           `SELECT * FROM (
-             SELECT codigo::text AS codigo, BTRIM(nome) AS nome, TRIM(email) AS email
+             SELECT
+               login.codigo::text AS codigo,
+               BTRIM(login.nome) AS nome,
+               TRIM(login.email) AS email,
+               COALESCE(perfil_data.perfis, '') AS perfis,
+               COALESCE(perfil_data.perfis_items, '[]'::json) AS perfis_items
              FROM login
+             ${accessPerfilLateralClause}
              ${whereClause}${whereClause ? ' AND' : ' WHERE'} codigo < $${values.length + 1}
              ORDER BY codigo DESC
              LIMIT $${previousValues.length}
@@ -17737,8 +18459,14 @@ const server = createServer(async (request, response) => {
       } else if (shouldUseNextCursorQuery) {
         const nextValues = [...values, afterCodigo, pageSize]
         result = await pool.query(
-          `SELECT codigo::text AS codigo, BTRIM(nome) AS nome, TRIM(email) AS email
+          `SELECT
+             login.codigo::text AS codigo,
+             BTRIM(login.nome) AS nome,
+             TRIM(login.email) AS email,
+             COALESCE(perfil_data.perfis, '') AS perfis,
+             COALESCE(perfil_data.perfis_items, '[]'::json) AS perfis_items
            FROM login
+           ${accessPerfilLateralClause}
            ${whereClause}${whereClause ? ' AND' : ' WHERE'} codigo > $${values.length + 1}
            ORDER BY codigo ASC
            LIMIT $${nextValues.length}`,
@@ -17747,8 +18475,14 @@ const server = createServer(async (request, response) => {
       } else {
         const pagedValues = [...values, pageSize, offset]
         result = await pool.query(
-          `SELECT codigo::text AS codigo, BTRIM(nome) AS nome, TRIM(email) AS email
+          `SELECT
+             login.codigo::text AS codigo,
+             BTRIM(login.nome) AS nome,
+             TRIM(login.email) AS email,
+             COALESCE(perfil_data.perfis, '') AS perfis,
+             COALESCE(perfil_data.perfis_items, '[]'::json) AS perfis_items
            FROM login
+           ${accessPerfilLateralClause}
            ${whereClause}
            ORDER BY ${orderByClause}
            LIMIT $${pagedValues.length - 1}
@@ -17770,6 +18504,330 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao consultar acessos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && getAccessCodigoFromUrl(pathname)) {
+    try {
+      const codigo = Number(getAccessCodigoFromUrl(pathname))
+
+      if (!Number.isInteger(codigo) || codigo <= 0) {
+        sendJson(response, 400, { message: 'Codigo invalido.' })
+        return
+      }
+
+      const item = await fetchAccessItemByCodigo(pool, codigo)
+
+      if (!item) {
+        sendJson(response, 404, { message: 'Acesso nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, { item })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar acesso.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/perfil/options') {
+    try {
+      const result = await pool.query(
+        `SELECT ${perfilSelectClause}
+         FROM perfil
+         ORDER BY codigo ASC`,
+      )
+
+      sendJson(response, 200, {
+        items: result.rows,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao carregar opcoes de perfil.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/acesso-pagina/options') {
+    try {
+      const result = await pool.query(
+        `SELECT ${acessoPaginaSelectClause}
+         FROM acesso_pagina
+         ORDER BY codigo ASC`,
+      )
+
+      sendJson(response, 200, {
+        items: result.rows,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao carregar opcoes de acesso pagina.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/perfil') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 5) || 5, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'codigo')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'asc').toLowerCase() === 'desc'
+        ? 'DESC'
+        : 'ASC'
+      const offset = (page - 1) * pageSize
+      const values = []
+      const filters = []
+      const orderByClause = sortBy === 'descricao'
+        ? `UPPER(BTRIM(CAST(descricao AS text))) ${sortDirection}, codigo ASC`
+        : `codigo ${sortDirection}`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(codigo AS text) ILIKE $${values.length}
+          OR UPPER(BTRIM(CAST(descricao AS text))) ILIKE UPPER($${values.length})
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM perfil ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${perfilSelectClause}
+         FROM perfil
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: sortBy === 'descricao' ? 'descricao' : 'codigo',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar perfis.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/acesso-pagina') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 100)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'codigo')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'asc').toLowerCase() === 'desc'
+        ? 'DESC'
+        : 'ASC'
+      const offset = (page - 1) * pageSize
+      const values = []
+      const filters = []
+      const orderByClause = sortBy === 'sigla'
+        ? `UPPER(BTRIM(CAST(sigla AS text))) ${sortDirection}, codigo ASC`
+        : sortBy === 'descricao'
+        ? `UPPER(BTRIM(CAST(descricao AS text))) ${sortDirection}, codigo ASC`
+        : sortBy === 'funcao'
+          ? `LOWER(BTRIM(CAST(funcao AS text))) ${sortDirection}, codigo ASC`
+          : `codigo ${sortDirection}`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(codigo AS text) ILIKE $${values.length}
+          OR UPPER(BTRIM(CAST(sigla AS text))) ILIKE UPPER($${values.length})
+          OR UPPER(BTRIM(CAST(descricao AS text))) ILIKE UPPER($${values.length})
+          OR LOWER(BTRIM(CAST(funcao AS text))) ILIKE LOWER($${values.length})
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM acesso_pagina ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${acessoPaginaSelectClause}
+         FROM acesso_pagina
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: sortBy === 'sigla' || sortBy === 'descricao' || sortBy === 'funcao' ? sortBy : 'codigo',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar acesso pagina.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/perfil-acesso') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 100)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'codigo')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'asc').toLowerCase() === 'desc'
+        ? 'DESC'
+        : 'ASC'
+      const offset = (page - 1) * pageSize
+      const values = []
+      const filters = []
+      const orderByClause = sortBy === 'perfilDescricao'
+        ? `UPPER(BTRIM(CAST(perfil.descricao AS text))) ${sortDirection}, perfil_acesso.codigo ASC`
+        : sortBy === 'acessoPaginaDescricao'
+          ? `UPPER(BTRIM(CAST(acesso_pagina.descricao AS text))) ${sortDirection}, perfil_acesso.codigo ASC`
+          : sortBy === 'permissao'
+            ? `LOWER(BTRIM(CAST(perfil_acesso.permissao AS text))) ${sortDirection}, perfil_acesso.codigo ASC`
+            : `perfil_acesso.codigo ${sortDirection}`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          CAST(perfil_acesso.codigo AS text) ILIKE $${values.length}
+          OR CAST(perfil.codigo AS text) ILIKE $${values.length}
+          OR CAST(acesso_pagina.codigo AS text) ILIKE $${values.length}
+          OR UPPER(BTRIM(CAST(perfil.descricao AS text))) ILIKE UPPER($${values.length})
+          OR UPPER(COALESCE(BTRIM(CAST(acesso_pagina.sigla AS text)), '')) ILIKE UPPER($${values.length})
+          OR UPPER(BTRIM(CAST(acesso_pagina.descricao AS text))) ILIKE UPPER($${values.length})
+          OR LOWER(BTRIM(CAST(acesso_pagina.funcao AS text))) ILIKE LOWER($${values.length})
+          OR LOWER(BTRIM(CAST(perfil_acesso.permissao AS text))) ILIKE LOWER($${values.length})
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const fromClause = `
+        FROM perfil_acesso
+        INNER JOIN perfil ON perfil.codigo = perfil_acesso.perfil_codigo
+        INNER JOIN acesso_pagina ON acesso_pagina.codigo = perfil_acesso.acesso_pagina_codigo`
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         ${fromClause}
+         ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT ${perfilAcessoSelectClause}
+         ${fromClause}
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: sortBy === 'perfilDescricao' || sortBy === 'acessoPaginaDescricao' || sortBy === 'permissao'
+          ? sortBy
+          : 'codigo',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar PerfilAcesso.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && getPerfilAcessoPerfilCodigoFromUrl(pathname)) {
+    try {
+      const perfilCodigo = Number(getPerfilAcessoPerfilCodigoFromUrl(pathname))
+
+      if (!Number.isInteger(perfilCodigo) || perfilCodigo <= 0) {
+        sendJson(response, 400, { message: 'Perfil invalido.' })
+        return
+      }
+
+      const perfilResult = await pool.query(
+        `SELECT ${perfilSelectClause}
+         FROM perfil
+         WHERE codigo = $1
+         LIMIT 1`,
+        [perfilCodigo],
+      )
+
+      if (perfilResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Perfil nao encontrado.' })
+        return
+      }
+
+      const items = await fetchPerfilAcessoItemsByPerfilCodigo(pool, perfilCodigo)
+
+      sendJson(response, 200, {
+        perfil: perfilResult.rows[0],
+        items,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao carregar a matriz de PerfilAcesso.'
 
       sendJson(response, 500, { message })
     }
@@ -20274,12 +21332,22 @@ const server = createServer(async (request, response) => {
         return
       }
 
+      const profileResult = await pool.query(
+        `SELECT ${perfilSelectClause}
+         FROM login_perfil associacao
+         INNER JOIN perfil ON perfil.codigo = associacao.perfil_codigo
+         WHERE associacao.login_codigo = $1
+         ORDER BY perfil.codigo ASC`,
+        [dbUser.codigo],
+      )
+
       sendJson(response, 200, {
         token: createToken(email),
         user: {
           codigo: String(dbUser.codigo ?? ''),
           name: normalizeDbValue(dbUser.nome),
           email: normalizeDbValue(dbUser.email),
+          perfis: profileResult.rows,
         },
       })
     } catch (error) {
@@ -20319,13 +21387,234 @@ const server = createServer(async (request, response) => {
       const nome = normalizeRequestValue(body.nome)
       const email = normalizeRequestValue(body.email)
       const password = normalizeRequestValue(body.password)
+      const perfilCodigos = body.perfilCodigos
 
-      const result = await createAccess(nome, email, password)
+      const result = await createAccess(nome, email, password, perfilCodigos)
       sendJson(response, result.status, result.payload)
     } catch (error) {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao cadastrar acesso.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/perfil') {
+    try {
+      const body = await readJsonBody(request)
+      const validationResult = await validatePerfilPayload({
+        descricao: body.descricao,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO perfil (descricao)
+         VALUES ($1)
+         RETURNING ${perfilSelectClause}`,
+        [validationResult.payload.descricao],
+      )
+
+      sendJson(response, 201, {
+        item: insertResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao cadastrar perfil.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/acesso-pagina') {
+    try {
+      const body = await readJsonBody(request)
+      const validationResult = validateAcessoPaginaPayload({
+        sigla: body.sigla,
+        descricao: body.descricao,
+        funcao: body.funcao,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO acesso_pagina (sigla, descricao, funcao)
+         VALUES ($1, $2, $3)
+         RETURNING ${acessoPaginaSelectClause}`,
+        [validationResult.payload.sigla, validationResult.payload.descricao, validationResult.payload.funcao],
+      )
+
+      sendJson(response, 201, {
+        item: insertResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao cadastrar acesso pagina.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/perfil-acesso') {
+    try {
+      const body = await readJsonBody(request)
+      const validationResult = await validatePerfilAcessoPayload({
+        perfilCodigo: body.perfilCodigo,
+        acessoPaginaCodigo: body.acessoPaginaCodigo,
+        permissao: body.permissao,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const insertResult = await pool.query(
+        `INSERT INTO perfil_acesso (perfil_codigo, acesso_pagina_codigo, permissao)
+         VALUES ($1, $2, $3)
+         RETURNING codigo::int AS codigo`,
+        [
+          validationResult.payload.perfilCodigo,
+          validationResult.payload.acessoPaginaCodigo,
+          validationResult.payload.permissao,
+        ],
+      )
+
+      const createdItem = await fetchPerfilAcessoItemByCodigo(pool, insertResult.rows[0].codigo)
+
+      sendJson(response, 201, {
+        item: createdItem,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao cadastrar PerfilAcesso.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/perfil-acesso/generate-all') {
+    try {
+      const totalsResult = await pool.query(
+        `SELECT
+           (SELECT COUNT(*)::int FROM perfil) AS total_perfis,
+           (SELECT COUNT(*)::int FROM acesso_pagina) AS total_acessos,
+           (SELECT COUNT(*)::int FROM perfil_acesso) AS existing_relations`,
+      )
+
+      const normalizedResult = await pool.query(
+        `UPDATE perfil_acesso
+         SET permissao = 'consulta'
+         FROM perfil
+         WHERE perfil.codigo = perfil_acesso.perfil_codigo
+           AND UPPER(BTRIM(CAST(perfil.descricao AS text))) IN ('CONSULTA', 'ATENDIMENTO')
+           AND LOWER(BTRIM(CAST(perfil_acesso.permissao AS text))) = 'todos'
+         RETURNING perfil_acesso.codigo::text AS codigo`,
+      )
+
+      const removedAdministrativoResult = await pool.query(
+        `DELETE FROM perfil_acesso
+         USING perfil, acesso_pagina
+         WHERE perfil.codigo = perfil_acesso.perfil_codigo
+           AND acesso_pagina.codigo = perfil_acesso.acesso_pagina_codigo
+           AND UPPER(BTRIM(CAST(perfil.descricao AS text))) = 'ADMINISTRATIVO'
+           AND NOT (COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') = ANY($1::text[]))
+         RETURNING perfil_acesso.codigo::text AS codigo`,
+        [administrativoAllowedAcessoPaginaChaveSistema],
+      )
+
+      const removedFinanceiroResult = await pool.query(
+        `DELETE FROM perfil_acesso
+         USING perfil, acesso_pagina
+         WHERE perfil.codigo = perfil_acesso.perfil_codigo
+           AND acesso_pagina.codigo = perfil_acesso.acesso_pagina_codigo
+           AND UPPER(BTRIM(CAST(perfil.descricao AS text))) = 'FINANCEIRO'
+           AND NOT (COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') = ANY($1::text[]))
+         RETURNING perfil_acesso.codigo::text AS codigo`,
+        [financeiroAllowedAcessoPaginaChaveSistema],
+      )
+
+      const removedSmeDreResult = await pool.query(
+        `DELETE FROM perfil_acesso
+         USING perfil
+         WHERE perfil.codigo = perfil_acesso.perfil_codigo
+           AND UPPER(BTRIM(CAST(perfil.descricao AS text))) IN ('SME', 'DRE')
+         RETURNING perfil_acesso.codigo::text AS codigo`,
+      )
+
+      const insertResult = await pool.query(
+        `INSERT INTO perfil_acesso (perfil_codigo, acesso_pagina_codigo, permissao)
+         SELECT
+           perfil.codigo,
+           acesso_pagina.codigo,
+           CASE
+             WHEN UPPER(BTRIM(CAST(perfil.descricao AS text))) IN ('CONSULTA', 'ATENDIMENTO') THEN 'consulta'
+             ELSE 'todos'
+           END
+         FROM perfil
+         CROSS JOIN acesso_pagina
+         WHERE (
+             UPPER(BTRIM(CAST(perfil.descricao AS text))) <> 'ADMINISTRATIVO'
+             OR COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') = ANY($1::text[])
+           )
+           AND (
+             UPPER(BTRIM(CAST(perfil.descricao AS text))) <> 'FINANCEIRO'
+             OR COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') = ANY($2::text[])
+           )
+           AND UPPER(BTRIM(CAST(perfil.descricao AS text))) NOT IN ('SME', 'DRE')
+         ON CONFLICT (perfil_codigo, acesso_pagina_codigo) DO NOTHING
+         RETURNING codigo::text AS codigo`,
+        [administrativoAllowedAcessoPaginaChaveSistema, financeiroAllowedAcessoPaginaChaveSistema],
+      )
+
+      const totals = totalsResult.rows[0] ?? {
+        total_perfis: 0,
+        total_acessos: 0,
+        existing_relations: 0,
+      }
+      const insertedCount = insertResult.rowCount ?? 0
+      const normalizedCount = normalizedResult.rowCount ?? 0
+      const removedAdministrativoCount = removedAdministrativoResult.rowCount ?? 0
+      const removedFinanceiroCount = removedFinanceiroResult.rowCount ?? 0
+      const removedSmeDreCount = removedSmeDreResult.rowCount ?? 0
+
+      sendJson(response, 201, {
+        message: insertedCount > 0 || normalizedCount > 0 || removedAdministrativoCount > 0 || removedFinanceiroCount > 0 || removedSmeDreCount > 0
+          ? `${insertedCount} registro(s) de PerfilAcesso gerado(s), ${normalizedCount} registro(s) dos perfis Consulta/Atendimento ajustado(s), ${removedAdministrativoCount} registro(s) indevidos do perfil Administrativo removido(s), ${removedFinanceiroCount} registro(s) indevidos do perfil Financeiro removido(s) e ${removedSmeDreCount} registro(s) dos perfis SME/DRE removido(s).`
+          : 'Nenhum novo registro de PerfilAcesso foi gerado.',
+        item: {
+          total_perfis: totals.total_perfis ?? 0,
+          total_acessos: totals.total_acessos ?? 0,
+          existing_relations: totals.existing_relations ?? 0,
+          inserted_relations: insertedCount,
+          normalized_consulta_relations: normalizedCount,
+          removed_administrativo_relations: removedAdministrativoCount,
+          removed_financeiro_relations: removedFinanceiroCount,
+          removed_sme_dre_relations: removedSmeDreCount,
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gerar os registros de PerfilAcesso.'
 
       sendJson(response, 500, { message })
     }
@@ -24622,6 +25911,7 @@ const server = createServer(async (request, response) => {
       const nome = normalizeRequestValue(body.nome)
       const email = normalizeRequestValue(body.email)
       const password = normalizeRequestValue(body.password)
+      const perfilCodigos = body.perfilCodigos
 
       if (!Number.isInteger(originalCodigo) || originalCodigo <= 0) {
         sendJson(response, 400, { message: 'Codigo original invalido.' })
@@ -24638,6 +25928,13 @@ const server = createServer(async (request, response) => {
 
       if (validationResult.status !== 200) {
         sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const perfilValidationResult = await validatePerfilCodigos(perfilCodigos)
+
+      if (perfilValidationResult.status !== 200) {
+        sendJson(response, perfilValidationResult.status, perfilValidationResult.payload)
         return
       }
 
@@ -24660,12 +25957,78 @@ const server = createServer(async (request, response) => {
             descricao: currentUser.descricao,
           }
 
+      const client = await pool.connect()
+
+      try {
+        await client.query('BEGIN')
+
+        await client.query(
+          `UPDATE login
+           SET nome = $1, email = $2, password = $3, descricao = $4
+           WHERE codigo = $5`,
+          [normalizedNome, normalizedEmail, passwordPayload.password, passwordPayload.descricao, originalCodigo],
+        )
+
+        await syncLoginPerfis(client, originalCodigo, perfilValidationResult.payload.perfilCodigos)
+        const updatedItem = await fetchAccessItemByCodigo(client, originalCodigo)
+
+        await client.query('COMMIT')
+        sendJson(response, 200, {
+          item: updatedItem,
+        })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
+      }
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar acesso.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getPerfilCodigoFromUrl(pathname)) {
+    try {
+      const originalCodigo = Number(getPerfilCodigoFromUrl(pathname))
+      const body = await readJsonBody(request)
+
+      if (!Number.isInteger(originalCodigo) || originalCodigo <= 0) {
+        sendJson(response, 400, { message: 'Codigo original invalido.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM perfil WHERE codigo = $1 LIMIT 1',
+        [originalCodigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Perfil nao encontrado.' })
+        return
+      }
+
+      const validationResult = await validatePerfilPayload({
+        descricao: body.descricao,
+        originalCodigo,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
       const updateResult = await pool.query(
-        `UPDATE login
-         SET nome = $1, email = $2, password = $3, descricao = $4
-         WHERE codigo = $5
-         RETURNING codigo::text AS codigo, BTRIM(nome) AS nome, TRIM(email) AS email`,
-        [normalizedNome, normalizedEmail, passwordPayload.password, passwordPayload.descricao, originalCodigo],
+        `UPDATE perfil
+         SET descricao = $1
+         WHERE codigo = $2
+         RETURNING ${perfilSelectClause}`,
+        [validationResult.payload.descricao, originalCodigo],
       )
 
       sendJson(response, 200, {
@@ -24674,9 +26037,177 @@ const server = createServer(async (request, response) => {
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : 'Erro ao alterar acesso.'
+        : 'Erro ao alterar perfil.'
 
       sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getAcessoPaginaCodigoFromUrl(pathname)) {
+    try {
+      const originalCodigo = Number(getAcessoPaginaCodigoFromUrl(pathname))
+      const body = await readJsonBody(request)
+
+      if (!Number.isInteger(originalCodigo) || originalCodigo <= 0) {
+        sendJson(response, 400, { message: 'Codigo original invalido.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM acesso_pagina WHERE codigo = $1 LIMIT 1',
+        [originalCodigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Acesso pagina nao encontrado.' })
+        return
+      }
+
+      const validationResult = validateAcessoPaginaPayload({
+        sigla: body.sigla,
+        descricao: body.descricao,
+        funcao: body.funcao,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE acesso_pagina
+         SET sigla = $1,
+             descricao = $2,
+             funcao = $3
+         WHERE codigo = $4
+         RETURNING ${acessoPaginaSelectClause}`,
+        [validationResult.payload.sigla, validationResult.payload.descricao, validationResult.payload.funcao, originalCodigo],
+      )
+
+      sendJson(response, 200, {
+        item: updateResult.rows[0],
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar acesso pagina.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getPerfilAcessoCodigoFromUrl(pathname)) {
+    try {
+      const originalCodigo = Number(getPerfilAcessoCodigoFromUrl(pathname))
+      const body = await readJsonBody(request)
+
+      if (!Number.isInteger(originalCodigo) || originalCodigo <= 0) {
+        sendJson(response, 400, { message: 'Codigo original invalido.' })
+        return
+      }
+
+      const existingResult = await pool.query(
+        'SELECT 1 FROM perfil_acesso WHERE codigo = $1 LIMIT 1',
+        [originalCodigo],
+      )
+
+      if (existingResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'PerfilAcesso nao encontrado.' })
+        return
+      }
+
+      const validationResult = await validatePerfilAcessoPayload({
+        perfilCodigo: body.perfilCodigo,
+        acessoPaginaCodigo: body.acessoPaginaCodigo,
+        permissao: body.permissao,
+        originalCodigo,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      await pool.query(
+        `UPDATE perfil_acesso
+         SET perfil_codigo = $1,
+             acesso_pagina_codigo = $2,
+             permissao = $3
+         WHERE codigo = $4`,
+        [
+          validationResult.payload.perfilCodigo,
+          validationResult.payload.acessoPaginaCodigo,
+          validationResult.payload.permissao,
+          originalCodigo,
+        ],
+      )
+
+      const updatedItem = await fetchPerfilAcessoItemByCodigo(pool, originalCodigo)
+
+      sendJson(response, 200, {
+        item: updatedItem,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar PerfilAcesso.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'PUT' && getPerfilAcessoPerfilCodigoFromUrl(pathname)) {
+    const client = await pool.connect()
+
+    try {
+      const perfilCodigo = Number(getPerfilAcessoPerfilCodigoFromUrl(pathname))
+      const body = await readJsonBody(request)
+
+      if (!Number.isInteger(perfilCodigo) || perfilCodigo <= 0) {
+        sendJson(response, 400, { message: 'Perfil invalido.' })
+        return
+      }
+
+      const validationResult = await validatePerfilAcessoMatrixPayload({
+        perfilCodigo,
+        items: body.items,
+      })
+
+      if (validationResult.status !== 200) {
+        sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      await client.query('BEGIN')
+      await replacePerfilAcessoItemsByPerfilCodigo(
+        client,
+        validationResult.payload.perfilCodigo,
+        validationResult.payload.items,
+      )
+      await client.query('COMMIT')
+
+      const items = await fetchPerfilAcessoItemsByPerfilCodigo(pool, validationResult.payload.perfilCodigo)
+
+      sendJson(response, 200, {
+        perfil: validationResult.payload.perfil,
+        items,
+      })
+    } catch (error) {
+      await client.query('ROLLBACK')
+
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao salvar a matriz de PerfilAcesso.'
+
+      sendJson(response, 500, { message })
+    } finally {
+      client.release()
     }
 
     return
@@ -26436,6 +27967,8 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'DELETE' && getApuracaoFinanceiraKeyFromUrl(pathname)) {
+    const client = await pool.connect()
+
     try {
       const key = getApuracaoFinanceiraKeyFromUrl(pathname)
 
@@ -26444,7 +27977,44 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const deleteResult = await pool.query(
+      const revisao = Number.parseInt(key.revisao, 10)
+      const tipoPessoa = normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'
+
+      await client.query('BEGIN')
+
+      const existingResult = await client.query(
+        `SELECT mes_ano, CAST(dre_codigo AS text) AS dre_codigo, revisao, tipo_pessoa, BTRIM(situacao) AS situacao
+         FROM apuracao_financeira
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4
+         FOR UPDATE`,
+        [key.mesAno, key.dreCodigo, revisao, tipoPessoa],
+      )
+
+      if (existingResult.rowCount === 0) {
+        await client.query('ROLLBACK')
+        sendJson(response, 404, { message: 'Apuracao financeira nao encontrada.' })
+        return
+      }
+
+      if (existingResult.rows[0].situacao !== 'A processar') {
+        await client.query('ROLLBACK')
+        sendJson(response, 409, { message: 'A exclusao so e permitida quando a situacao estiver A processar.' })
+        return
+      }
+
+      const deletedApuracaoServicosResult = await client.query(
+        `DELETE FROM apuracao_servicos
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4`,
+        [key.mesAno, key.dreCodigo, revisao, tipoPessoa],
+      )
+
+      const deleteResult = await client.query(
         `DELETE FROM apuracao_financeira
          WHERE mes_ano = $1
            AND CAST(dre_codigo AS text) = $2
@@ -26452,28 +28022,16 @@ const server = createServer(async (request, response) => {
            AND BTRIM(tipo_pessoa) = $4
            AND BTRIM(situacao) = 'A processar'
          RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, revisao, tipo_pessoa`,
-        [key.mesAno, key.dreCodigo, Number.parseInt(key.revisao, 10), normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'],
+        [key.mesAno, key.dreCodigo, revisao, tipoPessoa],
       )
 
       if (deleteResult.rowCount === 0) {
-        const existingResult = await pool.query(
-          `SELECT 1
-           FROM apuracao_financeira
-           WHERE mes_ano = $1
-             AND CAST(dre_codigo AS text) = $2
-             AND revisao = $3
-             AND BTRIM(tipo_pessoa) = $4`,
-          [key.mesAno, key.dreCodigo, Number.parseInt(key.revisao, 10), normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'],
-        )
-
-        if (existingResult.rowCount > 0) {
-          sendJson(response, 409, { message: 'A exclusao so e permitida quando a situacao estiver A processar.' })
-          return
-        }
-
+        await client.query('ROLLBACK')
         sendJson(response, 404, { message: 'Apuracao financeira nao encontrada.' })
         return
       }
+
+      await client.query('COMMIT')
 
       sendJson(response, 200, {
         deletedKey: {
@@ -26482,13 +28040,22 @@ const server = createServer(async (request, response) => {
           revisao: Number(deleteResult.rows[0].revisao) || 0,
           tipoPessoa: normalizeApuracaoTipoPessoa(deleteResult.rows[0].tipo_pessoa) || 'PF',
         },
+        deletedApuracaoServicosCount: deletedApuracaoServicosResult.rowCount,
       })
     } catch (error) {
+      try {
+        await client.query('ROLLBACK')
+      } catch {
+        // Ignore rollback errors and preserve the original failure response.
+      }
+
       const message = error instanceof Error
         ? error.message
         : 'Erro ao excluir a apuracao financeira.'
 
       sendJson(response, 500, { message })
+    } finally {
+      client.release()
     }
 
     return
@@ -26864,6 +28431,135 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao excluir acesso.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getPerfilCodigoFromUrl(pathname)) {
+    try {
+      const codigo = Number(getPerfilCodigoFromUrl(pathname))
+
+      if (!Number.isInteger(codigo) || codigo <= 0) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const usageResult = await pool.query(
+        'SELECT COUNT(*)::int AS total FROM login_perfil WHERE perfil_codigo = $1',
+        [codigo],
+      )
+
+      if ((usageResult.rows[0]?.total ?? 0) > 0) {
+        sendJson(response, 409, { message: 'Perfil vinculado a um ou mais acessos.' })
+        return
+      }
+
+      const perfilAcessoUsageResult = await pool.query(
+        'SELECT COUNT(*)::int AS total FROM perfil_acesso WHERE perfil_codigo = $1',
+        [codigo],
+      )
+
+      if ((perfilAcessoUsageResult.rows[0]?.total ?? 0) > 0) {
+        sendJson(response, 409, { message: 'Perfil vinculado a um ou mais registros de PerfilAcesso.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM perfil WHERE codigo = $1 RETURNING codigo::text AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Perfil nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir perfil.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getAcessoPaginaCodigoFromUrl(pathname)) {
+    try {
+      const codigo = Number(getAcessoPaginaCodigoFromUrl(pathname))
+
+      if (!Number.isInteger(codigo) || codigo <= 0) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const usageResult = await pool.query(
+        'SELECT COUNT(*)::int AS total FROM perfil_acesso WHERE acesso_pagina_codigo = $1',
+        [codigo],
+      )
+
+      if ((usageResult.rows[0]?.total ?? 0) > 0) {
+        sendJson(response, 409, { message: 'Acesso pagina vinculado a um ou mais registros de PerfilAcesso.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM acesso_pagina WHERE codigo = $1 RETURNING codigo::text AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Acesso pagina nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir acesso pagina.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && getPerfilAcessoCodigoFromUrl(pathname)) {
+    try {
+      const codigo = Number(getPerfilAcessoCodigoFromUrl(pathname))
+
+      if (!Number.isInteger(codigo) || codigo <= 0) {
+        sendJson(response, 400, { message: 'Codigo invalido para exclusao.' })
+        return
+      }
+
+      const deleteResult = await pool.query(
+        'DELETE FROM perfil_acesso WHERE codigo = $1 RETURNING codigo::text AS codigo',
+        [codigo],
+      )
+
+      if (deleteResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'PerfilAcesso nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        deletedCodigo: deleteResult.rows[0].codigo,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir PerfilAcesso.'
 
       sendJson(response, 500, { message })
     }

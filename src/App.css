@@ -15,7 +15,7 @@
 
 .login-copy {
   padding: 40px;
-  border-radius: 32px;
+  border-radius: 0;
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.7), transparent 38%),
     linear-gradient(145deg, rgba(10, 43, 74, 0.94), rgba(18, 83, 100, 0.9));
@@ -52,7 +52,7 @@
   width: fit-content;
   margin: 0;
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid rgba(255, 248, 220, 0.34);
   background: linear-gradient(135deg, rgba(244, 190, 42, 0.26), rgba(226, 120, 37, 0.3));
   color: #fff8df;
@@ -68,7 +68,7 @@
 
 .login-card {
   padding: 32px;
-  border-radius: 32px;
+  border-radius: 0;
   background: rgba(249, 246, 239, 0.92);
   border: 1px solid rgba(150, 120, 84, 0.22);
   box-shadow: 0 20px 44px rgba(83, 57, 28, 0.14);
@@ -94,7 +94,7 @@
 .field-group select {
   width: 100%;
   border: 1px solid rgba(121, 91, 56, 0.24);
-  border-radius: 18px;
+  border-radius: 0;
   padding: 15px 18px;
   font: inherit;
   color: var(--text-strong);
@@ -124,6 +124,114 @@
   cursor: wait;
 }
 
+.field-radio-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 10px;
+  color: var(--text-strong);
+}
+
+.field-radio-group legend {
+  padding: 0;
+  font-weight: 700;
+}
+
+.field-radio-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.field-radio-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(121, 91, 56, 0.24);
+  background: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.field-radio-option input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--action);
+}
+
+.field-radio-option-selected {
+  border-color: var(--action);
+  box-shadow: 0 0 0 3px rgba(200, 92, 44, 0.14);
+  background: rgba(255, 247, 235, 0.96);
+}
+
+.perfil-acesso-matrix-card {
+  display: grid;
+  gap: 12px;
+}
+
+.perfil-acesso-matrix-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-soft);
+}
+
+.perfil-acesso-matrix-header strong {
+  color: var(--text-strong);
+}
+
+.perfil-acesso-matrix-wrapper {
+  max-height: 420px;
+}
+
+.perfil-acesso-matrix-table th,
+.perfil-acesso-matrix-table td {
+  vertical-align: middle;
+}
+
+.perfil-acesso-permission-column,
+.perfil-acesso-permission-cell {
+  width: 92px;
+  text-align: center;
+}
+
+.perfil-acesso-page-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.perfil-acesso-page-cell span {
+  color: var(--text-soft);
+  font-size: 0.88rem;
+}
+
+.perfil-acesso-permission-radio {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(121, 91, 56, 0.24);
+  background: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+}
+
+.perfil-acesso-permission-radio input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--action);
+}
+
+.perfil-acesso-permission-radio-selected {
+  border-color: var(--action);
+  box-shadow: 0 0 0 3px rgba(200, 92, 44, 0.14);
+  background: rgba(255, 247, 235, 0.96);
+}
+
 .apuracao-financeira-inline-fields {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(140px, 0.7fr);
@@ -140,7 +248,7 @@
 .apuracao-servicos-section-card {
   padding: 16px 18px;
   border: 1px solid rgba(121, 91, 56, 0.18);
-  border-radius: 24px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.55);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
 }
@@ -218,7 +326,7 @@
   overflow-y: auto;
   padding: 12px;
   border: 1px solid rgba(121, 91, 56, 0.16);
-  border-radius: 18px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.72);
 }
 
@@ -261,7 +369,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: 0;
   min-height: 50px;
   padding: 12px 18px;
   font: inherit;
@@ -381,7 +489,7 @@
   justify-content: space-between;
   min-width: 0;
   padding: 28px;
-  border-radius: 32px;
+  border-radius: 0;
   color: #eef7f4;
   background-color: #102d26;
   background-image:
@@ -400,7 +508,7 @@
   border: none;
   padding: 0;
   margin: 0;
-  border-radius: 0 22px 22px 0;
+  border-radius: 0;
   background: linear-gradient(180deg, #183a51, #0e2434 58%, #102d26);
   cursor: pointer;
   z-index: 4;
@@ -467,7 +575,7 @@
 
 .menu-item {
   padding: 14px 16px;
-  border-radius: 18px;
+  border-radius: 0;
   border: none;
   font-weight: 700;
   font-size: 1rem;
@@ -534,7 +642,7 @@
 
 .menu-subitem {
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: 0;
   font-weight: 600;
   font-size: 0.94rem;
   color: rgba(238, 247, 244, 0.76);
@@ -559,7 +667,7 @@
 
 .sidebar-footer {
   padding: 18px;
-  border-radius: 22px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -576,7 +684,7 @@
 .logout-button {
   margin-top: 14px;
   border: none;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 12px 16px;
   font: inherit;
   font-weight: 700;
@@ -606,7 +714,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px 24px;
-  border-radius: 32px;
+  border-radius: 0;
   margin-bottom: 24px;
   color: #eef7f4;
   background-color: #102d26;
@@ -669,7 +777,7 @@
   flex: 1 1 320px;
   min-width: 280px;
   border: 1px solid rgba(121, 91, 56, 0.24);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 13px 16px;
   font: inherit;
   background: rgba(255, 255, 255, 0.86);
@@ -686,7 +794,7 @@
   width: min(100%, 1120px);
   margin-left: 0;
   margin-right: auto;
-  border-radius: 28px;
+  border-radius: 0;
   padding: 18px 20px;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
@@ -743,7 +851,7 @@
 }
 
 .dashboard-summary-card {
-  border-radius: 22px;
+  border-radius: 0;
   padding: 18px 20px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(117, 141, 138, 0.18);
@@ -976,7 +1084,7 @@
   width: 100%;
   min-width: 72px;
   border: none;
-  border-radius: 10px;
+  border-radius: 0;
   padding: 8px 10px;
   background: rgba(24, 58, 81, 0.08);
   color: #183a51;
@@ -989,7 +1097,7 @@
 
 .dashboard-bancada-table .dashboard-cell-button {
   min-width: 40px;
-  border-radius: 8px;
+  border-radius: 0;
   padding: 5px 4px;
   font-size: 0.82rem;
 }
@@ -1099,7 +1207,7 @@
 
 .dashboard-os-popup-embed-card {
   min-height: 88vh;
-  border-radius: 16px;
+  border-radius: 0;
 }
 
 .dashboard-os-popup-frame {
@@ -1263,7 +1371,7 @@
 
 .row-action-button {
   border: none;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 6px 12px;
   font: inherit;
   font-size: 0.88rem;
@@ -1348,7 +1456,7 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  border-radius: 36px;
+  border-radius: 0;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 26%),
     linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
@@ -1363,7 +1471,7 @@
 
 .access-embed-card {
   min-height: 620px;
-  border-radius: 36px;
+  border-radius: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 26%),
@@ -1458,11 +1566,15 @@ body.management-modal-open {
 
 .management-modal-footer {
   position: sticky;
-  bottom: -18px;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
   margin: 0 -20px -18px;
   padding: 16px 20px 18px;
   background: linear-gradient(180deg, rgba(255, 251, 243, 0.88), rgba(255, 251, 243, 0.98));
   border-top: 1px solid rgba(33, 49, 57, 0.08);
+  box-shadow: 0 -10px 18px rgba(33, 49, 57, 0.08);
 }
 
 .smoke-card {
@@ -1497,7 +1609,7 @@ body.management-modal-open {
 .smoke-suite-card,
 .smoke-import-card,
 .smoke-error-card {
-  border-radius: 22px;
+  border-radius: 0;
   padding: 16px 18px;
   background: rgba(255, 255, 255, 0.66);
   border: 1px solid rgba(117, 141, 138, 0.18);
@@ -1545,7 +1657,7 @@ body.management-modal-open {
   justify-content: center;
   margin-left: 8px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   background: rgba(22, 101, 52, 0.12);
   color: #166534;
   font-size: 0.72rem;
@@ -1587,7 +1699,7 @@ body.management-modal-open {
 .smoke-error-output {
   margin: 0;
   padding: 14px;
-  border-radius: 16px;
+  border-radius: 0;
   background: rgba(123, 52, 30, 0.08);
   color: #7b341e;
   white-space: pre-wrap;
@@ -1624,7 +1736,7 @@ body.management-modal-open {
   justify-content: center;
   min-width: 96px;
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: 0;
   font-weight: 700;
   text-transform: uppercase;
   font-size: 0.78rem;
@@ -1679,7 +1791,7 @@ body.management-modal-open {
   max-height: 420px;
   overflow: auto;
   padding: 16px;
-  border-radius: 20px;
+  border-radius: 0;
   background: #0f2230;
   color: #e8f1ee;
   font-size: 0.92rem;
@@ -1810,7 +1922,7 @@ body.management-modal-open {
   .dre-card,
   .bus-stage,
   .access-embed-card {
-    border-radius: 24px;
+    border-radius: 0;
   }
 
   .management-modal-overlay {

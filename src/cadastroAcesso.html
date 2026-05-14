@@ -8,6 +8,40 @@
 
     <link rel="stylesheet" href="css/login.css" />
     <script src="/backspace-navigation-guard.js"></script>
+    <style>
+      .dsc-access-profile-group {
+        gap: 12px;
+      }
+
+      .dsc-access-profile-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+
+      .dsc-access-profile-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        background: rgba(255, 255, 255, 0.86);
+        font-weight: 600;
+      }
+
+      .dsc-access-profile-option input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        accent-color: #1f6f5f;
+      }
+
+      .dsc-access-profile-hint {
+        margin: 0;
+        color: #5e6b67;
+        font-size: 0.92rem;
+      }
+    </style>
   </head>
   <body>
     <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
@@ -50,6 +84,13 @@
                     <div class="dsc-form-error" id="password-error"></div>
                   </label>
 
+                  <div class="dsc-field-group dsc-access-profile-group">
+                    <span>Perfis</span>
+                    <div class="dsc-access-profile-options" id="perfil-options"></div>
+                    <p class="dsc-access-profile-hint">Selecione um ou mais perfis para o usuario.</p>
+                    <div class="dsc-form-error" id="perfil-error"></div>
+                  </div>
+
                   <p class="dsc-form-hint" id="password-hint"></p>
 
                   <div class="dsc-login-form-buttons dsc-mt20 dsc-access-form-buttons dsc-popup-footer-sticky">
@@ -91,6 +132,7 @@
                           Email <span id="sort-email-indicator">↑</span>
                         </button>
                       </th>
+                      <th>Perfis</th>
                       <th class="dsc-grid-actions-column">Acoes</th>
                     </tr>
                   </thead>
@@ -124,6 +166,8 @@
       const nomeError = document.getElementById('nome-error');
       const emailError = document.getElementById('email-error');
       const passwordError = document.getElementById('password-error');
+      const perfilOptionsContainer = document.getElementById('perfil-options');
+      const perfilError = document.getElementById('perfil-error');
       const feedback = document.getElementById('form-feedback');
       const gridFeedback = document.getElementById('grid-feedback');
       const insertAccessButton = document.getElementById('insert-access-button');
@@ -165,11 +209,14 @@
       let editingCodigo = null;
       let formMode = 'create';
       let bannerTimeoutId = null;
+      let perfilOptions = [];
+      let selectedPerfilCodigos = [];
 
       const resetMessages = () => {
         nomeError.textContent = '';
         emailError.textContent = '';
         passwordError.textContent = '';
+        perfilError.textContent = '';
         feedback.textContent = '';
         feedback.className = 'dsc-feedback';
       };
@@ -229,12 +276,99 @@
         document.body.classList.toggle('dsc-popup-open', isPopupVisible);
       };
 
+      const normalizePerfilCodigos = (values) => [...new Set((Array.isArray(values) ? values : [])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean))];
+
+      const renderPerfilOptions = () => {
+        if (!perfilOptionsContainer) {
+          return;
+        }
+
+        perfilOptionsContainer.innerHTML = '';
+
+        if (!perfilOptions.length) {
+          const emptyState = document.createElement('p');
+          emptyState.className = 'dsc-access-profile-hint';
+          emptyState.textContent = 'Nenhum perfil cadastrado.';
+          perfilOptionsContainer.appendChild(emptyState);
+          return;
+        }
+
+        perfilOptions.forEach((item) => {
+          const label = document.createElement('label');
+          label.className = 'dsc-access-profile-option';
+
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.value = item.codigo;
+          input.checked = selectedPerfilCodigos.includes(item.codigo);
+          input.disabled = formMode === 'view';
+          input.addEventListener('change', () => {
+            selectedPerfilCodigos = input.checked
+              ? normalizePerfilCodigos([...selectedPerfilCodigos, item.codigo])
+              : selectedPerfilCodigos.filter((codigo) => codigo !== item.codigo);
+            perfilError.textContent = '';
+          });
+
+          const text = document.createElement('span');
+          text.textContent = `${item.codigo} - ${item.descricao}`;
+
+          label.appendChild(input);
+          label.appendChild(text);
+          perfilOptionsContainer.appendChild(label);
+        });
+      };
+
+      const setSelectedPerfilCodigos = (values) => {
+        selectedPerfilCodigos = normalizePerfilCodigos(values);
+        renderPerfilOptions();
+      };
+
+      const loadPerfilOptions = async () => {
+        try {
+          const response = await fetch('/api/perfil/options', {
+            headers: {
+              Accept: 'application/json',
+            },
+          });
+          const payload = await readJsonResponse(response);
+
+          if (!response.ok) {
+            throw new Error(payload.message || 'Falha ao carregar perfis.');
+          }
+
+          perfilOptions = Array.isArray(payload.items) ? payload.items : [];
+          renderPerfilOptions();
+        } catch (error) {
+          perfilOptions = [];
+          renderPerfilOptions();
+          setGridMessage(getRequestErrorMessage(error, 'Falha ao carregar perfis.'), 'error');
+        }
+      };
+
+      const loadAccessDetail = async (codigo) => {
+        const response = await fetch(`/api/access/${encodeURIComponent(codigo)}`, {
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+        const payload = await readJsonResponse(response);
+
+        if (!response.ok) {
+          throw new Error(payload.message || 'Falha ao carregar o detalhe do acesso.');
+        }
+
+        return payload.item || null;
+      };
+
       const setFormReadOnly = (isReadOnly) => {
         nomeInput.readOnly = isReadOnly;
         emailInput.readOnly = isReadOnly;
         passwordInput.readOnly = isReadOnly;
         passwordInput.disabled = isReadOnly;
         saveAccessButton.classList.toggle('dsc-hidden', isReadOnly);
+        renderPerfilOptions();
       };
 
       const showForm = (mode = 'create') => {
@@ -262,6 +396,7 @@
         form.reset();
         editingCodigo = null;
         formMode = 'create';
+        setSelectedPerfilCodigos([]);
         setFormReadOnly(false);
         resetMessages();
       };
@@ -318,6 +453,7 @@
             <td>${item.codigo}</td>
             <td>${item.nome}</td>
             <td>${item.email}</td>
+            <td>${item.perfis || ''}</td>
             <td>
               <div class="dsc-grid-actions">
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}" data-nome="${item.nome}" data-email="${item.email}">Consulta</button>
@@ -378,26 +514,46 @@
         editingCodigo = null;
         form.reset();
         nomeInput.value = '';
+        emailInput.value = '';
+        passwordInput.value = '';
+        setSelectedPerfilCodigos([]);
         resetMessages();
         showForm('create');
       };
 
-      const startEdit = (item) => {
-        editingCodigo = item.codigo;
-        nomeInput.value = item.nome;
-        emailInput.value = item.email;
+      const fillFormWithAccess = (item) => {
+        nomeInput.value = item.nome || '';
+        emailInput.value = item.email || '';
         passwordInput.value = '';
-        resetMessages();
-        showForm('edit');
+        setSelectedPerfilCodigos(Array.isArray(item.perfis_items) ? item.perfis_items.map((perfil) => perfil.codigo) : []);
       };
 
-      const startView = (item) => {
-        editingCodigo = item.codigo;
-        nomeInput.value = item.nome;
-        emailInput.value = item.email;
-        passwordInput.value = '';
-        resetMessages();
-        showForm('view');
+      const startEdit = async (item) => {
+        try {
+          resetMessages();
+          const detailedItem = await loadAccessDetail(item.codigo);
+          editingCodigo = item.codigo;
+          fillFormWithAccess(detailedItem || item);
+          showForm('edit');
+        } catch (error) {
+          const message = getRequestErrorMessage(error, 'Falha ao carregar o acesso.');
+          setGridMessage(message, 'error');
+          showBanner(message, 'error');
+        }
+      };
+
+      const startView = async (item) => {
+        try {
+          resetMessages();
+          const detailedItem = await loadAccessDetail(item.codigo);
+          editingCodigo = item.codigo;
+          fillFormWithAccess(detailedItem || item);
+          showForm('view');
+        } catch (error) {
+          const message = getRequestErrorMessage(error, 'Falha ao carregar o acesso.');
+          setGridMessage(message, 'error');
+          showBanner(message, 'error');
+        }
       };
 
       const handleDelete = async (item) => {
@@ -447,12 +603,12 @@
         const item = { codigo, nome, email };
 
         if (action === 'view') {
-          startView(item);
+          void startView(item);
           return;
         }
 
         if (action === 'edit') {
-          startEdit(item);
+          void startEdit(item);
           return;
         }
 
@@ -471,6 +627,7 @@
         const nome = normalizeName(nomeInput.value);
         const email = emailInput.value.trim();
         const password = passwordInput.value.trim();
+        const perfilCodigos = normalizePerfilCodigos(selectedPerfilCodigos);
         let hasError = false;
 
         resetMessages();
@@ -516,7 +673,7 @@
               'Content-Type': 'application/json',
               Accept: 'application/json',
             },
-            body: JSON.stringify({ nome, email, password }),
+            body: JSON.stringify({ nome, email, password, perfilCodigos }),
           });
 
           const payload = await readJsonResponse(response);
@@ -661,6 +818,7 @@
       });
 
       hideForm();
+      void loadPerfilOptions();
       void loadAccesses();
     </script>
   </body>

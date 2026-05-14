@@ -5,7 +5,7 @@ export const APURACAO_FINANCEIRA_STATUS_OPTIONS = [
   'Processado',
   'Em digitacao',
   'Digitado',
-  'Em aprovacao',
+  'Aprovacao SME',
   'Aprovado SME',
   'Aguardando calculo',
   'Calculado',
@@ -103,6 +103,7 @@ export type ApuracaoFinanceiraListParams = {
   dreCodigo?: string
   revisao?: number
   tipoPessoa?: ApuracaoTipoPessoa
+  situacao?: ApuracaoFinanceiraStatus
   page?: number
   pageSize?: number
   sortBy?: ApuracaoFinanceiraSortField
@@ -172,6 +173,10 @@ export async function listApuracaoFinanceiraItemsPaginated(params: ApuracaoFinan
 
   if (params.tipoPessoa?.trim()) {
     queryParams.set('tipoPessoa', params.tipoPessoa.trim())
+  }
+
+  if (params.situacao?.trim()) {
+    queryParams.set('situacao', params.situacao.trim())
   }
 
   if (params.page) {

@@ -23,6 +23,7 @@ const sequenceByTable = {
   parametro_veiculo: 'parametro_veiculo_codigo_seq',
   modal_bancada_condicao_tipo_pgto: 'modal_bancada_condicao_tipo_pgto_codigo_seq',
   modal_bancada_condicao_tipo_pgto_valor: 'modal_bancada_condicao_tipo_pgto_valor_codigo_seq',
+  perfil: 'perfil_codigo_seq',
 }
 
 const fetchRows = async (client, table) => {
@@ -87,6 +88,14 @@ const deleteUnreferencedExtraTipoBancadaRows = async (client, validCodes) => {
   )
 }
 
+const deleteExtraRowsByCodigo = async (client, table, validCodes) => {
+  await client.query(
+    `DELETE FROM ${table}
+     WHERE codigo <> ALL($1::int[])`,
+    [validCodes],
+  )
+}
+
 const resetSequence = async (client, table, sequence) => {
   await client.query(
     `SELECT setval($1::regclass, GREATEST(COALESCE((SELECT MAX(codigo) FROM ${table}), 0), 1), true)`,
@@ -94,9 +103,25 @@ const resetSequence = async (client, table, sequence) => {
   )
 }
 
-const buildSummary = (payload) => ({
+const filterLoginPerfilRowsByExistingLogins = async (client, rows) => {
+  if (!rows.length) {
+    return { rows: [], skippedCount: 0 }
+  }
+
+  const existingLoginCodes = await client.query('SELECT codigo::int AS codigo FROM login')
+  const validLoginCodes = new Set(existingLoginCodes.rows.map((row) => row.codigo))
+  const filteredRows = rows.filter((row) => validLoginCodes.has(row.login_codigo))
+
+  return {
+    rows: filteredRows,
+    skippedCount: rows.length - filteredRows.length,
+  }
+}
+
+const buildSummary = (payload, metadata = {}) => ({
   sourceDatabase,
   targetDatabase,
+  ...metadata,
   synchronized: Object.fromEntries(
     Object.entries(payload).map(([table, rows]) => [table, rows.length]),
   ),
@@ -118,23 +143,38 @@ const main = async () => {
       parametro_veiculo: await fetchRows(source, 'parametro_veiculo'),
       modal_bancada_condicao_tipo_pgto: await fetchRows(source, 'modal_bancada_condicao_tipo_pgto'),
       modal_bancada_condicao_tipo_pgto_valor: await fetchRows(source, 'modal_bancada_condicao_tipo_pgto_valor'),
+      perfil: await fetchRows(source, 'perfil'),
+      login_perfil: await source.query('SELECT login_codigo, perfil_codigo FROM login_perfil ORDER BY login_codigo, perfil_codigo').then((result) => result.rows),
     }
+    const loginPerfilFilter = await filterLoginPerfilRowsByExistingLogins(target, payload.login_perfil)
 
     await target.query('BEGIN')
 
     await deleteUnreferencedExtraTipoBancadaRows(target, payload.tipo_bancada.map((row) => row.codigo))
+    await deleteExtraRowsByCodigo(target, 'perfil', payload.perfil.map((row) => row.codigo))
     await reassignConflictingDescriptions(target, 'tipo_bancada', payload.tipo_bancada)
     await reassignConflictingDescriptions(target, 'tipo_pgto', payload.tipo_pgto)
 
     await upsertByCodigo(target, 'condicao', payload.condicao)
     await upsertByCodigo(target, 'tipo_bancada', payload.tipo_bancada)
     await upsertByCodigo(target, 'tipo_pgto', payload.tipo_pgto)
+    await upsertByCodigo(target, 'perfil', payload.perfil)
 
+    await target.query('TRUNCATE TABLE login_perfil RESTART IDENTITY CASCADE')
     await target.query('TRUNCATE TABLE modal_bancada_condicao_tipo_pgto_valor RESTART IDENTITY CASCADE')
     await target.query('TRUNCATE TABLE modal_bancada_condicao_tipo_pgto RESTART IDENTITY CASCADE')
     await target.query('TRUNCATE TABLE parametro_veiculo RESTART IDENTITY CASCADE')
     await target.query('TRUNCATE TABLE modalidade_tipo_bancada RESTART IDENTITY CASCADE')
 
+    if (loginPerfilFilter.rows.length) {
+      await target.query(
+        'INSERT INTO login_perfil (login_codigo, perfil_codigo) SELECT source.login_codigo, source.perfil_codigo FROM UNNEST($1::int[], $2::int[]) AS source(login_codigo, perfil_codigo)',
+        [
+          loginPerfilFilter.rows.map((row) => row.login_codigo),
+          loginPerfilFilter.rows.map((row) => row.perfil_codigo),
+        ],
+      )
+    }
     await insertByCodigo(target, 'modalidade_tipo_bancada', payload.modalidade_tipo_bancada)
     await insertByCodigo(target, 'parametro_veiculo', payload.parametro_veiculo)
     await insertByCodigo(target, 'modal_bancada_condicao_tipo_pgto', payload.modal_bancada_condicao_tipo_pgto)
@@ -145,7 +185,10 @@ const main = async () => {
     }
 
     await target.query('COMMIT')
-    console.log(JSON.stringify(buildSummary(payload), null, 2))
+    console.log(JSON.stringify(buildSummary(payload, {
+      skippedLoginPerfilRows: loginPerfilFilter.skippedCount,
+      synchronizedLoginPerfilRows: loginPerfilFilter.rows.length,
+    }), null, 2))
   } catch (error) {
     await target.query('ROLLBACK').catch(() => {})
     throw error

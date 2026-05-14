@@ -166,7 +166,7 @@ body:has(#emissao-parametro-grid-body) .dsc-container {
   min-width: 0;
   width: 100%;
   border: 1px solid rgba(121, 91, 56, 0.24);
-  border-radius: 18px;
+  border-radius: 0;
   padding: 15px 18px;
   font: inherit;
   color: #213139;
@@ -177,7 +177,7 @@ body:has(#emissao-parametro-grid-body) .dsc-container {
 .dsc-access-filter-input {
   flex: 1 1 320px;
   min-width: 220px;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 13px 16px;
 }
 
@@ -231,7 +231,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
 
 .dsc-card {
   border: none;
-  border-radius: 28px;
+  border-radius: 0;
   padding: 24px;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
@@ -364,7 +364,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
   height: 40px;
   min-height: 40px;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 1rem;
   font-weight: 700;
 }
@@ -383,7 +383,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
   height: 40px;
   min-height: 40px;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 1rem;
   font-weight: 700;
 }
@@ -510,7 +510,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
   margin: 0 0 18px;
   padding: 14px 16px;
   border: 1px solid #d8b24f;
-  border-radius: 16px;
+  border-radius: 0;
   background: linear-gradient(135deg, rgba(255, 248, 220, 0.96), rgba(252, 238, 197, 0.92));
   color: #6b4a00;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
@@ -541,7 +541,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
   align-items: center;
   min-height: 30px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid rgba(163, 110, 0, 0.24);
   background: rgba(255, 255, 255, 0.76);
   color: #7a4b00;
@@ -692,7 +692,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
   margin: 0 auto;
   padding: 32px 40px;
   border: 1px solid rgba(120, 135, 156, 0.28);
-  border-radius: 24px;
+  border-radius: 0;
   background: #ffffff;
   box-shadow: 0 18px 34px rgba(74, 89, 78, 0.12);
   font-family: Arial, Helvetica, sans-serif;
@@ -742,7 +742,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
   gap: 10px;
   padding: 18px 20px;
   border: 1px solid rgba(120, 135, 156, 0.28);
-  border-radius: 12px;
+  border-radius: 0;
   background: #ffffff;
   min-width: 0;
 }
@@ -926,7 +926,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
   min-width: 48px;
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: 0;
   font-size: 1.1rem;
 }
 
@@ -939,7 +939,7 @@ body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
   min-width: 40px;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 0;
   font-size: 1rem;
 }
 
@@ -2153,11 +2153,6 @@ body:has(#cep-rejection-grid-body) .dsc-access-grid-card {
   margin-right: auto;
 }
 
-body:has(#ordem-servico-grid-body) .dsc-access-grid-card,
-body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid-card {
-  min-height: 0;
-}
-
 .dsc-access-grid-header {
   display: flex;
   align-items: flex-start;
@@ -2408,58 +2403,6 @@ body:has(#credenciada-grid-body) .dsc-access-grid {
   width: 100%;
   min-width: 1080px;
   table-layout: fixed;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid {
-  width: 100%;
-  min-width: 1200px;
-  table-layout: fixed;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-grid-actions-column {
-  width: 156px;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid th:nth-child(1),
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(1) {
-  width: 18ch;
-  max-width: 18ch;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid th:nth-child(2),
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(2) {
-  width: 26ch;
-  max-width: 26ch;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid th:nth-child(3),
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(3),
-body:has(#ordem-servico-grid-body) .dsc-access-grid th:nth-child(4),
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(4) {
-  width: 16ch;
-  max-width: 16ch;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(3),
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(4) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid th:nth-child(5),
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(5) {
-  width: 8ch;
-  max-width: 8ch;
-}
-
-body:has(#ordem-servico-grid-body) .dsc-access-grid th:nth-child(6),
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(6),
-body:has(#ordem-servico-grid-body) .dsc-access-grid th:nth-child(7),
-body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(7) {
-  width: 10ch;
-  max-width: 10ch;
 }
 
 body:has(#vinculo-grid-body) .dsc-access-grid,

@@ -28,7 +28,7 @@ type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 type FormMode = 'create' | 'edit' | 'view'
 
 const APURACAO_SERVICOS_EDITABLE_STATUS = 'Em digitacao'
-const APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE = 'A digitacao da apuracao de servicos so e permitida quando a apuracao financeira estiver com status Em digitacao.'
+const APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE = 'Registro nao liberado para digitacao.'
 
 const normalizeMonthYearInput = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 6)
@@ -433,6 +433,7 @@ export default function ApuracaoServicosView() {
     if (!canEditApuracaoServicosItem(item)) {
       setStatusTone('warning')
       setStatusMessage(APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE)
+      window.alert(APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE)
       return
     }
 
@@ -715,7 +716,7 @@ export default function ApuracaoServicosView() {
               <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleSubmit} noValidate>
                 <div className="management-modal-header">
                   <div>
-                    <p className="management-modal-kicker">Operacional financeiro</p>
+                    <p className="management-modal-kicker">Operacional financeiro - APURSVC021</p>
                     <h2 id="apuracao-servicos-modal-title">APURACAO SERVICOS</h2>
                   </div>
                   <button
@@ -1035,7 +1036,6 @@ export default function ApuracaoServicosView() {
                           type="button"
                           className="row-action-button row-action-edit"
                           onClick={() => handleStartEdit(item)}
-                          disabled={!canEditApuracaoServicosItem(item)}
                           title={canEditApuracaoServicosItem(item) ? 'Alterar registro' : APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE}
                         >
                           Alterar
