@@ -1,3 +1,4 @@
+import type { ApuracaoFinanceiraStatus } from './apuracaoFinanceira'
 import type { ApuracaoTipoPessoa } from './apuracaoTipoPessoa'
 
 export type ApuracaoServicosKey = {
@@ -15,6 +16,7 @@ export type ApuracaoServicosItem = ApuracaoServicosKey & {
   ordemServicoOsConcat: string
   ordemServicoTermoAdesao: string
   ordemServicoNumOs: string
+  apuracaoFinanceiraSituacao: ApuracaoFinanceiraStatus
   tipoEscolaSigla: string
   tipoEscolaDescricao: string
   naoCadeirantePresencial: number

@@ -10,6 +10,7 @@ import {
   listApuracaoServicosOrdemServicoOptions,
   updateApuracaoServicosItem,
 } from './services/apuracaoServicos'
+import { listApuracaoFinanceiraItemsPaginated } from './services/apuracaoFinanceira'
 import type {
   ApuracaoServicosItem,
   ApuracaoServicosKey,
@@ -23,8 +24,11 @@ import {
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
 
-type StatusTone = 'idle' | 'error' | 'success'
+type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 type FormMode = 'create' | 'edit' | 'view'
+
+const APURACAO_SERVICOS_EDITABLE_STATUS = 'Em digitacao'
+const APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE = 'A digitacao da apuracao de servicos so e permitida quando a apuracao financeira estiver com status Em digitacao.'
 
 const normalizeMonthYearInput = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 6)
@@ -388,6 +392,10 @@ export default function ApuracaoServicosView() {
     setStatusMessage('')
   }
 
+  const canEditApuracaoServicosItem = (item: Pick<ApuracaoServicosItem, 'apuracaoFinanceiraSituacao'>) => {
+    return item.apuracaoFinanceiraSituacao === APURACAO_SERVICOS_EDITABLE_STATUS
+  }
+
   const openFormWithItem = (item: ApuracaoServicosItem, nextMode: FormMode) => {
     setEditingKey({
       mesAno: item.mesAno,
@@ -422,6 +430,12 @@ export default function ApuracaoServicosView() {
   }
 
   const handleStartEdit = (item: ApuracaoServicosItem) => {
+    if (!canEditApuracaoServicosItem(item)) {
+      setStatusTone('warning')
+      setStatusMessage(APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE)
+      return
+    }
+
     openFormWithItem(item, 'edit')
   }
 
@@ -566,6 +580,28 @@ export default function ApuracaoServicosView() {
     if (!payload) {
       setStatusTone('error')
       setStatusMessage('Corrija os campos destacados para continuar.')
+      return
+    }
+
+    try {
+      const apuracaoFinanceiraResult = await listApuracaoFinanceiraItemsPaginated({
+        mesAno: payload.mesAno,
+        dreCodigo: payload.dreCodigo,
+        revisao: payload.revisao,
+        tipoPessoa: payload.tipoPessoa,
+        page: 1,
+        pageSize: 1,
+      })
+
+      if (apuracaoFinanceiraResult.items[0]?.situacao !== APURACAO_SERVICOS_EDITABLE_STATUS) {
+        setStatusTone('warning')
+        setStatusMessage(APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE)
+        return
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao validar a situacao da apuracao financeira.'
+      setStatusTone('error')
+      setStatusMessage(message)
       return
     }
 
@@ -995,7 +1031,13 @@ export default function ApuracaoServicosView() {
                         <button type="button" className="row-action-button" onClick={() => handleStartView(item)}>
                           Consulta
                         </button>
-                        <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEdit(item)}>
+                        <button
+                          type="button"
+                          className="row-action-button row-action-edit"
+                          onClick={() => handleStartEdit(item)}
+                          disabled={!canEditApuracaoServicosItem(item)}
+                          title={canEditApuracaoServicosItem(item) ? 'Alterar registro' : APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE}
+                        >
                           Alterar
                         </button>
                       </div>

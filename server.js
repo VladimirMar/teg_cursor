@@ -1255,6 +1255,7 @@ const apuracaoServicosSelectClause = `
   COALESCE(BTRIM(ordem_servico_item.os_concat), '') AS ordem_servico_os_concat,
   COALESCE(BTRIM(ordem_servico_item.termo_adesao), '') AS ordem_servico_termo_adesao,
   COALESCE(BTRIM(ordem_servico_item.num_os), '') AS ordem_servico_num_os,
+  COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
   apuracao_servicos.nc_pres AS nc_pres,
   apuracao_servicos.cad AS cad,
   apuracao_servicos.ac_nc AS ac_nc,
@@ -1275,6 +1276,7 @@ const mapApuracaoServicosRow = (row) => ({
   ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
   ordemServicoTermoAdesao: normalizeRequestValue(row?.ordem_servico_termo_adesao),
   ordemServicoNumOs: normalizeRequestValue(row?.ordem_servico_num_os),
+  apuracaoFinanceiraSituacao: normalizeApuracaoFinanceiraStatus(row?.apuracao_financeira_situacao) || 'A processar',
   revisao: Number(row?.revisao) || 0,
   tipoEscolaCodigo: normalizeRequestValue(row?.tipo_escola_codigo),
   tipoEscolaSigla: normalizeRequestValue(row?.tipo_escola_sigla),
@@ -2638,6 +2640,29 @@ const ensurePreviousApuracaoFinanceiraRevisionIsConcluded = async ({ mesAno, rev
         `A revisao anterior numero ${previousRevision} nao foi concluida para a DRE ${dreRecord.sigla || dreRecord.codigo}.`,
       )
     }
+  }
+}
+
+const ensureApuracaoServicosEditable = async ({ mesAno, dreCodigo, revisao, tipoPessoa }, executor = pool) => {
+  const apuracaoFinanceiraResult = await executor.query(
+    `SELECT BTRIM(COALESCE(situacao, '')) AS situacao
+     FROM apuracao_financeira
+     WHERE mes_ano = $1
+       AND CAST(dre_codigo AS text) = $2
+       AND revisao = $3
+       AND BTRIM(tipo_pessoa) = $4
+     LIMIT 1`,
+    [mesAno, dreCodigo, revisao, tipoPessoa],
+  )
+
+  if (apuracaoFinanceiraResult.rowCount === 0) {
+    throw createHttpError(404, 'Apuracao financeira da chave informada nao encontrada.')
+  }
+
+  const situacao = normalizeApuracaoFinanceiraStatus(apuracaoFinanceiraResult.rows[0]?.situacao)
+
+  if (situacao !== 'Em digitacao') {
+    throw createHttpError(409, 'A digitacao da apuracao de servicos so e permitida quando a apuracao financeira estiver com status Em digitacao.')
   }
 }
 
@@ -15947,7 +15972,12 @@ const server = createServer(async (request, response) => {
         FROM apuracao_servicos
         INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
         INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
-        INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo`
+        INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo
+        INNER JOIN apuracao_financeira
+          ON apuracao_financeira.mes_ano = apuracao_servicos.mes_ano
+         AND apuracao_financeira.dre_codigo = apuracao_servicos.dre_codigo
+         AND apuracao_financeira.revisao = apuracao_servicos.revisao
+         AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apuracao_servicos.tipo_pessoa)`
 
       const countResult = await pool.query(
         `SELECT COUNT(*)::int AS total
@@ -20918,21 +20948,7 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const apuracaoFinanceiraResult = await pool.query(
-        `SELECT 1
-         FROM apuracao_financeira
-         WHERE mes_ano = $1
-           AND CAST(dre_codigo AS text) = $2
-           AND revisao = $3
-           AND BTRIM(tipo_pessoa) = $4
-         LIMIT 1`,
-        [mesAno, dreCodigo, revisao, tipoPessoa],
-      )
-
-      if (apuracaoFinanceiraResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Apuracao financeira da chave informada nao encontrada.' })
-        return
-      }
+      await ensureApuracaoServicosEditable({ mesAno, dreCodigo, revisao, tipoPessoa })
 
       const tipoEscolaResult = await pool.query(
         'SELECT 1 FROM tipo_escola WHERE codigo = $1 LIMIT 1',
@@ -21016,6 +21032,11 @@ const server = createServer(async (request, response) => {
          INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
          INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
          INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo
+         INNER JOIN apuracao_financeira
+           ON apuracao_financeira.mes_ano = apuracao_servicos.mes_ano
+          AND apuracao_financeira.dre_codigo = apuracao_servicos.dre_codigo
+          AND apuracao_financeira.revisao = apuracao_servicos.revisao
+          AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apuracao_servicos.tipo_pessoa)
          WHERE apuracao_servicos.mes_ano = $1
            AND CAST(apuracao_servicos.dre_codigo AS text) = $2
            AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $3
@@ -24390,21 +24411,7 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const apuracaoFinanceiraResult = await pool.query(
-        `SELECT 1
-         FROM apuracao_financeira
-         WHERE mes_ano = $1
-           AND CAST(dre_codigo AS text) = $2
-           AND revisao = $3
-           AND BTRIM(tipo_pessoa) = $4
-         LIMIT 1`,
-        [mesAno, dreCodigo, revisao, tipoPessoa],
-      )
-
-      if (apuracaoFinanceiraResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Apuracao financeira da chave informada nao encontrada.' })
-        return
-      }
+      await ensureApuracaoServicosEditable({ mesAno, dreCodigo, revisao, tipoPessoa })
 
       const tipoEscolaResult = await pool.query(
         'SELECT 1 FROM tipo_escola WHERE codigo = $1 LIMIT 1',
@@ -24520,6 +24527,11 @@ const server = createServer(async (request, response) => {
          INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
          INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
          INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo
+         INNER JOIN apuracao_financeira
+           ON apuracao_financeira.mes_ano = apuracao_servicos.mes_ano
+          AND apuracao_financeira.dre_codigo = apuracao_servicos.dre_codigo
+          AND apuracao_financeira.revisao = apuracao_servicos.revisao
+          AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apuracao_servicos.tipo_pessoa)
          WHERE apuracao_servicos.mes_ano = $1
            AND CAST(apuracao_servicos.dre_codigo AS text) = $2
            AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $3
