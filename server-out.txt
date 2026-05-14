@@ -1,1 +1,2 @@
+Codigos da DRE compactados: 0; OrdemServico remapeada: 3
 Auth API escutando na porta 3001

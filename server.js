@@ -13253,6 +13253,26 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN tipo_pessoa SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN situacao SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN data_inclusao SET NOT NULL')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS apuracao_servicos (
+      mes_ano varchar(7) NOT NULL,
+      dre_codigo integer NOT NULL REFERENCES dre(codigo) ON DELETE RESTRICT,
+      ordem_servico_codigo integer NOT NULL REFERENCES ${ordemServicoTableName}(codigo) ON DELETE RESTRICT,
+      revisao integer NOT NULL DEFAULT 0,
+      tipo_escola_codigo integer NOT NULL REFERENCES tipo_escola(codigo) ON DELETE RESTRICT,
+      tipo_pessoa varchar(2) NOT NULL DEFAULT 'PF',
+      nc_pres integer NOT NULL DEFAULT 0,
+      cad integer NOT NULL DEFAULT 0,
+      ac_nc integer NOT NULL DEFAULT 0,
+      ac_cad integer NOT NULL DEFAULT 0,
+      cont_nc integer NOT NULL DEFAULT 0,
+      cont_cad integer NOT NULL DEFAULT 0,
+      km numeric(14, 4) NOT NULL DEFAULT 0,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_alteracao timestamp without time zone,
+      CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
+    )
+  `)
   await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_apuracao_financeira_fk')
   await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_pk')
   await pool.query('ALTER TABLE apuracao_financeira DROP CONSTRAINT IF EXISTS apuracao_financeira_pk')
