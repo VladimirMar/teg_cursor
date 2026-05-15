@@ -19,6 +19,7 @@ const sequenceByTable = {
   condicao: 'condicao_codigo_seq',
   tipo_bancada: 'tipo_bancada_codigo_seq',
   tipo_pgto: 'tipo_pgto_codigo_seq',
+  tipo_escola: 'tipo_escola_codigo_seq',
   modalidade_tipo_bancada: 'modalidade_tipo_bancada_codigo_seq',
   parametro_veiculo: 'parametro_veiculo_codigo_seq',
   modal_bancada_condicao_tipo_pgto: 'modal_bancada_condicao_tipo_pgto_codigo_seq',
@@ -198,6 +199,7 @@ const main = async () => {
       condicao: await fetchRows(source, 'condicao'),
       tipo_bancada: await fetchRows(source, 'tipo_bancada'),
       tipo_pgto: await fetchRows(source, 'tipo_pgto'),
+      tipo_escola: await fetchRows(source, 'tipo_escola'),
       modalidade_tipo_bancada: await fetchRows(source, 'modalidade_tipo_bancada'),
       parametro_veiculo: await fetchRows(source, 'parametro_veiculo'),
       modal_bancada_condicao_tipo_pgto: await fetchRows(source, 'modal_bancada_condicao_tipo_pgto'),
@@ -222,6 +224,8 @@ const main = async () => {
     await deleteExtraRowsByCodigo(target, 'perfil', payload.perfil.map((row) => row.codigo))
     await reassignConflictingDescriptions(target, 'tipo_bancada', payload.tipo_bancada)
     await reassignConflictingDescriptions(target, 'tipo_pgto', payload.tipo_pgto)
+    await reassignConflictingDescriptions(target, 'tipo_escola', payload.tipo_escola)
+    await reassignConflictingColumnValues(target, 'tipo_escola', 'sigla', payload.tipo_escola)
     await reassignConflictingColumnValues(target, 'login', 'email', payload.login)
     await reassignConflictingColumnValues(target, 'acesso_pagina', 'sigla', payload.acesso_pagina)
     await reassignConflictingColumnValues(target, 'acesso_pagina', 'chave_sistema', payload.acesso_pagina)
@@ -229,6 +233,7 @@ const main = async () => {
     await upsertByCodigo(target, 'condicao', payload.condicao)
     await upsertByCodigo(target, 'tipo_bancada', payload.tipo_bancada)
     await upsertByCodigo(target, 'tipo_pgto', payload.tipo_pgto)
+    await upsertByCodigo(target, 'tipo_escola', payload.tipo_escola)
     await upsertByCodigo(target, 'login', payload.login)
     await upsertByCodigo(target, 'acesso_pagina', payload.acesso_pagina)
     await upsertByCodigo(target, 'perfil', payload.perfil)
