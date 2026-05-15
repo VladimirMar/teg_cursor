@@ -391,7 +391,7 @@ const getApuracaoFinanceiraKeyFromUrl = (url) => {
 }
 
 const getApuracaoServicosKeyFromUrl = (url) => {
-  const match = url.match(/^\/api\/apuracao-servicos\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)$/)
+  const match = url.match(/^\/api\/apuracao-servicos\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)$/)
 
   if (!match) {
     return null
@@ -404,6 +404,7 @@ const getApuracaoServicosKeyFromUrl = (url) => {
     revisao: decodeURIComponent(match[4]),
     tipoEscolaCodigo: decodeURIComponent(match[5]),
     tipoPessoa: decodeURIComponent(match[6]),
+    dataReferencia: decodeURIComponent(match[7]),
   }
 }
 
@@ -1198,19 +1199,6 @@ const acessoPaginaCatalogItems = [
   { chaveSistema: 'form_apursvc021', sigla: 'APURSVC021', descricao: 'APURACAO SERVICOS', funcao: 'formulario' },
   { chaveSistema: 'form_acespag022', sigla: 'ACESPAG022', descricao: 'Acesso Pagina', funcao: 'formulario' },
   { chaveSistema: 'form_perfacs023', sigla: 'PERFACS023', descricao: 'PerfilAcesso', funcao: 'formulario' },
-  { chaveSistema: 'form_cadace024', sigla: 'CADACE024', descricao: 'Cadastro de Acesso', funcao: 'formulario' },
-  { chaveSistema: 'form_logdre025', sigla: 'LOGDRE025', descricao: 'Login x DRE', funcao: 'formulario' },
-  { chaveSistema: 'form_condut026', sigla: 'CONDUT026', descricao: 'Condutor', funcao: 'formulario' },
-  { chaveSistema: 'form_monitr027', sigla: 'MONITR027', descricao: 'Monitor', funcao: 'formulario' },
-  { chaveSistema: 'form_creden028', sigla: 'CREDEN028', descricao: 'Credenciada', funcao: 'formulario' },
-  { chaveSistema: 'form_termoc029', sigla: 'TERMOC029', descricao: 'Credenciamento Termo', funcao: 'formulario' },
-  { chaveSistema: 'form_emipar030', sigla: 'EMIPAR030', descricao: 'Parametros de Emissao', funcao: 'formulario' },
-  { chaveSistema: 'form_veicul031', sigla: 'VEICUL031', descricao: 'Veiculo', funcao: 'formulario' },
-  { chaveSistema: 'form_trocas032', sigla: 'TROCAS032', descricao: 'Tipo de Troca', funcao: 'formulario' },
-  { chaveSistema: 'form_cepcep033', sigla: 'CEPCEP033', descricao: 'CEP', funcao: 'formulario' },
-  { chaveSistema: 'form_vincon034', sigla: 'VINCON034', descricao: 'Vinculo Condutor', funcao: 'formulario' },
-  { chaveSistema: 'form_vinmon035', sigla: 'VINMON035', descricao: 'Vinculo Monitor', funcao: 'formulario' },
-  { chaveSistema: 'form_ordser036', sigla: 'ORDSER036', descricao: 'Ordem de Servico', funcao: 'formulario' },
 ]
 
 const administrativoAllowedAcessoPaginaChaveSistema = [
@@ -1422,6 +1410,19 @@ const buildApuracaoFinanceiraMonthRange = (value) => {
   return buildYearMonthDateRange(`${mesAno.slice(3)}-${mesAno.slice(0, 2)}`)
 }
 
+const resolveApuracaoServicosDataReferencia = (mesAno, value) => {
+  const normalizedValue = normalizeRequestValue(value)
+  const monthRange = buildApuracaoFinanceiraMonthRange(mesAno)
+
+  if (!monthRange || !isDateInputValid(normalizedValue)) {
+    return ''
+  }
+
+  return normalizedValue >= monthRange.monthStart && normalizedValue <= monthRange.monthEnd
+    ? normalizedValue
+    : ''
+}
+
 const normalizeDiasLetivosMesAno = (value) => {
   const normalizedValue = normalizeRequestValue(value)
 
@@ -1476,6 +1477,7 @@ const apuracaoServicosMesAnoOrderClause = "SUBSTRING(apuracao_servicos.mes_ano F
 
 const apuracaoServicosSelectClause = `
   BTRIM(apuracao_servicos.mes_ano) AS mes_ano,
+  COALESCE(TO_CHAR(apuracao_servicos.data_referencia, 'YYYY-MM-DD'), '') AS data_referencia,
   CAST(apuracao_servicos.dre_codigo AS text) AS dre_codigo,
   apuracao_servicos.ordem_servico_codigo::text AS ordem_servico_codigo,
   apuracao_servicos.revisao AS revisao,
@@ -1501,6 +1503,7 @@ const apuracaoServicosSelectClause = `
 
 const mapApuracaoServicosRow = (row) => ({
   mesAno: normalizeRequestValue(row?.mes_ano),
+  dataReferencia: normalizeRequestValue(row?.data_referencia),
   dreCodigo: normalizeRequestValue(row?.dre_codigo),
   tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa) || 'PF',
   dreSigla: normalizeRequestValue(row?.dre_sigla),
@@ -1524,6 +1527,232 @@ const mapApuracaoServicosRow = (row) => ({
   dataInclusao: normalizeRequestValue(row?.data_inclusao),
   dataAlteracao: normalizeRequestValue(row?.data_alteracao),
 })
+
+const ordemServicoActiveStartDateExpression = `COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date)`
+const ordemServicoActiveEndDateExpression = `COALESCE(
+  os.data_encerramento,
+  os.data_eol,
+  CASE
+    WHEN UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO' THEN 'infinity'::date
+    ELSE COALESCE(os.data_modificacao::date, os.data_inclusao::date, os.data_emissao, os.vigencia_os)
+  END
+)`
+
+const mapApontamentoServicosRow = (row) => ({
+  mesAno: normalizeRequestValue(row?.mes_ano),
+  dreCodigo: normalizeRequestValue(row?.dre_codigo),
+  dreSigla: normalizeRequestValue(row?.dre_sigla),
+  dreDescricao: normalizeRequestValue(row?.dre_descricao),
+  ordemServicoCodigo: normalizeRequestValue(row?.ordem_servico_codigo),
+  ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
+  ordemServicoTermoAdesao: normalizeRequestValue(row?.ordem_servico_termo_adesao),
+  ordemServicoNumOs: normalizeRequestValue(row?.ordem_servico_num_os),
+  revisao: Number(row?.revisao) || 0,
+  tipoEscolaCodigo: normalizeRequestValue(row?.tipo_escola_codigo),
+  tipoEscolaSigla: normalizeRequestValue(row?.tipo_escola_sigla),
+  tipoEscolaDescricao: normalizeRequestValue(row?.tipo_escola_descricao),
+  tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa) || 'PF',
+  periodoInicio: normalizeRequestValue(row?.periodo_inicio),
+  periodoFim: normalizeRequestValue(row?.periodo_fim),
+  crmcCondutor: normalizeRequestValue(row?.crmc_condutor),
+  contrato: normalizeRequestValue(row?.contrato),
+  placa: normalizeRequestValue(row?.placa),
+  empresa: normalizeRequestValue(row?.empresa),
+  nomeCondutor: normalizeRequestValue(row?.nome_condutor),
+  tipoVeiculo: normalizeRequestValue(row?.tipo_veiculo),
+  apuracaoFinanceiraSituacao: normalizeApuracaoFinanceiraStatus(row?.apuracao_financeira_situacao) || 'A processar',
+  dataReferencia: normalizeRequestValue(row?.data_referencia),
+  isAtivoNaData: Boolean(row?.ativo_na_data),
+  naoCadeirantePresencial: Number(row?.nc_pres) || 0,
+  cadeirante: Number(row?.cad) || 0,
+  atendimentoComplementarNaoCadeirante: Number(row?.ac_nc) || 0,
+  atendimentoComplementarCadeirante: Number(row?.ac_cad) || 0,
+  continuaNaoCadeirante: Number(row?.cont_nc) || 0,
+  continuaCadeirante: Number(row?.cont_cad) || 0,
+  kilometragem: normalizeRequestValue(row?.km) || '0.0000',
+})
+
+const normalizeApontamentoServicosDate = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+  return isDateInputValid(normalizedValue) ? normalizedValue : ''
+}
+
+const normalizeApontamentoServicosInteger = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return 0
+  }
+
+  const parsedValue = Number(value)
+  return Number.isInteger(parsedValue) && parsedValue >= 0 ? parsedValue : Number.NaN
+}
+
+const normalizeApontamentoServicosKm = (value) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? Number(value.toFixed(4)) : Number.NaN
+  }
+
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return 0
+  }
+
+  const parsedValue = /^\d+(?:\.\d+)?$/.test(normalizedValue)
+    ? Number(normalizedValue)
+    : Number(normalizedValue.replace(/\./g, '').replace(',', '.'))
+
+  return Number.isFinite(parsedValue) && parsedValue >= 0
+    ? Number(parsedValue.toFixed(4))
+    : Number.NaN
+}
+
+const hasApontamentoServicosMetricValues = (metrics) => {
+  return metrics.naoCadeirantePresencial > 0
+    || metrics.cadeirante > 0
+    || metrics.atendimentoComplementarNaoCadeirante > 0
+    || metrics.atendimentoComplementarCadeirante > 0
+    || metrics.continuaNaoCadeirante > 0
+    || metrics.continuaCadeirante > 0
+    || metrics.kilometragem > 0
+}
+
+const listApontamentoServicosItems = async ({ mesAno, dreCodigo, revisao, tipoPessoa, dataReferencia }, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const parsedRevisao = revisao === undefined || revisao === null || revisao === ''
+    ? Number.NaN
+    : Number.parseInt(String(revisao), 10)
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
+
+  if (!monthRange) {
+    throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  if (!normalizedDate) {
+    throw createHttpError(400, 'Data de referencia invalida.')
+  }
+
+  if (normalizedDate < monthRange.monthStart || normalizedDate > monthRange.monthEnd) {
+    throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
+  }
+
+  const values = [normalizedDate, monthRange.monthStart, monthRange.monthEnd, normalizedMesAno]
+  const filters = ['aps.mes_ano = $4', 'aps.data_referencia = $1::date']
+
+  if (normalizedDreCodigo) {
+    values.push(normalizedDreCodigo)
+    filters.push(`CAST(aps.dre_codigo AS text) = $${values.length}`)
+  }
+
+  if (Number.isInteger(parsedRevisao) && parsedRevisao >= 0) {
+    values.push(parsedRevisao)
+    filters.push(`aps.revisao = $${values.length}`)
+  }
+
+  if (normalizedTipoPessoa) {
+    values.push(normalizedTipoPessoa)
+    filters.push(`BTRIM(aps.tipo_pessoa) = $${values.length}`)
+  }
+
+  const result = await executor.query(
+    `SELECT
+       BTRIM(aps.mes_ano) AS mes_ano,
+       CAST(aps.dre_codigo AS text) AS dre_codigo,
+       COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+       BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+       aps.ordem_servico_codigo::text AS ordem_servico_codigo,
+       COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
+       COALESCE(BTRIM(os.termo_adesao), '') AS ordem_servico_termo_adesao,
+       COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+       aps.revisao AS revisao,
+       CAST(aps.tipo_escola_codigo AS text) AS tipo_escola_codigo,
+       COALESCE(BTRIM(tipo_escola.sigla), '') AS tipo_escola_sigla,
+       BTRIM(CAST(tipo_escola.descricao AS text)) AS tipo_escola_descricao,
+       COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+       TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $2::date), 'YYYY-MM-DD') AS periodo_inicio,
+       TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $3::date), 'YYYY-MM-DD') AS periodo_fim,
+       COALESCE(BTRIM((SELECT c.crmc FROM condutor c WHERE BTRIM(c.cpf_condutor) = BTRIM(os.cpf_condutor) LIMIT 1)), '') AS crmc_condutor,
+       COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       COALESCE(BTRIM((SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS empresa,
+       COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
+       CASE UPPER(BTRIM(COALESCE(veiculo.tipo_de_bancada, '')))
+         WHEN 'CONVENCIONAL' THEN 'NORMAL'
+         WHEN 'CRECHE' THEN 'CRECHE'
+         WHEN 'ADAPTADO' THEN 'ACESSIVEL'
+         ELSE COALESCE(BTRIM(veiculo.tipo_de_bancada), '')
+       END AS tipo_veiculo,
+       COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
+       COALESCE(TO_CHAR(aps.data_referencia, 'YYYY-MM-DD'), $1::date::text) AS data_referencia,
+       CASE WHEN ${ordemServicoActiveStartDateExpression} <= $1::date AND ${ordemServicoActiveEndDateExpression} >= $1::date THEN TRUE ELSE FALSE END AS ativo_na_data,
+       COALESCE(aps.nc_pres, 0) AS nc_pres,
+       COALESCE(aps.cad, 0) AS cad,
+       COALESCE(aps.ac_nc, 0) AS ac_nc,
+       COALESCE(aps.ac_cad, 0) AS ac_cad,
+       COALESCE(aps.cont_nc, 0) AS cont_nc,
+       COALESCE(aps.cont_cad, 0) AS cont_cad,
+       TO_CHAR(COALESCE(aps.km, 0), 'FM9999999990.0000') AS km
+     FROM apuracao_servicos aps
+     INNER JOIN dre ON dre.codigo = aps.dre_codigo
+     INNER JOIN tipo_escola ON tipo_escola.codigo = aps.tipo_escola_codigo
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+     LEFT JOIN veiculo ON BTRIM(veiculo.crm) = BTRIM(os.crm)
+     INNER JOIN apuracao_financeira
+       ON apuracao_financeira.mes_ano = aps.mes_ano
+      AND apuracao_financeira.dre_codigo = aps.dre_codigo
+      AND apuracao_financeira.revisao = aps.revisao
+      AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(aps.tipo_pessoa)
+     WHERE ${filters.join('\n       AND ')}
+     ORDER BY UPPER(BTRIM(CAST(dre.descricao AS text))) ASC,
+              UPPER(BTRIM(COALESCE(os.termo_adesao, ''))) ASC,
+              UPPER(BTRIM(COALESCE(os.num_os, ''))) ASC,
+              aps.revisao ASC,
+              UPPER(BTRIM(CAST(tipo_escola.descricao AS text))) ASC`,
+    values,
+  )
+
+  return result.rows.map(mapApontamentoServicosRow)
+}
+
+const syncApuracaoServicosDailyTotals = async (key, executor = pool) => {
+  await executor.query(
+    `UPDATE apuracao_servicos aps
+     SET nc_pres = COALESCE(totals.nc_pres, 0),
+         cad = COALESCE(totals.cad, 0),
+         ac_nc = COALESCE(totals.ac_nc, 0),
+         ac_cad = COALESCE(totals.ac_cad, 0),
+         cont_nc = COALESCE(totals.cont_nc, 0),
+         cont_cad = COALESCE(totals.cont_cad, 0),
+         km = COALESCE(totals.km, 0),
+         data_alteracao = NOW()
+     FROM (
+       SELECT
+         COALESCE(SUM(nc_pres), 0)::integer AS nc_pres,
+         COALESCE(SUM(cad), 0)::integer AS cad,
+         COALESCE(SUM(ac_nc), 0)::integer AS ac_nc,
+         COALESCE(SUM(ac_cad), 0)::integer AS ac_cad,
+         COALESCE(SUM(cont_nc), 0)::integer AS cont_nc,
+         COALESCE(SUM(cont_cad), 0)::integer AS cont_cad,
+         COALESCE(SUM(km), 0)::numeric(14, 4) AS km
+       FROM apuracao_servicos_apontamento
+       WHERE mes_ano = $1
+         AND dre_codigo = $2
+         AND ordem_servico_codigo = $3
+         AND revisao = $4
+         AND tipo_escola_codigo = $5
+         AND BTRIM(tipo_pessoa) = $6
+     ) totals
+     WHERE aps.mes_ano = $1
+       AND aps.dre_codigo = $2
+       AND aps.ordem_servico_codigo = $3
+       AND aps.revisao = $4
+       AND aps.tipo_escola_codigo = $5
+       AND BTRIM(aps.tipo_pessoa) = $6`,
+    [key.mesAno, Number.parseInt(key.dreCodigo, 10), Number.parseInt(key.ordemServicoCodigo, 10), key.revisao, Number.parseInt(key.tipoEscolaCodigo, 10), key.tipoPessoa],
+  )
+}
 
 const modalidadeTipoBancadaAssociationSelectClause = `
   CAST(associacao.codigo AS text) AS codigo,
@@ -2840,6 +3069,20 @@ const findActiveOrdemServicoOptionByCodigo = async ({ mesAno, dreCodigo, ordemSe
   return options.find((item) => item.codigo === normalizeRequestValue(ordemServicoCodigo)) ?? null
 }
 
+const findActiveOrdemServicoByDate = async ({ ordemServicoCodigo, dataReferencia }, executor = pool) => {
+  const result = await executor.query(
+    `SELECT 1
+     FROM ${ordemServicoTableName} os
+     WHERE CAST(os.codigo AS text) = $1
+       AND ${ordemServicoActiveStartDateExpression} <= $2::date
+       AND ${ordemServicoActiveEndDateExpression} >= $2::date
+     LIMIT 1`,
+    [normalizeRequestValue(ordemServicoCodigo), dataReferencia],
+  )
+
+  return result.rowCount > 0
+}
+
 const createHttpError = (statusCode, message) => {
   const error = new Error(message)
   error.statusCode = statusCode
@@ -3077,6 +3320,7 @@ const processApuracaoFinanceiraSelections = async ({
       ? await executor.query(
         `INSERT INTO apuracao_servicos (
            mes_ano,
+           data_referencia,
            dre_codigo,
            ordem_servico_codigo,
            revisao,
@@ -3092,6 +3336,7 @@ const processApuracaoFinanceiraSelections = async ({
          )
          SELECT
            $1,
+           daily_rows.data_referencia,
            $2::integer,
            os.codigo,
            $3::integer,
@@ -3106,7 +3351,22 @@ const processApuracaoFinanceiraSelections = async ({
            0
          FROM ${ordemServicoTableName} os
          CROSS JOIN tipo_escola
-         WHERE COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date) <= $5::date
+         CROSS JOIN LATERAL generate_series(
+           GREATEST(COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date), $5::date),
+           LEAST(
+             COALESCE(
+               os.data_encerramento,
+               os.data_eol,
+               CASE
+                 WHEN UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO' THEN 'infinity'::date
+                 ELSE COALESCE(os.data_modificacao::date, os.data_inclusao::date, os.data_emissao, os.vigencia_os)
+               END
+             ),
+             $6::date
+           ),
+           '1 day'::interval
+         ) AS daily_rows(data_referencia)
+         WHERE COALESCE(os.vigencia_os, os.data_emissao, os.data_inclusao::date) <= $6::date
            AND COALESCE(
              os.data_encerramento,
              os.data_eol,
@@ -3114,9 +3374,9 @@ const processApuracaoFinanceiraSelections = async ({
                WHEN UPPER(BTRIM(COALESCE(os.situacao, ''))) = 'ATIVO' THEN 'infinity'::date
                ELSE COALESCE(os.data_modificacao::date, os.data_inclusao::date, os.data_emissao, os.vigencia_os)
              END
-           ) >= $6::date
+           ) >= $5::date
            AND BTRIM(COALESCE(os.dre_codigo, '')) = $7
-         ON CONFLICT (mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
+         ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
          DO NOTHING
          RETURNING 1`,
         [
@@ -3131,9 +3391,18 @@ const processApuracaoFinanceiraSelections = async ({
       )
       : { rowCount: 0 }
 
-    const totalPotentialRows = activeOrdemServicoItems.length * tipoEscolaItems.length
     const createdApuracaoServicosCount = createdRows.rowCount ?? 0
-    const existingApuracaoServicosCount = Math.max(totalPotentialRows - createdApuracaoServicosCount, 0)
+    const persistedRowsResult = await executor.query(
+      `SELECT COUNT(*)::int AS total
+       FROM apuracao_servicos
+       WHERE mes_ano = $1
+         AND dre_codigo = $2
+         AND revisao = $3
+         AND BTRIM(tipo_pessoa) = $4`,
+      [normalizedMesAno, Number.parseInt(dreRecord.codigo, 10), normalizedRevisao, normalizedTipoPessoa],
+    )
+    const persistedApuracaoServicosCount = Number(persistedRowsResult.rows[0]?.total) || 0
+    const existingApuracaoServicosCount = Math.max(persistedApuracaoServicosCount - createdApuracaoServicosCount, 0)
 
     summary.totalActiveOrdemServicos += activeOrdemServicoItems.length
     summary.totalCreatedApuracaoServicos += createdApuracaoServicosCount
@@ -11452,11 +11721,8 @@ const buildCredenciamentoTermoSyncScope = (termos, { syncAll = false } = {}) => 
   const normalizedTermos = Array.from(new Set((Array.isArray(termos) ? termos : [termos])
     .map((termo) => normalizeOrdemServicoTermoAdesao(termo))
     .filter(Boolean)))
-  const normalizedTermoDigits = normalizedTermos
-    .map((termo) => termo.replace(/\D/g, ''))
-    .filter(Boolean)
 
-  if (!syncAll && !normalizedTermoDigits.length) {
+  if (!syncAll && !normalizedTermos.length) {
     return {
       normalizedTermos,
       filterClause: 'WHERE FALSE',
@@ -11475,7 +11741,7 @@ const buildCredenciamentoTermoSyncScope = (termos, { syncAll = false } = {}) => 
   return {
     normalizedTermos,
     filterClause: `WHERE ${credenciamentoTermoNormalizedTermoExpression} = ANY($1::text[])`,
-    values: [normalizedTermoDigits],
+    values: [normalizedTermos],
   }
 }
 
@@ -15754,6 +16020,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS revisao integer')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS tipo_escola_codigo integer')
   await pool.query("ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS tipo_pessoa varchar(2) DEFAULT 'PF'")
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS data_referencia date')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS nc_pres integer DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cad integer DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS ac_nc integer DEFAULT 0')
@@ -15768,7 +16035,16 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN tipo_pessoa TYPE varchar(2)')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN km TYPE numeric(14, 4) USING COALESCE(km, 0)::numeric(14, 4)')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('DROP TABLE IF EXISTS apuracao_servicos_apontamento')
+  await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_pk')
+  await pool.query('DROP INDEX IF EXISTS apuracao_servicos_chave_uk')
   await pool.query('UPDATE apuracao_servicos SET mes_ano = BTRIM(mes_ano) WHERE mes_ano IS NOT NULL')
+  await pool.query(`
+    UPDATE apuracao_servicos
+    SET data_referencia = TO_DATE('01/' || BTRIM(mes_ano), 'DD/MM/YYYY')
+    WHERE data_referencia IS NULL
+      AND mes_ano ~ '^(0[1-9]|1[0-2])/\\d{4}$'
+  `)
   await pool.query('UPDATE apuracao_servicos SET revisao = 0 WHERE revisao IS NULL OR revisao < 0')
   await pool.query(`
     UPDATE apuracao_servicos aps
@@ -15828,6 +16104,7 @@ const ensureDatabaseSchema = async () => {
         ROW_NUMBER() OVER (
           PARTITION BY
             BTRIM(mes_ano),
+            data_referencia,
             dre_codigo,
             ordem_servico_codigo,
             COALESCE(revisao, 0),
@@ -15851,6 +16128,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN revisao SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN tipo_escola_codigo SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN tipo_pessoa SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN data_referencia SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN nc_pres SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cad SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN ac_nc SET NOT NULL')
@@ -15859,7 +16137,11 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cont_cad SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN km SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN data_inclusao SET NOT NULL')
-  await pool.query('ALTER TABLE apuracao_servicos ADD CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS apuracao_servicos_chave_uk
+    ON apuracao_servicos (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
+  `)
+  await pool.query('ALTER TABLE apuracao_servicos ADD CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)')
   await pool.query(`
     ALTER TABLE apuracao_servicos
     ADD CONSTRAINT apuracao_servicos_apuracao_financeira_fk
@@ -15872,6 +16154,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_tipo_pessoa_idx ON apuracao_servicos (tipo_pessoa)')
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_tipo_escola_idx ON apuracao_servicos (tipo_escola_codigo)')
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_mes_ano_idx ON apuracao_servicos (mes_ano)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_data_referencia_idx ON apuracao_servicos (data_referencia)')
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ${ordemServicoImportRecusaTableName} (
       id bigserial PRIMARY KEY,
@@ -16609,24 +16892,71 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === '/api/apontamento-servicos') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const revisao = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+      const dataReferencia = normalizeApontamentoServicosDate(requestUrl.searchParams.get('dataReferencia') ?? '')
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida.' })
+        return
+      }
+
+      const items = await listApontamentoServicosItems({
+        mesAno,
+        dreCodigo,
+        revisao: Number.isInteger(revisao) ? revisao : undefined,
+        tipoPessoa,
+        dataReferencia,
+      })
+
+      sendJson(response, 200, {
+        items,
+        total: items.length,
+        mesAno,
+        dataReferencia,
+      })
+    } catch (error) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar o apontamento de servicos.'
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'GET' && pathname === '/api/apuracao-servicos') {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
       const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dataReferencia = resolveApuracaoServicosDataReferencia(mesAno, requestUrl.searchParams.get('dataReferencia') ?? '')
       const dreCodigo = normalizeDreOperationalCode(requestUrl.searchParams.get('dreCodigo') ?? '')
       const revisaoFilter = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
       const tipoEscolaCodigo = normalizeIntegerValue(requestUrl.searchParams.get('tipoEscolaCodigo') ?? '')
       const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
       const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
-      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'mesAno')
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'dataReferencia')
       const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
         ? 'ASC'
         : 'DESC'
       const offset = (page - 1) * pageSize
       const filters = []
       const values = []
-      const orderByClause = sortBy === 'dreCodigo'
+      const orderByClause = sortBy === 'dataReferencia'
+        ? `apuracao_servicos.data_referencia ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC, apuracao_servicos.revisao ASC, apuracao_servicos.ordem_servico_codigo ASC`
+        : sortBy === 'dreCodigo'
         ? `apuracao_servicos.dre_codigo ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.revisao DESC`
         : sortBy === 'dreDescricao'
           ? `BTRIM(CAST(dre.descricao AS text)) ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.revisao DESC`
@@ -16647,6 +16977,16 @@ const server = createServer(async (request, response) => {
       if (mesAno) {
         values.push(mesAno)
         filters.push(`apuracao_servicos.mes_ano = $${values.length}`)
+      }
+
+      if (requestUrl.searchParams.has('dataReferencia')) {
+        if (!dataReferencia) {
+          sendJson(response, 400, { message: 'Data de referencia invalida.' })
+          return
+        }
+
+        values.push(dataReferencia)
+        filters.push(`apuracao_servicos.data_referencia = $${values.length}::date`)
       }
 
       if (dreCodigo) {
@@ -16683,6 +17023,7 @@ const server = createServer(async (request, response) => {
         values.push(`%${search}%`)
         filters.push(`(
           BTRIM(apuracao_servicos.mes_ano) ILIKE $${values.length}
+          OR COALESCE(TO_CHAR(apuracao_servicos.data_referencia, 'YYYY-MM-DD'), '') ILIKE $${values.length}
           OR CAST(apuracao_servicos.dre_codigo AS text) ILIKE $${values.length}
           OR COALESCE(BTRIM(dre.sigla), '') ILIKE UPPER($${values.length})
           OR BTRIM(CAST(dre.descricao AS text)) ILIKE $${values.length}
@@ -16735,7 +17076,7 @@ const server = createServer(async (request, response) => {
         page,
         pageSize,
         totalPages: Math.max(Math.ceil(total / pageSize), 1),
-        sortBy: ['mesAno', 'dreCodigo', 'dreDescricao', 'ordemServicoCodigo', 'tipoEscolaDescricao', 'revisao', 'dataInclusao', 'dataAlteracao'].includes(sortBy) ? sortBy : 'mesAno',
+        sortBy: ['mesAno', 'dataReferencia', 'dreCodigo', 'dreDescricao', 'ordemServicoCodigo', 'tipoEscolaDescricao', 'revisao', 'tipoPessoa', 'dataInclusao', 'dataAlteracao'].includes(sortBy) ? sortBy : 'dataReferencia',
         sortDirection: sortDirection.toLowerCase(),
       })
     } catch (error) {
@@ -22212,6 +22553,7 @@ const server = createServer(async (request, response) => {
     try {
       const body = await readJsonBody(request)
       const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dataReferencia = resolveApuracaoServicosDataReferencia(mesAno, body.dataReferencia)
       const dreCodigo = normalizeDreOperationalCode(body.dreCodigo)
       const ordemServicoCodigo = normalizeIntegerValue(body.ordemServicoCodigo)
       const revisao = normalizeIntegerValue(body.revisao)
@@ -22227,6 +22569,11 @@ const server = createServer(async (request, response) => {
 
       if (!mesAno) {
         sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida.' })
         return
       }
 
@@ -22298,15 +22645,13 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const activeOrdemServico = await findActiveOrdemServicoOptionByCodigo({
-        mesAno,
-        dreCodigo,
+      const activeOrdemServico = await findActiveOrdemServicoByDate({
         ordemServicoCodigo,
-        tipoPessoa,
+        dataReferencia,
       })
 
       if (!activeOrdemServico) {
-        sendJson(response, 400, { message: 'A ordem de servico informada nao esta ativa para o mes/ano e DRE selecionados.' })
+        sendJson(response, 400, { message: 'A ordem de servico informada nao esta ativa na data de referencia selecionada.' })
         return
       }
 
@@ -22314,13 +22659,14 @@ const server = createServer(async (request, response) => {
         `SELECT 1
          FROM apuracao_servicos
          WHERE mes_ano = $1
-           AND CAST(dre_codigo AS text) = $2
-           AND ordem_servico_codigo = $3
-           AND revisao = $4
-           AND tipo_escola_codigo = $5
-           AND BTRIM(tipo_pessoa) = $6
+           AND data_referencia = $2::date
+           AND CAST(dre_codigo AS text) = $3
+           AND ordem_servico_codigo = $4
+           AND revisao = $5
+           AND tipo_escola_codigo = $6
+           AND BTRIM(tipo_pessoa) = $7
          LIMIT 1`,
-        [mesAno, dreCodigo, ordemServicoCodigo, revisao, tipoEscolaCodigo, tipoPessoa],
+        [mesAno, dataReferencia, dreCodigo, ordemServicoCodigo, revisao, tipoEscolaCodigo, tipoPessoa],
       )
 
       if (duplicateResult.rowCount > 0) {
@@ -22331,6 +22677,7 @@ const server = createServer(async (request, response) => {
       const insertResult = await pool.query(
         `INSERT INTO apuracao_servicos (
           mes_ano,
+          data_referencia,
           dre_codigo,
           ordem_servico_codigo,
           revisao,
@@ -22344,10 +22691,11 @@ const server = createServer(async (request, response) => {
           cont_cad,
           km
         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
+         VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         RETURNING mes_ano, TO_CHAR(data_referencia, 'YYYY-MM-DD') AS data_referencia, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
         [
           mesAno,
+          dataReferencia,
           dreCodigo,
           ordemServicoCodigo,
           revisao,
@@ -22376,12 +22724,13 @@ const server = createServer(async (request, response) => {
           AND apuracao_financeira.revisao = apuracao_servicos.revisao
           AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apuracao_servicos.tipo_pessoa)
          WHERE apuracao_servicos.mes_ano = $1
-           AND CAST(apuracao_servicos.dre_codigo AS text) = $2
-           AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $3
-           AND apuracao_servicos.revisao = $4
-           AND CAST(apuracao_servicos.tipo_escola_codigo AS text) = $5
-           AND BTRIM(apuracao_servicos.tipo_pessoa) = $6`,
-        [insertedKey.mes_ano, insertedKey.dre_codigo, insertedKey.ordem_servico_codigo, insertedKey.revisao, insertedKey.tipo_escola_codigo, insertedKey.tipo_pessoa],
+           AND apuracao_servicos.data_referencia = $2::date
+           AND CAST(apuracao_servicos.dre_codigo AS text) = $3
+           AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $4
+           AND apuracao_servicos.revisao = $5
+           AND CAST(apuracao_servicos.tipo_escola_codigo AS text) = $6
+           AND BTRIM(apuracao_servicos.tipo_pessoa) = $7`,
+        [insertedKey.mes_ano, insertedKey.data_referencia, insertedKey.dre_codigo, insertedKey.ordem_servico_codigo, insertedKey.revisao, insertedKey.tipo_escola_codigo, insertedKey.tipo_pessoa],
       )
 
       sendJson(response, 201, {
@@ -22393,6 +22742,158 @@ const server = createServer(async (request, response) => {
         : 'Erro ao gravar a apuracao de servicos.'
 
       sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/apontamento-servicos') {
+    const client = await pool.connect()
+
+    try {
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dataReferencia = normalizeApontamentoServicosDate(body.dataReferencia)
+      const items = Array.isArray(body.items) ? body.items : []
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida.' })
+        return
+      }
+
+      if (!items.length) {
+        sendJson(response, 400, { message: 'Nenhum item informado para gravacao.' })
+        return
+      }
+
+      const monthRange = buildApuracaoFinanceiraMonthRange(mesAno)
+
+      if (!monthRange || dataReferencia < monthRange.monthStart || dataReferencia > monthRange.monthEnd) {
+        sendJson(response, 400, { message: 'A data de referencia deve pertencer ao mes/ano informado.' })
+        return
+      }
+
+      await client.query('BEGIN')
+
+      for (const item of items) {
+        const dreCodigo = normalizeRequestValue(item.dreCodigo)
+        const ordemServicoCodigo = normalizeRequestValue(item.ordemServicoCodigo)
+        const tipoEscolaCodigo = normalizeRequestValue(item.tipoEscolaCodigo)
+        const tipoPessoa = normalizeApuracaoTipoPessoa(item.tipoPessoa)
+        const revisao = Number.parseInt(String(item.revisao ?? ''), 10)
+        const metrics = {
+          naoCadeirantePresencial: normalizeApontamentoServicosInteger(item.naoCadeirantePresencial),
+          cadeirante: normalizeApontamentoServicosInteger(item.cadeirante),
+          atendimentoComplementarNaoCadeirante: normalizeApontamentoServicosInteger(item.atendimentoComplementarNaoCadeirante),
+          atendimentoComplementarCadeirante: normalizeApontamentoServicosInteger(item.atendimentoComplementarCadeirante),
+          continuaNaoCadeirante: normalizeApontamentoServicosInteger(item.continuaNaoCadeirante),
+          continuaCadeirante: normalizeApontamentoServicosInteger(item.continuaCadeirante),
+          kilometragem: normalizeApontamentoServicosKm(item.kilometragem),
+        }
+
+        if (!dreCodigo || !ordemServicoCodigo || !tipoEscolaCodigo || !tipoPessoa || !Number.isInteger(revisao) || revisao < 0) {
+          throw createHttpError(400, 'Chave do apontamento invalida.')
+        }
+
+        for (const [label, value] of Object.entries({
+          'Nao cadeirante presencial': metrics.naoCadeirantePresencial,
+          Cadeirante: metrics.cadeirante,
+          'Atendimento complementar nao cadeirante': metrics.atendimentoComplementarNaoCadeirante,
+          'Atendimento complementar cadeirante': metrics.atendimentoComplementarCadeirante,
+          'Continua nao cadeirante': metrics.continuaNaoCadeirante,
+          'Continua cadeirante': metrics.continuaCadeirante,
+        })) {
+          if (!Number.isInteger(value) || value < 0) {
+            throw createHttpError(400, `${label} invalido.`)
+          }
+        }
+
+        if (!Number.isFinite(metrics.kilometragem) || metrics.kilometragem < 0) {
+          throw createHttpError(400, 'Kilometragem invalida.')
+        }
+
+        const parentResult = await client.query(
+          `SELECT 1
+           FROM ${ordemServicoTableName} os
+           WHERE CAST(os.codigo AS text) = $1
+             AND ${ordemServicoActiveStartDateExpression} <= $2::date
+             AND ${ordemServicoActiveEndDateExpression} >= $2::date
+           LIMIT 1`,
+          [ordemServicoCodigo, dataReferencia],
+        )
+
+        if (parentResult.rowCount === 0) {
+          throw createHttpError(409, 'A ordem de servico da linha nao esta ativa na data informada.')
+        }
+
+        await ensureApuracaoServicosEditable({ mesAno, dreCodigo, revisao, tipoPessoa }, client)
+
+        await client.query(
+          `INSERT INTO apuracao_servicos (
+            mes_ano,
+            data_referencia,
+            dre_codigo,
+            ordem_servico_codigo,
+            revisao,
+            tipo_escola_codigo,
+            tipo_pessoa,
+            nc_pres,
+            cad,
+            ac_nc,
+            ac_cad,
+            cont_nc,
+            cont_cad,
+            km,
+            data_alteracao
+          )
+          VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+          ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
+          DO UPDATE SET
+            nc_pres = EXCLUDED.nc_pres,
+            cad = EXCLUDED.cad,
+            ac_nc = EXCLUDED.ac_nc,
+            ac_cad = EXCLUDED.ac_cad,
+            cont_nc = EXCLUDED.cont_nc,
+            cont_cad = EXCLUDED.cont_cad,
+            km = EXCLUDED.km,
+            data_alteracao = NOW()`,
+          [
+            mesAno,
+            dataReferencia,
+            Number.parseInt(dreCodigo, 10),
+            Number.parseInt(ordemServicoCodigo, 10),
+            revisao,
+            Number.parseInt(tipoEscolaCodigo, 10),
+            tipoPessoa,
+            hasApontamentoServicosMetricValues(metrics) ? metrics.naoCadeirantePresencial : 0,
+            hasApontamentoServicosMetricValues(metrics) ? metrics.cadeirante : 0,
+            hasApontamentoServicosMetricValues(metrics) ? metrics.atendimentoComplementarNaoCadeirante : 0,
+            hasApontamentoServicosMetricValues(metrics) ? metrics.atendimentoComplementarCadeirante : 0,
+            hasApontamentoServicosMetricValues(metrics) ? metrics.continuaNaoCadeirante : 0,
+            hasApontamentoServicosMetricValues(metrics) ? metrics.continuaCadeirante : 0,
+            hasApontamentoServicosMetricValues(metrics) ? metrics.kilometragem : 0,
+          ],
+        )
+      }
+
+      await client.query('COMMIT')
+      sendJson(response, 200, { message: 'Apontamento de servicos gravado com sucesso.' })
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {})
+
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar o apontamento de servicos.'
+
+      sendJson(response, statusCode, { message })
+    } finally {
+      client.release()
     }
 
     return
@@ -25662,6 +26163,8 @@ const server = createServer(async (request, response) => {
 
       const body = await readJsonBody(request)
       const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dataReferencia = resolveApuracaoServicosDataReferencia(mesAno, body.dataReferencia)
+      const originalDataReferencia = resolveApuracaoServicosDataReferencia(originalKey.mesAno, originalKey.dataReferencia)
       const dreCodigo = normalizeDreOperationalCode(body.dreCodigo)
       const ordemServicoCodigo = normalizeIntegerValue(body.ordemServicoCodigo)
       const revisao = normalizeIntegerValue(body.revisao)
@@ -25677,6 +26180,11 @@ const server = createServer(async (request, response) => {
 
       if (!mesAno) {
         sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dataReferencia || !originalDataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida.' })
         return
       }
 
@@ -25725,13 +26233,14 @@ const server = createServer(async (request, response) => {
         `SELECT 1
          FROM apuracao_servicos
          WHERE mes_ano = $1
-           AND CAST(dre_codigo AS text) = $2
-           AND CAST(ordem_servico_codigo AS text) = $3
-           AND revisao = $4
-           AND CAST(tipo_escola_codigo AS text) = $5
-           AND BTRIM(tipo_pessoa) = $6
+           AND data_referencia = $2::date
+           AND CAST(dre_codigo AS text) = $3
+           AND CAST(ordem_servico_codigo AS text) = $4
+           AND revisao = $5
+           AND CAST(tipo_escola_codigo AS text) = $6
+           AND BTRIM(tipo_pessoa) = $7
          LIMIT 1`,
-        [originalKey.mesAno, originalKey.dreCodigo, originalKey.ordemServicoCodigo, Number.parseInt(originalKey.revisao, 10), originalKey.tipoEscolaCodigo, normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF'],
+        [originalKey.mesAno, originalDataReferencia, originalKey.dreCodigo, originalKey.ordemServicoCodigo, Number.parseInt(originalKey.revisao, 10), originalKey.tipoEscolaCodigo, normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF'],
       )
 
       if (existingResult.rowCount === 0) {
@@ -25761,15 +26270,13 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const activeOrdemServico = await findActiveOrdemServicoOptionByCodigo({
-        mesAno,
-        dreCodigo,
+      const activeOrdemServico = await findActiveOrdemServicoByDate({
         ordemServicoCodigo,
-        tipoPessoa,
+        dataReferencia,
       })
 
       if (!activeOrdemServico) {
-        sendJson(response, 400, { message: 'A ordem de servico informada nao esta ativa para o mes/ano e DRE selecionados.' })
+        sendJson(response, 400, { message: 'A ordem de servico informada nao esta ativa na data de referencia selecionada.' })
         return
       }
 
@@ -25777,28 +26284,32 @@ const server = createServer(async (request, response) => {
         `SELECT 1
          FROM apuracao_servicos
          WHERE mes_ano = $1
-           AND CAST(dre_codigo AS text) = $2
-           AND ordem_servico_codigo = $3
-           AND revisao = $4
-           AND tipo_escola_codigo = $5
-           AND BTRIM(tipo_pessoa) = $6
+           AND data_referencia = $2::date
+           AND CAST(dre_codigo AS text) = $3
+           AND ordem_servico_codigo = $4
+           AND revisao = $5
+           AND tipo_escola_codigo = $6
+           AND BTRIM(tipo_pessoa) = $7
            AND NOT (
-             mes_ano = $7
-             AND CAST(dre_codigo AS text) = $8
-             AND CAST(ordem_servico_codigo AS text) = $9
-             AND revisao = $10
-             AND CAST(tipo_escola_codigo AS text) = $11
-             AND BTRIM(tipo_pessoa) = $12
+             mes_ano = $8
+             AND data_referencia = $9::date
+             AND CAST(dre_codigo AS text) = $10
+             AND CAST(ordem_servico_codigo AS text) = $11
+             AND revisao = $12
+             AND CAST(tipo_escola_codigo AS text) = $13
+             AND BTRIM(tipo_pessoa) = $14
            )
          LIMIT 1`,
         [
           mesAno,
+          dataReferencia,
           dreCodigo,
           ordemServicoCodigo,
           revisao,
           tipoEscolaCodigo,
           tipoPessoa,
           originalKey.mesAno,
+          originalDataReferencia,
           originalKey.dreCodigo,
           originalKey.ordemServicoCodigo,
           Number.parseInt(originalKey.revisao, 10),
@@ -25815,28 +26326,31 @@ const server = createServer(async (request, response) => {
       const updateResult = await pool.query(
         `UPDATE apuracao_servicos
          SET mes_ano = $1,
-             dre_codigo = $2,
-             ordem_servico_codigo = $3,
-             revisao = $4,
-             tipo_escola_codigo = $5,
-             tipo_pessoa = $6,
-             nc_pres = $7,
-             cad = $8,
-             ac_nc = $9,
-             ac_cad = $10,
-             cont_nc = $11,
-             cont_cad = $12,
-             km = $13,
+             data_referencia = $2::date,
+             dre_codigo = $3,
+             ordem_servico_codigo = $4,
+             revisao = $5,
+             tipo_escola_codigo = $6,
+             tipo_pessoa = $7,
+             nc_pres = $8,
+             cad = $9,
+             ac_nc = $10,
+             ac_cad = $11,
+             cont_nc = $12,
+             cont_cad = $13,
+             km = $14,
              data_alteracao = NOW()
-         WHERE mes_ano = $14
-           AND CAST(dre_codigo AS text) = $15
-           AND CAST(ordem_servico_codigo AS text) = $16
-           AND revisao = $17
-           AND CAST(tipo_escola_codigo AS text) = $18
-           AND BTRIM(tipo_pessoa) = $19
-         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
+         WHERE mes_ano = $15
+           AND data_referencia = $16::date
+           AND CAST(dre_codigo AS text) = $17
+           AND CAST(ordem_servico_codigo AS text) = $18
+           AND revisao = $19
+           AND CAST(tipo_escola_codigo AS text) = $20
+           AND BTRIM(tipo_pessoa) = $21
+         RETURNING mes_ano, TO_CHAR(data_referencia, 'YYYY-MM-DD') AS data_referencia, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
         [
           mesAno,
+          dataReferencia,
           dreCodigo,
           ordemServicoCodigo,
           revisao,
@@ -25850,6 +26364,7 @@ const server = createServer(async (request, response) => {
           continuaCadeirante,
           kilometragem,
           originalKey.mesAno,
+          originalDataReferencia,
           originalKey.dreCodigo,
           originalKey.ordemServicoCodigo,
           Number.parseInt(originalKey.revisao, 10),
@@ -25871,12 +26386,13 @@ const server = createServer(async (request, response) => {
           AND apuracao_financeira.revisao = apuracao_servicos.revisao
           AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apuracao_servicos.tipo_pessoa)
          WHERE apuracao_servicos.mes_ano = $1
-           AND CAST(apuracao_servicos.dre_codigo AS text) = $2
-           AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $3
-           AND apuracao_servicos.revisao = $4
-           AND CAST(apuracao_servicos.tipo_escola_codigo AS text) = $5
-           AND BTRIM(apuracao_servicos.tipo_pessoa) = $6`,
-        [updatedKey.mes_ano, updatedKey.dre_codigo, updatedKey.ordem_servico_codigo, updatedKey.revisao, updatedKey.tipo_escola_codigo, updatedKey.tipo_pessoa],
+           AND apuracao_servicos.data_referencia = $2::date
+           AND CAST(apuracao_servicos.dre_codigo AS text) = $3
+           AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $4
+           AND apuracao_servicos.revisao = $5
+           AND CAST(apuracao_servicos.tipo_escola_codigo AS text) = $6
+           AND BTRIM(apuracao_servicos.tipo_pessoa) = $7`,
+        [updatedKey.mes_ano, updatedKey.data_referencia, updatedKey.dre_codigo, updatedKey.ordem_servico_codigo, updatedKey.revisao, updatedKey.tipo_escola_codigo, updatedKey.tipo_pessoa],
       )
 
       sendJson(response, 200, {
@@ -28119,16 +28635,24 @@ const server = createServer(async (request, response) => {
         return
       }
 
+      const dataReferencia = resolveApuracaoServicosDataReferencia(key.mesAno, key.dataReferencia)
+
+      if (!dataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida para exclusao.' })
+        return
+      }
+
       const deleteResult = await pool.query(
         `DELETE FROM apuracao_servicos
          WHERE mes_ano = $1
-           AND CAST(dre_codigo AS text) = $2
-           AND CAST(ordem_servico_codigo AS text) = $3
-           AND revisao = $4
-           AND CAST(tipo_escola_codigo AS text) = $5
-           AND BTRIM(tipo_pessoa) = $6
-         RETURNING mes_ano, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
-        [key.mesAno, key.dreCodigo, key.ordemServicoCodigo, Number.parseInt(key.revisao, 10), key.tipoEscolaCodigo, normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'],
+           AND data_referencia = $2::date
+           AND CAST(dre_codigo AS text) = $3
+           AND CAST(ordem_servico_codigo AS text) = $4
+           AND revisao = $5
+           AND CAST(tipo_escola_codigo AS text) = $6
+           AND BTRIM(tipo_pessoa) = $7
+         RETURNING mes_ano, TO_CHAR(data_referencia, 'YYYY-MM-DD') AS data_referencia, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
+        [key.mesAno, dataReferencia, key.dreCodigo, key.ordemServicoCodigo, Number.parseInt(key.revisao, 10), key.tipoEscolaCodigo, normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'],
       )
 
       if (deleteResult.rowCount === 0) {
@@ -28139,6 +28663,7 @@ const server = createServer(async (request, response) => {
       sendJson(response, 200, {
         deletedKey: {
           mesAno: deleteResult.rows[0].mes_ano,
+          dataReferencia: deleteResult.rows[0].data_referencia,
           dreCodigo: deleteResult.rows[0].dre_codigo,
           ordemServicoCodigo: deleteResult.rows[0].ordem_servico_codigo,
           revisao: Number(deleteResult.rows[0].revisao) || 0,

@@ -44,6 +44,8 @@ const normalizeMonthYearInput = (value: string) => {
 
 const isValidMonthYear = (value: string) => /^(0[1-9]|1[0-2])\/\d{4}$/.test(value)
 
+const isValidDateInput = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
+
 const normalizeIntegerInput = (value: string) => value.replace(/[^\d]/g, '')
 
 const parseNonNegativeInteger = (value: string) => {
@@ -145,8 +147,8 @@ const findTipoPessoaByDisplayValue = (value: string) => {
   }) ?? null
 }
 
-const formatApuracaoServicosKey = (item: Pick<ApuracaoServicosKey, 'mesAno' | 'dreCodigo' | 'ordemServicoCodigo' | 'revisao' | 'tipoEscolaCodigo' | 'tipoPessoa'>) => {
-  return `${item.mesAno}|${item.dreCodigo}|${item.ordemServicoCodigo}|${item.revisao}|${item.tipoEscolaCodigo}|${item.tipoPessoa}`
+const formatApuracaoServicosKey = (item: Pick<ApuracaoServicosKey, 'mesAno' | 'dataReferencia' | 'dreCodigo' | 'ordemServicoCodigo' | 'revisao' | 'tipoEscolaCodigo' | 'tipoPessoa'>) => {
+  return `${item.mesAno}|${item.dataReferencia}|${item.dreCodigo}|${item.ordemServicoCodigo}|${item.revisao}|${item.tipoEscolaCodigo}|${item.tipoPessoa}`
 }
 
 const formatDreOptionLabel = (item: Pick<DreItem, 'codigo' | 'sigla' | 'descricao'>) => {
@@ -186,6 +188,7 @@ const getSortIndicator = (sortBy: ApuracaoServicosSortField, currentSortBy: Apur
 
 const emptyFormErrors = {
   mesAno: '',
+  dataReferencia: '',
   dreCodigo: '',
   ordemServicoCodigo: '',
   revisao: '',
@@ -205,13 +208,14 @@ export default function ApuracaoServicosView() {
   const [items, setItems] = useState<ApuracaoServicosItem[]>([])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [filterDataReferencia, setFilterDataReferencia] = useState('')
   const [filterDreCodigo, setFilterDreCodigo] = useState('')
   const [filterTipoPessoa, setFilterTipoPessoa] = useState('')
   const [filterRevisao, setFilterRevisao] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const [sortBy, setSortBy] = useState<ApuracaoServicosSortField>('mesAno')
+  const [sortBy, setSortBy] = useState<ApuracaoServicosSortField>('dataReferencia')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [statusMessage, setStatusMessage] = useState('')
   const [statusTone, setStatusTone] = useState<StatusTone>('idle')
@@ -229,6 +233,7 @@ export default function ApuracaoServicosView() {
   const [editingKey, setEditingKey] = useState<ApuracaoServicosKey | null>(null)
 
   const [mesAno, setMesAno] = useState('')
+  const [dataReferencia, setDataReferencia] = useState('')
   const [dreCodigo, setDreCodigo] = useState('')
   const [dreDisplayValue, setDreDisplayValue] = useState('')
   const [ordemServicoCodigo, setOrdemServicoCodigo] = useState('')
@@ -254,6 +259,7 @@ export default function ApuracaoServicosView() {
 
   const resetForm = useCallback(() => {
     setMesAno('')
+    setDataReferencia('')
     setDreCodigo('')
     setDreDisplayValue('')
     setOrdemServicoCodigo('')
@@ -284,6 +290,7 @@ export default function ApuracaoServicosView() {
       const parsedFilterRevisao = parseNonNegativeInteger(filterRevisao)
       const result = await listApuracaoServicosItemsPaginated({
         search: deferredSearch,
+        dataReferencia: isValidDateInput(filterDataReferencia) ? filterDataReferencia : undefined,
         dreCodigo: filterDreCodigo,
         revisao: Number.isInteger(parsedFilterRevisao) ? parsedFilterRevisao : undefined,
         tipoPessoa: filterTipoPessoa as ApuracaoTipoPessoa | undefined,
@@ -307,7 +314,7 @@ export default function ApuracaoServicosView() {
     } finally {
       setIsLoading(false)
     }
-  }, [deferredSearch, filterDreCodigo, filterRevisao, filterTipoPessoa, sortBy, sortDirection])
+  }, [deferredSearch, filterDataReferencia, filterDreCodigo, filterRevisao, filterTipoPessoa, sortBy, sortDirection])
 
   const loadStaticOptions = useCallback(async () => {
     setIsLoadingFormOptions(true)
@@ -373,6 +380,7 @@ export default function ApuracaoServicosView() {
 
   const handleClearFilter = () => {
     setSearch('')
+    setFilterDataReferencia('')
     setFilterDreCodigo('')
     setFilterRevisao('')
     setFilterTipoPessoa('')
@@ -402,6 +410,7 @@ export default function ApuracaoServicosView() {
   const openFormWithItem = (item: ApuracaoServicosItem, nextMode: FormMode) => {
     setEditingKey({
       mesAno: item.mesAno,
+      dataReferencia: item.dataReferencia,
       dreCodigo: item.dreCodigo,
       ordemServicoCodigo: item.ordemServicoCodigo,
       revisao: item.revisao,
@@ -409,6 +418,7 @@ export default function ApuracaoServicosView() {
       tipoPessoa: item.tipoPessoa,
     })
     setMesAno(item.mesAno)
+    setDataReferencia(item.dataReferencia)
     setDreCodigo(item.dreCodigo)
     setDreDisplayValue(formatDreFormDisplayLabel(item))
     setOrdemServicoCodigo(item.ordemServicoCodigo)
@@ -507,6 +517,10 @@ export default function ApuracaoServicosView() {
       nextErrors.mesAno = 'Informe o mes/ano no formato mm/aaaa.'
     }
 
+    if (!isValidDateInput(dataReferencia)) {
+      nextErrors.dataReferencia = 'Informe a data de referencia no formato aaaa-mm-dd.'
+    }
+
     if (!dreCodigo) {
       nextErrors.dreCodigo = 'Selecione a DRE.'
     }
@@ -563,6 +577,7 @@ export default function ApuracaoServicosView() {
 
     return {
       mesAno,
+      dataReferencia,
       dreCodigo,
       ordemServicoCodigo,
       revisao: parsedRevisao,
@@ -647,7 +662,7 @@ export default function ApuracaoServicosView() {
         <p className="content-kicker">Operacional financeiro</p>
         <h2 id="content-title">Apuracao Servicos</h2>
         <p className="content-description">
-          Controle a apuracao de servicos por mes/ano, DRE, tipo pessoa, OS ativa, revisao e tipo de escola, com quantitativos inteiros e kilometragem com 4 casas decimais.
+          Controle a apuracao diaria de servicos por data de referencia, DRE, tipo pessoa, OS ativa, revisao e tipo de escola, com quantitativos inteiros e kilometragem com 4 casas decimais.
         </p>
       </div>
 
@@ -668,6 +683,11 @@ export default function ApuracaoServicosView() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+            />
+            <input
+              type="date"
+              value={filterDataReferencia}
+              onChange={(event) => setFilterDataReferencia(event.target.value)}
             />
             <select
               value={filterDreCodigo}
@@ -757,6 +777,19 @@ export default function ApuracaoServicosView() {
                         aria-invalid={Boolean(formErrors.mesAno)}
                       />
                       {formErrors.mesAno ? <strong className="field-error">{formErrors.mesAno}</strong> : null}
+                    </label>
+
+                    <label className="field-group" htmlFor="apuracao-servicos-data-referencia">
+                      <span>Data Referencia</span>
+                      <input
+                        id="apuracao-servicos-data-referencia"
+                        type="date"
+                        value={dataReferencia}
+                        onChange={(event) => setDataReferencia(event.target.value)}
+                        disabled={isSaving || isKeyFieldLocked}
+                        aria-invalid={Boolean(formErrors.dataReferencia)}
+                      />
+                      {formErrors.dataReferencia ? <strong className="field-error">{formErrors.dataReferencia}</strong> : null}
                     </label>
 
                     <label className="field-group" htmlFor="apuracao-servicos-revisao">
@@ -996,6 +1029,11 @@ export default function ApuracaoServicosView() {
               <thead>
                 <tr>
                   <th>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('dataReferencia')}>
+                      Data Ref. <span>{getSortIndicator('dataReferencia', sortBy, sortDirection)}</span>
+                    </button>
+                  </th>
+                  <th>
                     <button type="button" className="dre-sort-button" onClick={() => handleSort('mesAno')}>
                       Mes/Ano <span>{getSortIndicator('mesAno', sortBy, sortDirection)}</span>
                     </button>
@@ -1029,6 +1067,7 @@ export default function ApuracaoServicosView() {
               <tbody>
                 {items.map((item) => (
                   <tr key={formatApuracaoServicosKey(item)}>
+                    <td>{item.dataReferencia}</td>
                     <td>{item.mesAno}</td>
                     <td>{formatDreGridLabel(item)}</td>
                     <td>{formatOrdemServicoGridLabel(item)}</td>

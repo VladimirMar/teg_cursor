@@ -3,6 +3,7 @@ import type { ApuracaoTipoPessoa } from './apuracaoTipoPessoa'
 
 export type ApuracaoServicosKey = {
   mesAno: string
+  dataReferencia: string
   dreCodigo: string
   ordemServicoCodigo: string
   revisao: number
@@ -52,7 +53,7 @@ export type ApuracaoServicosOrdemServicoOption = {
   tipoPessoa: ApuracaoTipoPessoa
 }
 
-export type ApuracaoServicosSortField = 'mesAno' | 'dreCodigo' | 'dreDescricao' | 'ordemServicoCodigo' | 'tipoEscolaDescricao' | 'revisao' | 'tipoPessoa' | 'dataInclusao' | 'dataAlteracao'
+export type ApuracaoServicosSortField = 'mesAno' | 'dataReferencia' | 'dreCodigo' | 'dreDescricao' | 'ordemServicoCodigo' | 'tipoEscolaDescricao' | 'revisao' | 'tipoPessoa' | 'dataInclusao' | 'dataAlteracao'
 
 type ApuracaoServicosListResponse = {
   items: ApuracaoServicosItem[]
@@ -79,6 +80,7 @@ type OrdemServicoOptionsResponse = {
 export type ApuracaoServicosListParams = {
   search?: string
   mesAno?: string
+  dataReferencia?: string
   dreCodigo?: string
   revisao?: number
   tipoEscolaCodigo?: string
@@ -104,7 +106,7 @@ const getApuracaoServicosUrl = () => {
 }
 
 const getApuracaoServicosItemUrl = (key: ApuracaoServicosKey) => {
-  return `${getApuracaoServicosUrl()}/${encodeURIComponent(key.mesAno)}/${encodeURIComponent(key.dreCodigo)}/${encodeURIComponent(key.ordemServicoCodigo)}/${encodeURIComponent(String(key.revisao))}/${encodeURIComponent(key.tipoEscolaCodigo)}/${encodeURIComponent(key.tipoPessoa)}`
+  return `${getApuracaoServicosUrl()}/${encodeURIComponent(key.mesAno)}/${encodeURIComponent(key.dreCodigo)}/${encodeURIComponent(key.ordemServicoCodigo)}/${encodeURIComponent(String(key.revisao))}/${encodeURIComponent(key.tipoEscolaCodigo)}/${encodeURIComponent(key.tipoPessoa)}/${encodeURIComponent(key.dataReferencia)}`
 }
 
 const parseJsonSafely = (value: string) => {
@@ -134,6 +136,10 @@ export async function listApuracaoServicosItemsPaginated(params: ApuracaoServico
 
   if (params.mesAno?.trim()) {
     queryParams.set('mesAno', params.mesAno.trim())
+  }
+
+  if (params.dataReferencia?.trim()) {
+    queryParams.set('dataReferencia', params.dataReferencia.trim())
   }
 
   if (params.dreCodigo?.trim()) {
@@ -190,7 +196,7 @@ export async function listApuracaoServicosItemsPaginated(params: ApuracaoServico
     page: result.page ?? 1,
     pageSize: result.pageSize ?? params.pageSize ?? 20,
     totalPages: result.totalPages ?? 1,
-    sortBy: result.sortBy ?? params.sortBy ?? 'mesAno',
+    sortBy: result.sortBy ?? params.sortBy ?? 'dataReferencia',
     sortDirection: result.sortDirection ?? params.sortDirection ?? 'desc',
   }
 }

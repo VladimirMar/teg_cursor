@@ -2,6 +2,7 @@ import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'reac
 import type { FormEvent } from 'react'
 import './App.css'
 import AcessoPaginaView from './AcessoPaginaView'
+import ApontamentoServicosView from './ApontamentoServicosView'
 import ApuracaoServicosView from './ApuracaoServicosView'
 import ApuracaoServicosStatusView from './ApuracaoServicosStatusView'
 import PerfilAcessoView from './PerfilAcessoView'
@@ -182,7 +183,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apuracaoServicosStatus' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'apuracaoServicosStatus' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -347,6 +348,7 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
       return ['operacional', 'operacionalAdministrativo', 'veiculo']
     case 'apuracaoFinanceira':
     case 'apuracaoServicos':
+    case 'apontamentoServicos':
       return ['operacional', 'operacionalFinanceiro']
     case 'financeiroReprocessamento':
       return ['operacional', 'operacionalAdministrativo']
@@ -513,6 +515,7 @@ const operationalAdministrativeViews: ActiveView[] = [
 const operationalFinanceiroViews: ActiveView[] = [
   'apuracaoFinanceira',
   'apuracaoServicos',
+  'apontamentoServicos',
   'apuracaoServicosStatus',
 ]
 const cadastroOperationalViews: ActiveView[] = [
@@ -555,6 +558,7 @@ const menuAccessByView: Record<ActiveView, string> = {
   diasLetivos: 'menu_dias_letivos',
   apuracaoFinanceira: 'menu_apuracao_financeira',
   apuracaoServicos: 'menu_apuracao_servicos',
+  apontamentoServicos: 'menu_apuracao_servicos',
   apuracaoServicosStatus: 'menu_aprovacao_digitacao',
   modalBancadaTpPagtoCondicao: 'menu_modal_bancada_tp_pagto_condicao',
   modalBancadaTpPagtoCondicaoValor: 'menu_modal_bancada_tp_pagto_condicao_valor',
@@ -7384,7 +7388,7 @@ function App() {
                 </li> : null}
                 {hasOperationalFinanceiroAccess ? <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem menu-subitem-toggle ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' ? 'menu-subitem-active' : ''}`}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalFinanceiro')}
                     role="button"
                     aria-expanded={!collapsedMenuGroups.operacionalFinanceiro}
@@ -7411,6 +7415,12 @@ function App() {
                       onClick={() => setActiveView('apuracaoServicos')}
                     >
                       Apuracao Servicos
+                    </li> : null}
+                    {isViewAllowed('apontamentoServicos', menuPermissionKeys) ? <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('apontamentoServicos')}
+                    >
+                      Apontamento Servicos
                     </li> : null}
                     {isViewAllowed('apuracaoServicosStatus', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoServicosStatus' ? 'menu-subitem-active' : ''}`}
@@ -9576,6 +9586,8 @@ function App() {
           </>
         ) : activeView === 'apuracaoServicos' ? (
           <ApuracaoServicosView />
+        ) : activeView === 'apontamentoServicos' ? (
+          <ApontamentoServicosView />
         ) : activeView === 'apuracaoServicosStatus' ? (
           <ApuracaoServicosStatusView />
         ) : activeView === 'modalBancadaTpPagtoCondicao' ? (
