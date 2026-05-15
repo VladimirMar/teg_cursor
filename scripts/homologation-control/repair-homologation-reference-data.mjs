@@ -23,7 +23,10 @@ const sequenceByTable = {
   parametro_veiculo: 'parametro_veiculo_codigo_seq',
   modal_bancada_condicao_tipo_pgto: 'modal_bancada_condicao_tipo_pgto_codigo_seq',
   modal_bancada_condicao_tipo_pgto_valor: 'modal_bancada_condicao_tipo_pgto_valor_codigo_seq',
+  login: 'login_codigo_seq',
+  acesso_pagina: 'acesso_pagina_codigo_seq',
   perfil: 'perfil_codigo_seq',
+  perfil_acesso: 'perfil_acesso_codigo_seq',
 }
 
 const fetchRows = async (client, table) => {
@@ -75,6 +78,24 @@ const reassignConflictingDescriptions = async (client, table, rows) => {
   }
 }
 
+const reassignConflictingColumnValues = async (client, table, column, rows) => {
+  for (const row of rows) {
+    const value = row[column]
+
+    if (value === null || value === undefined || String(value).trim() === '') {
+      continue
+    }
+
+    await client.query(
+      `UPDATE ${table}
+       SET ${column} = CONCAT('__SYNC_', CAST($1 AS text), '_', codigo, '__')
+       WHERE codigo <> $2
+         AND UPPER(BTRIM(CAST(${column} AS text))) = UPPER(BTRIM(CAST($3 AS text)))`,
+      [`${table.toUpperCase()}_${column.toUpperCase()}`, row.codigo, value],
+    )
+  }
+}
+
 const deleteUnreferencedExtraTipoBancadaRows = async (client, validCodes) => {
   await client.query(
     `DELETE FROM tipo_bancada tb
@@ -118,6 +139,44 @@ const filterLoginPerfilRowsByExistingLogins = async (client, rows) => {
   }
 }
 
+const filterPerfilAcessoRowsByExistingParents = async (client, rows) => {
+  if (!rows.length) {
+    return { rows: [], skippedCount: 0 }
+  }
+
+  const [existingPerfis, existingAcessos] = await Promise.all([
+    client.query('SELECT codigo::int AS codigo FROM perfil'),
+    client.query('SELECT codigo::int AS codigo FROM acesso_pagina'),
+  ])
+  const validPerfilCodes = new Set(existingPerfis.rows.map((row) => row.codigo))
+  const validAcessoCodes = new Set(existingAcessos.rows.map((row) => row.codigo))
+  const filteredRows = rows.filter((row) => validPerfilCodes.has(row.perfil_codigo) && validAcessoCodes.has(row.acesso_pagina_codigo))
+
+  return {
+    rows: filteredRows,
+    skippedCount: rows.length - filteredRows.length,
+  }
+}
+
+const filterLoginDreRowsByExistingParents = async (client, rows) => {
+  if (!rows.length) {
+    return { rows: [], skippedCount: 0 }
+  }
+
+  const [existingLogins, existingDres] = await Promise.all([
+    client.query('SELECT codigo::int AS codigo FROM login'),
+    client.query('SELECT codigo::int AS codigo FROM dre'),
+  ])
+  const validLoginCodes = new Set(existingLogins.rows.map((row) => row.codigo))
+  const validDreCodes = new Set(existingDres.rows.map((row) => row.codigo))
+  const filteredRows = rows.filter((row) => validLoginCodes.has(row.login_codigo) && validDreCodes.has(row.dre_codigo))
+
+  return {
+    rows: filteredRows,
+    skippedCount: rows.length - filteredRows.length,
+  }
+}
+
 const buildSummary = (payload, metadata = {}) => ({
   sourceDatabase,
   targetDatabase,
@@ -143,28 +202,47 @@ const main = async () => {
       parametro_veiculo: await fetchRows(source, 'parametro_veiculo'),
       modal_bancada_condicao_tipo_pgto: await fetchRows(source, 'modal_bancada_condicao_tipo_pgto'),
       modal_bancada_condicao_tipo_pgto_valor: await fetchRows(source, 'modal_bancada_condicao_tipo_pgto_valor'),
+      login: await fetchRows(source, 'login'),
+      acesso_pagina: await fetchRows(source, 'acesso_pagina'),
       perfil: await fetchRows(source, 'perfil'),
+      perfil_acesso: await fetchRows(source, 'perfil_acesso'),
       login_perfil: await source.query('SELECT login_codigo, perfil_codigo FROM login_perfil ORDER BY login_codigo, perfil_codigo').then((result) => result.rows),
+      login_dre: await source.query('SELECT login_codigo, dre_codigo FROM login_dre ORDER BY login_codigo, dre_codigo').then((result) => result.rows),
     }
-    const loginPerfilFilter = await filterLoginPerfilRowsByExistingLogins(target, payload.login_perfil)
 
     await target.query('BEGIN')
 
+    await target.query('TRUNCATE TABLE login_dre RESTART IDENTITY CASCADE')
+    await target.query('TRUNCATE TABLE login_perfil RESTART IDENTITY CASCADE')
+    await target.query('TRUNCATE TABLE perfil_acesso RESTART IDENTITY CASCADE')
+    
     await deleteUnreferencedExtraTipoBancadaRows(target, payload.tipo_bancada.map((row) => row.codigo))
+    await deleteExtraRowsByCodigo(target, 'login', payload.login.map((row) => row.codigo))
+    await deleteExtraRowsByCodigo(target, 'acesso_pagina', payload.acesso_pagina.map((row) => row.codigo))
     await deleteExtraRowsByCodigo(target, 'perfil', payload.perfil.map((row) => row.codigo))
     await reassignConflictingDescriptions(target, 'tipo_bancada', payload.tipo_bancada)
     await reassignConflictingDescriptions(target, 'tipo_pgto', payload.tipo_pgto)
+    await reassignConflictingColumnValues(target, 'login', 'email', payload.login)
+    await reassignConflictingColumnValues(target, 'acesso_pagina', 'sigla', payload.acesso_pagina)
+    await reassignConflictingColumnValues(target, 'acesso_pagina', 'chave_sistema', payload.acesso_pagina)
 
     await upsertByCodigo(target, 'condicao', payload.condicao)
     await upsertByCodigo(target, 'tipo_bancada', payload.tipo_bancada)
     await upsertByCodigo(target, 'tipo_pgto', payload.tipo_pgto)
+    await upsertByCodigo(target, 'login', payload.login)
+    await upsertByCodigo(target, 'acesso_pagina', payload.acesso_pagina)
     await upsertByCodigo(target, 'perfil', payload.perfil)
 
-    await target.query('TRUNCATE TABLE login_perfil RESTART IDENTITY CASCADE')
+    const perfilAcessoFilter = await filterPerfilAcessoRowsByExistingParents(target, payload.perfil_acesso)
+    const loginPerfilFilter = await filterLoginPerfilRowsByExistingLogins(target, payload.login_perfil)
+    const loginDreFilter = await filterLoginDreRowsByExistingParents(target, payload.login_dre)
+
     await target.query('TRUNCATE TABLE modal_bancada_condicao_tipo_pgto_valor RESTART IDENTITY CASCADE')
     await target.query('TRUNCATE TABLE modal_bancada_condicao_tipo_pgto RESTART IDENTITY CASCADE')
     await target.query('TRUNCATE TABLE parametro_veiculo RESTART IDENTITY CASCADE')
     await target.query('TRUNCATE TABLE modalidade_tipo_bancada RESTART IDENTITY CASCADE')
+
+    await insertByCodigo(target, 'perfil_acesso', perfilAcessoFilter.rows)
 
     if (loginPerfilFilter.rows.length) {
       await target.query(
@@ -175,6 +253,17 @@ const main = async () => {
         ],
       )
     }
+
+    if (loginDreFilter.rows.length) {
+      await target.query(
+        'INSERT INTO login_dre (login_codigo, dre_codigo) SELECT source.login_codigo, source.dre_codigo FROM UNNEST($1::int[], $2::int[]) AS source(login_codigo, dre_codigo)',
+        [
+          loginDreFilter.rows.map((row) => row.login_codigo),
+          loginDreFilter.rows.map((row) => row.dre_codigo),
+        ],
+      )
+    }
+
     await insertByCodigo(target, 'modalidade_tipo_bancada', payload.modalidade_tipo_bancada)
     await insertByCodigo(target, 'parametro_veiculo', payload.parametro_veiculo)
     await insertByCodigo(target, 'modal_bancada_condicao_tipo_pgto', payload.modal_bancada_condicao_tipo_pgto)
@@ -186,8 +275,12 @@ const main = async () => {
 
     await target.query('COMMIT')
     console.log(JSON.stringify(buildSummary(payload, {
+      skippedPerfilAcessoRows: perfilAcessoFilter.skippedCount,
+      synchronizedPerfilAcessoRows: perfilAcessoFilter.rows.length,
       skippedLoginPerfilRows: loginPerfilFilter.skippedCount,
       synchronizedLoginPerfilRows: loginPerfilFilter.rows.length,
+      skippedLoginDreRows: loginDreFilter.skippedCount,
+      synchronizedLoginDreRows: loginDreFilter.rows.length,
     }), null, 2))
   } catch (error) {
     await target.query('ROLLBACK').catch(() => {})
