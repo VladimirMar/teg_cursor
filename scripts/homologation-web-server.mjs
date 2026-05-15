@@ -41,7 +41,9 @@ const mimeTypes = {
 const isAllowedStaticPath = (pathname) => {
   return pathname === '/'
     || pathname === '/index.html'
+    || pathname === '/backspace-navigation-guard.js'
     || pathname === '/favicon.svg'
+    || pathname === '/form-permissions.js'
     || pathname === '/icons.svg'
     || pathname === '/teste-prefeitura.svg'
     || pathname.startsWith('/assets/')
@@ -117,23 +119,33 @@ const resolveStaticFilePath = async (pathname) => {
     return path.join(runtimeRoot, 'index.html')
   }
 
-  const filePath = path.join(runtimeRoot, normalizedPath.replace(/^\//, ''))
-  const normalizedFilePath = path.normalize(filePath)
+  const relativePath = normalizedPath.replace(/^\//, '')
+  const runtimeRootNormalized = path.normalize(runtimeRoot)
+  const candidatePaths = [
+    path.join(runtimeRoot, relativePath),
+    path.join(runtimeRoot, 'public', relativePath),
+  ]
 
-  if (!normalizedFilePath.startsWith(path.normalize(runtimeRoot))) {
-    throw new Error('INVALID_PATH')
+  for (const candidatePath of candidatePaths) {
+    const normalizedCandidatePath = path.normalize(candidatePath)
+
+    if (!normalizedCandidatePath.startsWith(runtimeRootNormalized)) {
+      throw new Error('INVALID_PATH')
+    }
+
+    try {
+      const fileStat = await stat(normalizedCandidatePath)
+
+      if (fileStat.isFile()) {
+        return normalizedCandidatePath
+      }
+    } catch {
+      continue
+    }
   }
 
-  try {
-    const fileStat = await stat(normalizedFilePath)
-
-    if (fileStat.isFile()) {
-      return normalizedFilePath
-    }
-  } catch {
-    if (!path.extname(normalizedFilePath)) {
-      return path.join(runtimeRoot, 'index.html')
-    }
+  if (!path.extname(relativePath)) {
+    return path.join(runtimeRoot, 'index.html')
   }
 
   return path.join(runtimeRoot, 'index.html')
