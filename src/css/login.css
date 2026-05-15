@@ -2296,7 +2296,13 @@ body:has(#emissao-parametro-grid-body) .dsc-default-audit-badge-ok {
 }
 
 body:has(#condutor-grid-body) .dsc-access-grid {
-  min-width: 1360px;
+  width: max-content;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid-wrapper {
+  overflow-x: auto;
 }
 
 body:has(#vinculo-grid-body) .dsc-access-grid-wrapper,
@@ -2395,14 +2401,41 @@ body:has(#vinculo-grid-body) .dsc-access-grid td {
 
 body:has(#condutor-grid-body) .dsc-access-grid:not(.dsc-vinculo-grid) th:nth-child(2),
 body:has(#condutor-grid-body) .dsc-access-grid:not(.dsc-vinculo-grid) td:nth-child(2) {
-  width: 42ch;
-  max-width: 42ch;
+  width: auto;
+  max-width: none;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(1),
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(1) {
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(2),
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(2) {
+  width: 34ch;
+  min-width: 34ch;
+  max-width: 34ch;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(3),
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(3),
+body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(4),
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(4) {
+  width: 136px;
+  min-width: 136px;
+  max-width: 136px;
 }
 
 body:has(#credenciada-grid-body) .dsc-access-grid {
-  width: 100%;
-  min-width: 1080px;
+  width: max-content;
+  min-width: 0;
   table-layout: fixed;
+}
+
+body:has(#credenciada-grid-body) .dsc-access-grid-wrapper {
+  overflow-x: auto;
 }
 
 body:has(#vinculo-grid-body) .dsc-access-grid,
@@ -2433,65 +2466,85 @@ body:has(#vinculo-grid-body) .dsc-access-grid-actions .dsc-btn {
 
 body:has(#credenciada-grid-body) .dsc-access-grid th:nth-child(2),
 body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(2) {
-  width: 42ch;
-  max-width: 42ch;
+  width: 34ch;
+  min-width: 34ch;
+  max-width: 34ch;
 }
 
 body:has(#credenciada-grid-body) .dsc-access-grid th:nth-child(1),
 body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(1) {
-  width: 7%;
-  max-width: 7%;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
 }
 
 body:has(#credenciada-grid-body) .dsc-access-grid th:nth-child(3),
 body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(3) {
-  width: 16%;
-  max-width: 16%;
+  width: 228px;
+  min-width: 228px;
+  max-width: 228px;
 }
 
-body:has(#credenciada-grid-body) .dsc-access-grid th:nth-child(4),
-body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(4) {
-  width: 21%;
-  max-width: 21%;
-}
-
-body:has(#credenciada-grid-body) .dsc-access-grid th:nth-child(5),
-body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(5) {
-  width: 10%;
-  max-width: 10%;
-}
-
-body:has(#credenciada-grid-body) .dsc-access-grid th:nth-child(6),
-body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(6) {
-  width: 16%;
-  max-width: 16%;
+body:has(#credenciada-grid-body) .dsc-grid-actions-column {
+  width: 228px;
+  min-width: 228px;
+  max-width: 228px;
 }
 
 body:has(#credenciada-grid-body) .dsc-access-grid th,
 body:has(#credenciada-grid-body) .dsc-access-grid td {
-  padding: 6px 6px;
+  padding: 4px 5px;
+}
+
+body:has(#credenciada-grid-body) .dsc-access-grid th:nth-child(3) {
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
 }
 
 body:has(#credenciada-grid-body) .dsc-grid-actions {
-  gap: 2px;
-  flex-wrap: wrap;
+  gap: 3px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
 }
 
 body:has(#credenciada-grid-body) .dsc-grid-action-button {
   min-width: 0;
   padding: 4px 6px;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
+  line-height: 1.1;
 }
 
 body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(2),
-body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(3),
-body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(4),
-body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(5) {
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell strong,
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell span {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-body:has(#condutor-rejection-grid-body) .dsc-access-grid {
+body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(2) {
+  white-space: normal;
+  line-height: 1.15;
+}
+
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell strong,
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell span {
+  min-width: 0;
+}
+
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell span {
+  display: block;
+  color: #556761;
+  font-size: 0.74rem;
+}
+
+#condutor-rejection-panel .dsc-access-grid {
   min-width: 1820px;
 }
 
@@ -2511,6 +2564,66 @@ body:has(#credenciada-rejection-grid-body) .dsc-access-grid {
 }
 
 body:has(#condutor-grid-body) .dsc-access-grid th,
+body:has(#condutor-grid-body) .dsc-access-grid td {
+  padding: 4px 5px;
+}
+
+body:has(#condutor-grid-body) .dsc-grid-actions-column {
+  width: 228px;
+  min-width: 228px;
+  max-width: 228px;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(3),
+body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(4),
+body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(5) {
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+}
+
+body:has(#condutor-grid-body) .dsc-grid-actions {
+  gap: 3px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
+body:has(#condutor-grid-body) .dsc-grid-action-button {
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 0.7rem;
+  line-height: 1.1;
+}
+
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span {
+  display: block;
+  color: #556761;
+  font-size: 0.74rem;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(2) {
+  white-space: normal;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(3),
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(4) {
+  font-size: 0.78rem;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid th,
 body:has(#condutor-grid-body) .dsc-access-grid td,
 body:has(#condutor-rejection-grid-body) .dsc-access-grid th,
 body:has(#condutor-rejection-grid-body) .dsc-access-grid td,
@@ -2523,6 +2636,17 @@ body:has(#ordem-servico-grid-body) .dsc-access-grid td,
 body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid th,
 body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   white-space: nowrap;
+}
+
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell,
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell strong,
+body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell span {
+  white-space: normal;
 }
 
 .dsc-access-grid th {
@@ -2551,6 +2675,11 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.dsc-grid-action-view {
+  background: rgba(8, 24, 34, 0.08);
+  color: #213139;
 }
 
 .dsc-grid-action-edit {

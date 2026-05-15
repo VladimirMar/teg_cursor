@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react'
-import type { FormEvent, MouseEvent } from 'react'
+import type { FormEvent } from 'react'
 import './App.css'
 import AcessoPaginaView from './AcessoPaginaView'
 import ApuracaoServicosView from './ApuracaoServicosView'
@@ -465,9 +465,137 @@ type StoredSession = {
   authenticatedAt: string
 }
 
+type SessionUserMenuAccess = {
+  chaveSistema: string
+  funcao: 'menu' | 'formulario'
+  permissao: string
+}
+
 const SESSION_STORAGE_KEY = 'tegfinanc.auth'
 const DRE_PAGE_SIZE = 20
-const SIDEBAR_AUTO_HIDE_DELAY_MS = 4000
+const visibleMenuPermissionLevels = new Set(['consulta', 'todos'])
+const editableFormPermissionLevels = new Set(['alteracao', 'todos'])
+const deletableFormPermissionLevels = new Set(['exclusao', 'todos'])
+const appFormEditAccessKeys = {
+  dre: 'form_dreform003',
+  modalidade: 'form_modalid004',
+  condicao: 'form_condica005',
+  tipoPgto: 'form_tipopag006',
+  tipoEscola: 'form_tipesco007',
+  aliquotaOptante: 'form_aliqopt008',
+  modalBancadaTpPagtoCondicao: 'form_mbtpcon009',
+  modalBancadaTpPagtoCondicaoValor: 'form_mbtpval010',
+  diasLetivos: 'form_dialetv011',
+  kmValor: 'form_kmvalor012',
+  continuaValor: 'form_cntvalr013',
+  tipoBancada: 'form_tipbanc014',
+  titular: 'form_titucrm015',
+  marcaModelo: 'form_marcmod016',
+  parametroVeiculo: 'form_parveic017',
+  seguradora: 'form_segurad018',
+  apuracaoFinanceira: 'form_apurfin019',
+} as const
+const operationalAdministrativeViews: ActiveView[] = [
+  'titular',
+  'condutor',
+  'vinculoCondutor',
+  'monitor',
+  'vinculoMonitor',
+  'credenciada',
+  'credenciamentoTermo',
+  'termoHistorico',
+  'ordemServico',
+  'ordemServicoHistorico',
+  'veiculo',
+  'veiculoHistorico',
+  'financeiroReprocessamento',
+]
+const operationalFinanceiroViews: ActiveView[] = [
+  'apuracaoFinanceira',
+  'apuracaoServicos',
+  'apuracaoServicosStatus',
+]
+const cadastroOperationalViews: ActiveView[] = [
+  'dre',
+  'modalidade',
+  'tipoBancada',
+  'marcaModelo',
+  'seguradora',
+  'troca',
+  'emissaoDocumentoParametro',
+  'cep',
+  'smoke',
+]
+const cadastroFinanceiroViews: ActiveView[] = [
+  'condicao',
+  'modalBancadaTpPagtoCondicao',
+  'modalBancadaTpPagtoCondicaoValor',
+  'kmValor',
+  'continuaValor',
+  'parametroVeiculo',
+  'tipoPgto',
+  'tipoEscola',
+  'aliquotaOptante',
+  'diasLetivos',
+]
+const accessManagementViews: ActiveView[] = [
+  'acessoPagina',
+  'perfil',
+  'perfilAcesso',
+  'loginDre',
+]
+const menuAccessByView: Record<ActiveView, string> = {
+  inicio: 'menu_dashboard',
+  dre: 'menu_dre',
+  modalidade: 'menu_modalidade',
+  condicao: 'menu_condicao',
+  tipoPgto: 'menu_tipo_pagamento',
+  tipoEscola: 'menu_tipo_escola',
+  aliquotaOptante: 'menu_aliquota_optante',
+  diasLetivos: 'menu_dias_letivos',
+  apuracaoFinanceira: 'menu_apuracao_financeira',
+  apuracaoServicos: 'menu_apuracao_servicos',
+  apuracaoServicosStatus: 'menu_aprovacao_digitacao',
+  modalBancadaTpPagtoCondicao: 'menu_modal_bancada_tp_pagto_condicao',
+  modalBancadaTpPagtoCondicaoValor: 'menu_modal_bancada_tp_pagto_condicao_valor',
+  kmValor: 'menu_km_valor',
+  continuaValor: 'menu_continua_valor',
+  parametroVeiculo: 'menu_parametro_veiculo',
+  tipoBancada: 'menu_tipo_bancada',
+  titular: 'menu_titular_crm',
+  marcaModelo: 'menu_marca_modelo',
+  seguradora: 'menu_seguradoras',
+  troca: 'menu_tipo_troca',
+  acesso: 'menu_controle_acesso',
+  acessoPagina: 'menu_acesso_pagina',
+  perfil: 'menu_perfil',
+  perfilAcesso: 'menu_perfil_acesso',
+  loginDre: 'menu_login_dre',
+  condutor: 'menu_condutor',
+  vinculoCondutor: 'menu_vinculo_condutor',
+  monitor: 'menu_monitor',
+  vinculoMonitor: 'menu_vinculo_monitor',
+  credenciada: 'menu_credenciada',
+  credenciamentoTermo: 'menu_termo',
+  termoHistorico: 'menu_historico_termo',
+  ordemServico: 'menu_ordem_servico',
+  ordemServicoHistorico: 'menu_historico_ordem_servico',
+  veiculo: 'menu_veiculo',
+  veiculoHistorico: 'menu_historico_veiculo',
+  financeiroReprocessamento: 'menu_reprocessar_valores',
+  emissaoDocumentoParametro: 'menu_param_emissao',
+  cep: 'menu_cep',
+  smoke: 'menu_smoke_test',
+}
+const orderedMenuViews: ActiveView[] = [
+  'inicio',
+  ...operationalAdministrativeViews,
+  ...operationalFinanceiroViews,
+  ...cadastroOperationalViews,
+  ...cadastroFinanceiroViews,
+  'acesso',
+  ...accessManagementViews,
+]
 
 const normalizeDreSiglaInput = (value: string) => value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2)
 
@@ -937,6 +1065,121 @@ function getUserDisplayName(user: unknown, fallbackEmail: string) {
   return fallbackEmail
 }
 
+function getSessionUserMenuAccess(user: unknown): SessionUserMenuAccess[] {
+  if (!user || typeof user !== 'object' || !('acessos' in user)) {
+    return []
+  }
+
+  const rawAcessos = user.acessos
+
+  if (!Array.isArray(rawAcessos)) {
+    return []
+  }
+
+  return rawAcessos.flatMap((item) => {
+    if (!item || typeof item !== 'object') {
+      return []
+    }
+
+    const chaveSistema = 'chave_sistema' in item ? item.chave_sistema : 'chaveSistema' in item ? item.chaveSistema : ''
+    const funcao = 'funcao' in item ? item.funcao : ''
+    const permissao = 'permissao' in item ? item.permissao : ''
+
+    if (typeof chaveSistema !== 'string' || typeof funcao !== 'string' || typeof permissao !== 'string') {
+      return []
+    }
+
+    const normalizedChaveSistema = chaveSistema.trim()
+    const normalizedFuncao = funcao.trim().toLowerCase()
+    const normalizedPermissao = permissao.trim().toLowerCase()
+
+    if (!normalizedChaveSistema || normalizedFuncao !== 'menu' || !visibleMenuPermissionLevels.has(normalizedPermissao)) {
+      return []
+    }
+
+    return [{
+      chaveSistema: normalizedChaveSistema,
+      funcao: 'menu',
+      permissao: normalizedPermissao,
+    }]
+  })
+}
+
+function getSessionUserFormAccess(
+  user: unknown,
+  allowedPermissionLevels: ReadonlySet<string>,
+): SessionUserMenuAccess[] {
+  if (!user || typeof user !== 'object' || !('acessos' in user)) {
+    return []
+  }
+
+  const rawAcessos = user.acessos
+
+  if (!Array.isArray(rawAcessos)) {
+    return []
+  }
+
+  return rawAcessos.flatMap((item) => {
+    if (!item || typeof item !== 'object') {
+      return []
+    }
+
+    const chaveSistema = 'chave_sistema' in item ? item.chave_sistema : 'chaveSistema' in item ? item.chaveSistema : ''
+    const funcao = 'funcao' in item ? item.funcao : ''
+    const permissao = 'permissao' in item ? item.permissao : ''
+
+    if (typeof chaveSistema !== 'string' || typeof funcao !== 'string' || typeof permissao !== 'string') {
+      return []
+    }
+
+    const normalizedChaveSistema = chaveSistema.trim()
+    const normalizedFuncao = funcao.trim().toLowerCase()
+    const normalizedPermissao = permissao.trim().toLowerCase()
+
+    if (!normalizedChaveSistema || normalizedFuncao !== 'formulario' || !allowedPermissionLevels.has(normalizedPermissao)) {
+      return []
+    }
+
+    return [{
+      chaveSistema: normalizedChaveSistema,
+      funcao: 'formulario',
+      permissao: normalizedPermissao,
+    }]
+  })
+}
+
+function getMenuPermissionKeys(session: StoredSession | null) {
+  return new Set(getSessionUserMenuAccess(session?.user).map((item) => item.chaveSistema))
+}
+
+function getEditableFormPermissionKeys(session: StoredSession | null) {
+  return new Set(getSessionUserFormAccess(session?.user, editableFormPermissionLevels).map((item) => item.chaveSistema))
+}
+
+function getDeletableFormPermissionKeys(session: StoredSession | null) {
+  return new Set(getSessionUserFormAccess(session?.user, deletableFormPermissionLevels).map((item) => item.chaveSistema))
+}
+
+function isMenuKeyAllowed(key: string, allowedKeys: Set<string>) {
+  return allowedKeys.has(key)
+}
+
+function isViewAllowed(view: ActiveView, allowedKeys: Set<string>) {
+  return isMenuKeyAllowed(menuAccessByView[view], allowedKeys)
+}
+
+function getFirstAllowedView(allowedKeys: Set<string>) {
+  return orderedMenuViews.find((view) => isViewAllowed(view, allowedKeys)) ?? 'inicio'
+}
+
+function getFormEditPermissionMessage(formLabel: string) {
+  return `Usuario sem permissao de alteracao para o formulario ${formLabel}.`
+}
+
+function getFormDeletePermissionMessage(formLabel: string) {
+  return `Usuario sem permissao de exclusao para o formulario ${formLabel}.`
+}
+
 function formatCpfOrCnpj(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 14)
 
@@ -1014,8 +1257,6 @@ function App() {
   const [dashboardDrillDownStatusMessage, setDashboardDrillDownStatusMessage] = useState('')
   const [isDashboardOsPopupVisible, setIsDashboardOsPopupVisible] = useState(false)
   const [dashboardOsPopupUrl, setDashboardOsPopupUrl] = useState('')
-  const sidebarAutoHideTimeoutRef = useRef<number | null>(null)
-  const isSidebarHoveredRef = useRef(false)
   const [dreItems, setDreItems] = useState<DreItem[]>([])
   const [dreSigla, setDreSigla] = useState('')
   const [dreSiglaError, setDreSiglaError] = useState('')
@@ -1387,77 +1628,54 @@ function App() {
   const [seguradoraSortDirection, setSeguradoraSortDirection] = useState<DreSortDirection>('asc')
   const deferredSeguradoraSearch = useDeferredValue(seguradoraSearch)
   const deferredDashboardDrillDownSearch = useDeferredValue(dashboardDrillDownSearch)
+  const menuPermissionKeys = getMenuPermissionKeys(session)
+  const editableFormPermissionKeys = getEditableFormPermissionKeys(session)
+  const deletableFormPermissionKeys = getDeletableFormPermissionKeys(session)
+  const hasDeleteFormPermission = (formAccessKey: string) => deletableFormPermissionKeys.has(formAccessKey)
+  const hasDreEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.dre)
+  const hasModalidadeEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.modalidade)
+  const hasCondicaoEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.condicao)
+  const hasTipoPgtoEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.tipoPgto)
+  const hasTipoEscolaEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.tipoEscola)
+  const hasAliquotaOptanteEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.aliquotaOptante)
+  const hasModalBancadaTpPagtoCondicaoEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.modalBancadaTpPagtoCondicao)
+  const hasModalBancadaTpPagtoCondicaoValorEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.modalBancadaTpPagtoCondicaoValor)
+  const hasDiasLetivosEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.diasLetivos)
+  const hasKmValorEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.kmValor)
+  const hasContinuaValorEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.continuaValor)
+  const hasTipoBancadaEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.tipoBancada)
+  const hasTitularEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.titular)
+  const hasMarcaModeloEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.marcaModelo)
+  const hasParametroVeiculoEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.parametroVeiculo)
+  const hasSeguradoraEditFormAccess = editableFormPermissionKeys.has(appFormEditAccessKeys.seguradora)
+  const hasDashboardAccess = isViewAllowed('inicio', menuPermissionKeys)
+  const hasOperationalAdministrativeAccess = isMenuKeyAllowed('menu_operacional_administrativo', menuPermissionKeys)
+    && operationalAdministrativeViews.some((view) => isViewAllowed(view, menuPermissionKeys))
+  const hasOperationalFinanceiroAccess = isMenuKeyAllowed('menu_operacional_financeiro', menuPermissionKeys)
+    && operationalFinanceiroViews.some((view) => isViewAllowed(view, menuPermissionKeys))
+  const hasOperationalAccess = isMenuKeyAllowed('menu_operacional_root', menuPermissionKeys)
+    && (hasOperationalAdministrativeAccess || hasOperationalFinanceiroAccess)
+  const hasCadastroOperationalAccess = isMenuKeyAllowed('menu_cadastros_operacional', menuPermissionKeys)
+    && cadastroOperationalViews.some((view) => isViewAllowed(view, menuPermissionKeys))
+  const hasCadastroFinanceiroAccess = isMenuKeyAllowed('menu_cadastros_financeiro', menuPermissionKeys)
+    && cadastroFinanceiroViews.some((view) => isViewAllowed(view, menuPermissionKeys))
+  const hasCadastroAccess = isMenuKeyAllowed('menu_cadastros_root', menuPermissionKeys)
+    && (hasCadastroOperationalAccess || hasCadastroFinanceiroAccess)
+  const hasAccessManagementAccess = isViewAllowed('acesso', menuPermissionKeys)
 
   useEffect(() => {
     setSession(getStoredSession())
   }, [])
 
-  const clearSidebarAutoHideTimeout = useCallback(() => {
-    if (sidebarAutoHideTimeoutRef.current !== null) {
-      window.clearTimeout(sidebarAutoHideTimeoutRef.current)
-      sidebarAutoHideTimeoutRef.current = null
-    }
-  }, [])
-
-  const scheduleSidebarAutoHide = useCallback(() => {
-    clearSidebarAutoHideTimeout()
-
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const canAutoHideSidebar = window.matchMedia('(hover: hover) and (pointer: fine)').matches
-
-    if (!canAutoHideSidebar || isSidebarHoveredRef.current) {
-      return
-    }
-
-    sidebarAutoHideTimeoutRef.current = window.setTimeout(() => {
-      if (!isSidebarHoveredRef.current) {
-        setIsSidebarVisible(false)
-      }
-    }, SIDEBAR_AUTO_HIDE_DELAY_MS)
-  }, [clearSidebarAutoHideTimeout])
-
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined
+    if (!session) {
+      return
     }
 
-    const canAutoHideSidebar = window.matchMedia('(hover: hover) and (pointer: fine)').matches
-
-    if (!canAutoHideSidebar) {
-      clearSidebarAutoHideTimeout()
-      setIsSidebarVisible(true)
-      return undefined
+    if (!isViewAllowed(activeView, menuPermissionKeys)) {
+      setActiveView(getFirstAllowedView(menuPermissionKeys))
     }
-
-    if (!isSidebarVisible) {
-      clearSidebarAutoHideTimeout()
-      return undefined
-    }
-
-    const handleInteraction = () => {
-      if (!isSidebarHoveredRef.current) {
-        scheduleSidebarAutoHide()
-      }
-    }
-
-    scheduleSidebarAutoHide()
-
-    window.addEventListener('mousemove', handleInteraction)
-    window.addEventListener('mousedown', handleInteraction)
-    window.addEventListener('keydown', handleInteraction)
-    window.addEventListener('scroll', handleInteraction)
-
-    return () => {
-      window.removeEventListener('mousemove', handleInteraction)
-      window.removeEventListener('mousedown', handleInteraction)
-      window.removeEventListener('keydown', handleInteraction)
-      window.removeEventListener('scroll', handleInteraction)
-      clearSidebarAutoHideTimeout()
-    }
-  }, [clearSidebarAutoHideTimeout, isSidebarVisible, scheduleSidebarAutoHide])
+  }, [activeView, menuPermissionKeys, session])
 
   const loadDashboardAtivos = useCallback(async (monthToLoad: string) => {
     setIsLoadingDashboard(true)
@@ -2051,6 +2269,12 @@ function App() {
   }
 
   const handleDeleteTipoBancadaAssociation = async (item: ModalidadeTipoBancadaAssociationItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.tipoBancada)) {
+      setAssociationStatusTone('warning')
+      setAssociationStatusMessage(getFormDeletePermissionMessage('Modalidade x Tipo de Bancada'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir a associacao ${item.modalidadeDescricao} x ${item.tipoBancadaDescricao}?`)
 
     if (!confirmed) {
@@ -2427,6 +2651,12 @@ function App() {
   }
 
   const handleDeleteModalBancadaTpPagtoCondicao = async (item: ModalBancadaTpPagtoCondicaoItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.modalBancadaTpPagtoCondicao)) {
+      setModalBancadaTpPagtoCondicaoStatusTone('warning')
+      setModalBancadaTpPagtoCondicaoStatusMessage(getFormDeletePermissionMessage('Modalidade x Bancada x Pagamento x Condicao'))
+      return
+    }
+
     const confirmed = window.confirm(
       `Excluir a associacao ${item.modalidadeDescricao} x ${item.tipoBancadaDescricao} x ${item.tipoPgtoDescricao} x ${item.condicaoDescricao}?`,
     )
@@ -2510,6 +2740,12 @@ function App() {
   }
 
   const handleDeleteModalBancadaTpPagtoCondicaoValor = async (item: ModalBancadaTpPagtoCondicaoValorItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.modalBancadaTpPagtoCondicaoValor)) {
+      setModalBancadaTpPagtoCondicaoValorStatusTone('warning')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage(getFormDeletePermissionMessage('Modalidade x Bancada x Pagamento x Condicao Valor'))
+      return
+    }
+
     const confirmed = window.confirm(
       `Excluir o valor ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)} da data ${item.data}?`,
     )
@@ -2595,6 +2831,12 @@ function App() {
   }
 
   const handleDeleteKmValor = async (item: KmValorItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.kmValor)) {
+      setKmValorStatusTone('warning')
+      setKmValorStatusMessage(getFormDeletePermissionMessage('Km_Valor'))
+      return
+    }
+
     const confirmed = window.confirm(
       `Excluir o km valor ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)} da data ${item.data} para a condicao ${item.condicaoDescricao}?`,
     )
@@ -2680,6 +2922,12 @@ function App() {
   }
 
   const handleDeleteContinuaValor = async (item: ContinuaValorItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.continuaValor)) {
+      setContinuaValorStatusTone('warning')
+      setContinuaValorStatusMessage(getFormDeletePermissionMessage('Continua_Valor'))
+      return
+    }
+
     const confirmed = window.confirm(
       `Excluir o continua valor ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor)} da data ${item.data} para o tipo ${item.tipoContinua}?`,
     )
@@ -2779,6 +3027,12 @@ function App() {
   }
 
   const handleDeleteParametroVeiculo = async (item: ParametroVeiculoItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.parametroVeiculo)) {
+      setParametroVeiculoStatusTone('warning')
+      setParametroVeiculoStatusMessage(getFormDeletePermissionMessage('Parametro Pgto Veiculo'))
+      return
+    }
+
     const confirmed = window.confirm(
       `Excluir o parametro veiculo ${formatModalidadeTipoBancadaLabel(item)} / ${item.condicao} / ${item.data}?`,
     )
@@ -3988,6 +4242,12 @@ function App() {
   }
 
   const handleStartEditDre = (item: DreItem) => {
+    if (!hasDreEditFormAccess) {
+      setDreStatusTone('warning')
+      setDreStatusMessage(getFormEditPermissionMessage('DRE'))
+      return
+    }
+
     setEditingDreCodigo(item.codigo)
     setDreFormMode('edit')
     setDreSigla(item.sigla)
@@ -4019,6 +4279,12 @@ function App() {
   }, [resetDreForm])
 
   const handleStartEditModalidade = (item: ModalidadeItem) => {
+    if (!hasModalidadeEditFormAccess) {
+      setModalidadeStatusTone('warning')
+      setModalidadeStatusMessage(getFormEditPermissionMessage('Modalidade'))
+      return
+    }
+
     setEditingModalidadeCodigo(item.codigo)
     setModalidadeFormMode('edit')
     setModalidadeDescricao(item.descricao)
@@ -4039,6 +4305,12 @@ function App() {
   }
 
   const handleStartEditCondicao = (item: CondicaoItem) => {
+    if (!hasCondicaoEditFormAccess) {
+      setCondicaoStatusTone('warning')
+      setCondicaoStatusMessage(getFormEditPermissionMessage('Condicao'))
+      return
+    }
+
     setEditingCondicaoCodigo(item.codigo)
     setCondicaoFormMode('edit')
     setCondicaoDescricao(item.descricao)
@@ -4067,6 +4339,12 @@ function App() {
   }
 
   const handleStartEditModalBancadaTpPagtoCondicao = (item: ModalBancadaTpPagtoCondicaoItem) => {
+    if (!hasModalBancadaTpPagtoCondicaoEditFormAccess) {
+      setModalBancadaTpPagtoCondicaoStatusTone('warning')
+      setModalBancadaTpPagtoCondicaoStatusMessage(getFormEditPermissionMessage('Modalidade x Bancada x Pagamento x Condicao'))
+      return
+    }
+
     setEditingModalBancadaTpPagtoCondicaoCodigo(item.codigo)
     setModalBancadaTpPagtoCondicaoFormMode('edit')
     setModalBancadaTpPagtoCondicaoAssociationCodigo(item.modalidadeTipoBancadaCodigo)
@@ -4089,6 +4367,12 @@ function App() {
   }
 
   const handleStartEditModalBancadaTpPagtoCondicaoValor = (item: ModalBancadaTpPagtoCondicaoValorItem) => {
+    if (!hasModalBancadaTpPagtoCondicaoValorEditFormAccess) {
+      setModalBancadaTpPagtoCondicaoValorStatusTone('warning')
+      setModalBancadaTpPagtoCondicaoValorStatusMessage(getFormEditPermissionMessage('Modalidade x Bancada x Pagamento x Condicao Valor'))
+      return
+    }
+
     setEditingModalBancadaTpPagtoCondicaoValorCodigo(item.codigo)
     setModalBancadaTpPagtoCondicaoValorFormMode('edit')
     setModalBancadaTpPagtoCondicaoValorAssociationCodigo(item.modalBancadaTpPagtoCondicaoCodigo)
@@ -4111,6 +4395,12 @@ function App() {
   }
 
   const handleStartEditKmValor = (item: KmValorItem) => {
+    if (!hasKmValorEditFormAccess) {
+      setKmValorStatusTone('warning')
+      setKmValorStatusMessage(getFormEditPermissionMessage('Km_Valor'))
+      return
+    }
+
     setEditingKmValorCodigo(item.codigo)
     setKmValorFormMode('edit')
     setKmValorCondicaoCodigo(item.condicaoCodigo)
@@ -4133,6 +4423,12 @@ function App() {
   }
 
   const handleStartEditContinuaValor = (item: ContinuaValorItem) => {
+    if (!hasContinuaValorEditFormAccess) {
+      setContinuaValorStatusTone('warning')
+      setContinuaValorStatusMessage(getFormEditPermissionMessage('Continua_Valor'))
+      return
+    }
+
     setEditingContinuaValorCodigo(item.codigo)
     setContinuaValorFormMode('edit')
     setContinuaValorTipo(item.tipoContinua)
@@ -4155,6 +4451,12 @@ function App() {
   }
 
   const handleStartEditParametroVeiculo = (item: ParametroVeiculoItem) => {
+    if (!hasParametroVeiculoEditFormAccess) {
+      setParametroVeiculoStatusTone('warning')
+      setParametroVeiculoStatusMessage(getFormEditPermissionMessage('Parametro Pgto Veiculo'))
+      return
+    }
+
     setEditingParametroVeiculoCodigo(item.codigo)
     setParametroVeiculoFormMode('edit')
     setParametroVeiculoModalidadeTipoBancadaCodigo(item.modalidadeTipoBancadaCodigo)
@@ -4291,6 +4593,12 @@ function App() {
   }, [handleCancelParametroVeiculoForm, isParametroVeiculoFormVisible, isSavingParametroVeiculo])
 
   const handleStartEditTipoBancada = (item: TipoBancadaItem) => {
+    if (!hasTipoBancadaEditFormAccess) {
+      setTipoBancadaStatusTone('warning')
+      setTipoBancadaStatusMessage(getFormEditPermissionMessage('Tipo de Bancada'))
+      return
+    }
+
     setEditingTipoBancadaCodigo(item.codigo)
     setTipoBancadaFormMode('edit')
     setTipoBancadaDescricao(item.descricao)
@@ -4311,6 +4619,12 @@ function App() {
   }
 
   const handleStartEditTipoPgto = (item: TipoPgtoItem) => {
+    if (!hasTipoPgtoEditFormAccess) {
+      setTipoPgtoStatusTone('warning')
+      setTipoPgtoStatusMessage(getFormEditPermissionMessage('Tipo de Pagamento'))
+      return
+    }
+
     setEditingTipoPgtoCodigo(item.codigo)
     setTipoPgtoFormMode('edit')
     setTipoPgtoDescricao(item.descricao)
@@ -4331,6 +4645,12 @@ function App() {
   }
 
   const handleStartEditTipoEscola = (item: TipoEscolaItem) => {
+    if (!hasTipoEscolaEditFormAccess) {
+      setTipoEscolaStatusTone('warning')
+      setTipoEscolaStatusMessage(getFormEditPermissionMessage('Tipo Escola'))
+      return
+    }
+
     setEditingTipoEscolaCodigo(item.codigo)
     setTipoEscolaFormMode('edit')
     setTipoEscolaSigla(item.sigla)
@@ -4355,6 +4675,12 @@ function App() {
   }
 
   const handleStartEditAliquotaOptante = (item: AliquotaOptanteItem) => {
+    if (!hasAliquotaOptanteEditFormAccess) {
+      setAliquotaOptanteStatusTone('warning')
+      setAliquotaOptanteStatusMessage(getFormEditPermissionMessage('Aliquota Optante'))
+      return
+    }
+
     setEditingAliquotaOptanteKey({ data: item.data, tipoEmpresa: item.tipoEmpresa })
     setAliquotaOptanteFormMode('edit')
     setAliquotaOptanteData(item.data)
@@ -4383,6 +4709,12 @@ function App() {
   }
 
   const handleStartEditDiasLetivos = (item: DiasLetivosItem) => {
+    if (!hasDiasLetivosEditFormAccess) {
+      setDiasLetivosStatusTone('warning')
+      setDiasLetivosStatusMessage(getFormEditPermissionMessage('Dias Letivos'))
+      return
+    }
+
     setEditingDiasLetivosData(item.data)
     setDiasLetivosFormMode('edit')
     setDiasLetivosData(item.data)
@@ -4649,6 +4981,12 @@ function App() {
     if (dreFormMode === 'view') {
       setDreStatusTone('idle')
       setDreStatusMessage('Consulta em modo somente leitura.')
+      return
+    }
+
+    if (dreFormMode === 'edit' && !hasDreEditFormAccess) {
+      setDreStatusTone('warning')
+      setDreStatusMessage('Usuario sem permissao de alteracao para o formulario DRE.')
       return
     }
 
@@ -5377,6 +5715,12 @@ function App() {
   }
 
   const handleDeleteDre = async (item: DreItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.dre)) {
+      setDreStatusTone('warning')
+      setDreStatusMessage(getFormDeletePermissionMessage('DRE'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
     if (!confirmed) {
@@ -5413,6 +5757,12 @@ function App() {
   }
 
   const handleDeleteModalidade = async (item: ModalidadeItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.modalidade)) {
+      setModalidadeStatusTone('warning')
+      setModalidadeStatusMessage(getFormDeletePermissionMessage('Modalidade'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
     if (!confirmed) {
@@ -5449,6 +5799,12 @@ function App() {
   }
 
   const handleDeleteCondicao = async (item: CondicaoItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.condicao)) {
+      setCondicaoStatusTone('warning')
+      setCondicaoStatusMessage(getFormDeletePermissionMessage('Condicao'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
     if (!confirmed) {
@@ -5485,6 +5841,12 @@ function App() {
   }
 
   const handleDeleteTipoBancada = async (item: TipoBancadaItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.tipoBancada)) {
+      setTipoBancadaStatusTone('warning')
+      setTipoBancadaStatusMessage(getFormDeletePermissionMessage('Tipo de Bancada'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
     if (!confirmed) {
@@ -5525,6 +5887,12 @@ function App() {
   }
 
   const handleDeleteTipoPgto = async (item: TipoPgtoItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.tipoPgto)) {
+      setTipoPgtoStatusTone('warning')
+      setTipoPgtoStatusMessage(getFormDeletePermissionMessage('Tipo de Pagamento'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
     if (!confirmed) {
@@ -5561,6 +5929,12 @@ function App() {
   }
 
   const handleDeleteTipoEscola = async (item: TipoEscolaItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.tipoEscola)) {
+      setTipoEscolaStatusTone('warning')
+      setTipoEscolaStatusMessage(getFormDeletePermissionMessage('Tipo Escola'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
     if (!confirmed) {
@@ -5597,6 +5971,12 @@ function App() {
   }
 
   const handleDeleteAliquotaOptante = async (item: AliquotaOptanteItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.aliquotaOptante)) {
+      setAliquotaOptanteStatusTone('warning')
+      setAliquotaOptanteStatusMessage(getFormDeletePermissionMessage('Aliquota Optante'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.data} / ${item.tipoEmpresa}?`)
 
     if (!confirmed) {
@@ -5633,6 +6013,12 @@ function App() {
   }
 
   const handleDeleteDiasLetivos = async (item: DiasLetivosItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.diasLetivos)) {
+      setDiasLetivosStatusTone('warning')
+      setDiasLetivosStatusMessage(getFormDeletePermissionMessage('Dias Letivos'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.data}?`)
 
     if (!confirmed) {
@@ -5669,6 +6055,12 @@ function App() {
   }
 
   const handleDeleteApuracaoFinanceira = async (row: ApuracaoFinanceiraGridRow) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.apuracaoFinanceira)) {
+      setApuracaoFinanceiraStatusTone('warning')
+      setApuracaoFinanceiraStatusMessage(getFormDeletePermissionMessage('Apuracao Financeira'))
+      return
+    }
+
     if (row.representativeItem.situacao !== APURACAO_FINANCEIRA_DELETE_STATUS) {
       setApuracaoFinanceiraStatusTone('error')
       setApuracaoFinanceiraStatusMessage(`A exclusao so e permitida quando a situacao estiver ${APURACAO_FINANCEIRA_DELETE_STATUS}.`)
@@ -5781,6 +6173,12 @@ function App() {
   }
 
   const handleStartEditTitular = (item: TitularItem) => {
+    if (!hasTitularEditFormAccess) {
+      setTitularStatusTone('warning')
+      setTitularStatusMessage(getFormEditPermissionMessage('Titular do CRM'))
+      return
+    }
+
     setEditingTitularCodigo(item.codigo)
     setTitularFormMode('edit')
     setTitularCnpjCpf(formatCpfOrCnpj(item.cnpj_cpf))
@@ -5878,6 +6276,12 @@ function App() {
   }
 
   const handleDeleteTitular = async (item: TitularItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.titular)) {
+      setTitularStatusTone('warning')
+      setTitularStatusMessage(getFormDeletePermissionMessage('Titular do CRM'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.titular}?`)
 
     if (!confirmed) {
@@ -5962,6 +6366,12 @@ function App() {
   }
 
   const handleStartEditMarcaModelo = (item: MarcaModeloItem) => {
+    if (!hasMarcaModeloEditFormAccess) {
+      setMarcaModeloStatusTone('warning')
+      setMarcaModeloStatusMessage(getFormEditPermissionMessage('Marca/Modelo'))
+      return
+    }
+
     setEditingMarcaModeloCodigo(item.codigo)
     setMarcaModeloFormMode('edit')
     setMarcaModeloDescricao(item.descricao)
@@ -6046,6 +6456,12 @@ function App() {
   }
 
   const handleDeleteMarcaModelo = async (item: MarcaModeloItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.marcaModelo)) {
+      setMarcaModeloStatusTone('warning')
+      setMarcaModeloStatusMessage(getFormDeletePermissionMessage('Marca/Modelo'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
     if (!confirmed) {
@@ -6132,6 +6548,12 @@ function App() {
   }
 
   const handleStartEditSeguradora = (item: SeguradoraItem) => {
+    if (!hasSeguradoraEditFormAccess) {
+      setSeguradoraStatusTone('warning')
+      setSeguradoraStatusMessage(getFormEditPermissionMessage('Seguradoras'))
+      return
+    }
+
     setEditingSeguradoraCodigo(item.codigo)
     setSeguradoraFormMode('edit')
     setSeguradoraControle(item.controle)
@@ -6322,6 +6744,12 @@ function App() {
   }
 
   const handleDeleteSeguradora = async (item: SeguradoraItem) => {
+    if (!hasDeleteFormPermission(appFormEditAccessKeys.seguradora)) {
+      setSeguradoraStatusTone('warning')
+      setSeguradoraStatusMessage(getFormDeletePermissionMessage('Seguradoras'))
+      return
+    }
+
     const confirmed = window.confirm(`Excluir o registro ${item.codigo} - ${item.descricao}?`)
 
     if (!confirmed) {
@@ -6696,90 +7124,46 @@ function App() {
     }))
   }
 
-  const handleSidebarMouseEnter = () => {
-    isSidebarHoveredRef.current = true
-    clearSidebarAutoHideTimeout()
-    setIsSidebarVisible(true)
-  }
-
-  const handleSidebarMouseLeave = () => {
-    isSidebarHoveredRef.current = false
-    scheduleSidebarAutoHide()
-  }
-
-  const handleSidebarHoverZoneEnter = () => {
-    setIsSidebarVisible(true)
-    scheduleSidebarAutoHide()
-  }
-
-  const handleContentPanelClick = (event: MouseEvent<HTMLElement>) => {
-    if (!isSidebarVisible) {
-      return
-    }
-
-    const target = event.target instanceof HTMLElement ? event.target : null
-
-    if (target?.closest('.management-modal-shell, input, select, textarea, button, a, label')) {
-      return
-    }
-
-    isSidebarHoveredRef.current = false
-    clearSidebarAutoHideTimeout()
-    setIsSidebarVisible(false)
-  }
-
   return (
     <div className="app-layout">
-      <header className={`navbar ${isSidebarVisible ? '' : 'navbar-hidden'}`}>
+      <header className="navbar">
         <h1 className="navbar-title">
           Sistema TEG
         </h1>
+        <button
+          type="button"
+          className="navbar-sidebar-toggle"
+          onClick={() => setIsSidebarVisible((current) => !current)}
+          aria-label={isSidebarVisible ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+          aria-expanded={isSidebarVisible}
+          aria-controls="app-sidebar-menu"
+        >
+          {isSidebarVisible ? '◀' : '☰'}
+        </button>
       </header>
       
       <main className={`dashboard-page ${isSidebarVisible ? '' : 'dashboard-page--sidebar-hidden'}`}>
-        {!isSidebarVisible ? (
-          <button
-            type="button"
-            className="sidebar-hover-zone"
-            onMouseEnter={handleSidebarHoverZoneEnter}
-            onFocus={handleSidebarHoverZoneEnter}
-            onClick={handleSidebarHoverZoneEnter}
-            aria-label="Mostrar menu lateral"
-          >
-            <span className="sidebar-hover-zone-label" aria-hidden="true">
-              <span>M</span>
-              <span>E</span>
-              <span>N</span>
-              <span>U</span>
-              <span className="sidebar-hover-zone-gap">&nbsp;</span>
-              <span>T</span>
-              <span>E</span>
-              <span>G</span>
-            </span>
-          </button>
-        ) : null}
         {isSidebarVisible && (
           <aside
+            id="app-sidebar-menu"
             className="sidebar-menu"
             aria-label="Menu principal"
-            onMouseEnter={handleSidebarMouseEnter}
-            onMouseLeave={handleSidebarMouseLeave}
           >
             <div>
-              <p className="sidebar-brand">TEG Financ</p>
+              <p className="sidebar-brand">SISTEMA TEG</p>
               {environmentName ? <p className="environment-pill environment-pill-sidebar">{environmentName}</p> : null}
               <h1 className="sidebar-title">Menu TEG</h1>
             </div>
 
         <nav>
           <ul className="menu-list">
-            <li
+            {hasDashboardAccess ? <li
               className={`menu-item ${activeView === 'inicio' ? 'menu-item-active' : ''}`}
               onClick={() => setActiveView('inicio')}
             >
               Dashboard
-            </li>
-            <li className="menu-group">
+            </li> : null}
+            {hasOperationalAccess ? <li className="menu-group">
               <button
                 type="button"
                 className="menu-item menu-item-static menu-item-toggle"
@@ -6790,7 +7174,7 @@ function App() {
                 <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.operacional ? '▸' : '▾'}</span>
               </button>
               <ul className={`menu-sublist ${collapsedMenuGroups.operacional ? 'menu-sublist-hidden' : ''}`}>
-                <li className="menu-group menu-subgroup">
+                {hasOperationalAdministrativeAccess ? <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'titular' || activeView === 'condutor' || activeView === 'vinculoCondutor' || activeView === 'monitor' || activeView === 'vinculoMonitor' || activeView === 'credenciada' || activeView === 'credenciamentoTermo' || activeView === 'termoHistorico' || activeView === 'ordemServico' || activeView === 'ordemServicoHistorico' || activeView === 'veiculo' || activeView === 'veiculoHistorico' || activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalAdministrativo')}
@@ -6808,13 +7192,13 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.operacionalAdministrativo ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.operacionalAdministrativo ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('titular', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'titular' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('titular')}
                     >
                       Titular do CRM
-                    </li>
-                    <li className="menu-group menu-subgroup">
+                    </li> : null}
+                    {isViewAllowed('condutor', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'condutor' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('condutor')}
@@ -6840,15 +7224,15 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.condutor ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.condutor ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('vinculoCondutor', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'vinculoCondutor' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('vinculoCondutor')}
                     >
                       Vinculo Condutor
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
-                    <li className="menu-group menu-subgroup">
+                </li> : null}
+                    {isViewAllowed('monitor', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'monitor' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('monitor')}
@@ -6874,21 +7258,21 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.monitor ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.monitor ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('vinculoMonitor', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'vinculoMonitor' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('vinculoMonitor')}
                     >
                       Vinculo Monitor
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
-                    <li
+                </li> : null}
+                    {isViewAllowed('credenciada', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'credenciada' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('credenciada')}
                     >
                       Credenciada
-                    </li>
-                    <li className="menu-group menu-subgroup">
+                    </li> : null}
+                    {isViewAllowed('credenciamentoTermo', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'credenciamentoTermo' || activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('termo')}
@@ -6914,15 +7298,15 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.termo ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.termo ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('termoHistorico', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'termoHistorico' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('termoHistorico')}
                     >
                       Historico Termo
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
-                    <li className="menu-group menu-subgroup">
+                </li> : null}
+                    {isViewAllowed('ordemServico', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'ordemServico' || activeView === 'ordemServicoHistorico' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('ordemServico')}
@@ -6948,15 +7332,15 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.ordemServico ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.ordemServico ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('ordemServicoHistorico', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'ordemServicoHistorico' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('ordemServicoHistorico')}
                     >
                       Historico Ordem de Servico
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
-                    <li className="menu-group menu-subgroup">
+                </li> : null}
+                    {isViewAllowed('veiculo', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'veiculo' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('veiculo')}
@@ -6982,23 +7366,23 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.veiculo ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.veiculo ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('veiculoHistorico', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'veiculoHistorico' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('veiculoHistorico')}
                     >
                       Historico Veiculo
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
-                    <li
+                </li> : null}
+                    {isViewAllowed('financeiroReprocessamento', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('financeiroReprocessamento')}
                     >
                       Reprocessar Valores
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
-                <li className="menu-group menu-subgroup">
+                </li> : null}
+                {hasOperationalFinanceiroAccess ? <li className="menu-group menu-subgroup">
                   <div
                     className={`menu-subitem menu-subitem-toggle ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalFinanceiro')}
@@ -7016,29 +7400,29 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.operacionalFinanceiro ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.operacionalFinanceiro ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('apuracaoFinanceira', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoFinanceira' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('apuracaoFinanceira')}
                     >
                       Apuracao Financeira
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoServicos' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('apuracaoServicos')}
                     >
                       Apuracao Servicos
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('apuracaoServicosStatus', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoServicosStatus' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('apuracaoServicosStatus')}
                     >
                       Aprovacao Digitacao
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
+                </li> : null}
               </ul>
-            </li>
-            <li className="menu-group">
+            </li> : null}
+            {hasCadastroAccess ? <li className="menu-group">
               <button
                 type="button"
                 className="menu-item menu-item-static menu-item-toggle"
@@ -7049,7 +7433,7 @@ function App() {
                 <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.cadastros ? '▸' : '▾'}</span>
               </button>
               <ul className={`menu-sublist ${collapsedMenuGroups.cadastros ? 'menu-sublist-hidden' : ''}`}>
-                <li className="menu-group menu-subgroup">
+                {hasCadastroOperationalAccess ? <li className="menu-group menu-subgroup">
                   <button
                     type="button"
                     className="menu-subitem menu-item-static menu-item-toggle"
@@ -7060,63 +7444,63 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.cadastrosOperacional ? '▸' : '▾'}</span>
                   </button>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.cadastrosOperacional ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('dre', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'dre' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('dre')}
                     >
                       DRE
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('modalidade', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'modalidade' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('modalidade')}
                     >
                       Modalidade
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('tipoBancada', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'tipoBancada' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('tipoBancada')}
                     >
                       Tipo de Bancada
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('marcaModelo', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'marcaModelo' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('marcaModelo')}
                     >
                       Marca/Modelo
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('seguradora', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'seguradora' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('seguradora')}
                     >
                       Seguradoras
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('troca', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'troca' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('troca')}
                     >
                       Tipo de Troca
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('emissaoDocumentoParametro', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'emissaoDocumentoParametro' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('emissaoDocumentoParametro')}
                     >
                       Param. Emissao
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('cep', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'cep' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('cep')}
                     >
                       CEP
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('smoke', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'smoke' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('smoke')}
                     >
                       Smoke Test
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
-                <li className="menu-group menu-subgroup">
+                </li> : null}
+                {hasCadastroFinanceiroAccess ? <li className="menu-group menu-subgroup">
                   <button
                     type="button"
                     className="menu-subitem menu-item-static menu-item-toggle"
@@ -7127,71 +7511,71 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.cadastrosFinanceiro ? '▸' : '▾'}</span>
                   </button>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.cadastrosFinanceiro ? 'menu-sublist-hidden' : ''}`}>
-                    <li
+                    {isViewAllowed('condicao', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'condicao' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('condicao')}
                     >
                       Condicao
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('modalBancadaTpPagtoCondicao', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'modalBancadaTpPagtoCondicao' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('modalBancadaTpPagtoCondicao')}
                     >
                       Modalidade x Bancada x Pagamento x Condicao
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('modalBancadaTpPagtoCondicaoValor', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'modalBancadaTpPagtoCondicaoValor' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('modalBancadaTpPagtoCondicaoValor')}
                     >
                       Modalidade x Bancada x Pagamento x Condicao Valor
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('kmValor', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'kmValor' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('kmValor')}
                     >
                       Km_Valor
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('continuaValor', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'continuaValor' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('continuaValor')}
                     >
                       Continua_Valor
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('parametroVeiculo', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'parametroVeiculo' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('parametroVeiculo')}
                     >
                       Parametro Pgto Veiculo
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('tipoPgto', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'tipoPgto' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('tipoPgto')}
                     >
                       Tipo de Pagamento
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('tipoEscola', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'tipoEscola' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('tipoEscola')}
                     >
                       Tipo Escola
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('aliquotaOptante', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'aliquotaOptante' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('aliquotaOptante')}
                     >
                       Aliquota Optante
-                    </li>
-                    <li
+                    </li> : null}
+                    {isViewAllowed('diasLetivos', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'diasLetivos' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('diasLetivos')}
                     >
                       Dias Letivos
-                    </li>
+                    </li> : null}
                   </ul>
-                </li>
+                </li> : null}
               </ul>
-            </li>
-            <li className="menu-group">
+            </li> : null}
+            {hasAccessManagementAccess ? <li className="menu-group">
               <div
                 className={`menu-item menu-item-toggle ${['acesso', 'acessoPagina', 'perfil', 'perfilAcesso', 'loginDre'].includes(activeView) ? 'menu-item-active' : ''}`}
                 onClick={() => toggleMenuGroup('acesso')}
@@ -7217,32 +7601,32 @@ function App() {
                 <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.acesso ? '▸' : '▾'}</span>
               </div>
               <ul className={`menu-sublist ${collapsedMenuGroups.acesso ? 'menu-sublist-hidden' : ''}`}>
-                <li
+                {isViewAllowed('acessoPagina', menuPermissionKeys) ? <li
                   className={`menu-subitem ${activeView === 'acessoPagina' ? 'menu-subitem-active' : ''}`}
                   onClick={() => setActiveView('acessoPagina')}
                 >
                   Acesso Pagina
-                </li>
-                <li
+                </li> : null}
+                {isViewAllowed('perfil', menuPermissionKeys) ? <li
                   className={`menu-subitem ${activeView === 'perfil' ? 'menu-subitem-active' : ''}`}
                   onClick={() => setActiveView('perfil')}
                 >
                   Perfil
-                </li>
-                <li
+                </li> : null}
+                {isViewAllowed('perfilAcesso', menuPermissionKeys) ? <li
                   className={`menu-subitem ${activeView === 'perfilAcesso' ? 'menu-subitem-active' : ''}`}
                   onClick={() => setActiveView('perfilAcesso')}
                 >
                   PerfilAcesso
-                </li>
-                <li
+                </li> : null}
+                {isViewAllowed('loginDre', menuPermissionKeys) ? <li
                   className={`menu-subitem ${activeView === 'loginDre' ? 'menu-subitem-active' : ''}`}
                   onClick={() => setActiveView('loginDre')}
                 >
                   Login x DRE
-                </li>
+                </li> : null}
               </ul>
-            </li>
+            </li> : null}
           </ul>
         </nav>
 
@@ -7256,7 +7640,7 @@ function App() {
       </aside>
         )}
 
-      <section className="content-panel" aria-labelledby="content-title" onClickCapture={handleContentPanelClick}>
+      <section className="content-panel" aria-labelledby="content-title">
         {activeView === 'inicio' ? (
           <>
             <div className="content-copy">
@@ -7947,12 +8331,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewDre(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditDre(item)}>
+                              {hasDreEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditDre(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteDre(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.dre) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteDre(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -8162,12 +8546,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewModalidade(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditModalidade(item)}>
-                                Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteModalidade(item)}>
+                                {hasModalidadeEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditModalidade(item)}>
+                                  Alterar
+                                </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.modalidade) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteModalidade(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -8421,12 +8805,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewCondicao(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditCondicao(item)}>
-                                Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteCondicao(item)}>
+                                {hasCondicaoEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditCondicao(item)}>
+                                  Alterar
+                                </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.condicao) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteCondicao(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -8636,12 +9020,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewTipoPgto(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoPgto(item)}>
+                              {hasTipoPgtoEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoPgto(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoPgto(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.tipoPgto) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoPgto(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -8871,12 +9255,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewTipoEscola(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoEscola(item)}>
+                              {hasTipoEscolaEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoEscola(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoEscola(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.tipoEscola) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoEscola(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -9120,12 +9504,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewAliquotaOptante(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditAliquotaOptante(item)}>
+                              {hasAliquotaOptanteEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditAliquotaOptante(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteAliquotaOptante(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.aliquotaOptante) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteAliquotaOptante(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -9427,14 +9811,14 @@ function App() {
                               >
                                 Alterar
                               </button>
-                              <button
+                              {hasDeleteFormPermission(appFormEditAccessKeys.modalBancadaTpPagtoCondicao) ? <button
                                 type="button"
                                 className="row-action-button row-action-delete"
                                 onClick={() => handleDeleteModalBancadaTpPagtoCondicao(item)}
                                 disabled={isDeletingModalBancadaTpPagtoCondicao}
                               >
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -9706,14 +10090,14 @@ function App() {
                               >
                                 Alterar
                               </button>
-                              <button
+                              {hasDeleteFormPermission(appFormEditAccessKeys.modalBancadaTpPagtoCondicaoValor) ? <button
                                 type="button"
                                 className="row-action-button row-action-delete"
                                 onClick={() => handleDeleteModalBancadaTpPagtoCondicaoValor(item)}
                                 disabled={isDeletingModalBancadaTpPagtoCondicaoValor}
                               >
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -9944,12 +10328,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewDiasLetivos(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditDiasLetivos(item)}>
+                              {hasDiasLetivosEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditDiasLetivos(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteDiasLetivos(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.diasLetivos) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteDiasLetivos(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -10210,14 +10594,14 @@ function App() {
                               >
                                 Alterar
                               </button>
-                              <button
+                              {hasDeleteFormPermission(appFormEditAccessKeys.kmValor) ? <button
                                 type="button"
                                 className="row-action-button row-action-delete"
                                 onClick={() => handleDeleteKmValor(item)}
                                 disabled={isDeletingKmValor}
                               >
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -10482,14 +10866,14 @@ function App() {
                               >
                                 Alterar
                               </button>
-                              <button
+                              {hasDeleteFormPermission(appFormEditAccessKeys.continuaValor) ? <button
                                 type="button"
                                 className="row-action-button row-action-delete"
                                 onClick={() => handleDeleteContinuaValor(item)}
                                 disabled={isDeletingContinuaValor}
                               >
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -10703,12 +11087,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewTipoBancada(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoBancada(item)}>
+                              {hasTipoBancadaEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTipoBancada(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoBancada(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.tipoBancada) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTipoBancada(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -10841,14 +11225,14 @@ function App() {
                         <td>{item.tipoBancadaCodigo} - {item.tipoBancadaDescricao}</td>
                         <td>
                           <div className="dre-row-actions">
-                            <button
+                            {hasDeleteFormPermission(appFormEditAccessKeys.tipoBancada) ? <button
                               type="button"
                               className="row-action-button row-action-delete"
                               onClick={() => handleDeleteTipoBancadaAssociation(item)}
                               disabled={isDeletingTipoBancadaAssociation}
                             >
                               Excluir
-                            </button>
+                            </button> : null}
                           </div>
                         </td>
                       </tr>
@@ -11033,12 +11417,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewTitular(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTitular(item)}>
+                              {hasTitularEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTitular(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTitular(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.titular) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTitular(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -11247,12 +11631,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewMarcaModelo(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditMarcaModelo(item)}>
+                              {hasMarcaModeloEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditMarcaModelo(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteMarcaModelo(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.marcaModelo) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteMarcaModelo(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -11320,14 +11704,6 @@ function App() {
         ) : activeView === 'parametroVeiculo' ? (
           <>
             <div className="content-copy">
-              <p className="content-kicker">Cadastro financeiro</p>
-              <h2 id="content-title">Parametro Pgto Veiculo</h2>
-              <p className="content-description">
-                Cadastre os parametros por data vinculando modalidade x tipo de bancada, condicao e quantidade da condicao. A combinacao entre associacao, condicao e data nao pode se repetir.
-              </p>
-            </div>
-
-            <div className="management-layout">
               <div className="management-toolbar">
                 <button
                   type="button"
@@ -11536,22 +11912,22 @@ function App() {
                               >
                                 Consulta
                               </button>
-                              <button
+                              {hasParametroVeiculoEditFormAccess ? <button
                                 type="button"
                                 className="row-action-button row-action-edit"
                                 onClick={() => handleStartEditParametroVeiculo(item)}
                                 disabled={isDeletingParametroVeiculo}
                               >
                                 Alterar
-                              </button>
-                              <button
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.parametroVeiculo) ? <button
                                 type="button"
                                 className="row-action-button row-action-delete"
                                 onClick={() => handleDeleteParametroVeiculo(item)}
                                 disabled={isDeletingParametroVeiculo}
                               >
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -11784,12 +12160,12 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewSeguradora(item)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditSeguradora(item)}>
+                              {hasSeguradoraEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditSeguradora(item)}>
                                 Alterar
-                              </button>
-                              <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteSeguradora(item)}>
+                              </button> : null}
+                              {hasDeleteFormPermission(appFormEditAccessKeys.seguradora) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteSeguradora(item)}>
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>
@@ -12341,7 +12717,7 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewApuracaoFinanceira(row)}>
                                 Consulta
                               </button>
-                              <button
+                              {hasDeleteFormPermission(appFormEditAccessKeys.apuracaoFinanceira) ? <button
                                 type="button"
                                 className="row-action-button row-action-delete"
                                 onClick={() => handleDeleteApuracaoFinanceira(row)}
@@ -12349,7 +12725,7 @@ function App() {
                                 title={row.representativeItem.situacao === APURACAO_FINANCEIRA_DELETE_STATUS ? 'Excluir registro' : `Exclusao disponivel apenas em ${APURACAO_FINANCEIRA_DELETE_STATUS}`}
                               >
                                 Excluir
-                              </button>
+                              </button> : null}
                             </div>
                           </td>
                         </tr>

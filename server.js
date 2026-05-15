@@ -1198,6 +1198,19 @@ const acessoPaginaCatalogItems = [
   { chaveSistema: 'form_apursvc021', sigla: 'APURSVC021', descricao: 'APURACAO SERVICOS', funcao: 'formulario' },
   { chaveSistema: 'form_acespag022', sigla: 'ACESPAG022', descricao: 'Acesso Pagina', funcao: 'formulario' },
   { chaveSistema: 'form_perfacs023', sigla: 'PERFACS023', descricao: 'PerfilAcesso', funcao: 'formulario' },
+  { chaveSistema: 'form_cadace024', sigla: 'CADACE024', descricao: 'Cadastro de Acesso', funcao: 'formulario' },
+  { chaveSistema: 'form_logdre025', sigla: 'LOGDRE025', descricao: 'Login x DRE', funcao: 'formulario' },
+  { chaveSistema: 'form_condut026', sigla: 'CONDUT026', descricao: 'Condutor', funcao: 'formulario' },
+  { chaveSistema: 'form_monitr027', sigla: 'MONITR027', descricao: 'Monitor', funcao: 'formulario' },
+  { chaveSistema: 'form_creden028', sigla: 'CREDEN028', descricao: 'Credenciada', funcao: 'formulario' },
+  { chaveSistema: 'form_termoc029', sigla: 'TERMOC029', descricao: 'Credenciamento Termo', funcao: 'formulario' },
+  { chaveSistema: 'form_emipar030', sigla: 'EMIPAR030', descricao: 'Parametros de Emissao', funcao: 'formulario' },
+  { chaveSistema: 'form_veicul031', sigla: 'VEICUL031', descricao: 'Veiculo', funcao: 'formulario' },
+  { chaveSistema: 'form_trocas032', sigla: 'TROCAS032', descricao: 'Tipo de Troca', funcao: 'formulario' },
+  { chaveSistema: 'form_cepcep033', sigla: 'CEPCEP033', descricao: 'CEP', funcao: 'formulario' },
+  { chaveSistema: 'form_vincon034', sigla: 'VINCON034', descricao: 'Vinculo Condutor', funcao: 'formulario' },
+  { chaveSistema: 'form_vinmon035', sigla: 'VINMON035', descricao: 'Vinculo Monitor', funcao: 'formulario' },
+  { chaveSistema: 'form_ordser036', sigla: 'ORDSER036', descricao: 'Ordem de Servico', funcao: 'formulario' },
 ]
 
 const administrativoAllowedAcessoPaginaChaveSistema = [
@@ -1284,6 +1297,16 @@ const perfilAcessoSelectClause = `
   BTRIM(CAST(acesso_pagina.descricao AS text)) AS acesso_pagina_descricao,
   LOWER(BTRIM(CAST(acesso_pagina.funcao AS text))) AS acesso_pagina_funcao,
   LOWER(BTRIM(CAST(perfil_acesso.permissao AS text))) AS permissao`
+
+const loginAcessoPaginaSelectClause = `
+  CAST(acesso_pagina.codigo AS text) AS codigo,
+  COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') AS chave_sistema,
+  COALESCE(BTRIM(CAST(acesso_pagina.sigla AS text)), '') AS sigla,
+  COALESCE(BTRIM(CAST(acesso_pagina.descricao AS text)), '') AS descricao,
+  LOWER(BTRIM(CAST(acesso_pagina.funcao AS text))) AS funcao,
+  LOWER(BTRIM(CAST(perfil_acesso.permissao AS text))) AS permissao,
+  CAST(perfil.codigo AS text) AS perfil_codigo,
+  BTRIM(CAST(perfil.descricao AS text)) AS perfil_descricao`
 
 const accessPerfilLateralClause = `
   LEFT JOIN LATERAL (
@@ -11429,8 +11452,11 @@ const buildCredenciamentoTermoSyncScope = (termos, { syncAll = false } = {}) => 
   const normalizedTermos = Array.from(new Set((Array.isArray(termos) ? termos : [termos])
     .map((termo) => normalizeOrdemServicoTermoAdesao(termo))
     .filter(Boolean)))
+  const normalizedTermoDigits = normalizedTermos
+    .map((termo) => termo.replace(/\D/g, ''))
+    .filter(Boolean)
 
-  if (!syncAll && !normalizedTermos.length) {
+  if (!syncAll && !normalizedTermoDigits.length) {
     return {
       normalizedTermos,
       filterClause: 'WHERE FALSE',
@@ -11449,7 +11475,7 @@ const buildCredenciamentoTermoSyncScope = (termos, { syncAll = false } = {}) => 
   return {
     normalizedTermos,
     filterClause: `WHERE ${credenciamentoTermoNormalizedTermoExpression} = ANY($1::text[])`,
-    values: [normalizedTermos],
+    values: [normalizedTermoDigits],
   }
 }
 
@@ -21341,6 +21367,28 @@ const server = createServer(async (request, response) => {
         [dbUser.codigo],
       )
 
+      const acessoResult = await pool.query(
+        `SELECT DISTINCT ON (acesso_pagina.codigo)
+           ${loginAcessoPaginaSelectClause}
+         FROM login_perfil associacao
+         INNER JOIN perfil ON perfil.codigo = associacao.perfil_codigo
+         INNER JOIN perfil_acesso ON perfil_acesso.perfil_codigo = associacao.perfil_codigo
+         INNER JOIN acesso_pagina ON acesso_pagina.codigo = perfil_acesso.acesso_pagina_codigo
+         WHERE associacao.login_codigo = $1
+         ORDER BY
+           acesso_pagina.codigo ASC,
+           CASE LOWER(BTRIM(CAST(perfil_acesso.permissao AS text)))
+             WHEN 'todos' THEN 5
+             WHEN 'execucao' THEN 4
+             WHEN 'alteracao' THEN 3
+             WHEN 'exclusao' THEN 2
+             WHEN 'consulta' THEN 1
+             ELSE 0
+           END DESC,
+           perfil.codigo ASC`,
+        [dbUser.codigo],
+      )
+
       sendJson(response, 200, {
         token: createToken(email),
         user: {
@@ -21348,6 +21396,7 @@ const server = createServer(async (request, response) => {
           name: normalizeDbValue(dbUser.nome),
           email: normalizeDbValue(dbUser.email),
           perfis: profileResult.rows,
+          acessos: acessoResult.rows,
         },
       })
     } catch (error) {

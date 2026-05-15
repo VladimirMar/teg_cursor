@@ -23,12 +23,14 @@ import {
   formatApuracaoTipoPessoaLabel,
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
+import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 type FormMode = 'create' | 'edit' | 'view'
 
 const APURACAO_SERVICOS_EDITABLE_STATUS = 'Em digitacao'
 const APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE = 'Registro nao liberado para digitacao.'
+const FORM_ACCESS_KEY = 'form_apursvc021'
 
 const normalizeMonthYearInput = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 6)
@@ -199,6 +201,7 @@ const emptyFormErrors = {
 }
 
 export default function ApuracaoServicosView() {
+  const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY)
   const [items, setItems] = useState<ApuracaoServicosItem[]>([])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
@@ -430,6 +433,12 @@ export default function ApuracaoServicosView() {
   }
 
   const handleStartEdit = (item: ApuracaoServicosItem) => {
+    if (!hasEditPermission) {
+      setStatusTone('warning')
+      setStatusMessage(getEditPermissionDeniedMessage('Apuracao Servicos'))
+      return
+    }
+
     if (!canEditApuracaoServicosItem(item)) {
       setStatusTone('warning')
       setStatusMessage(APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE)
@@ -656,8 +665,7 @@ export default function ApuracaoServicosView() {
           <form className="management-filter-form" onSubmit={handleFilterSubmit}>
             <input
               className="management-filter-input"
-              type="text"
-              placeholder="Filtrar por mes/ano, DRE, OS ou tipo escola"
+              type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -1032,14 +1040,14 @@ export default function ApuracaoServicosView() {
                         <button type="button" className="row-action-button" onClick={() => handleStartView(item)}>
                           Consulta
                         </button>
-                        <button
+                        {hasEditPermission ? <button
                           type="button"
                           className="row-action-button row-action-edit"
                           onClick={() => handleStartEdit(item)}
                           title={canEditApuracaoServicosItem(item) ? 'Alterar registro' : APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE}
                         >
                           Alterar
-                        </button>
+                        </button> : null}
                       </div>
                     </td>
                   </tr>

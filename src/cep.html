@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="css/login.css" />
     <script src="/backspace-navigation-guard.js"></script>
+    <script src="/form-permissions.js"></script>
     <style>
       #cep-form { max-width: 860px; }
       #cep-form .dsc-form-control { min-height: 52px; padding: 14px 18px; box-sizing: border-box; }
@@ -254,6 +255,21 @@
     </main>
 
     <script>
+      const formPermissions = window.tegFormPermissions || {
+        hasEditableFormPermission: () => false,
+        getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+        hasDeletableFormPermission: () => false,
+        getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
+      };
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_cepcep033');
+      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_cepcep033');
+      const showEditPermissionDeniedMessage = () => {
+        window.alert(formPermissions.getEditPermissionDeniedMessage('CEP'));
+      };
+      const showDeletePermissionDeniedMessage = () => {
+        window.alert(formPermissions.getDeletePermissionDeniedMessage('CEP'));
+      };
+
       const API_BASE = '';
 
       let currentPage = 1;
@@ -420,6 +436,11 @@
       };
 
       const startEdit = (item) => {
+        if (!hasEditPermission()) {
+          showEditPermissionDeniedMessage();
+          return;
+        }
+
         fillForm(item);
         setFormReadOnly(false);
         cepFormTitle.textContent = 'Alterar registro';
@@ -460,8 +481,8 @@
             <td>${item.uf}</td>
             <td class="dsc-grid-actions">
               <button class="dsc-btn dsc-btn-white dsc-btn-sm" data-action="view" data-cep="${encodeURIComponent(item.cep)}">Consulta</button>
-              <button class="dsc-btn dsc-btn-white dsc-btn-sm" data-action="edit" data-cep="${encodeURIComponent(item.cep)}">Alterar</button>
-              <button class="dsc-btn dsc-btn-red dsc-btn-sm" data-action="delete" data-cep="${encodeURIComponent(item.cep)}">Excluir</button>
+              ${hasEditPermission() ? `<button class="dsc-btn dsc-btn-white dsc-btn-sm" data-action="edit" data-cep="${encodeURIComponent(item.cep)}">Alterar</button>` : ''}
+              ${hasDeletePermission() ? `<button class="dsc-btn dsc-btn-red dsc-btn-sm" data-action="delete" data-cep="${encodeURIComponent(item.cep)}">Excluir</button>` : ''}
             </td>
           `;
           body.appendChild(tr);
@@ -603,6 +624,11 @@
         }
 
         if (action === 'delete') {
+          if (!hasDeletePermission()) {
+            showDeletePermissionDeniedMessage();
+            return;
+          }
+
           if (!confirm(`Excluir o CEP ${cep}?`)) return;
 
           try {

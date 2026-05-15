@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="css/login.css" />
     <script src="/backspace-navigation-guard.js"></script>
+    <script src="/form-permissions.js"></script>
   </head>
   <body>
     <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
@@ -243,6 +244,21 @@
 
     <script>
       document.addEventListener('DOMContentLoaded', () => {
+        const formPermissions = window.tegFormPermissions || {
+          hasEditableFormPermission: () => false,
+          getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+          hasDeletableFormPermission: () => false,
+          getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
+        };
+        const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_vincon034');
+        const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_vincon034');
+        const showEditPermissionDeniedMessage = () => {
+          window.alert(formPermissions.getEditPermissionDeniedMessage('Vinculo Condutor'));
+        };
+        const showDeletePermissionDeniedMessage = () => {
+          window.alert(formPermissions.getDeletePermissionDeniedMessage('Vinculo Condutor'));
+        };
+
         const statusBanner = document.getElementById('status-banner');
         const filterForm = document.getElementById('vinculo-filter-form');
         const searchInput = document.getElementById('vinculo-search');
@@ -768,13 +784,17 @@
               <td>
                 <div class="dsc-access-grid-actions">
                   <button type="button" class="dsc-btn dsc-btn-white dsc-btn-small" data-action="view">Consulta</button>
-                  <button type="button" class="dsc-btn dsc-btn-white dsc-btn-small" data-action="edit">Alterar</button>
-                  <button type="button" class="dsc-btn dsc-btn-danger dsc-btn-small" data-action="delete">Excluir</button>
+                  ${hasEditPermission() ? '<button type="button" class="dsc-btn dsc-btn-white dsc-btn-small" data-action="edit">Alterar</button>' : ''}
+                  ${hasDeletePermission() ? '<button type="button" class="dsc-btn dsc-btn-danger dsc-btn-small" data-action="delete">Excluir</button>' : ''}
                 </div>
               </td>
             `;
 
-            row.querySelector('[data-action="view"]').addEventListener('click', () => {
+            const viewButton = row.querySelector('[data-action="view"]');
+            const editButton = row.querySelector('[data-action="edit"]');
+            const deleteButton = row.querySelector('[data-action="delete"]');
+
+            viewButton.addEventListener('click', () => {
               state.editingId = item.id;
               fillFormFromItem(item);
               resetFormErrors();
@@ -782,38 +802,52 @@
               showForm('view');
             });
 
-            row.querySelector('[data-action="edit"]').addEventListener('click', () => {
-              state.editingId = item.id;
-              fillFormFromItem(item);
-              resetFormErrors();
-              clearFeedbackState(formFeedback);
-              showForm('edit');
-            });
-
-            row.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-              const confirmed = window.confirm(`Excluir o vinculo ${item.id}?`);
-              if (!confirmed) {
-                return;
-              }
-
-              try {
-                const response = await fetch(`/api/vinculo-condutor/${encodeURIComponent(item.id)}`, {
-                  method: 'DELETE',
-                  headers: { Accept: 'application/json' },
-                });
-                const payload = await readJsonResponse(response);
-                if (!response.ok) {
-                  throw new Error(payload.message || 'Falha ao excluir vinculo do condutor.');
+            if (editButton) {
+              editButton.addEventListener('click', () => {
+                if (!hasEditPermission()) {
+                  showEditPermissionDeniedMessage();
+                  return;
                 }
 
-                setFeedback(gridFeedback, 'Registro excluido com sucesso.', 'success');
-                showBanner('Vinculo excluido com sucesso.', 'success');
-                await loadItems();
-              } catch (error) {
-                setFeedback(gridFeedback, error.message || 'Falha ao excluir vinculo do condutor.', 'error');
-                showBanner(error.message || 'Falha ao excluir vinculo do condutor.', 'error');
-              }
-            });
+                state.editingId = item.id;
+                fillFormFromItem(item);
+                resetFormErrors();
+                clearFeedbackState(formFeedback);
+                showForm('edit');
+              });
+            }
+
+            if (deleteButton) {
+              deleteButton.addEventListener('click', async () => {
+                if (!hasDeletePermission()) {
+                  showDeletePermissionDeniedMessage();
+                  return;
+                }
+
+                const confirmed = window.confirm(`Excluir o vinculo ${item.id}?`);
+                if (!confirmed) {
+                  return;
+                }
+
+                try {
+                  const response = await fetch(`/api/vinculo-condutor/${encodeURIComponent(item.id)}`, {
+                    method: 'DELETE',
+                    headers: { Accept: 'application/json' },
+                  });
+                  const payload = await readJsonResponse(response);
+                  if (!response.ok) {
+                    throw new Error(payload.message || 'Falha ao excluir vinculo do condutor.');
+                  }
+
+                  setFeedback(gridFeedback, 'Registro excluido com sucesso.', 'success');
+                  showBanner('Vinculo excluido com sucesso.', 'success');
+                  await loadItems();
+                } catch (error) {
+                  setFeedback(gridFeedback, error.message || 'Falha ao excluir vinculo do condutor.', 'error');
+                  showBanner(error.message || 'Falha ao excluir vinculo do condutor.', 'error');
+                }
+              });
+            }
 
             gridBody.appendChild(row);
           });

@@ -7,12 +7,19 @@ import {
   updatePerfilItem,
 } from './services/perfil'
 import type { PerfilItem } from './services/perfil'
+import {
+  getDeletePermissionDeniedMessage,
+  getEditPermissionDeniedMessage,
+  hasDeletableFormPermission,
+  hasEditableFormPermission,
+} from './utils/formAccess'
 
 type PerfilSortField = 'codigo' | 'descricao'
 type FormMode = 'create' | 'edit'
 type StatusTone = 'idle' | 'error' | 'success'
 
 const PAGE_SIZE = 20
+const FORM_ACCESS_KEY = 'form_perfcad020'
 
 const getSortIndicator = (
   sortBy: PerfilSortField,
@@ -27,6 +34,8 @@ const getSortIndicator = (
 }
 
 export default function PerfilView() {
+  const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY)
+  const hasDeletePermission = hasDeletableFormPermission(FORM_ACCESS_KEY)
   const [items, setItems] = useState<PerfilItem[]>([])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
@@ -159,6 +168,12 @@ export default function PerfilView() {
   }
 
   const handleEdit = (item: PerfilItem) => {
+    if (!hasEditPermission) {
+      setStatusTone('error')
+      setStatusMessage(getEditPermissionDeniedMessage('Perfil'))
+      return
+    }
+
     setCodigo(item.codigo)
     setDescricao(item.descricao)
     setEditingCodigo(item.codigo)
@@ -170,6 +185,12 @@ export default function PerfilView() {
   }
 
   const handleDelete = async (item: PerfilItem) => {
+    if (!hasDeletePermission) {
+      setStatusTone('error')
+      setStatusMessage(getDeletePermissionDeniedMessage('Perfil'))
+      return
+    }
+
     if (!window.confirm(`Excluir o perfil ${item.codigo} - ${item.descricao}?`)) {
       return
     }
@@ -356,17 +377,17 @@ export default function PerfilView() {
                   <td>{item.descricao}</td>
                   <td>
                     <div className="dre-row-actions">
-                      <button type="button" className="row-action-button row-action-edit" onClick={() => handleEdit(item)}>
+                      {hasEditPermission ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleEdit(item)}>
                         Alterar
-                      </button>
-                      <button
+                      </button> : null}
+                      {hasDeletePermission ? <button
                         type="button"
                         className="row-action-button row-action-delete"
                         onClick={() => void handleDelete(item)}
                         disabled={isDeletingCodigo === item.codigo}
                       >
                         Excluir
-                      </button>
+                      </button> : null}
                     </div>
                   </td>
                 </tr>

@@ -94,6 +94,13 @@ No VS Code, as tasks disponiveis sao:
 
 Para `Veiculo` e `Marca/Modelo`, a execucao pode ser feita pelos scripts `npm run smoke:api:veiculo` e `npm run smoke:api:marca-modelo`.
 
+## Desenvolvimento
+
+- O servidor Vite de desenvolvimento fica fixo em `http://localhost:5173` no host local.
+- Pela rede, use o mesmo host/IP da maquina que iniciou o Vite com a porta `5173`.
+- As telas HTML legadas ficam acessiveis por caminhos diretos em `src`, por exemplo: `http://HOST:5173/src/termoDataAssinatura.html`.
+- Se a porta `5173` estiver ocupada, o Vite agora falha na subida em vez de trocar silenciosamente para outra porta.
+
 ## CI
 
 O workflow de GitHub Actions executa as suites de smoke da API com Postgres em jobs separados para `Condutor` e `Credenciada`.

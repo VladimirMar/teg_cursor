@@ -7,6 +7,12 @@ import {
   updateAcessoPaginaItem,
 } from './services/acessoPagina'
 import type { AcessoPaginaFuncao, AcessoPaginaItem } from './services/acessoPagina'
+import {
+  getDeletePermissionDeniedMessage,
+  getEditPermissionDeniedMessage,
+  hasDeletableFormPermission,
+  hasEditableFormPermission,
+} from './utils/formAccess'
 
 type AcessoPaginaSortField = 'codigo' | 'sigla' | 'descricao' | 'funcao'
 type FormMode = 'create' | 'edit'
@@ -14,6 +20,7 @@ type StatusTone = 'idle' | 'error' | 'success'
 
 const PAGE_SIZE = 20
 const FUNCAO_OPTIONS: AcessoPaginaFuncao[] = ['menu', 'formulario']
+const FORM_ACCESS_KEY = 'form_acespag022'
 
 const getSortIndicator = (
   sortBy: AcessoPaginaSortField,
@@ -28,6 +35,8 @@ const getSortIndicator = (
 }
 
 export default function AcessoPaginaView() {
+  const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY)
+  const hasDeletePermission = hasDeletableFormPermission(FORM_ACCESS_KEY)
   const [items, setItems] = useState<AcessoPaginaItem[]>([])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
@@ -181,6 +190,12 @@ export default function AcessoPaginaView() {
   }
 
   const handleEdit = (item: AcessoPaginaItem) => {
+    if (!hasEditPermission) {
+      setStatusTone('error')
+      setStatusMessage(getEditPermissionDeniedMessage('Acesso Pagina'))
+      return
+    }
+
     setCodigo(item.codigo)
     setSigla(item.sigla)
     setDescricao(item.descricao)
@@ -196,6 +211,12 @@ export default function AcessoPaginaView() {
   }
 
   const handleDelete = async (item: AcessoPaginaItem) => {
+    if (!hasDeletePermission) {
+      setStatusTone('error')
+      setStatusMessage(getDeletePermissionDeniedMessage('Acesso Pagina'))
+      return
+    }
+
     if (!window.confirm(`Excluir o acesso pagina ${item.codigo} - ${item.descricao}?`)) {
       return
     }
@@ -425,17 +446,17 @@ export default function AcessoPaginaView() {
                   <td>{item.funcao}</td>
                   <td>
                     <div className="dre-row-actions">
-                      <button type="button" className="row-action-button row-action-edit" onClick={() => handleEdit(item)}>
+                      {hasEditPermission ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleEdit(item)}>
                         Alterar
-                      </button>
-                      <button
+                      </button> : null}
+                      {hasDeletePermission ? <button
                         type="button"
                         className="row-action-button row-action-delete"
                         onClick={() => void handleDelete(item)}
                         disabled={isDeletingCodigo === item.codigo}
                       >
                         Excluir
-                      </button>
+                      </button> : null}
                     </div>
                   </td>
                 </tr>

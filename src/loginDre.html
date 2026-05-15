@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="css/login.css" />
     <script src="/backspace-navigation-guard.js"></script>
+    <script src="/form-permissions.js"></script>
   </head>
   <body>
     <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
@@ -170,6 +171,21 @@
     </main>
 
     <script>
+      const formPermissions = window.tegFormPermissions || {
+        hasEditableFormPermission: () => false,
+        getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+        hasDeletableFormPermission: () => false,
+        getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
+      };
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_logdre025');
+      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_logdre025');
+      const showEditPermissionDeniedMessage = () => {
+        window.alert(formPermissions.getEditPermissionDeniedMessage('Login x DRE'));
+      };
+      const showDeletePermissionDeniedMessage = () => {
+        window.alert(formPermissions.getDeletePermissionDeniedMessage('Login x DRE'));
+      };
+
       const formModal = document.getElementById('login-dre-form-modal');
       const bulkFormModal = document.getElementById('login-dre-bulk-modal');
       const form = document.getElementById('login-dre-form');
@@ -531,8 +547,8 @@
             <td>
               <div class="dsc-grid-actions">
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-login-codigo="${item.login_codigo}" data-dre-codigo="${item.dre_codigo}">Consulta</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-login-codigo="${item.login_codigo}" data-dre-codigo="${item.dre_codigo}">Alterar</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-login-codigo="${item.login_codigo}" data-dre-codigo="${item.dre_codigo}" data-login-nome="${item.login_nome}" data-dre-descricao="${item.dre_descricao}">Excluir</button>
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-login-codigo="${item.login_codigo}" data-dre-codigo="${item.dre_codigo}">Alterar</button>` : ''}
+                ${hasDeletePermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-login-codigo="${item.login_codigo}" data-dre-codigo="${item.dre_codigo}" data-login-nome="${item.login_nome}" data-dre-descricao="${item.dre_descricao}">Excluir</button>` : ''}
               </div>
             </td>
           `;
@@ -606,6 +622,11 @@
       };
 
       const startEdit = (item) => {
+        if (!hasEditPermission()) {
+          showEditPermissionDeniedMessage();
+          return;
+        }
+
         editingPair = { loginCodigo: item.loginCodigo, dreCodigo: item.dreCodigo };
         selectedLoginCodigo = item.loginCodigo;
         selectedDreCodigo = item.dreCodigo;
@@ -630,6 +651,11 @@
       };
 
       const handleDelete = async (item) => {
+        if (!hasDeletePermission()) {
+          showDeletePermissionDeniedMessage();
+          return;
+        }
+
         if (!window.confirm(`Excluir o relacionamento Login ${item.loginCodigo} x DRE ${item.dreCodigo}?`)) {
           return;
         }

@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="css/login.css" />
     <script src="/backspace-navigation-guard.js"></script>
+    <script src="/form-permissions.js"></script>
     <style>
       #credenciada-form .dsc-form-tab-panel-active {
         display: flex;
@@ -441,8 +442,6 @@
                           Credenciada <span id="sort-credenciada-indicator">↑</span>
                         </button>
                       </th>
-                      <th>CNPJ/CPF</th>
-                      <th>Status</th>
                       <th class="dsc-grid-actions-column">Acoes</th>
                     </tr>
                   </thead>
@@ -468,6 +467,21 @@
     </main>
 
     <script>
+      const formPermissions = window.tegFormPermissions || {
+        hasEditableFormPermission: () => false,
+        getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+        hasDeletableFormPermission: () => false,
+        getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
+      };
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_creden028');
+      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_creden028');
+      const showEditPermissionDeniedMessage = () => {
+        window.alert(formPermissions.getEditPermissionDeniedMessage('Credenciada'));
+      };
+      const showDeletePermissionDeniedMessage = () => {
+        window.alert(formPermissions.getDeletePermissionDeniedMessage('Credenciada'));
+      };
+
       const form = document.getElementById('credenciada-form');
       const nomeInput = document.getElementById('credenciada-nome');
       const cnpjCpfInput = document.getElementById('credenciada-cnpj-cpf');
@@ -1201,14 +1215,18 @@
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${item.codigo}</td>
-            <td>${item.credenciado}</td>
-            <td>${item.cnpj_cpf}</td>
-            <td>${item.status || ''}</td>
+            <td>
+              <div class="dsc-credenciada-grid-main-cell">
+                <strong>${item.credenciado || ''}</strong>
+                <span>CNPJ/CPF: ${item.cnpj_cpf || '-'}</span>
+                <span>Status: ${item.status || '-'}</span>
+              </div>
+            </td>
             <td>
               <div class="dsc-grid-actions">
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}">Consulta</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Alterar</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}" data-credenciada="${item.credenciado}">Excluir</button>
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Alterar</button>` : ''}
+                ${hasDeletePermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}" data-credenciada="${item.credenciado}">Excluir</button>` : ''}
               </div>
             </td>
           `;
@@ -1328,6 +1346,11 @@
       };
 
       const startEdit = (item) => {
+        if (!hasEditPermission()) {
+          showEditPermissionDeniedMessage();
+          return;
+        }
+
         editingCodigo = item.codigo;
         nomeInput.value = item.credenciado || '';
         cnpjCpfInput.value = normalizeCnpjCpf(item.cnpj_cpf || '');
@@ -1374,6 +1397,11 @@
       };
 
       const handleDelete = async (item) => {
+        if (!hasDeletePermission()) {
+          showDeletePermissionDeniedMessage();
+          return;
+        }
+
         if (!window.confirm(`Excluir a credenciada ${item.codigo} - ${item.credenciado}?`)) {
           return;
         }

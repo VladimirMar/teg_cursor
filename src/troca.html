@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="css/login.css" />
     <script src="/backspace-navigation-guard.js"></script>
+      <script src="/form-permissions.js"></script>
   </head>
   <body>
     <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
@@ -118,6 +119,20 @@
     </main>
 
     <script>
+      const formPermissions = window.tegFormPermissions || {
+        hasEditableFormPermission: () => false,
+        getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+        hasDeletableFormPermission: () => false,
+        getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
+      };
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_trocas032');
+      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_trocas032');
+      const showEditPermissionDeniedMessage = () => {
+        window.alert(formPermissions.getEditPermissionDeniedMessage('Tipo de Troca'));
+      };
+      const showDeletePermissionDeniedMessage = () => {
+        window.alert(formPermissions.getDeletePermissionDeniedMessage('Tipo de Troca'));
+      };
       const form = document.getElementById('troca-form');
       const formModal = document.getElementById('troca-form-modal');
       const controleInput = document.getElementById('troca-controle');
@@ -314,8 +329,8 @@
             <td>
               <div class="dsc-grid-actions">
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}">Consulta</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Alterar</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}">Excluir</button>
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Alterar</button>` : ''}
+                ${hasDeletePermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}">Excluir</button>` : ''}
               </div>
             </td>
           `;
@@ -378,6 +393,11 @@
       };
 
       const startEdit = (item) => {
+        if (!hasEditPermission()) {
+          showEditPermissionDeniedMessage();
+          return;
+        }
+
         editingCodigo = item.codigo;
         controleInput.value = item.controle || '';
         listaInput.value = item.lista || '';
@@ -394,6 +414,11 @@
       };
 
       const handleDelete = async (item) => {
+        if (!hasDeletePermission()) {
+          showDeletePermissionDeniedMessage();
+          return;
+        }
+
         if (!window.confirm(`Excluir o tipo de troca ${item.codigo} - ${item.lista}?`)) {
           return;
         }

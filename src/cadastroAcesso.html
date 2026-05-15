@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="css/login.css" />
     <script src="/backspace-navigation-guard.js"></script>
+    <script src="/form-permissions.js"></script>
     <style>
       .dsc-access-profile-group {
         gap: 12px;
@@ -158,6 +159,21 @@
     </main>
 
     <script>
+      const formPermissions = window.tegFormPermissions || {
+        hasEditableFormPermission: () => false,
+        getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+        hasDeletableFormPermission: () => false,
+        getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
+      };
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_cadace024');
+      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_cadace024');
+      const showEditPermissionDeniedMessage = () => {
+        window.alert(formPermissions.getEditPermissionDeniedMessage('Cadastro de Acesso'));
+      };
+      const showDeletePermissionDeniedMessage = () => {
+        window.alert(formPermissions.getDeletePermissionDeniedMessage('Cadastro de Acesso'));
+      };
+
       const formModal = document.getElementById('access-form-modal');
       const form = document.getElementById('register-form');
       const nomeInput = document.getElementById('nome');
@@ -457,8 +473,8 @@
             <td>
               <div class="dsc-grid-actions">
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}" data-nome="${item.nome}" data-email="${item.email}">Consulta</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}" data-nome="${item.nome}" data-email="${item.email}">Alterar</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}" data-nome="${item.nome}" data-email="${item.email}">Excluir</button>
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}" data-nome="${item.nome}" data-email="${item.email}">Alterar</button>` : ''}
+                ${hasDeletePermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}" data-nome="${item.nome}" data-email="${item.email}">Excluir</button>` : ''}
               </div>
             </td>
           `;
@@ -529,6 +545,11 @@
       };
 
       const startEdit = async (item) => {
+        if (!hasEditPermission()) {
+          showEditPermissionDeniedMessage();
+          return;
+        }
+
         try {
           resetMessages();
           const detailedItem = await loadAccessDetail(item.codigo);
@@ -557,6 +578,11 @@
       };
 
       const handleDelete = async (item) => {
+        if (!hasDeletePermission()) {
+          showDeletePermissionDeniedMessage();
+          return;
+        }
+
         if (!window.confirm(`Excluir o acesso ${item.codigo} - ${item.nome}?`)) {
           return;
         }

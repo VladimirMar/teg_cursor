@@ -8,7 +8,186 @@
 
     <link rel="stylesheet" href="css/login.css?v=20260504-resumo-os-single-panel-30" />
     <script src="/backspace-navigation-guard.js"></script>
+    <script src="/form-permissions.js"></script>
     <style>
+      html:has(#ordem-servico-grid-body),
+      body:has(#ordem-servico-grid-body) {
+        overflow: hidden;
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100%;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-container,
+      body:has(#ordem-servico-grid-body) .dsc-access-toolbar,
+      body:has(#ordem-servico-grid-body) .dsc-access-grid-card {
+        width: 100%;
+        max-width: none;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table th:nth-child(1),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(1) {
+        width: 14%;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table th:nth-child(2),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(2) {
+        width: 23%;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table th:nth-child(3),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(3) {
+        width: 15%;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table th:nth-child(4),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(4) {
+        width: 14%;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table th:nth-child(5),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(5) {
+        width: 8%;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table th:nth-child(6),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(6) {
+        width: 7%;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table th:nth-child(7),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(7) {
+        width: 19%;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-access-page {
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+        width: 100%;
+        max-width: 100%;
+        padding: 4px 10px;
+      }
+
+      body:has(#ordem-servico-grid-body) #login-section,
+      body:has(#ordem-servico-grid-body) .dsc-access-layout,
+      body:has(#ordem-servico-grid-body) .dsc-access-management-layout {
+        height: 100%;
+        min-height: 0;
+      }
+
+      body:has(#ordem-servico-grid-body) #login-section {
+        margin: 0;
+        padding: 0;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-access-layout,
+      body:has(#ordem-servico-grid-body) .dsc-access-management-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-access-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        margin-bottom: 0;
+        padding-bottom: 4px;
+        background: #ffffff;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-access-grid-card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 118px);
+        min-height: 0;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(1),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(2),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(3),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(4),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(5),
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table td:nth-child(6) {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-wrapper {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-body tr {
+        cursor: pointer;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-body tr.dsc-grid-row-selected td {
+        background: #9eb8df;
+        color: #10233f;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table .dsc-grid-actions-column {
+        text-align: center;
+        padding-left: 14px;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table .dsc-grid-actions {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 3px;
+        width: 100%;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table .dsc-grid-action-button {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 3px 5px;
+        font-size: 0.68rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-feedback {
+        min-height: 0;
+        margin: 0;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-access-grid-card > .dsc-access-pagination {
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-access-grid-card > .dsc-access-pagination .dsc-btn {
+        flex: 0 0 20%;
+        width: 20%;
+        max-width: 64px;
+        min-width: 44px;
+        min-height: 34px;
+        padding: 4px 0;
+        font-size: 0.84rem;
+      }
+
+      #ordem-servico-pagination-info {
+        margin-left: 10px;
+        min-width: 140px;
+        text-align: right;
+      }
+
       body.dsc-dashboard-popup-mode .dsc-access-toolbar,
       body.dsc-dashboard-popup-mode .dsc-access-grid-card {
         display: none !important;
@@ -68,6 +247,9 @@
                 <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-ordem-servico-import-button">Importar XML</button>
                 <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-ordem-servico-rejections-button">Recusas XML</button>
                 <input class="dsc-form-control dsc-access-filter-input" id="ordem-servico-search" type="text" placeholder="Filtrar por termo, num OS, revisao, OS, credenciado, DRE, condutor, monitor, placa ou CRM" />
+                <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
+                <button type="button" class="dsc-btn dsc-btn-white" id="clear-ordem-servico-filter-button">Limpar</button>
+                <button type="button" class="dsc-btn dsc-btn-white" id="open-ordem-servico-eol-button">Pendências EOL</button>
                 <select class="dsc-form-control" id="ordem-servico-filter-situacao" aria-label="Filtrar por situacao">
                   <option value="">Todas as situacoes</option>
                   <option value="Ativo">Ativo</option>
@@ -76,9 +258,6 @@
                   <option value="Cancelado">Cancelado</option>
                   <option value="Substituido">Substituido</option>
                 </select>
-                <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
-                <button type="button" class="dsc-btn dsc-btn-white" id="clear-ordem-servico-filter-button">Limpar</button>
-                <button type="button" class="dsc-btn dsc-btn-white" id="open-ordem-servico-eol-button">Pendências EOL</button>
               </form>
             </div>
 
@@ -554,10 +733,6 @@
                 </div>
               </div>
 
-              <div class="dsc-access-grid-top-scroll" id="ordem-servico-grid-top-scroll" aria-hidden="true">
-                <div class="dsc-access-grid-top-scroll-content" id="ordem-servico-grid-top-scroll-content"></div>
-              </div>
-
               <div class="dsc-access-grid-wrapper" id="ordem-servico-grid-wrapper">
                 <table class="dsc-access-grid" id="ordem-servico-grid-table">
                   <thead>
@@ -586,9 +761,9 @@
               <div class="dsc-access-pagination">
                 <button type="button" class="dsc-btn dsc-btn-white" id="first-ordem-servico-page-button" title="Primeiro registro">|◀</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="previous-ordem-servico-page-button" title="Registro anterior">◀</button>
-                <span id="ordem-servico-pagination-info">Pagina 1 de 1</span>
                 <button type="button" class="dsc-btn dsc-btn-white" id="next-ordem-servico-page-button" title="Proximo registro">▶</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="last-ordem-servico-page-button" title="Ultimo registro">▶|</button>
+                <span id="ordem-servico-pagination-info">Pagina 1 de 1</span>
               </div>
             </div>
           </div>
@@ -597,6 +772,20 @@
     </main>
 
     <script>
+      const formPermissions = window.tegFormPermissions || {
+        hasViewableFormPermission: () => false,
+        hasEditableFormPermission: () => false,
+        getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+      };
+      const hasViewPermission = () => formPermissions.hasViewableFormPermission('form_ordser036');
+      const hasCondutorViewPermission = () => formPermissions.hasViewableFormPermission('form_condut026');
+      const hasMonitorViewPermission = () => formPermissions.hasViewableFormPermission('form_monitr027');
+      const hasVeiculoViewPermission = () => formPermissions.hasViewableFormPermission('form_veicul031');
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_ordser036');
+      const showEditPermissionDeniedMessage = () => {
+        window.alert(formPermissions.getEditPermissionDeniedMessage('Ordem de Servico'));
+      };
+
       const form = document.getElementById('ordem-servico-form');
       const formModal = document.getElementById('ordem-servico-form-modal');
       const rejectionModal = document.getElementById('ordem-servico-rejection-modal');
@@ -639,6 +828,9 @@
       const monitorInput = document.getElementById('ordem-servico-monitor');
       const openVinculoMonitorPopupButton = document.getElementById('open-vinculo-monitor-popup-button');
       const dataAdmissaoMonitorInput = document.getElementById('ordem-servico-data-admissao-monitor');
+      openVinculoCondutorPopupButton.classList.toggle('dsc-hidden', !hasCondutorViewPermission());
+      openVinculoMonitorPopupButton.classList.toggle('dsc-hidden', !hasMonitorViewPermission());
+      openVeiculoPopupButton.classList.toggle('dsc-hidden', !hasVeiculoViewPermission());
       const tipoTrocaInput = document.getElementById('ordem-servico-tipo-troca');
       const tipoTrocaOptionsList = document.getElementById('ordem-servico-tipo-troca-options');
       const dataEncerramentoInput = document.getElementById('ordem-servico-data-encerramento');
@@ -680,11 +872,10 @@
       const openEolButton = document.getElementById('open-ordem-servico-eol-button');
       const searchInput = document.getElementById('ordem-servico-search');
       const situacaoFilterInput = document.getElementById('ordem-servico-filter-situacao');
+      const situacaoGridFilterInput = document.getElementById('ordem-servico-grid-situacao-filter');
       const gridBody = document.getElementById('ordem-servico-grid-body');
       const gridWrapper = document.getElementById('ordem-servico-grid-wrapper');
       const gridTable = document.getElementById('ordem-servico-grid-table');
-      const topGridScroll = document.getElementById('ordem-servico-grid-top-scroll');
-      const topGridScrollContent = document.getElementById('ordem-servico-grid-top-scroll-content');
       const emptyState = document.getElementById('ordem-servico-empty-state');
       const totalLabel = document.getElementById('ordem-servico-total');
       const pageSizeSelect = document.getElementById('ordem-servico-page-size');
@@ -767,6 +958,7 @@
       let previousPageCursor = null;
       let nextPageCursor = null;
       let currentGridItems = [];
+      let selectedGridCodigo = null;
       let currentRejectionPage = 1;
       let totalRejectionPages = 1;
       let currentRejectionSearch = '';
@@ -3349,14 +3541,44 @@
       };
 
       const syncTopGridScrollbar = () => {
-        if (!gridWrapper || !gridTable || !topGridScroll || !topGridScrollContent) {
+        if (!gridWrapper || !gridTable) {
+          return;
+        }
+      };
+
+      const normalizeSituacaoFilterValue = (value) => {
+        return String(value || '').trim();
+      };
+
+      const syncSituacaoFilters = (value) => {
+        const normalizedValue = normalizeSituacaoFilterValue(value);
+        situacaoFilterInput.value = normalizedValue;
+
+        if (situacaoGridFilterInput) {
+          situacaoGridFilterInput.value = normalizedValue;
+        }
+
+        currentSituacaoFilter = normalizedValue;
+      };
+
+      const getSituacaoPriority = (value) => {
+        return normalizeKey(String(value || '')) === 'ativo' ? 0 : 1;
+      };
+
+      const prioritizeAtivos = (items) => {
+        return [...items].sort((a, b) => getSituacaoPriority(a?.situacao) - getSituacaoPriority(b?.situacao));
+      };
+
+      const applyGridRowSelection = (row) => {
+        if (!(row instanceof HTMLTableRowElement)) {
           return;
         }
 
-        const tableWidth = gridTable.scrollWidth;
-        const wrapperWidth = gridWrapper.clientWidth;
-        topGridScrollContent.style.width = `${tableWidth}px`;
-        topGridScroll.style.display = tableWidth > wrapperWidth ? 'block' : 'none';
+        selectedGridCodigo = row.dataset.codigo || null;
+        gridBody.querySelectorAll('tr.dsc-grid-row-selected').forEach((element) => {
+          element.classList.remove('dsc-grid-row-selected');
+        });
+        row.classList.add('dsc-grid-row-selected');
       };
 
       const getFormControls = () => Array.from(form.querySelectorAll('input, button, select, textarea'));
@@ -4204,18 +4426,23 @@
       };
 
       const renderGrid = (items) => {
-        currentGridItems = items;
+        const orderedItems = prioritizeAtivos(items || []);
+        currentGridItems = orderedItems;
         gridBody.innerHTML = '';
 
-        if (!items.length) {
+        if (!orderedItems.length) {
+          selectedGridCodigo = null;
           emptyState.classList.remove('dsc-hidden');
           return;
         }
 
         emptyState.classList.add('dsc-hidden');
 
-        items.forEach((item) => {
+        let hasSelectedRow = false;
+
+        orderedItems.forEach((item) => {
           const row = document.createElement('tr');
+          row.dataset.codigo = String(item.codigo || '');
           row.innerHTML = `
             <td>${item.os_concat || ''}</td>
             <td>${item.credenciado || ''}</td>
@@ -4225,16 +4452,26 @@
             <td>${item.situacao || ''}</td>
             <td>
               <div class="dsc-grid-actions">
-                <button type="button" class="dsc-grid-action-button" data-action="history" data-codigo="${item.codigo}">Historico</button>
+                ${hasViewPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-view" data-action="history" data-codigo="${item.codigo}">Historico</button>` : ''}
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}">Consulta</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Corrigir</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="substitute" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Substituir</button>
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Corrigir</button>` : ''}
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="substitute" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Substituir</button>` : ''}
               </div>
             </td>
           `;
           row.dataset.item = JSON.stringify(item);
+
+          if (selectedGridCodigo && row.dataset.codigo === String(selectedGridCodigo)) {
+            row.classList.add('dsc-grid-row-selected');
+            hasSelectedRow = true;
+          }
+
           gridBody.appendChild(row);
         });
+
+        if (!hasSelectedRow) {
+          selectedGridCodigo = null;
+        }
       };
 
       const renderRejectionGrid = (items) => {
@@ -5499,6 +5736,11 @@
       };
 
       const startEdit = (item) => {
+        if (!hasEditPermission()) {
+          showEditPermissionDeniedMessage();
+          return;
+        }
+
         populateFormFromItem(item, 'edit');
         armSaveChangeRequirement();
       };
@@ -5646,13 +5888,17 @@
 
       gridBody.addEventListener('click', (event) => {
         const target = event.target;
+        const row = target instanceof Element ? target.closest('tr') : null;
+
+        if (row instanceof HTMLTableRowElement) {
+          applyGridRowSelection(row);
+        }
 
         if (!(target instanceof HTMLButtonElement)) {
           return;
         }
 
         const action = target.dataset.action;
-        const row = target.closest('tr');
         const rawItem = row ? row.dataset.item : '';
 
         if (!rawItem) {
@@ -5806,10 +6052,16 @@
       });
 
       openVinculoCondutorPopupButton.addEventListener('click', () => {
+        if (!hasCondutorViewPermission()) {
+          return;
+        }
         openCondutorVinculoPopup();
       });
 
       openVinculoMonitorPopupButton.addEventListener('click', () => {
+        if (!hasMonitorViewPermission()) {
+          return;
+        }
         openMonitorVinculoPopup();
       });
 
@@ -5870,6 +6122,9 @@
       });
 
       openVeiculoPopupButton.addEventListener('click', () => {
+        if (!hasVeiculoViewPermission()) {
+          return;
+        }
         openVeiculoPopupFromCrm();
       });
 
@@ -6258,7 +6513,7 @@
       filterForm.addEventListener('submit', (event) => {
         event.preventDefault();
         currentSearch = searchInput.value.trim();
-        currentSituacaoFilter = situacaoFilterInput.value;
+        syncSituacaoFilters(situacaoFilterInput.value);
         currentPage = 1;
         useTailPageFetch = false;
         previousPageCursor = null;
@@ -6268,15 +6523,34 @@
 
       clearFilterButton.addEventListener('click', () => {
         searchInput.value = '';
-        situacaoFilterInput.value = '';
         currentSearch = '';
-        currentSituacaoFilter = '';
+        syncSituacaoFilters('');
         currentPage = 1;
         useTailPageFetch = false;
         previousPageCursor = null;
         nextPageCursor = null;
         void loadItems();
       });
+
+      situacaoFilterInput.addEventListener('change', () => {
+        syncSituacaoFilters(situacaoFilterInput.value);
+        currentPage = 1;
+        useTailPageFetch = false;
+        previousPageCursor = null;
+        nextPageCursor = null;
+        void loadItems();
+      });
+
+      if (situacaoGridFilterInput) {
+        situacaoGridFilterInput.addEventListener('change', () => {
+          syncSituacaoFilters(situacaoGridFilterInput.value);
+          currentPage = 1;
+          useTailPageFetch = false;
+          previousPageCursor = null;
+          nextPageCursor = null;
+          void loadItems();
+        });
+      }
 
       openEolButton.addEventListener('click', () => {
         window.location.href = '/src/ordemServicoDataEol.html';
@@ -6310,20 +6584,8 @@
         if (currentPage > 1) {
           currentPage -= 1;
           useTailPageFetch = false;
+          previousPageCursor = null;
           nextPageCursor = null;
-
-          if (currentSortBy === 'chave' && currentSortDirection === 'asc' && currentGridItems.length > 0) {
-            const firstItem = currentGridItems[0] || {};
-            previousPageCursor = {
-              termoAdesao: String(firstItem.termo_adesao || ''),
-              numOs: String(firstItem.num_os || ''),
-              revisao: String(firstItem.revisao || ''),
-              codigo: String(firstItem.codigo || ''),
-            };
-          } else {
-            previousPageCursor = null;
-          }
-
           void loadItems();
         }
       });
@@ -6333,19 +6595,7 @@
           currentPage += 1;
           useTailPageFetch = false;
           previousPageCursor = null;
-
-          if (currentSortBy === 'chave' && currentSortDirection === 'asc' && currentGridItems.length > 0) {
-            const lastItem = currentGridItems[currentGridItems.length - 1] || {};
-            nextPageCursor = {
-              termoAdesao: String(lastItem.termo_adesao || ''),
-              numOs: String(lastItem.num_os || ''),
-              revisao: String(lastItem.revisao || ''),
-              codigo: String(lastItem.codigo || ''),
-            };
-          } else {
-            nextPageCursor = null;
-          }
-
+          nextPageCursor = null;
           void loadItems();
         }
       });
@@ -6353,7 +6603,7 @@
       lastPageButton.addEventListener('click', () => {
         if (currentPage < totalPages) {
           currentPage = totalPages;
-          useTailPageFetch = currentSortBy === 'chave' && currentSortDirection === 'asc';
+          useTailPageFetch = false;
           previousPageCursor = null;
           nextPageCursor = null;
           void loadItems();
@@ -6531,31 +6781,7 @@
         void handlePopupReturnStorage(event);
       });
 
-      if (topGridScroll && gridWrapper) {
-        let syncingGridScroll = false;
-
-        topGridScroll.addEventListener('scroll', () => {
-          if (syncingGridScroll) {
-            return;
-          }
-
-          syncingGridScroll = true;
-          gridWrapper.scrollLeft = topGridScroll.scrollLeft;
-          syncingGridScroll = false;
-        });
-
-        gridWrapper.addEventListener('scroll', () => {
-          if (syncingGridScroll) {
-            return;
-          }
-
-          syncingGridScroll = true;
-          topGridScroll.scrollLeft = gridWrapper.scrollLeft;
-          syncingGridScroll = false;
-        });
-
-        window.addEventListener('resize', syncTopGridScrollbar);
-      }
+      window.addEventListener('resize', syncTopGridScrollbar);
       importButton.addEventListener('click', () => {
         hideForm();
         showImportForm();
@@ -6590,6 +6816,7 @@
       renderDreOptions('');
       renderModalidadeOptions('');
       renderTipoTrocaOptions('');
+      syncSituacaoFilters('');
       void readPendingPopupReturnPayload();
       if (!isDashboardPopup) {
         void loadItems();

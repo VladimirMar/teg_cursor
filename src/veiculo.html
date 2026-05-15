@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="css/login.css" />
     <script src="/backspace-navigation-guard.js"></script>
+    <script src="/form-permissions.js"></script>
   </head>
   <body>
     <div class="dsc-status-banner dsc-hidden" id="status-banner"></div>
@@ -361,6 +362,21 @@
     </main>
 
     <script>
+      const formPermissions = window.tegFormPermissions || {
+        hasEditableFormPermission: () => false,
+        getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+        hasDeletableFormPermission: () => false,
+        getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
+      };
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_veicul031');
+      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_veicul031');
+      const showEditPermissionDeniedMessage = () => {
+        window.alert(formPermissions.getEditPermissionDeniedMessage('Veiculo'));
+      };
+      const showDeletePermissionDeniedMessage = () => {
+        window.alert(formPermissions.getDeletePermissionDeniedMessage('Veiculo'));
+      };
+
       const form = document.getElementById('veiculo-form');
       const formModal = document.getElementById('veiculo-form-modal');
       const formTabButtons = Array.from(document.querySelectorAll('#veiculo-form-tabs .dsc-form-tab-button'));
@@ -1674,8 +1690,8 @@
             <td>
               <div class="dsc-grid-actions">
                 <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}">Consulta</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Alterar</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}" data-placas="${item.placas || ''}">Excluir</button>
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Alterar</button>` : ''}
+                ${hasDeletePermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}" data-placas="${item.placas || ''}">Excluir</button>` : ''}
               </div>
             </td>
           `;
@@ -1801,6 +1817,11 @@
       };
 
       const startEdit = (item) => {
+        if (!hasEditPermission()) {
+          showEditPermissionDeniedMessage();
+          return;
+        }
+
         editingCodigo = item.codigo;
         originalCrmValue = normalizeCrm(item.crm || '');
         originalPlacasValue = normalizePlaca(item.placas || '');
@@ -1889,6 +1910,11 @@
       };
 
       const handleDelete = async (item) => {
+        if (!hasDeletePermission()) {
+          showDeletePermissionDeniedMessage();
+          return;
+        }
+
         if (!window.confirm(`Excluir o veiculo ${item.codigo} - ${item.placas || 'SEM PLACA'}?`)) {
           return;
         }

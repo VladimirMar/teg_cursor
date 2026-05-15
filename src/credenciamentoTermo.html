@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="css/login.css?v=20260424-termo-aditivo-1" />
     <script src="/backspace-navigation-guard.js"></script>
+    <script src="/form-permissions.js"></script>
     <style>
       #login-section.dsc-container {
         max-width: 1600px;
@@ -403,6 +404,13 @@
                 <button type="button" class="dsc-btn dsc-btn-white dsc-popup-compact-close-button" id="close-credenciamento-termo-form-modal-button" aria-label="Fechar formulario de termo">X</button>
               </div>
 
+              <div class="dsc-form-tabs" id="credenciamento-termo-form-tabs">
+                <button type="button" class="dsc-form-tab-button dsc-form-tab-button-active" data-tab-target="dados-termo">Dados do termo</button>
+                <button type="button" class="dsc-form-tab-button" data-tab-target="ordens-servico">Ordens de servico</button>
+              </div>
+
+              <div class="dsc-form-tab-panel dsc-form-tab-panel-active" id="credenciamento-termo-tab-dados-termo">
+
               <section class="dsc-form-section-card">
                 <h3 class="dsc-form-section-title">Credenciada</h3>
 
@@ -653,6 +661,32 @@
 
               </section>
 
+              </div>
+
+              <div class="dsc-form-tab-panel" id="credenciamento-termo-tab-ordens-servico">
+                <section class="dsc-form-section-card">
+                  <h3 class="dsc-form-section-title">Ordens de servico relacionadas</h3>
+
+                  <div class="dsc-access-grid-wrapper">
+                    <table class="dsc-access-grid">
+                      <thead>
+                        <tr>
+                          <th>Termo</th>
+                          <th>OS</th>
+                          <th>Status OS</th>
+                          <th class="dsc-grid-actions-column">Acoes</th>
+                        </tr>
+                      </thead>
+                      <tbody id="credenciamento-termo-ordens-servico-grid-body"></tbody>
+                    </table>
+
+                    <p class="dsc-empty-state dsc-hidden" id="credenciamento-termo-ordens-servico-empty-state">Nenhuma OrdemServico relacionada encontrada para este termo.</p>
+                  </div>
+
+                  <p class="dsc-feedback" id="credenciamento-termo-ordens-servico-feedback"></p>
+                </section>
+              </div>
+
               <div class="dsc-login-form-buttons dsc-mt20 dsc-access-form-buttons dsc-popup-footer-sticky">
                 <button type="submit" class="dsc-btn dsc-btn-blue" id="save-credenciamento-termo-button">Salvar credenciamento termo</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="edit-credenciamento-termo-last-aditivo-button">Alterar ultimo aditivo</button>
@@ -888,6 +922,23 @@
     </main>
 
     <script>
+      const formPermissions = window.tegFormPermissions || {
+        hasViewableFormPermission: () => false,
+        hasEditableFormPermission: () => false,
+        getEditPermissionDeniedMessage: (formLabel) => `Usuario sem permissao de alteracao para o formulario ${formLabel}.`,
+        hasDeletableFormPermission: () => false,
+        getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
+      };
+      const hasCepLookupPermission = () => formPermissions.hasViewableFormPermission('form_cepcep033');
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_termoc029');
+      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_termoc029');
+      const showEditPermissionDeniedMessage = () => {
+        window.alert(formPermissions.getEditPermissionDeniedMessage('Credenciamento Termo'));
+      };
+      const showDeletePermissionDeniedMessage = () => {
+        window.alert(formPermissions.getDeletePermissionDeniedMessage('Credenciamento Termo'));
+      };
+
       const formModal = document.getElementById('credenciamento-termo-form-modal');
       const importModal = document.getElementById('credenciamento-termo-import-modal');
       const rejectionModal = document.getElementById('credenciamento-termo-rejection-modal');
@@ -900,6 +951,7 @@
       const formTitle = document.getElementById('credenciamento-termo-form-title');
       const feedback = document.getElementById('credenciamento-termo-form-feedback');
       const gridFeedback = document.getElementById('credenciamento-termo-grid-feedback');
+      const relatedOrdemServicoFeedback = document.getElementById('credenciamento-termo-ordens-servico-feedback');
       const importFeedback = document.getElementById('credenciamento-termo-import-feedback');
       const rejectionGridFeedback = document.getElementById('credenciamento-termo-rejection-grid-feedback');
       const searchInput = document.getElementById('credenciamento-termo-search');
@@ -922,9 +974,11 @@
       const gridBody = document.getElementById('credenciamento-termo-grid-body');
       const rejectionGridBody = document.getElementById('credenciamento-termo-rejection-grid-body');
       const linkedAditivosGridBody = document.getElementById('credenciamento-termo-linked-aditivos-grid-body');
+      const relatedOrdemServicoGridBody = document.getElementById('credenciamento-termo-ordens-servico-grid-body');
       const emptyState = document.getElementById('credenciamento-termo-empty-state');
       const rejectionEmptyState = document.getElementById('credenciamento-termo-rejection-empty-state');
       const linkedAditivosEmptyState = document.getElementById('credenciamento-termo-linked-aditivos-empty-state');
+      const relatedOrdemServicoEmptyState = document.getElementById('credenciamento-termo-ordens-servico-empty-state');
       const totalLabel = document.getElementById('credenciamento-termo-total');
       const rejectionTotalLabel = document.getElementById('credenciamento-termo-rejection-total');
       const linkedAditivosSubtitle = document.getElementById('credenciamento-termo-linked-aditivos-subtitle');
@@ -944,10 +998,13 @@
       const clearRejectionFilterButton = document.getElementById('clear-credenciamento-termo-rejection-filter-button');
       const closeRejectionPanelButton = document.getElementById('close-credenciamento-termo-rejection-modal-button');
       const linkedAditivosPanel = document.getElementById('credenciamento-termo-linked-aditivos-panel');
+      const termoFormTabButtons = Array.from(document.querySelectorAll('#credenciamento-termo-form-tabs .dsc-form-tab-button'));
+      const termoFormTabPanels = Array.from(document.querySelectorAll('#credenciamento-termo-form .dsc-form-tab-panel'));
       const linkedAditivosFeedback = document.getElementById('credenciamento-termo-linked-aditivos-feedback');
       const closeLinkedAditivosModalButton = document.getElementById('close-credenciamento-termo-linked-aditivos-modal-button');
       const insertLinkedAditivoButton = document.getElementById('insert-credenciamento-termo-linked-aditivo-button');
       const deleteLinkedAditivoButton = document.getElementById('delete-credenciamento-termo-linked-aditivo-button');
+      deleteLinkedAditivoButton.classList.toggle('dsc-hidden', !hasDeletePermission());
       const sortButton = document.getElementById('sort-credenciamento-termo-button');
       const sortIndicator = document.getElementById('sort-credenciamento-termo-indicator');
       const sortStatusButton = document.getElementById('sort-credenciamento-termo-status-button');
@@ -983,6 +1040,7 @@
       const bairroInput = document.getElementById('credenciamento-termo-bairro');
       const cepEnderecoInput = document.getElementById('credenciamento-termo-cep');
       const lookupCepButton = document.getElementById('lookup-credenciamento-termo-cep-button');
+      lookupCepButton.classList.toggle('dsc-hidden', !hasCepLookupPermission());
       const municipioInput = document.getElementById('credenciamento-termo-municipio');
       const especificacaoSeiInput = document.getElementById('credenciamento-termo-especificacao-sei');
       const textoCopiaInput = especificacaoSeiInput;
@@ -1142,6 +1200,8 @@
       let currentLinkedAditivosTermoAdesao = '';
       let currentLinkedAditivosSourceItem = null;
       let currentLinkedAditivosItems = [];
+      let currentRelatedOrdemServicoItems = [];
+      let currentRelatedOrdemServicoTermoAdesao = '';
       let currentLastAditivoItem = null;
       let currentLastAditivoOriginalDataPublicacao = '';
       let bannerTimeoutId = null;
@@ -1201,6 +1261,147 @@
 
         return `${digits.slice(0, 4)}/${digits.slice(4)}`;
       };
+      function setRelatedOrdemServicoFeedback(message, tone = '') {
+        relatedOrdemServicoFeedback.textContent = message;
+        relatedOrdemServicoFeedback.className = tone ? `dsc-feedback dsc-feedback-${tone}` : 'dsc-feedback';
+      }
+
+      function renderRelatedOrdemServicoGrid(items) {
+        currentRelatedOrdemServicoItems = items;
+        relatedOrdemServicoGridBody.innerHTML = '';
+
+        if (!items.length) {
+          relatedOrdemServicoEmptyState.classList.remove('dsc-hidden');
+          return;
+        }
+
+        relatedOrdemServicoEmptyState.classList.add('dsc-hidden');
+
+        items.forEach((item) => {
+          const row = document.createElement('tr');
+          const termoAdesao = normalizeTermoAdesao(String(item.termo_adesao || item.termoAdesao || ''));
+          const numOs = String(item.num_os || item.numOs || '').trim();
+          const situacao = String(item.situacao || item.status_os || '').trim();
+
+          row.innerHTML = `
+            <td>${termoAdesao || '-'}</td>
+            <td>${numOs || '-'}</td>
+            <td>${situacao || '-'}</td>
+            <td>
+              <div class="dsc-grid-actions">
+                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="open-os" data-codigo="${item.codigo}">Abrir OS</button>
+              </div>
+            </td>
+          `;
+          relatedOrdemServicoGridBody.appendChild(row);
+        });
+      }
+
+      function resetRelatedOrdemServicoGrid(message = '') {
+        currentRelatedOrdemServicoItems = [];
+        currentRelatedOrdemServicoTermoAdesao = '';
+        relatedOrdemServicoGridBody.innerHTML = '';
+        relatedOrdemServicoEmptyState.classList.add('dsc-hidden');
+        setRelatedOrdemServicoFeedback(message);
+      }
+
+      async function loadRelatedOrdemServicoItems(termoAdesaoValue) {
+        const normalizedTermoAdesao = normalizeTermoAdesao(String(termoAdesaoValue || ''));
+
+        if (!normalizedTermoAdesao) {
+          resetRelatedOrdemServicoGrid('Informe ou selecione um termo para consultar as Ordens de Servico relacionadas.');
+          return;
+        }
+
+        if (currentRelatedOrdemServicoTermoAdesao === normalizedTermoAdesao && currentRelatedOrdemServicoItems.length) {
+          setRelatedOrdemServicoFeedback('');
+          return;
+        }
+
+        currentRelatedOrdemServicoTermoAdesao = normalizedTermoAdesao;
+        relatedOrdemServicoGridBody.innerHTML = '';
+        relatedOrdemServicoEmptyState.classList.add('dsc-hidden');
+        setRelatedOrdemServicoFeedback('Carregando Ordens de Servico relacionadas...');
+
+        try {
+          let page = 1;
+          let totalPagesToLoad = 1;
+          const collectedItems = [];
+
+          while (page <= totalPagesToLoad) {
+            const params = new URLSearchParams({
+              page: String(page),
+              pageSize: '100',
+              sortBy: 'num_os',
+              sortDirection: 'asc',
+              search: normalizedTermoAdesao,
+            });
+            const response = await fetch(`/api/ordem-servico?${params.toString()}`, {
+              headers: { Accept: 'application/json' },
+            });
+
+            if (!response.ok) {
+              throw new Error(await getRequestErrorMessage(response, 'Falha ao consultar Ordens de Servico relacionadas.'));
+            }
+
+            const payload = await response.json();
+            const pageItems = Array.isArray(payload.items) ? payload.items : [];
+            totalPagesToLoad = Math.max(Number(payload.totalPages) || 1, 1);
+            collectedItems.push(...pageItems.filter((item) => normalizeTermoAdesao(String(item?.termo_adesao || item?.termoAdesao || '')) === normalizedTermoAdesao));
+            page += 1;
+          }
+
+          renderRelatedOrdemServicoGrid(collectedItems);
+          setRelatedOrdemServicoFeedback(collectedItems.length ? '' : 'Nenhuma Ordem de Servico relacionada encontrada para este termo.');
+        } catch (error) {
+          currentRelatedOrdemServicoItems = [];
+          relatedOrdemServicoGridBody.innerHTML = '';
+          relatedOrdemServicoEmptyState.classList.remove('dsc-hidden');
+          setRelatedOrdemServicoFeedback(error instanceof Error ? error.message : 'Falha ao consultar Ordens de Servico relacionadas.', 'error');
+        }
+      }
+
+      function openOrdemServicoPopupByCodigo(codigo, mode = 'view') {
+        const normalizedCodigo = normalizeIntegerInput(String(codigo || ''), 10);
+
+        if (!normalizedCodigo) {
+          return;
+        }
+
+        const popupUrl = new URL('/src/ordemServico.html', window.location.origin);
+        popupUrl.searchParams.set('popupMode', 'dashboard-ordem-servico');
+        popupUrl.searchParams.set('codigo', normalizedCodigo);
+        popupUrl.searchParams.set('mode', mode === 'edit' ? 'edit' : 'view');
+
+        const popupWidth = 1480;
+        const popupHeight = 920;
+        const screenLeft = typeof window.screenLeft === 'number' ? window.screenLeft : window.screenX || 0;
+        const screenTop = typeof window.screenTop === 'number' ? window.screenTop : window.screenY || 0;
+        const outerWidth = typeof window.outerWidth === 'number' && window.outerWidth > 0 ? window.outerWidth : window.innerWidth;
+        const outerHeight = typeof window.outerHeight === 'number' && window.outerHeight > 0 ? window.outerHeight : window.innerHeight;
+        const left = Math.max(screenLeft + Math.round((outerWidth - popupWidth) / 2), 0);
+        const top = Math.max(screenTop + Math.round((outerHeight - popupHeight) / 2), 0);
+        const popupFeatures = `width=${popupWidth},height=${popupHeight},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+        const popupWindow = window.open(popupUrl.toString(), 'tegfinanc-ordem-servico-popup', popupFeatures);
+
+        if (popupWindow && typeof popupWindow.focus === 'function') {
+          popupWindow.focus();
+        }
+      }
+
+      function setActiveCredenciamentoTermoTab(tabTarget = 'dados-termo') {
+        termoFormTabButtons.forEach((button) => {
+          button.classList.toggle('dsc-form-tab-button-active', button.dataset.tabTarget === tabTarget);
+        });
+
+        termoFormTabPanels.forEach((panel) => {
+          panel.classList.toggle('dsc-form-tab-panel-active', panel.id === `credenciamento-termo-tab-${tabTarget}`);
+        });
+
+        if (tabTarget === 'ordens-servico') {
+          void loadRelatedOrdemServicoItems(termoAdesaoInput.value);
+        }
+      }
       const normalizeCep = (value) => {
         const digits = value.replace(/\D/g, '').slice(0, 8);
 
@@ -4036,6 +4237,7 @@
           }
         });
         feedback.textContent = '';
+        setRelatedOrdemServicoFeedback('');
       };
       const getCredenciadaLookupDiagnostic = () => {
         const cnpjCpf = normalizeCnpjCpf(cnpjCpfInput.value);
@@ -4208,6 +4410,7 @@
         syncPopupPageState();
         formTitle.textContent = 'CADASTRO DE TERMO';
         saveButton.textContent = isEditing ? 'Salvar alteracao' : 'Salvar credenciamento termo';
+        setActiveCredenciamentoTermoTab('dados-termo');
         syncCreateOnlyFieldVisibility();
         setFormReadOnly(isReadOnly);
       };
@@ -4233,6 +4436,7 @@
         resetContratoState();
         resetDespachoRescisaoState();
         resetRescisaoState();
+        resetRelatedOrdemServicoGrid();
         inheritedAditivoTermoAdesao = '';
         currentTermoTpOptante = '';
         applyCreateTermoDefaults();
@@ -4241,6 +4445,7 @@
         syncEmitRescisaoButtonState();
         void syncDespachoButtonState();
         void syncLastAditivoEditorButtonState();
+        setActiveCredenciamentoTermoTab('dados-termo');
       };
 
       const fillForm = (item) => {
@@ -4290,6 +4495,7 @@
         syncEmitRescisaoButtonState();
         void syncDespachoButtonState();
         void syncLastAditivoEditorButtonState();
+        void loadRelatedOrdemServicoItems(item.termo_adesao || '');
       };
 
       const refreshRelatedFieldsOnFormEntry = async () => {
@@ -4552,11 +4758,11 @@
             <td>${item.status_termo || ''}</td>
             <td>
               <div class="dsc-grid-actions">
-                <button type="button" class="dsc-grid-action-button" data-action="linked-aditivos" data-codigo="${item.codigo}">Aditivos</button>
-                <button type="button" class="dsc-grid-action-button" data-action="history" data-codigo="${item.codigo}">Historico</button>
-                <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}">Consulta</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Corrigir</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}">Excluir</button>
+                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="linked-aditivos" data-codigo="${item.codigo}">Aditivos</button>
+                <button type="button" class="dsc-grid-action-button dsc-grid-action-view" data-action="history" data-codigo="${item.codigo}">Historico</button>
+                <button type="button" class="dsc-grid-action-button dsc-grid-action-view" data-action="view" data-codigo="${item.codigo}">Consulta</button>
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Corrigir</button>` : ''}
+                ${hasDeletePermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}">Excluir</button>` : ''}
               </div>
             </td>
           `;
@@ -4615,6 +4821,11 @@
       };
 
       const handleDeleteLastLinkedAditivo = async () => {
+        if (!hasDeletePermission()) {
+          showDeletePermissionDeniedMessage();
+          return;
+        }
+
         const termoAdesao = normalizeTermoAdesao(currentLinkedAditivosTermoAdesao);
         const lastItem = Array.isArray(currentLinkedAditivosItems) ? currentLinkedAditivosItems.at(-1) : null;
 
@@ -5403,6 +5614,11 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
       emitRescisaoButton.addEventListener('click', () => {
         void handleEmitRescisao();
       });
+      termoFormTabButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          setActiveCredenciamentoTermoTab(button.dataset.tabTarget || 'dados-termo');
+        });
+      });
       closeFormModalButton.addEventListener('click', hideForm);
       closeLastAditivoButton.addEventListener('click', hideLastAditivoEditor);
       cancelLastAditivoButton.addEventListener('click', hideLastAditivoEditor);
@@ -5947,6 +6163,16 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
         }
 
         const row = button.closest('tr');
+
+      relatedOrdemServicoGridBody.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-action="open-os"]');
+
+        if (!button) {
+          return;
+        }
+
+        openOrdemServicoPopupByCodigo(button.dataset.codigo || '', 'view');
+      });
         const item = row?.dataset.item ? JSON.parse(row.dataset.item) : null;
         const { action, codigo } = button.dataset;
 
@@ -5990,6 +6216,10 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
           if (!item) {
             return;
           }
+          if (!hasEditPermission()) {
+            showEditPermissionDeniedMessage();
+            return;
+          }
           clearForm();
           fillForm(item);
           showForm('edit');
@@ -5998,6 +6228,11 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
         }
 
         if (action === 'delete') {
+          if (!hasDeletePermission()) {
+            showDeletePermissionDeniedMessage();
+            return;
+          }
+
           if (!codigo || !window.confirm('Confirma a exclusao do registro?')) {
             return;
           }

@@ -16,6 +16,12 @@ import type {
   PerfilAcessoPerfilOption,
   PerfilAcessoPermissao,
 } from './services/perfilAcesso'
+import {
+  getDeletePermissionDeniedMessage,
+  getEditPermissionDeniedMessage,
+  hasDeletableFormPermission,
+  hasEditableFormPermission,
+} from './utils/formAccess'
 
 type PerfilAcessoSortField = 'codigo' | 'perfilDescricao' | 'acessoPaginaDescricao' | 'permissao'
 type FormMode = 'create' | 'edit'
@@ -24,6 +30,7 @@ type PerfilAcessoMatrixSelection = PerfilAcessoPermissao | ''
 
 const PAGE_SIZE = 20
 const PERMISSAO_OPTIONS: PerfilAcessoPermissao[] = ['todos', 'consulta', 'alteracao', 'exclusao', 'execucao']
+const FORM_ACCESS_KEY = 'form_perfacs023'
 
 const getSortIndicator = (
   sortBy: PerfilAcessoSortField,
@@ -41,6 +48,8 @@ const getPerfilLabel = (item: PerfilAcessoPerfilOption) => `${item.codigo} - ${i
 const getAcessoPaginaLabel = (item: PerfilAcessoPaginaOption) => [item.sigla, item.descricao].filter(Boolean).join(' - ')
 
 export default function PerfilAcessoView() {
+  const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY)
+  const hasDeletePermission = hasDeletableFormPermission(FORM_ACCESS_KEY)
   const [items, setItems] = useState<PerfilAcessoItem[]>([])
   const [perfilOptions, setPerfilOptions] = useState<PerfilAcessoPerfilOption[]>([])
   const [acessoPaginaOptions, setAcessoPaginaOptions] = useState<PerfilAcessoPaginaOption[]>([])
@@ -258,6 +267,12 @@ export default function PerfilAcessoView() {
   }
 
   const handleEdit = (item: PerfilAcessoItem) => {
+    if (!hasEditPermission) {
+      setStatusTone('error')
+      setStatusMessage(getEditPermissionDeniedMessage('PerfilAcesso'))
+      return
+    }
+
     setPerfilCodigo(item.perfilCodigo)
     setEditingPerfilCodigo(item.perfilCodigo)
     setFormMode('edit')
@@ -269,6 +284,12 @@ export default function PerfilAcessoView() {
   }
 
   const handleDelete = async (item: PerfilAcessoItem) => {
+    if (!hasDeletePermission) {
+      setStatusTone('error')
+      setStatusMessage(getDeletePermissionDeniedMessage('PerfilAcesso'))
+      return
+    }
+
     if (!window.confirm(`Excluir o PerfilAcesso ${item.codigo} - ${item.perfilDescricao} / ${item.acessoPaginaDescricao}?`)) {
       return
     }
@@ -558,17 +579,17 @@ export default function PerfilAcessoView() {
                   <td>{item.permissao}</td>
                   <td>
                     <div className="dre-row-actions">
-                      <button type="button" className="row-action-button row-action-edit" onClick={() => handleEdit(item)}>
+                      {hasEditPermission ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleEdit(item)}>
                         Alterar
-                      </button>
-                      <button
+                      </button> : null}
+                      {hasDeletePermission ? <button
                         type="button"
                         className="row-action-button row-action-delete"
                         onClick={() => void handleDelete(item)}
                         disabled={isDeletingCodigo === item.codigo}
                       >
                         Excluir
-                      </button>
+                      </button> : null}
                     </div>
                   </td>
                 </tr>
