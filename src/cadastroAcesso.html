@@ -165,8 +165,8 @@
         hasDeletableFormPermission: () => false,
         getDeletePermissionDeniedMessage: (formLabel) => `Usuario sem permissao de exclusao para o formulario ${formLabel}.`,
       };
-      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_cadace024');
-      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_cadace024');
+      const hasEditPermission = () => formPermissions.hasEditableFormPermission('form_cadace024') || formPermissions.hasEditableFormPermission('menu_controle_acesso');
+      const hasDeletePermission = () => formPermissions.hasDeletableFormPermission('form_cadace024') || formPermissions.hasDeletableFormPermission('menu_controle_acesso');
       const showEditPermissionDeniedMessage = () => {
         window.alert(formPermissions.getEditPermissionDeniedMessage('Cadastro de Acesso'));
       };
