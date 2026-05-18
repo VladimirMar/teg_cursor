@@ -1,9 +1,11 @@
+import { spawn } from 'node:child_process'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:3001'
 const reportPath = process.env.SMOKE_REPORT_PATH ?? ''
-const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo'])
+const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo', 'apontamento-servicos'])
 const suite = (process.argv[2] ?? process.env.SMOKE_SUITE ?? 'all').trim().toLowerCase()
 
 const report = {
@@ -199,6 +201,29 @@ const recordImport = (suiteReport, label, payload) => {
           message: item.message,
         }))
       : [],
+  })
+}
+
+const runNodeScript = (scriptUrl, args = []) => {
+  return new Promise((resolve, reject) => {
+    const childProcess = spawn(process.execPath, [fileURLToPath(scriptUrl), ...args], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        API_BASE_URL: process.env.API_BASE_URL ?? baseUrl,
+      },
+      stdio: 'inherit',
+    })
+
+    childProcess.once('error', reject)
+    childProcess.once('exit', (code) => {
+      if (code === 0) {
+        resolve(undefined)
+        return
+      }
+
+      reject(new Error(`Script ${fileURLToPath(scriptUrl)} falhou com codigo ${code ?? 'desconhecido'}.`))
+    })
   })
 }
 
@@ -778,6 +803,22 @@ const runMarcaModeloSmoke = async () => {
   }
 }
 
+const runApontamentoServicosSmoke = async () => {
+  console.log('Smoke test da API Apontamento Servicos')
+  const suiteReport = recordSuite('apontamento-servicos')
+
+  try {
+    await runNodeScript(new URL('./verify-apontamento-servicos-ordering.mjs', import.meta.url))
+    logStep('ordenacao alfabetica oficial por empresa/condutor executada com sucesso')
+    await runNodeScript(new URL('./verify-apontamento-servicos-negative-import.mjs', import.meta.url))
+    logStep('importacao negativa oficial executada com sucesso para os tipos EMEI, EMEF, EMEE, CEI e CCA')
+    finalizeSuite(suiteReport, 'passed')
+  } catch (error) {
+    finalizeSuite(suiteReport, 'failed')
+    throw error
+  }
+}
+
 try {
   if (suite === 'all' || suite === 'condutor') {
     await runCondutorSmoke()
@@ -821,6 +862,14 @@ try {
 
   if (suite === 'all' || suite === 'marca-modelo') {
     await runMarcaModeloSmoke()
+  }
+
+  if (suite === 'all') {
+    console.log('')
+  }
+
+  if (suite === 'all' || suite === 'apontamento-servicos') {
+    await runApontamentoServicosSmoke()
   }
 
   report.status = 'passed'

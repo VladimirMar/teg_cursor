@@ -4,9 +4,9 @@ import './App.css'
 import AcessoPaginaView from './AcessoPaginaView'
 import ApontamentoServicosView from './ApontamentoServicosView'
 import ApuracaoServicosView from './ApuracaoServicosView'
-import ApuracaoServicosStatusView from './ApuracaoServicosStatusView'
 import PerfilAcessoView from './PerfilAcessoView'
 import PerfilView from './PerfilView'
+import ResumoFinanceiroView from './ResumoFinanceiroView'
 import { authenticate } from './services/auth'
 import { createDreItem, deleteDreItem, listDreItemsPaginated, updateDreItem } from './services/dre'
 import type { DreItem } from './services/dre'
@@ -43,10 +43,13 @@ import type { DiasLetivosItem, DiasLetivosSortField } from './services/diasLetiv
 import {
   APURACAO_FINANCEIRA_STATUS_OPTIONS,
   deleteApuracaoFinanceiraItem,
+  getApuracaoFinanceiraChildTotalsSummary,
   listApuracaoFinanceiraItemsPaginated,
   processApuracaoFinanceiraData,
+  updateApuracaoFinanceiraItem,
 } from './services/apuracaoFinanceira'
 import type {
+  ApuracaoFinanceiraChildTotalsSummary,
   ApuracaoFinanceiraItem,
   ApuracaoFinanceiraKey,
   ApuracaoFinanceiraProcessResult,
@@ -69,6 +72,8 @@ type ApuracaoFinanceiraGridRow = {
   tipoPessoaFormValue: ApuracaoFinanceiraTipoPessoaFormValue
   tipoPessoaLabel: string
 }
+
+type ApuracaoFinanceiraFormMode = 'create' | 'view' | 'batch-status'
 
 const APURACAO_FINANCEIRA_DELETE_STATUS = 'A processar'
 
@@ -183,7 +188,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'apuracaoServicosStatus' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -193,7 +198,7 @@ type TitularSortField = 'codigo' | 'cnpj_cpf' | 'titular'
 type MarcaModeloSortField = 'codigo' | 'descricao'
 type SeguradoraSortField = 'codigo' | 'controle' | 'descricao'
 type FormMode = 'create' | 'edit' | 'view'
-type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'operacionalAdministrativo' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
+type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'operacionalAdministrativo' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
 
 type DashboardDrillDownContext = {
   dreCodigo: string
@@ -263,6 +268,25 @@ const formatAliquotaOptanteValue = (value: number) => {
   })
 }
 
+const formatIntegerValue = (value: number) => {
+  return value.toLocaleString('pt-BR')
+}
+
+const formatFourDecimalValue = (value: number | string) => {
+  const numericValue = typeof value === 'number'
+    ? value
+    : Number.parseFloat(value.replace(',', '.'))
+
+  if (!Number.isFinite(numericValue)) {
+    return '0,0000'
+  }
+
+  return numericValue.toLocaleString('pt-BR', {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  })
+}
+
 const currencyInputFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -321,6 +345,8 @@ const getDefaultCollapsedMenuGroups = (): Record<CollapsedMenuGroup, boolean> =>
   ordemServico: true,
   veiculo: true,
   operacionalFinanceiro: true,
+  apuracaoFinanceira: true,
+  apuracaoServicos: true,
   acesso: true,
   cadastrosOperacional: true,
   cadastrosFinanceiro: true,
@@ -346,10 +372,13 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'veiculo':
     case 'veiculoHistorico':
       return ['operacional', 'operacionalAdministrativo', 'veiculo']
+    case 'resumoFinanceiro':
+      return ['operacional', 'operacionalFinanceiro']
     case 'apuracaoFinanceira':
+      return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira']
     case 'apuracaoServicos':
     case 'apontamentoServicos':
-      return ['operacional', 'operacionalFinanceiro']
+      return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira', 'apuracaoServicos']
     case 'financeiroReprocessamento':
       return ['operacional', 'operacionalAdministrativo']
     case 'dre':
@@ -514,9 +543,9 @@ const operationalAdministrativeViews: ActiveView[] = [
 ]
 const operationalFinanceiroViews: ActiveView[] = [
   'apuracaoFinanceira',
+  'resumoFinanceiro',
   'apuracaoServicos',
   'apontamentoServicos',
-  'apuracaoServicosStatus',
 ]
 const cadastroOperationalViews: ActiveView[] = [
   'dre',
@@ -556,10 +585,10 @@ const menuAccessByView: Record<ActiveView, string> = {
   tipoEscola: 'menu_tipo_escola',
   aliquotaOptante: 'menu_aliquota_optante',
   diasLetivos: 'menu_dias_letivos',
+  resumoFinanceiro: 'menu_resumo_financeiro',
   apuracaoFinanceira: 'menu_apuracao_financeira',
   apuracaoServicos: 'menu_apuracao_servicos',
   apontamentoServicos: 'menu_apuracao_servicos',
-  apuracaoServicosStatus: 'menu_aprovacao_digitacao',
   modalBancadaTpPagtoCondicao: 'menu_modal_bancada_tp_pagto_condicao',
   modalBancadaTpPagtoCondicaoValor: 'menu_modal_bancada_tp_pagto_condicao_valor',
   kmValor: 'menu_km_valor',
@@ -1169,6 +1198,10 @@ function isMenuKeyAllowed(key: string, allowedKeys: Set<string>) {
 }
 
 function isViewAllowed(view: ActiveView, allowedKeys: Set<string>) {
+  if (view === 'resumoFinanceiro') {
+    return isMenuKeyAllowed('menu_resumo_financeiro', allowedKeys) || isMenuKeyAllowed('menu_apuracao_financeira', allowedKeys)
+  }
+
   return isMenuKeyAllowed(menuAccessByView[view], allowedKeys)
 }
 
@@ -1441,10 +1474,16 @@ function App() {
   const [isLoadingApuracaoFinanceira, setIsLoadingApuracaoFinanceira] = useState(false)
   const isSavingApuracaoFinanceira = false
   const [isProcessingApuracaoFinanceira, setIsProcessingApuracaoFinanceira] = useState(false)
+  const [isUpdatingApuracaoFinanceiraBatchStatus, setIsUpdatingApuracaoFinanceiraBatchStatus] = useState(false)
   const [isDeletingApuracaoFinanceira, setIsDeletingApuracaoFinanceira] = useState(false)
   const [isApuracaoFinanceiraFormVisible, setIsApuracaoFinanceiraFormVisible] = useState(false)
+  const [isApuracaoFinanceiraChildTotalsVisible, setIsApuracaoFinanceiraChildTotalsVisible] = useState(false)
+  const [isLoadingApuracaoFinanceiraChildTotals, setIsLoadingApuracaoFinanceiraChildTotals] = useState(false)
+  const [apuracaoFinanceiraChildTotals, setApuracaoFinanceiraChildTotals] = useState<ApuracaoFinanceiraChildTotalsSummary | null>(null)
+  const [apuracaoFinanceiraChildTotalsStatusMessage, setApuracaoFinanceiraChildTotalsStatusMessage] = useState('')
+  const [apuracaoFinanceiraChildTotalsStatusTone, setApuracaoFinanceiraChildTotalsStatusTone] = useState<StatusTone>('idle')
   const [editingApuracaoFinanceiraKey, setEditingApuracaoFinanceiraKey] = useState<ApuracaoFinanceiraKey | null>(null)
-  const [apuracaoFinanceiraFormMode, setApuracaoFinanceiraFormMode] = useState<FormMode>('create')
+  const [apuracaoFinanceiraFormMode, setApuracaoFinanceiraFormMode] = useState<ApuracaoFinanceiraFormMode>('create')
   const [apuracaoFinanceiraSearch, setApuracaoFinanceiraSearch] = useState('')
   const [apuracaoFinanceiraPage, setApuracaoFinanceiraPage] = useState(1)
   const [apuracaoFinanceiraTotalPages, setApuracaoFinanceiraTotalPages] = useState(1)
@@ -3800,6 +3839,14 @@ function App() {
     setIsApuracaoFinanceiraFormVisible(true)
   }
 
+  const handleStartBatchUpdateApuracaoFinanceira = () => {
+    resetApuracaoFinanceiraForm()
+    setApuracaoFinanceiraFormMode('batch-status')
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage('')
+    setIsApuracaoFinanceiraFormVisible(true)
+  }
+
   const handleToggleApuracaoFinanceiraSelectedDre = (codigo: string) => {
     setApuracaoFinanceiraSelectedDreCodigos((currentSelected) => (
       currentSelected.includes(codigo)
@@ -4811,6 +4858,47 @@ function App() {
     setApuracaoFinanceiraStatusMessage('')
   }, [resetApuracaoFinanceiraForm])
 
+  const handleCloseApuracaoFinanceiraChildTotals = useCallback(() => {
+    setIsApuracaoFinanceiraChildTotalsVisible(false)
+    setIsLoadingApuracaoFinanceiraChildTotals(false)
+    setApuracaoFinanceiraChildTotals(null)
+    setApuracaoFinanceiraChildTotalsStatusTone('idle')
+    setApuracaoFinanceiraChildTotalsStatusMessage('')
+  }, [])
+
+  const handleOpenApuracaoFinanceiraChildTotals = useCallback(async (row: ApuracaoFinanceiraGridRow) => {
+    setIsApuracaoFinanceiraChildTotalsVisible(true)
+    setIsLoadingApuracaoFinanceiraChildTotals(true)
+    setApuracaoFinanceiraChildTotals(null)
+    setApuracaoFinanceiraChildTotalsStatusTone('idle')
+    setApuracaoFinanceiraChildTotalsStatusMessage(`Carregando valores aglutinados de ${row.representativeItem.mesAno} / ${row.dreText} / ${row.representativeItem.revisao} / ${row.tipoPessoaLabel}.`)
+
+    try {
+      const summary = await getApuracaoFinanceiraChildTotalsSummary({
+        mesAno: row.representativeItem.mesAno,
+        dreCodigo: row.representativeItem.dreCodigo,
+        revisao: row.representativeItem.revisao,
+        tipoPessoa: row.representativeItem.tipoPessoa,
+      })
+
+      setApuracaoFinanceiraChildTotals(summary)
+      setApuracaoFinanceiraChildTotalsStatusTone('success')
+      setApuracaoFinanceiraChildTotalsStatusMessage('Valores aglutinados carregados a partir de Total Servicos, refletindo os filhos alimentados por Apontamento Servicos.')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao consultar os valores aglutinados de Total Servicos.'
+      const statusCode = error instanceof Error && typeof (error as Error & { statusCode?: number }).statusCode === 'number'
+        ? (error as Error & { statusCode?: number }).statusCode
+        : 500
+
+      setApuracaoFinanceiraChildTotalsStatusTone(statusCode === 404 ? 'warning' : 'error')
+      setApuracaoFinanceiraChildTotalsStatusMessage(message)
+    } finally {
+      setIsLoadingApuracaoFinanceiraChildTotals(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!isApuracaoFinanceiraFormVisible) {
       return
@@ -4819,7 +4907,7 @@ function App() {
     document.body.classList.add('management-modal-open')
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isSavingApuracaoFinanceira) {
+      if (event.key === 'Escape' && !(isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus)) {
         handleCancelApuracaoFinanceiraForm()
       }
     }
@@ -4830,7 +4918,7 @@ function App() {
       document.body.classList.remove('management-modal-open')
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [handleCancelApuracaoFinanceiraForm, isApuracaoFinanceiraFormVisible, isSavingApuracaoFinanceira])
+  }, [handleCancelApuracaoFinanceiraForm, isApuracaoFinanceiraFormVisible, isProcessingApuracaoFinanceira, isSavingApuracaoFinanceira, isUpdatingApuracaoFinanceiraBatchStatus])
 
   useEffect(() => {
     if (!isAliquotaOptanteFormVisible) {
@@ -5591,6 +5679,58 @@ function App() {
     }
   }
 
+  const validateApuracaoFinanceiraBatchStatusSubmission = () => {
+    if (apuracaoFinanceiraFormMode === 'view') {
+      setApuracaoFinanceiraStatusTone('idle')
+      setApuracaoFinanceiraStatusMessage('Consulta em modo somente leitura.')
+      return null
+    }
+
+    const normalizedMesAno = normalizeMonthYearInput(apuracaoFinanceiraMesAno)
+    const normalizedSelectedDreCodigos = [...new Set(apuracaoFinanceiraSelectedDreCodigos)]
+    let hasError = false
+
+    setApuracaoFinanceiraMesAnoError('')
+    setApuracaoFinanceiraDreCodigoError('')
+    setApuracaoFinanceiraSelectedDresError('')
+    setApuracaoFinanceiraRevisaoError('')
+    setApuracaoFinanceiraTipoPessoaError('')
+
+    if (!isValidMonthYear(normalizedMesAno)) {
+      setApuracaoFinanceiraMesAnoError('Mes/ano invalido. Use o formato mm/aaaa.')
+      hasError = true
+    }
+
+    if (normalizedSelectedDreCodigos.length === 0) {
+      setApuracaoFinanceiraSelectedDresError('DRE devera ser selecionada.')
+      hasError = true
+    }
+
+    if (!APURACAO_FINANCEIRA_TIPO_PESSOA_FORM_OPTIONS.some((item) => item.value === apuracaoFinanceiraTipoPessoa)) {
+      setApuracaoFinanceiraTipoPessoaError('Tipo pessoa invalido.')
+      hasError = true
+    }
+
+    if (!APURACAO_FINANCEIRA_STATUS_OPTIONS.includes(apuracaoFinanceiraSituacao)) {
+      hasError = true
+    }
+
+    if (hasError) {
+      setApuracaoFinanceiraStatusTone('error')
+      setApuracaoFinanceiraStatusMessage('Corrija os campos da apuracao financeira para continuar.')
+      return null
+    }
+
+    return {
+      normalizedMesAno,
+      normalizedSelectedDreCodigos,
+      normalizedTipoPessoas: apuracaoFinanceiraTipoPessoa === 'TODOS'
+        ? APURACAO_TIPO_PESSOA_OPTIONS.map((item) => item.value)
+        : [apuracaoFinanceiraTipoPessoa],
+      situacao: apuracaoFinanceiraSituacao,
+    }
+  }
+
   const validateApuracaoFinanceiraPreviousRevision = useCallback(async (options: {
     mesAno: string
     revisao: number
@@ -5695,8 +5835,8 @@ function App() {
         .map((item) => `${item.dreSigla || item.dreCodigo} / ${formatApuracaoTipoPessoaLabel(item.tipoPessoa)}: ${item.createdApuracaoServicosCount}`)
         .join('; ')
       const successMessage = submission.editingKey
-        ? `${summary.totalProcessedDres} DRE(s) reprocessadas, registros anteriores removidos e ${summary.totalCreatedApuracaoServicos} registro(s) recalculado(s) em Apuracao Servicos. Inclusoes por DRE/pessoa: ${processedDresMessage || 'nenhuma'}.`
-        : `${summary.totalProcessedDres} DRE(s) processadas, ${summary.totalActiveOrdemServicos} OS ativa(s) e ${summary.totalCreatedApuracaoServicos} registro(s) novo(s) em Apuracao Servicos. Inclusoes por DRE/pessoa: ${processedDresMessage || 'nenhuma'}.`
+        ? `${summary.totalProcessedDres} DRE(s) reprocessadas, registros anteriores removidos e ${summary.totalCreatedApuracaoServicos} registro(s) recalculado(s) em Total Servicos. Inclusoes por DRE/pessoa: ${processedDresMessage || 'nenhuma'}.`
+        : `${summary.totalProcessedDres} DRE(s) processadas, ${summary.totalActiveOrdemServicos} OS ativa(s) e ${summary.totalCreatedApuracaoServicos} registro(s) novo(s) em Total Servicos. Inclusoes por DRE/pessoa: ${processedDresMessage || 'nenhuma'}.`
 
       resetApuracaoFinanceiraForm()
       setIsApuracaoFinanceiraFormVisible(false)
@@ -5715,6 +5855,114 @@ function App() {
       setApuracaoFinanceiraStatusMessage(message)
     } finally {
       setIsProcessingApuracaoFinanceira(false)
+    }
+  }
+
+  const handleBatchStatusUpdateApuracaoFinanceira = async () => {
+    const submission = validateApuracaoFinanceiraBatchStatusSubmission()
+
+    if (!submission) {
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Alterar a situacao dos registros filtrados para ${submission.situacao}?`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsUpdatingApuracaoFinanceiraBatchStatus(true)
+    setApuracaoFinanceiraStatusTone('idle')
+    setApuracaoFinanceiraStatusMessage('Atualizando situacao da apuracao financeira em lote...')
+
+    try {
+      const pageSize = 50
+      const allItems: ApuracaoFinanceiraItem[] = []
+
+      for (const tipoPessoa of submission.normalizedTipoPessoas) {
+        for (const dreCodigo of submission.normalizedSelectedDreCodigos) {
+          let currentPage = 1
+          let totalPages = 1
+
+          do {
+            const result = await listApuracaoFinanceiraItemsPaginated({
+              mesAno: submission.normalizedMesAno,
+              dreCodigo,
+              tipoPessoa,
+              page: currentPage,
+              pageSize,
+            })
+
+            allItems.push(...result.items)
+            totalPages = result.totalPages
+            currentPage += 1
+          } while (currentPage <= totalPages)
+        }
+      }
+
+      const uniqueItems = Array.from(new Map(allItems.map((item) => [formatApuracaoFinanceiraKey(item), item])).values())
+
+      if (uniqueItems.length === 0) {
+        setApuracaoFinanceiraStatusTone('warning')
+        setApuracaoFinanceiraStatusMessage('Nenhum registro de apuracao financeira foi encontrado para os filtros informados.')
+        return
+      }
+
+      const itemsToUpdate = uniqueItems.filter((item) => item.situacao !== submission.situacao)
+
+      const results = await Promise.allSettled(
+        itemsToUpdate.map((item) => updateApuracaoFinanceiraItem(
+          {
+            mesAno: item.mesAno,
+            dreCodigo: item.dreCodigo,
+            revisao: item.revisao,
+            tipoPessoa: item.tipoPessoa,
+          },
+          {
+            mesAno: item.mesAno,
+            dreCodigo: item.dreCodigo,
+            revisao: item.revisao,
+            tipoPessoa: item.tipoPessoa,
+            situacao: submission.situacao,
+          },
+        )),
+      )
+
+      const fulfilledResults = results.filter((result): result is PromiseFulfilledResult<ApuracaoFinanceiraItem> => result.status === 'fulfilled')
+      const rejectedResults = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      const totalMatched = uniqueItems.length
+      const totalUpdated = fulfilledResults.length
+      const unchangedCount = totalMatched - itemsToUpdate.length
+      const rejectedMessage = rejectedResults
+        .map((result) => (result.reason instanceof Error ? result.reason.message : 'Falha ao alterar uma parte dos registros selecionados.'))
+        .join(' ')
+      const statusTone: StatusTone = rejectedResults.length > 0 || totalUpdated === 0 ? 'warning' : 'success'
+      const successMessage = [
+        `${totalUpdated} registro(s) alterado(s) para ${submission.situacao}.`,
+        `${totalMatched} registro(s) localizado(s) para os filtros informados.`,
+        unchangedCount > 0 ? `${unchangedCount} registro(s) ja estava(m) com essa situacao.` : '',
+        rejectedMessage,
+      ].filter(Boolean).join(' ')
+
+      resetApuracaoFinanceiraForm()
+      setIsApuracaoFinanceiraFormVisible(false)
+      setApuracaoFinanceiraStatusTone(statusTone)
+      setApuracaoFinanceiraStatusMessage(successMessage)
+      await loadApuracaoFinanceiraItems(apuracaoFinanceiraPage, { preserveStatusMessage: true })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Falha ao alterar a situacao em lote da apuracao financeira.'
+      const statusCode = error instanceof Error && typeof (error as Error & { statusCode?: number }).statusCode === 'number'
+        ? (error as Error & { statusCode?: number }).statusCode
+        : null
+
+      setApuracaoFinanceiraStatusTone(statusCode === 404 ? 'warning' : 'error')
+      setApuracaoFinanceiraStatusMessage(message)
+    } finally {
+      setIsUpdatingApuracaoFinanceiraBatchStatus(false)
     }
   }
 
@@ -7388,7 +7636,7 @@ function App() {
                 </li> : null}
                 {hasOperationalFinanceiroAccess ? <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem menu-subitem-toggle ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalFinanceiro')}
                     role="button"
                     aria-expanded={!collapsedMenuGroups.operacionalFinanceiro}
@@ -7404,29 +7652,69 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.operacionalFinanceiro ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.operacionalFinanceiro ? 'menu-sublist-hidden' : ''}`}>
-                    {isViewAllowed('apuracaoFinanceira', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoFinanceira' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('apuracaoFinanceira')}
+                    {isViewAllowed('resumoFinanceiro', menuPermissionKeys) ? <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'resumoFinanceiro' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('resumoFinanceiro')}
                     >
-                      Apuracao Financeira
+                      Resumo Financeiro
                     </li> : null}
-                    {isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoServicos' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('apuracaoServicos')}
-                    >
-                      Apuracao Servicos
-                    </li> : null}
-                    {isViewAllowed('apontamentoServicos', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('apontamentoServicos')}
-                    >
-                      Apontamento Servicos
-                    </li> : null}
-                    {isViewAllowed('apuracaoServicosStatus', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'apuracaoServicosStatus' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('apuracaoServicosStatus')}
-                    >
-                      Aprovacao Digitacao
+                    {isViewAllowed('apuracaoFinanceira', menuPermissionKeys) || isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
+                      <div
+                        className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
+                        onClick={() => {
+                          if (isViewAllowed('apuracaoFinanceira', menuPermissionKeys)) {
+                            setActiveView('apuracaoFinanceira')
+                          }
+                          toggleMenuGroup('apuracaoFinanceira')
+                        }}
+                        role="button"
+                        aria-expanded={!collapsedMenuGroups.apuracaoFinanceira}
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            if (isViewAllowed('apuracaoFinanceira', menuPermissionKeys)) {
+                              setActiveView('apuracaoFinanceira')
+                            }
+                            toggleMenuGroup('apuracaoFinanceira')
+                          }
+                        }}
+                      >
+                        <span className="menu-subitem-label">Apuracao Financeira</span>
+                        <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.apuracaoFinanceira ? '▸' : '▾'}</span>
+                      </div>
+                      <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.apuracaoFinanceira ? 'menu-sublist-hidden' : ''}`}>
+                        {isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
+                          <div
+                            className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
+                            onClick={() => {
+                              setActiveView('apuracaoServicos')
+                              toggleMenuGroup('apuracaoServicos')
+                            }}
+                            role="button"
+                            aria-expanded={!collapsedMenuGroups.apuracaoServicos}
+                            tabIndex={0}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                setActiveView('apuracaoServicos')
+                                toggleMenuGroup('apuracaoServicos')
+                              }
+                            }}
+                          >
+                            <span className="menu-subitem-label">Total Servicos</span>
+                            <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.apuracaoServicos ? '▸' : '▾'}</span>
+                          </div>
+                          <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.apuracaoServicos ? 'menu-sublist-hidden' : ''}`}>
+                            {isViewAllowed('apontamentoServicos', menuPermissionKeys) ? <li
+                              className={`menu-subitem menu-subitem-nested ${activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
+                              onClick={() => setActiveView('apontamentoServicos')}
+                            >
+                              Apontamento Servicos
+                            </li> : null}
+                          </ul>
+                        </li> : null}
+                      </ul>
                     </li> : null}
                   </ul>
                 </li> : null}
@@ -9584,12 +9872,12 @@ function App() {
               </div>
             </div>
           </>
+        ) : activeView === 'resumoFinanceiro' ? (
+          <ResumoFinanceiroView />
         ) : activeView === 'apuracaoServicos' ? (
           <ApuracaoServicosView />
         ) : activeView === 'apontamentoServicos' ? (
           <ApontamentoServicosView />
-        ) : activeView === 'apuracaoServicosStatus' ? (
-          <ApuracaoServicosStatusView />
         ) : activeView === 'modalBancadaTpPagtoCondicao' ? (
           <>
             <div className="content-copy">
@@ -12497,6 +12785,14 @@ function App() {
                 >
                   Inserir registro
                 </button>
+                <button
+                  type="button"
+                  className="secondary-button dre-insert-button"
+                  onClick={handleStartBatchUpdateApuracaoFinanceira}
+                  disabled={isSavingApuracaoFinanceira || isDeletingApuracaoFinanceira || isLoadingApuracaoFinanceiraOptions}
+                >
+                  Alterar situacao em bloco
+                </button>
 
                 <form className="management-filter-form" onSubmit={handleFilterApuracaoFinanceiraSubmit}>
                   <input
@@ -12520,7 +12816,7 @@ function App() {
                   className="management-modal-overlay"
                   role="presentation"
                   onClick={(event) => {
-                    if (event.target === event.currentTarget && !isSavingApuracaoFinanceira) {
+                    if (event.target === event.currentTarget && !(isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus)) {
                       handleCancelApuracaoFinanceiraForm()
                     }
                   }}
@@ -12554,7 +12850,13 @@ function App() {
                       </div>
 
                       <p className="management-modal-subtitle">
-                        {apuracaoFinanceiraFormMode === 'view' ? 'Consulta de registro' : editingApuracaoFinanceiraKey ? 'Alterar registro' : 'Novo registro'}
+                        {apuracaoFinanceiraFormMode === 'batch-status'
+                          ? 'Alterar situacao em bloco'
+                          : apuracaoFinanceiraFormMode === 'view'
+                            ? 'Consulta de registro'
+                            : editingApuracaoFinanceiraKey
+                              ? 'Alterar registro'
+                              : 'Novo registro'}
                       </p>
 
                       <div className="apuracao-financeira-inline-fields">
@@ -12567,26 +12869,28 @@ function App() {
                             placeholder="mm/aaaa"
                             value={apuracaoFinanceiraMesAno}
                             onChange={(event) => setApuracaoFinanceiraMesAno(normalizeMonthYearInput(event.target.value))}
-                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || apuracaoFinanceiraFormMode !== 'create'}
+                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus || apuracaoFinanceiraFormMode === 'view'}
                             aria-invalid={Boolean(apuracaoFinanceiraMesAnoError)}
                           />
                           {apuracaoFinanceiraMesAnoError ? <strong className="field-error">{apuracaoFinanceiraMesAnoError}</strong> : null}
                         </label>
 
-                        <label className="field-group" htmlFor="apuracao-financeira-revisao">
-                          <span>Revisao</span>
-                          <input
-                            id="apuracao-financeira-revisao"
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={apuracaoFinanceiraRevisao}
-                            onChange={(event) => setApuracaoFinanceiraRevisao(event.target.value)}
-                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || apuracaoFinanceiraFormMode !== 'create'}
-                            aria-invalid={Boolean(apuracaoFinanceiraRevisaoError)}
-                          />
-                          {apuracaoFinanceiraRevisaoError ? <strong className="field-error">{apuracaoFinanceiraRevisaoError}</strong> : null}
-                        </label>
+                        {apuracaoFinanceiraFormMode === 'create' ? (
+                          <label className="field-group" htmlFor="apuracao-financeira-revisao">
+                            <span>Revisao</span>
+                            <input
+                              id="apuracao-financeira-revisao"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={apuracaoFinanceiraRevisao}
+                              onChange={(event) => setApuracaoFinanceiraRevisao(event.target.value)}
+                              disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus || apuracaoFinanceiraFormMode !== 'create'}
+                              aria-invalid={Boolean(apuracaoFinanceiraRevisaoError)}
+                            />
+                            {apuracaoFinanceiraRevisaoError ? <strong className="field-error">{apuracaoFinanceiraRevisaoError}</strong> : null}
+                          </label>
+                        ) : null}
                       </div>
 
                       <label className="field-group" htmlFor="apuracao-financeira-dre">
@@ -12598,7 +12902,7 @@ function App() {
                                 type="button"
                                 className="secondary-button apuracao-financeira-dre-toggle"
                                 onClick={handleToggleAllApuracaoFinanceiraDres}
-                                disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isLoadingApuracaoFinanceiraActiveDres || apuracaoFinanceiraActiveDreOptions.length === 0}
+                                disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus || isLoadingApuracaoFinanceiraActiveDres || apuracaoFinanceiraActiveDreOptions.length === 0}
                               >
                                 {apuracaoFinanceiraActiveDreOptions.length > 0 && apuracaoFinanceiraSelectedDreCodigos.length === apuracaoFinanceiraActiveDreOptions.length
                                   ? 'Desselecionar todas'
@@ -12617,7 +12921,7 @@ function App() {
                                       type="checkbox"
                                       checked={apuracaoFinanceiraSelectedDreCodigos.includes(item.codigo)}
                                       onChange={() => handleToggleApuracaoFinanceiraSelectedDre(item.codigo)}
-                                      disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}
+                                      disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus}
                                     />
                                     <span>{formatApuracaoFinanceiraDreOptionLabel(item)}</span>
                                   </label>
@@ -12647,7 +12951,7 @@ function App() {
                           id="apuracao-financeira-tipo-pessoa"
                           value={apuracaoFinanceiraTipoPessoa}
                           onChange={(event) => setApuracaoFinanceiraTipoPessoa(event.target.value as ApuracaoFinanceiraTipoPessoaFormValue)}
-                          disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || apuracaoFinanceiraFormMode === 'view'}
+                          disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus || apuracaoFinanceiraFormMode === 'view'}
                         >
                           {APURACAO_FINANCEIRA_TIPO_PESSOA_FORM_OPTIONS.map((item) => (
                             <option key={item.value} value={item.value}>
@@ -12658,26 +12962,172 @@ function App() {
                         {apuracaoFinanceiraTipoPessoaError ? <strong className="field-error">{apuracaoFinanceiraTipoPessoaError}</strong> : null}
                       </label>
 
+                      {apuracaoFinanceiraFormMode === 'batch-status' ? (
+                        <label className="field-group" htmlFor="apuracao-financeira-situacao-lote">
+                          <span>Situacao destino</span>
+                          <select
+                            id="apuracao-financeira-situacao-lote"
+                            value={apuracaoFinanceiraSituacao}
+                            onChange={(event) => setApuracaoFinanceiraSituacao(event.target.value as ApuracaoFinanceiraStatus)}
+                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus}
+                          >
+                            {APURACAO_FINANCEIRA_STATUS_OPTIONS.map((item) => (
+                              <option key={item} value={item}>
+                                {item}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+
                       <p className={`status-message status-${apuracaoFinanceiraStatusTone}`} aria-live="polite">
                         {apuracaoFinanceiraStatusMessage}
                       </p>
 
                       <div className="button-row dre-button-row management-modal-footer">
-                        {apuracaoFinanceiraFormMode !== 'view' && ['A processar', 'Processado'].includes(apuracaoFinanceiraSituacao) ? (
+                        {apuracaoFinanceiraFormMode === 'batch-status' ? (
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={handleBatchStatusUpdateApuracaoFinanceira}
+                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus}
+                          >
+                            {isUpdatingApuracaoFinanceiraBatchStatus ? 'Alterando...' : 'Alterar situacao'}
+                          </button>
+                        ) : null}
+                        {apuracaoFinanceiraFormMode !== 'view' && apuracaoFinanceiraFormMode !== 'batch-status' && ['A processar', 'Processado'].includes(apuracaoFinanceiraSituacao) ? (
                           <button
                             type="button"
                             className="primary-button"
                             onClick={handleProcessApuracaoFinanceira}
-                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}
+                            disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus}
                           >
                             {isProcessingApuracaoFinanceira ? 'Processando...' : 'Processamento'}
                           </button>
                         ) : null}
-                        <button type="button" className="secondary-button" onClick={handleCancelApuracaoFinanceiraForm} disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}>
+                        <button type="button" className="secondary-button" onClick={handleCancelApuracaoFinanceiraForm} disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira || isUpdatingApuracaoFinanceiraBatchStatus}>
                           {apuracaoFinanceiraFormMode === 'view' ? 'Fechar' : 'Cancelar'}
                         </button>
                       </div>
                     </form>
+                  </div>
+                </div>
+              ) : null}
+
+              {isApuracaoFinanceiraChildTotalsVisible ? (
+                <div
+                  className="management-modal-overlay"
+                  role="presentation"
+                  onClick={(event) => {
+                    if (event.target === event.currentTarget && !isLoadingApuracaoFinanceiraChildTotals) {
+                      handleCloseApuracaoFinanceiraChildTotals()
+                    }
+                  }}
+                >
+                  <div
+                    className="management-modal-shell"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="apuracao-financeira-child-totals-modal-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="management-card management-form dre-form management-modal-form-card">
+                      <div className="management-modal-header">
+                        <div>
+                          <p className="management-modal-kicker">Operacional financeiro - APURFIN019</p>
+                          <h2 id="apuracao-financeira-child-totals-modal-title">VALORES AGLUTINADOS DOS FILHOS</h2>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button management-modal-close-button"
+                          onClick={handleCloseApuracaoFinanceiraChildTotals}
+                          disabled={isLoadingApuracaoFinanceiraChildTotals}
+                          aria-label="Fechar resumo de valores aglutinados"
+                        >
+                          X
+                        </button>
+                      </div>
+
+                      <p className="management-modal-subtitle">
+                        Resumo obtido em Total Servicos, consolidando os apontamentos por Mes/Ano, Revisao, DRE e Tipo Pessoa.
+                      </p>
+
+                      {apuracaoFinanceiraChildTotals ? (
+                        <>
+                          <div className="management-grid-wrapper">
+                            <table className="dre-table">
+                              <tbody>
+                                <tr>
+                                  <th>Mes/Ano</th>
+                                  <td>{apuracaoFinanceiraChildTotals.mesAno}</td>
+                                  <th>Revisao</th>
+                                  <td>{apuracaoFinanceiraChildTotals.revisao}</td>
+                                </tr>
+                                <tr>
+                                  <th>DRE</th>
+                                  <td colSpan={3}>{formatApuracaoFinanceiraDreLabel(apuracaoFinanceiraChildTotals)}</td>
+                                </tr>
+                                <tr>
+                                  <th>Tipo Pessoa</th>
+                                  <td>{formatApuracaoTipoPessoaLabel(apuracaoFinanceiraChildTotals.tipoPessoa)}</td>
+                                  <th>Registros filhos</th>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.totalRegistros)}</td>
+                                </tr>
+                                <tr>
+                                  <th>Ordens de servico</th>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.totalOrdensServico)}</td>
+                                  <th>Tipos de escola</th>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.totalTiposEscola)}</td>
+                                </tr>
+                                <tr>
+                                  <th>Datas referencia</th>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.totalDatasReferencia)}</td>
+                                  <th>KM adicional</th>
+                                  <td>{formatFourDecimalValue(apuracaoFinanceiraChildTotals.kilometragem)}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="management-grid-wrapper">
+                            <table className="dre-table">
+                              <thead>
+                                <tr>
+                                  <th>NC pres.</th>
+                                  <th>Cad.</th>
+                                  <th>AC NC</th>
+                                  <th>AC Cad.</th>
+                                  <th>Cont NC</th>
+                                  <th>Cont Cad.</th>
+                                  <th>KM adicional</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.naoCadeirantePresencial)}</td>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.cadeirante)}</td>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.atendimentoComplementarNaoCadeirante)}</td>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.atendimentoComplementarCadeirante)}</td>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.continuaNaoCadeirante)}</td>
+                                  <td>{formatIntegerValue(apuracaoFinanceiraChildTotals.continuaCadeirante)}</td>
+                                  <td>{formatFourDecimalValue(apuracaoFinanceiraChildTotals.kilometragem)}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      ) : null}
+
+                      <p className={`status-message status-${apuracaoFinanceiraChildTotalsStatusTone}`} aria-live="polite">
+                        {apuracaoFinanceiraChildTotalsStatusMessage}
+                      </p>
+
+                      <div className="button-row dre-button-row management-modal-footer">
+                        <button type="button" className="secondary-button" onClick={handleCloseApuracaoFinanceiraChildTotals} disabled={isLoadingApuracaoFinanceiraChildTotals}>
+                          Fechar
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -12728,6 +13178,9 @@ function App() {
                             <div className="dre-row-actions">
                               <button type="button" className="row-action-button" onClick={() => handleStartViewApuracaoFinanceira(row)}>
                                 Consulta
+                              </button>
+                              <button type="button" className="row-action-button" onClick={() => handleOpenApuracaoFinanceiraChildTotals(row)}>
+                                Valores ACM
                               </button>
                               {hasDeleteFormPermission(appFormEditAccessKeys.apuracaoFinanceira) ? <button
                                 type="button"

@@ -31,6 +31,22 @@ export type ApuracaoFinanceiraItem = ApuracaoFinanceiraKey & {
   dataAlteracao: string
 }
 
+export type ApuracaoFinanceiraChildTotalsSummary = ApuracaoFinanceiraKey & {
+  dreSigla: string
+  dreDescricao: string
+  totalRegistros: number
+  totalOrdensServico: number
+  totalTiposEscola: number
+  totalDatasReferencia: number
+  naoCadeirantePresencial: number
+  cadeirante: number
+  atendimentoComplementarNaoCadeirante: number
+  atendimentoComplementarCadeirante: number
+  continuaNaoCadeirante: number
+  continuaCadeirante: number
+  kilometragem: string
+}
+
 export type ApuracaoFinanceiraSaveItem = ApuracaoFinanceiraKey & {
   situacao: ApuracaoFinanceiraStatus
 }
@@ -95,6 +111,30 @@ export type ApuracaoFinanceiraProcessResult = {
 
 type ApuracaoFinanceiraProcessResponse = {
   summary: ApuracaoFinanceiraProcessResult
+}
+
+export type ApuracaoFinanceiraBatchStatusRequest = {
+  mesAno: string
+  dreCodigos: string[]
+  tipoPessoa: ApuracaoTipoPessoa
+  situacao: ApuracaoFinanceiraStatus
+}
+
+export type ApuracaoFinanceiraBatchStatusResult = {
+  mesAno: string
+  tipoPessoa: ApuracaoTipoPessoa
+  situacao: ApuracaoFinanceiraStatus
+  totalMatched: number
+  totalUpdated: number
+  totalSelectedDres: number
+}
+
+type ApuracaoFinanceiraBatchStatusResponse = {
+  summary: ApuracaoFinanceiraBatchStatusResult
+}
+
+type ApuracaoFinanceiraChildTotalsSummaryResponse = {
+  summary: ApuracaoFinanceiraChildTotalsSummary
 }
 
 export type ApuracaoFinanceiraListParams = {
@@ -303,4 +343,56 @@ export async function processApuracaoFinanceiraData(
   }
 
   return (payload as ApuracaoFinanceiraProcessResponse).summary
+}
+
+export async function updateApuracaoFinanceiraBatchStatus(
+  item: ApuracaoFinanceiraBatchStatusRequest,
+  actor?: ApuracaoFinanceiraProcessActor,
+): Promise<ApuracaoFinanceiraBatchStatusResult> {
+  const response = await fetch(`${getApuracaoFinanceiraUrl()}/alterar-situacao-lote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(actor?.name ? { 'x-user-name': actor.name } : {}),
+      ...(actor?.email ? { 'x-user-email': actor.email } : {}),
+    },
+    body: JSON.stringify(item),
+  })
+
+  const responseText = await response.text()
+  const payload = parseJsonSafely(responseText)
+
+  if (!response.ok) {
+    throw createApiError(response.status, getErrorMessage(payload))
+  }
+
+  return (payload as ApuracaoFinanceiraBatchStatusResponse).summary
+}
+
+export async function getApuracaoFinanceiraChildTotalsSummary(
+  key: ApuracaoFinanceiraKey,
+): Promise<ApuracaoFinanceiraChildTotalsSummary> {
+  const queryParams = new URLSearchParams({
+    mesAno: key.mesAno,
+    dreCodigo: key.dreCodigo,
+    revisao: String(key.revisao),
+    tipoPessoa: key.tipoPessoa,
+  })
+
+  const response = await fetch(`${getApuracaoFinanceiraUrl()}/resumo-filhos?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  const responseText = await response.text()
+  const payload = parseJsonSafely(responseText)
+
+  if (!response.ok) {
+    throw createApiError(response.status, getErrorMessage(payload))
+  }
+
+  return (payload as ApuracaoFinanceiraChildTotalsSummaryResponse).summary
 }

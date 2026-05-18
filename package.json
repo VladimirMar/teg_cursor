@@ -28,12 +28,16 @@
     "verify:invalid-fixtures:veiculo": "node scripts/verify-invalid-fixtures.mjs veiculo",
     "verify:credenciada:ceps": "node scripts/verify-credenciada-ceps.mjs",
     "smoke:api": "node scripts/smoke-api.mjs all",
+    "verify:apontamento-servicos:filters": "node scripts/verify-apontamento-servicos-filters.mjs",
+    "verify:apontamento-servicos:ordering": "node scripts/verify-apontamento-servicos-ordering.mjs",
+    "verify:apontamento-servicos:negative-import": "node scripts/verify-apontamento-servicos-negative-import.mjs",
     "seed:condicao:dev": "node scripts/seed-condicao-dev.mjs",
     "recalculate:termo-values": "node scripts/recalculate-termo-values.mjs",
     "smoke:api:condutor": "node scripts/smoke-api.mjs condutor",
     "smoke:api:monitor": "node scripts/smoke-api.mjs monitor",
     "smoke:api:credenciada": "node scripts/smoke-api.mjs credenciada",
     "smoke:api:ordem-servico": "node scripts/smoke-api.mjs ordem-servico",
+    "smoke:api:apontamento-servicos": "node scripts/smoke-api.mjs apontamento-servicos",
     "smoke:api:veiculo": "node scripts/smoke-api.mjs veiculo",
     "smoke:api:marca-modelo": "node scripts/smoke-api.mjs marca-modelo"
   },
@@ -42,7 +46,8 @@
     "jszip": "^3.10.1",
     "pg": "^8.20.0",
     "react": "19",
-    "react-dom": "19"
+    "react-dom": "19",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

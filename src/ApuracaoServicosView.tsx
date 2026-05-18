@@ -23,14 +23,12 @@ import {
   formatApuracaoTipoPessoaLabel,
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
-import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 type FormMode = 'create' | 'edit' | 'view'
 
 const APURACAO_SERVICOS_EDITABLE_STATUS = 'Em digitacao'
 const APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE = 'Registro nao liberado para digitacao.'
-const FORM_ACCESS_KEY = 'form_apursvc021'
 
 const normalizeMonthYearInput = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 6)
@@ -204,7 +202,6 @@ const emptyFormErrors = {
 }
 
 export default function ApuracaoServicosView() {
-  const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY)
   const [items, setItems] = useState<ApuracaoServicosItem[]>([])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
@@ -215,7 +212,7 @@ export default function ApuracaoServicosView() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const [sortBy, setSortBy] = useState<ApuracaoServicosSortField>('dataReferencia')
+  const [sortBy, setSortBy] = useState<ApuracaoServicosSortField>('mesAno')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [statusMessage, setStatusMessage] = useState('')
   const [statusTone, setStatusTone] = useState<StatusTone>('idle')
@@ -284,7 +281,7 @@ export default function ApuracaoServicosView() {
   const loadItems = useCallback(async (pageToLoad: number) => {
     setIsLoading(true)
     setStatusTone('idle')
-    setStatusMessage('Carregando registros de apuracao de servicos...')
+    setStatusMessage('Carregando registros de total de servicos...')
 
     try {
       const parsedFilterRevisao = parseNonNegativeInteger(filterRevisao)
@@ -306,9 +303,9 @@ export default function ApuracaoServicosView() {
       setPage(result.page)
       setSortBy(result.sortBy)
       setSortDirection(result.sortDirection)
-      setStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Apuracao Servicos.')
+      setStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Total Servicos.')
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao carregar os registros de apuracao de servicos.'
+      const message = error instanceof Error ? error.message : 'Falha ao carregar os registros de total de servicos.'
       setStatusTone('error')
       setStatusMessage(message)
     } finally {
@@ -328,7 +325,7 @@ export default function ApuracaoServicosView() {
       setDreOptions(dreResult.items)
       setTipoEscolaOptions(tipoEscolaResult.items)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao carregar as opcoes da apuracao de servicos.'
+      const message = error instanceof Error ? error.message : 'Falha ao carregar as opcoes de total de servicos.'
       setStatusTone('error')
       setStatusMessage(message)
     } finally {
@@ -395,18 +392,6 @@ export default function ApuracaoServicosView() {
     setSortBy(field)
   }
 
-  const handleStartInsert = () => {
-    resetForm()
-    setFormMode('create')
-    setIsFormVisible(true)
-    setStatusTone('idle')
-    setStatusMessage('')
-  }
-
-  const canEditApuracaoServicosItem = (item: Pick<ApuracaoServicosItem, 'apuracaoFinanceiraSituacao'>) => {
-    return item.apuracaoFinanceiraSituacao === APURACAO_SERVICOS_EDITABLE_STATUS
-  }
-
   const openFormWithItem = (item: ApuracaoServicosItem, nextMode: FormMode) => {
     setEditingKey({
       mesAno: item.mesAno,
@@ -440,23 +425,6 @@ export default function ApuracaoServicosView() {
     setIsFormVisible(true)
     setStatusTone('idle')
     setStatusMessage('')
-  }
-
-  const handleStartEdit = (item: ApuracaoServicosItem) => {
-    if (!hasEditPermission) {
-      setStatusTone('warning')
-      setStatusMessage(getEditPermissionDeniedMessage('Apuracao Servicos'))
-      return
-    }
-
-    if (!canEditApuracaoServicosItem(item)) {
-      setStatusTone('warning')
-      setStatusMessage(APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE)
-      window.alert(APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE)
-      return
-    }
-
-    openFormWithItem(item, 'edit')
   }
 
   const handleStartView = (item: ApuracaoServicosItem) => {
@@ -632,7 +600,7 @@ export default function ApuracaoServicosView() {
 
     setIsSaving(true)
     setStatusTone('idle')
-    setStatusMessage(editingKey ? 'Salvando alteracoes...' : 'Salvando apuracao de servicos...')
+    setStatusMessage(editingKey ? 'Salvando alteracoes...' : 'Salvando total de servicos...')
 
     try {
       const savedItem = editingKey
@@ -640,7 +608,7 @@ export default function ApuracaoServicosView() {
         : await createApuracaoServicosItem(payload)
 
       setStatusTone('success')
-      setStatusMessage(editingKey ? 'Apuracao de servicos alterada com sucesso.' : 'Apuracao de servicos cadastrada com sucesso.')
+      setStatusMessage(editingKey ? 'Total de servicos alterado com sucesso.' : 'Total de servicos cadastrado com sucesso.')
       setIsFormVisible(false)
       resetForm()
       await loadItems(page)
@@ -648,7 +616,7 @@ export default function ApuracaoServicosView() {
         setPage(1)
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao salvar a apuracao de servicos.'
+      const message = error instanceof Error ? error.message : 'Falha ao salvar o total de servicos.'
       setStatusTone('error')
       setStatusMessage(message)
     } finally {
@@ -660,23 +628,14 @@ export default function ApuracaoServicosView() {
     <>
       <div className="content-copy">
         <p className="content-kicker">Operacional financeiro</p>
-        <h2 id="content-title">Apuracao Servicos</h2>
+        <h2 id="content-title">Total Servicos</h2>
         <p className="content-description">
-          Controle a apuracao diaria de servicos por data de referencia, DRE, tipo pessoa, OS ativa, revisao e tipo de escola, com quantitativos inteiros e kilometragem com 4 casas decimais.
+          Consulte o total diario de servicos por data de referencia, DRE, tipo pessoa, OS ativa, revisao e tipo de escola. Os valores sao apurados automaticamente a partir das alteracoes realizadas em Apontamento Servicos.
         </p>
       </div>
 
       <div className="management-layout">
         <div className="management-toolbar">
-          <button
-            type="button"
-            className="primary-button dre-insert-button"
-            onClick={handleStartInsert}
-            disabled={isSaving || isLoadingFormOptions}
-          >
-            Inserir registro
-          </button>
-
           <form className="management-filter-form" onSubmit={handleFilterSubmit}>
             <input
               className="management-filter-input"
@@ -745,14 +704,14 @@ export default function ApuracaoServicosView() {
                 <div className="management-modal-header">
                   <div>
                     <p className="management-modal-kicker">Operacional financeiro - APURSVC021</p>
-                    <h2 id="apuracao-servicos-modal-title">APURACAO SERVICOS</h2>
+                    <h2 id="apuracao-servicos-modal-title">TOTAL SERVICOS</h2>
                   </div>
                   <button
                     type="button"
                     className="secondary-button management-modal-close-button"
                     onClick={handleCancelForm}
                     disabled={isSaving}
-                    aria-label="Fechar formulario de apuracao de servicos"
+                    aria-label="Fechar formulario de total de servicos"
                   >
                     X
                   </button>
@@ -1006,7 +965,7 @@ export default function ApuracaoServicosView() {
                 <div className="button-row dre-button-row management-modal-footer">
                   {!isReadOnly ? (
                     <button type="submit" className="primary-button" disabled={isSaving}>
-                      {isSaving ? 'Salvando...' : editingKey ? 'Salvar alteracao' : 'Salvar Apuracao Servicos'}
+                      {isSaving ? 'Salvando...' : editingKey ? 'Salvar alteracao' : 'Salvar Total Servicos'}
                     </button>
                   ) : null}
                   <button type="button" className="secondary-button" onClick={handleCancelForm} disabled={isSaving}>
@@ -1028,11 +987,6 @@ export default function ApuracaoServicosView() {
             <table className="dre-table">
               <thead>
                 <tr>
-                  <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('dataReferencia')}>
-                      Data Ref. <span>{getSortIndicator('dataReferencia', sortBy, sortDirection)}</span>
-                    </button>
-                  </th>
                   <th>
                     <button type="button" className="dre-sort-button" onClick={() => handleSort('mesAno')}>
                       Mes/Ano <span>{getSortIndicator('mesAno', sortBy, sortDirection)}</span>
@@ -1067,7 +1021,6 @@ export default function ApuracaoServicosView() {
               <tbody>
                 {items.map((item) => (
                   <tr key={formatApuracaoServicosKey(item)}>
-                    <td>{item.dataReferencia}</td>
                     <td>{item.mesAno}</td>
                     <td>{formatDreGridLabel(item)}</td>
                     <td>{formatOrdemServicoGridLabel(item)}</td>
@@ -1079,14 +1032,6 @@ export default function ApuracaoServicosView() {
                         <button type="button" className="row-action-button" onClick={() => handleStartView(item)}>
                           Consulta
                         </button>
-                        {hasEditPermission ? <button
-                          type="button"
-                          className="row-action-button row-action-edit"
-                          onClick={() => handleStartEdit(item)}
-                          title={canEditApuracaoServicosItem(item) ? 'Alterar registro' : APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE}
-                        >
-                          Alterar
-                        </button> : null}
                       </div>
                     </td>
                   </tr>
@@ -1095,7 +1040,7 @@ export default function ApuracaoServicosView() {
             </table>
 
             {!isLoading && items.length === 0 ? (
-              <p className="management-empty-state">Nenhum registro de apuracao de servicos encontrado.</p>
+              <p className="management-empty-state">Nenhum registro de total de servicos encontrado.</p>
             ) : null}
           </div>
 

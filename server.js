@@ -1,17 +1,21 @@
 import { createServer } from 'node:http'
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { access, readFile, readdir } from 'node:fs/promises'
 import { XMLParser } from 'fast-xml-parser'
 import JSZip from 'jszip'
 import path from 'node:path'
 import { Pool } from 'pg'
 import { fileURLToPath } from 'node:url'
+import XLSX from 'xlsx'
 
 const port = Number(process.env.PORT ?? 3001)
 const skipDatabaseSchemaSetup = String(process.env.SKIP_DB_SCHEMA_SETUP ?? '').trim().toLowerCase() === 'true'
 const workspaceRoot = path.dirname(fileURLToPath(import.meta.url))
 const importXmlDirectory = path.join(workspaceRoot, 'importXML')
+const apontamentoServicosImportDefaultFilePath = path.join(workspaceRoot, 'pgtos', '2026-04 Pgto', '04 ATESTE BT PF ABR 26.xlsx')
+const apontamentoServicosImportDefaultDirectoryPath = path.dirname(apontamentoServicosImportDefaultFilePath)
+const apontamentoServicosImportDefaultFileName = path.basename(apontamentoServicosImportDefaultFilePath)
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   trimValues: true,
@@ -877,6 +881,14 @@ const normalizeDreDescription = (value) => {
     .slice(0, 255)
 }
 
+const normalizeImportComparableText = (value) => {
+  return normalizeRequestValue(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .toUpperCase()
+}
+
 const normalizeEmailList = (value) => {
   const normalizedValue = normalizeRequestValue(value)
 
@@ -1146,9 +1158,9 @@ const acessoPaginaCatalogItems = [
   { chaveSistema: 'menu_historico_veiculo', sigla: 'Historico Veiculo', descricao: 'Historico de Veiculo', funcao: 'menu' },
   { chaveSistema: 'menu_reprocessar_valores', sigla: 'Reprocessar Valores', descricao: 'Reprocessamento Financeiro', funcao: 'menu' },
   { chaveSistema: 'menu_operacional_financeiro', sigla: 'Financeiro', descricao: 'Financeiro', funcao: 'menu' },
+  { chaveSistema: 'menu_resumo_financeiro', sigla: 'Resumo Financeiro', descricao: 'Resumo Financeiro', funcao: 'menu' },
   { chaveSistema: 'menu_apuracao_financeira', sigla: 'Apuracao Financeira', descricao: 'Apuracao Financeira', funcao: 'menu' },
   { chaveSistema: 'menu_apuracao_servicos', sigla: 'Apuracao Servicos', descricao: 'Apuracao Servicos', funcao: 'menu' },
-  { chaveSistema: 'menu_aprovacao_digitacao', sigla: 'Aprovacao Digitacao', descricao: 'Aprovacao Digitacao', funcao: 'menu' },
   { chaveSistema: 'menu_cadastros_root', sigla: 'Cadastros', descricao: 'Cadastros', funcao: 'menu' },
   { chaveSistema: 'menu_cadastros_operacional', sigla: 'Operacional', descricao: 'Operacional', funcao: 'menu' },
   { chaveSistema: 'menu_dre', sigla: 'DRE', descricao: 'Tabela DRE', funcao: 'menu' },
@@ -1196,9 +1208,18 @@ const acessoPaginaCatalogItems = [
   { chaveSistema: 'form_segurad018', sigla: 'SEGURAD018', descricao: 'Seguradoras', funcao: 'formulario' },
   { chaveSistema: 'form_apurfin019', sigla: 'APURFIN019', descricao: 'Apuracao Financeira', funcao: 'formulario' },
   { chaveSistema: 'form_perfcad020', sigla: 'PERFCAD020', descricao: 'Perfil', funcao: 'formulario' },
-  { chaveSistema: 'form_apursvc021', sigla: 'APURSVC021', descricao: 'APURACAO SERVICOS', funcao: 'formulario' },
+  { chaveSistema: 'form_apursvc021', sigla: 'APURSVC021', descricao: 'TOTAL SERVICOS', funcao: 'formulario' },
+  { chaveSistema: 'form_resufin025', sigla: 'RESUFIN025', descricao: 'Resumo Financeiro', funcao: 'formulario' },
+  { chaveSistema: 'form_apntsvc024', sigla: 'APNTSVC024', descricao: 'Apontamento Servicos', funcao: 'formulario' },
   { chaveSistema: 'form_acespag022', sigla: 'ACESPAG022', descricao: 'Acesso Pagina', funcao: 'formulario' },
   { chaveSistema: 'form_perfacs023', sigla: 'PERFACS023', descricao: 'PerfilAcesso', funcao: 'formulario' },
+]
+
+const apontamentoServicosAcessoPaginaChaveSistema = 'form_apntsvc024'
+const apontamentoServicosPermissaoTodosPerfis = ['GESTOR SISTEMA', 'SME', 'DRE']
+const resumoFinanceiroAcessoPaginaChaveSistema = ['menu_resumo_financeiro', 'form_resufin025']
+const removedAcessoPaginaChaveSistema = [
+  'menu_aprovacao_digitacao',
 ]
 
 const administrativoAllowedAcessoPaginaChaveSistema = [
@@ -1240,9 +1261,9 @@ const administrativoAllowedAcessoPaginaChaveSistema = [
 const financeiroAllowedAcessoPaginaChaveSistema = [
   'menu_operacional_root',
   'menu_operacional_financeiro',
+  'menu_resumo_financeiro',
   'menu_apuracao_financeira',
   'menu_apuracao_servicos',
-  'menu_aprovacao_digitacao',
   'menu_cadastros_root',
   'menu_cadastros_financeiro',
   'menu_condicao',
@@ -1265,6 +1286,7 @@ const financeiroAllowedAcessoPaginaChaveSistema = [
   'form_kmvalor012',
   'form_cntvalr013',
   'form_parveic017',
+  'form_resufin025',
   'form_apurfin019',
   'form_apursvc021',
 ]
@@ -1583,7 +1605,7 @@ const normalizeApontamentoServicosInteger = (value) => {
   }
 
   const parsedValue = Number(value)
-  return Number.isInteger(parsedValue) && parsedValue >= 0 ? parsedValue : Number.NaN
+  return Number.isInteger(parsedValue) ? parsedValue : Number.NaN
 }
 
 const normalizeApontamentoServicosKm = (value) => {
@@ -1607,19 +1629,564 @@ const normalizeApontamentoServicosKm = (value) => {
 }
 
 const hasApontamentoServicosMetricValues = (metrics) => {
-  return metrics.naoCadeirantePresencial > 0
-    || metrics.cadeirante > 0
-    || metrics.atendimentoComplementarNaoCadeirante > 0
-    || metrics.atendimentoComplementarCadeirante > 0
-    || metrics.continuaNaoCadeirante > 0
-    || metrics.continuaCadeirante > 0
-    || metrics.kilometragem > 0
+  return metrics.naoCadeirantePresencial !== 0
+    || metrics.cadeirante !== 0
+    || metrics.atendimentoComplementarNaoCadeirante !== 0
+    || metrics.atendimentoComplementarCadeirante !== 0
+    || metrics.continuaNaoCadeirante !== 0
+    || metrics.continuaCadeirante !== 0
+    || metrics.kilometragem !== 0
 }
 
-const listApontamentoServicosItems = async ({ mesAno, dreCodigo, revisao, tipoPessoa, dataReferencia }, executor = pool) => {
+const apontamentoServicosImportMainSheetName = 'APONTAMENTO CREDENCIAMENTO'
+const apontamentoServicosImportContinuaSheetName = 'CONTINUA'
+const apontamentoServicosImportFirstDataRow = 6
+const apontamentoServicosImportMainOsColumnIndex = XLSX.utils.decode_col('B')
+const apontamentoServicosImportMainPeriodStartColumnIndex = XLSX.utils.decode_col('F')
+const apontamentoServicosImportMainPeriodEndColumnIndex = XLSX.utils.decode_col('G')
+const apontamentoServicosImportMainTipoEscolaColumnIndex = XLSX.utils.decode_col('K')
+const apontamentoServicosImportMainMetricsStartColumnIndex = XLSX.utils.decode_col('Q')
+const apontamentoServicosImportContinuaMetricsStartColumnIndex = XLSX.utils.decode_col('L')
+const apontamentoServicosImportDayCount = 30
+const apontamentoServicosImportAllowedExtensions = new Set(['.xls', '.xlsx', '.xlsm'])
+const apontamentoServicosTipoEscolaDisplayOrder = ['EMEI', 'EMEF', 'EMEE', 'CEI', 'CCA']
+
+const buildWorksheetCellAddress = (columnIndex, rowNumber) => {
+  return XLSX.utils.encode_cell({ c: columnIndex, r: rowNumber - 1 })
+}
+
+const getWorkbookSheetByName = (workbook, expectedName) => {
+  const matchedSheetName = workbook?.SheetNames?.find((sheetName) => {
+    return normalizeImportComparableText(sheetName) === normalizeImportComparableText(expectedName)
+  })
+
+  return matchedSheetName ? workbook.Sheets[matchedSheetName] : null
+}
+
+const getWorkbookDefinedNameTarget = (workbook, definedName) => {
+  const matchedName = workbook?.Workbook?.Names?.find((entry) => {
+    return normalizeImportComparableText(entry?.Name) === normalizeImportComparableText(definedName)
+  })
+
+  if (!matchedName?.Ref) {
+    return null
+  }
+
+  const targetMatch = String(matchedName.Ref).match(/^'?(.+?)'?!\$?([A-Z]+)\$?(\d+)$/)
+
+  if (!targetMatch) {
+    return null
+  }
+
+  const [, sheetName, columnLabel, rowLabel] = targetMatch
+  const sheet = workbook.Sheets[sheetName]
+
+  if (!sheet) {
+    return null
+  }
+
+  return {
+    sheet,
+    address: `${columnLabel}${rowLabel}`,
+  }
+}
+
+const getWorkbookCell = (sheet, address) => {
+  return sheet?.[address] ?? null
+}
+
+const getWorkbookCellDisplayValue = (sheet, address) => {
+  const cell = getWorkbookCell(sheet, address)
+
+  if (!cell) {
+    return ''
+  }
+
+  if (typeof cell.w === 'string') {
+    return normalizeRequestValue(cell.w)
+  }
+
+  if (cell.v instanceof Date) {
+    return `${String(cell.v.getDate()).padStart(2, '0')}/${String(cell.v.getMonth() + 1).padStart(2, '0')}/${cell.v.getFullYear()}`
+  }
+
+  return normalizeRequestValue(cell.v)
+}
+
+const normalizeWorkbookDateValue = (value) => {
+  if (value instanceof Date) {
+    const year = value.getFullYear()
+    const month = String(value.getMonth() + 1).padStart(2, '0')
+    const day = String(value.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const parsedDate = XLSX.SSF.parse_date_code(value)
+
+    if (parsedDate?.y && parsedDate?.m && parsedDate?.d) {
+      return `${String(parsedDate.y).padStart(4, '0')}-${String(parsedDate.m).padStart(2, '0')}-${String(parsedDate.d).padStart(2, '0')}`
+    }
+  }
+
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return ''
+  }
+
+  if (isDateInputValid(normalizedValue)) {
+    return normalizedValue.slice(0, 10)
+  }
+
+  const dayMonthYearMatch = normalizedValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/)
+
+  if (!dayMonthYearMatch) {
+    return ''
+  }
+
+  const [, dayValue, monthValue, yearValue] = dayMonthYearMatch
+  const resolvedYear = yearValue.length === 2 ? `20${yearValue}` : yearValue
+  const normalizedDate = `${resolvedYear}-${monthValue.padStart(2, '0')}-${dayValue.padStart(2, '0')}`
+
+  return isDateInputValid(normalizedDate) ? normalizedDate : ''
+}
+
+const getWorkbookCellDateValue = (sheet, address) => {
+  const cell = getWorkbookCell(sheet, address)
+
+  if (!cell) {
+    return ''
+  }
+
+  return normalizeWorkbookDateValue(cell.v ?? cell.w)
+}
+
+const getWorkbookDefinedNameDisplayValue = (workbook, definedName) => {
+  const target = getWorkbookDefinedNameTarget(workbook, definedName)
+
+  return target ? getWorkbookCellDisplayValue(target.sheet, target.address) : ''
+}
+
+const findWorksheetLastDataRow = (sheet, columnIndex, minimumRow = 1) => {
+  const rangeRef = sheet?.['!ref']
+
+  if (!rangeRef) {
+    return minimumRow - 1
+  }
+
+  const range = XLSX.utils.decode_range(rangeRef)
+
+  for (let rowIndex = range.e.r; rowIndex >= minimumRow - 1; rowIndex -= 1) {
+    const address = XLSX.utils.encode_cell({ c: columnIndex, r: rowIndex })
+
+    if (getWorkbookCellDisplayValue(sheet, address)) {
+      return rowIndex + 1
+    }
+  }
+
+  return minimumRow - 1
+}
+
+const normalizeWorkbookMetricInteger = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return 0
+  }
+
+  const normalizedValue = typeof value === 'number'
+    ? value
+    : Number(String(value).replace(/\./g, '').replace(',', '.'))
+
+  return Number.isFinite(normalizedValue)
+    ? Math.trunc(normalizedValue)
+    : 0
+}
+
+const fileExists = async (targetPath) => {
+  try {
+    await access(targetPath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const resolveApontamentoServicosImportFilePaths = async ({ directoryPath, fileName }) => {
+  const normalizedDirectoryPath = normalizeRequestValue(directoryPath)
+  const normalizedFileName = normalizeRequestValue(fileName)
+  const resolvedDirectoryPath = normalizedDirectoryPath || apontamentoServicosImportDefaultDirectoryPath
+
+  if (normalizedFileName) {
+    const resolvedFilePath = path.isAbsolute(normalizedFileName)
+      ? normalizedFileName
+      : path.join(resolvedDirectoryPath, path.basename(normalizedFileName || apontamentoServicosImportDefaultFileName))
+
+    if (!await fileExists(resolvedFilePath)) {
+      throw createHttpError(404, `Nao foi possivel localizar a planilha informada: ${resolvedFilePath}.`)
+    }
+
+    return {
+      directoryPath: path.dirname(resolvedFilePath),
+      filePaths: [resolvedFilePath],
+    }
+  }
+
+  let directoryEntries
+
+  try {
+    directoryEntries = await readdir(resolvedDirectoryPath, { withFileTypes: true })
+  } catch {
+    throw createHttpError(404, `Nao foi possivel localizar o diretorio informado: ${resolvedDirectoryPath}.`)
+  }
+
+  const filePaths = directoryEntries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((entryName) => !entryName.startsWith('~$'))
+    .filter((entryName) => apontamentoServicosImportAllowedExtensions.has(path.extname(entryName).toLowerCase()))
+    .sort((left, right) => left.localeCompare(right, 'pt-BR', { sensitivity: 'base' }))
+    .map((entryName) => path.join(resolvedDirectoryPath, entryName))
+
+  if (!filePaths.length) {
+    throw createHttpError(404, `Nenhuma planilha Excel foi encontrada no diretorio informado: ${resolvedDirectoryPath}.`)
+  }
+
+  return {
+    directoryPath: resolvedDirectoryPath,
+    filePaths,
+  }
+}
+
+const buildApontamentoServicosImportOsLookupKey = (value) => {
+  return normalizeImportComparableText(value).replace(/\s+/g, '')
+}
+
+const buildApontamentoServicosImportOsLookup = (items) => {
+  const lookup = new Map()
+
+  for (const item of Array.isArray(items) ? items : []) {
+    const keys = [
+      buildApontamentoServicosImportOsLookupKey(item?.osConcat),
+      buildApontamentoServicosImportOsLookupKey(`${normalizeRequestValue(item?.termoAdesao)}-${normalizeRequestValue(item?.numOs)}`),
+    ].filter(Boolean)
+
+    for (const key of keys) {
+      if (!lookup.has(key)) {
+        lookup.set(key, item)
+      }
+
+      if (/\-\d+$/.test(key)) {
+        const semRevisaoKey = `${key}${ordemServicoSemRevisaoLabel}`
+
+        if (!lookup.has(semRevisaoKey)) {
+          lookup.set(semRevisaoKey, item)
+        }
+      }
+    }
+  }
+
+  return lookup
+}
+
+const buildApontamentoServicosImportTipoEscolaLookup = (items) => {
+  const lookup = new Map()
+
+  for (const item of Array.isArray(items) ? items : []) {
+    for (const key of [normalizeImportComparableText(item?.sigla), normalizeImportComparableText(item?.descricao)].filter(Boolean)) {
+      if (!lookup.has(key)) {
+        lookup.set(key, item)
+      }
+    }
+  }
+
+  return lookup
+}
+
+const buildApontamentoServicosTipoEscolaOrderExpression = (tableAlias) => {
+  const normalizedAlias = normalizeRequestValue(tableAlias) || 'tipo_escola'
+
+  return `CASE UPPER(BTRIM(COALESCE(${normalizedAlias}.sigla, '')))
+          WHEN 'EMEI' THEN 1
+          WHEN 'EMEF' THEN 2
+          WHEN 'EMEE' THEN 3
+          WHEN 'CEI' THEN 4
+          WHEN 'CCA' THEN 5
+          ELSE 999
+        END`
+}
+
+const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, preserveExistingKilometragem = false, createApuracaoFinanceiraIfMissing = false }, executor = pool) => {
+  for (const item of items) {
+    const dreCodigo = normalizeRequestValue(item.dreCodigo)
+    const ordemServicoCodigo = normalizeRequestValue(item.ordemServicoCodigo)
+    const tipoEscolaCodigo = normalizeRequestValue(item.tipoEscolaCodigo)
+    const tipoPessoa = normalizeApuracaoTipoPessoa(item.tipoPessoa)
+    const revisao = Number.parseInt(String(item.revisao ?? ''), 10)
+    const metrics = {
+      naoCadeirantePresencial: normalizeApontamentoServicosInteger(item.naoCadeirantePresencial),
+      cadeirante: normalizeApontamentoServicosInteger(item.cadeirante),
+      atendimentoComplementarNaoCadeirante: normalizeApontamentoServicosInteger(item.atendimentoComplementarNaoCadeirante),
+      atendimentoComplementarCadeirante: normalizeApontamentoServicosInteger(item.atendimentoComplementarCadeirante),
+      continuaNaoCadeirante: normalizeApontamentoServicosInteger(item.continuaNaoCadeirante),
+      continuaCadeirante: normalizeApontamentoServicosInteger(item.continuaCadeirante),
+      kilometragem: normalizeApontamentoServicosKm(item.kilometragem),
+    }
+
+    if (!dreCodigo || !ordemServicoCodigo || !tipoEscolaCodigo || !tipoPessoa || !Number.isInteger(revisao) || revisao < 0) {
+      throw createHttpError(400, 'Chave do apontamento invalida.')
+    }
+
+    for (const [label, value] of Object.entries({
+      'Nao cadeirante presencial': metrics.naoCadeirantePresencial,
+      Cadeirante: metrics.cadeirante,
+      'Atendimento complementar nao cadeirante': metrics.atendimentoComplementarNaoCadeirante,
+      'Atendimento complementar cadeirante': metrics.atendimentoComplementarCadeirante,
+      'Continua nao cadeirante': metrics.continuaNaoCadeirante,
+      'Continua cadeirante': metrics.continuaCadeirante,
+    })) {
+      if (!Number.isInteger(value)) {
+        throw createHttpError(400, `${label} invalido.`)
+      }
+    }
+
+    if (!Number.isFinite(metrics.kilometragem) || metrics.kilometragem < 0) {
+      throw createHttpError(400, 'Kilometragem invalida.')
+    }
+
+    const parentResult = await executor.query(
+      `SELECT 1
+       FROM ${ordemServicoTableName} os
+       WHERE CAST(os.codigo AS text) = $1
+         AND ${ordemServicoActiveStartDateExpression} <= $2::date
+         AND ${ordemServicoActiveEndDateExpression} >= $2::date
+       LIMIT 1`,
+      [ordemServicoCodigo, dataReferencia],
+    )
+
+    if (parentResult.rowCount === 0) {
+      throw createHttpError(409, 'A ordem de servico da linha nao esta ativa na data informada.')
+    }
+
+    await ensureApuracaoServicosEditable({
+      mesAno,
+      dreCodigo,
+      revisao,
+      tipoPessoa,
+      createIfMissing: createApuracaoFinanceiraIfMissing,
+    }, executor)
+
+    await executor.query(
+      `INSERT INTO apuracao_servicos (
+        mes_ano,
+        data_referencia,
+        dre_codigo,
+        ordem_servico_codigo,
+        revisao,
+        tipo_escola_codigo,
+        tipo_pessoa,
+        nc_pres,
+        cad,
+        ac_nc,
+        ac_cad,
+        cont_nc,
+        cont_cad,
+        km,
+        data_alteracao
+      )
+      VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+      ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
+      DO UPDATE SET
+        nc_pres = EXCLUDED.nc_pres,
+        cad = EXCLUDED.cad,
+        ac_nc = EXCLUDED.ac_nc,
+        ac_cad = EXCLUDED.ac_cad,
+        cont_nc = EXCLUDED.cont_nc,
+        cont_cad = EXCLUDED.cont_cad,
+        km = ${preserveExistingKilometragem ? 'apuracao_servicos.km' : 'EXCLUDED.km'},
+        data_alteracao = NOW()`,
+      [
+        mesAno,
+        dataReferencia,
+        Number.parseInt(dreCodigo, 10),
+        Number.parseInt(ordemServicoCodigo, 10),
+        revisao,
+        Number.parseInt(tipoEscolaCodigo, 10),
+        tipoPessoa,
+        hasApontamentoServicosMetricValues(metrics) ? metrics.naoCadeirantePresencial : 0,
+        hasApontamentoServicosMetricValues(metrics) ? metrics.cadeirante : 0,
+        hasApontamentoServicosMetricValues(metrics) ? metrics.atendimentoComplementarNaoCadeirante : 0,
+        hasApontamentoServicosMetricValues(metrics) ? metrics.atendimentoComplementarCadeirante : 0,
+        hasApontamentoServicosMetricValues(metrics) ? metrics.continuaNaoCadeirante : 0,
+        hasApontamentoServicosMetricValues(metrics) ? metrics.continuaCadeirante : 0,
+        hasApontamentoServicosMetricValues(metrics) ? metrics.kilometragem : 0,
+      ],
+    )
+  }
+}
+
+const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServicosImportDefaultFilePath }, executor = pool) => {
+  const resolvedFilePath = normalizeRequestValue(filePath) || apontamentoServicosImportDefaultFilePath
+  let workbook
+
+  try {
+    workbook = XLSX.readFile(resolvedFilePath, { cellDates: true })
+  } catch {
+    throw createHttpError(404, `Nao foi possivel abrir a planilha informada: ${resolvedFilePath}.`)
+  }
+
+  const mainSheet = getWorkbookSheetByName(workbook, apontamentoServicosImportMainSheetName)
+  const continuaSheet = getWorkbookSheetByName(workbook, apontamentoServicosImportContinuaSheetName)
+
+  if (!mainSheet || !continuaSheet) {
+    throw createHttpError(400, 'A planilha deve conter as abas APONTAMENTO CREDENCIAMENTO e CONTINUA.')
+  }
+
+  const referenciaMes = getWorkbookCellDateValue(mainSheet, 'F5')
+  const dreDescricaoPlanilha = getWorkbookDefinedNameDisplayValue(workbook, 'NomeDRE') || getWorkbookCellDisplayValue(mainSheet, 'A1')
+  const tipoPessoa = /(?:^|\W)PJ(?:\W|$)/i.test(path.basename(resolvedFilePath)) ? 'PJ' : 'PF'
+
+  if (!referenciaMes) {
+    throw createHttpError(400, 'Nao foi possivel identificar o mes/ano da planilha a partir da celula F5.')
+  }
+
+  const mesAno = `${referenciaMes.slice(5, 7)}/${referenciaMes.slice(0, 4)}`
+  const dreRecord = await findDreByComparableDescription(dreDescricaoPlanilha, executor)
+
+  if (!dreRecord) {
+    throw createHttpError(404, `DRE nao encontrada para o valor informado na planilha: ${dreDescricaoPlanilha || '-'}.`)
+  }
+
+  const tipoEscolaLookup = buildApontamentoServicosImportTipoEscolaLookup(await listTipoEscolaAtivaItems(executor))
+  const ordemServicoLookup = buildApontamentoServicosImportOsLookup(await listActiveOrdemServicoOptionsByApuracao({
+    mesAno,
+    dreCodigo: dreRecord.codigo,
+    tipoPessoa,
+  }, executor))
+  const lastMainRow = findWorksheetLastDataRow(mainSheet, apontamentoServicosImportMainOsColumnIndex, apontamentoServicosImportFirstDataRow)
+  const lastContinuaRow = findWorksheetLastDataRow(continuaSheet, apontamentoServicosImportMainOsColumnIndex, apontamentoServicosImportFirstDataRow)
+  const lastRow = Math.max(lastMainRow, lastContinuaRow)
+  const importedItemsByDate = new Map()
+  const skippedRecords = []
+  const skippedRecordKeys = new Set()
+
+  for (let rowNumber = apontamentoServicosImportFirstDataRow; rowNumber <= lastRow; rowNumber += 1) {
+    const ordemServicoPlanilha = getWorkbookCellDisplayValue(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainOsColumnIndex, rowNumber))
+
+    if (!ordemServicoPlanilha) {
+      continue
+    }
+
+    const ordemServicoLookupKey = buildApontamentoServicosImportOsLookupKey(ordemServicoPlanilha)
+    const ordemServicoItem = ordemServicoLookup.get(ordemServicoLookupKey)
+      ?? (/\-\d+$/.test(ordemServicoLookupKey) ? ordemServicoLookup.get(`${ordemServicoLookupKey}${ordemServicoSemRevisaoLabel}`) : null)
+
+    if (!ordemServicoItem) {
+      const skippedKey = `OS|${ordemServicoPlanilha}`
+
+      if (!skippedRecordKeys.has(skippedKey)) {
+        skippedRecordKeys.add(skippedKey)
+        skippedRecords.push({
+          rowNumber,
+          ordemServico: ordemServicoPlanilha,
+          reason: 'Ordem de servico nao encontrada na tabela OS.',
+        })
+      }
+
+      continue
+    }
+
+    const tipoEscolaLabel = getWorkbookCellDisplayValue(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainTipoEscolaColumnIndex, rowNumber))
+    const tipoEscolaItem = tipoEscolaLookup.get(normalizeImportComparableText(tipoEscolaLabel))
+
+    if (!tipoEscolaItem) {
+      const skippedKey = `TIPO|${ordemServicoPlanilha}|${tipoEscolaLabel}`
+
+      if (!skippedRecordKeys.has(skippedKey)) {
+        skippedRecordKeys.add(skippedKey)
+        skippedRecords.push({
+          rowNumber,
+          ordemServico: ordemServicoPlanilha,
+          reason: `Tipo de atendimento nao encontrado: ${tipoEscolaLabel || '-'}.`,
+        })
+      }
+
+      continue
+    }
+
+    const periodoInicio = getWorkbookCellDateValue(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainPeriodStartColumnIndex, rowNumber))
+    const periodoFim = getWorkbookCellDateValue(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainPeriodEndColumnIndex, rowNumber))
+
+    for (let dayIndex = 0; dayIndex < apontamentoServicosImportDayCount; dayIndex += 1) {
+      const dayNumber = dayIndex + 1
+      const dataReferencia = `${referenciaMes.slice(0, 8)}${String(dayNumber).padStart(2, '0')}`
+
+      if (!isDateInputValid(dataReferencia)) {
+        continue
+      }
+
+      if ((periodoInicio && dataReferencia < periodoInicio) || (periodoFim && dataReferencia > periodoFim)) {
+        continue
+      }
+
+      const mainMetricsBaseColumn = apontamentoServicosImportMainMetricsStartColumnIndex + (dayIndex * 4)
+      const continuaMetricsBaseColumn = apontamentoServicosImportContinuaMetricsStartColumnIndex + (dayIndex * 2)
+      const metrics = {
+        naoCadeirantePresencial: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn, rowNumber))?.v),
+        cadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn + 1, rowNumber))?.v),
+        atendimentoComplementarNaoCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn + 2, rowNumber))?.v),
+        atendimentoComplementarCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn + 3, rowNumber))?.v),
+        continuaNaoCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(continuaSheet, buildWorksheetCellAddress(continuaMetricsBaseColumn, rowNumber))?.v),
+        continuaCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(continuaSheet, buildWorksheetCellAddress(continuaMetricsBaseColumn + 1, rowNumber))?.v),
+      }
+      const dateEntryMap = importedItemsByDate.get(dataReferencia) ?? new Map()
+      const compositeKey = [dreRecord.codigo, ordemServicoItem.codigo, 0, tipoEscolaItem.codigo, tipoPessoa].join('|')
+      const currentItem = dateEntryMap.get(compositeKey) ?? {
+        dreCodigo: dreRecord.codigo,
+        ordemServicoCodigo: ordemServicoItem.codigo,
+        revisao: 0,
+        tipoEscolaCodigo: tipoEscolaItem.codigo,
+        tipoPessoa,
+        naoCadeirantePresencial: 0,
+        cadeirante: 0,
+        atendimentoComplementarNaoCadeirante: 0,
+        atendimentoComplementarCadeirante: 0,
+        continuaNaoCadeirante: 0,
+        continuaCadeirante: 0,
+        kilometragem: '0.0000',
+      }
+
+      currentItem.naoCadeirantePresencial += metrics.naoCadeirantePresencial
+      currentItem.cadeirante += metrics.cadeirante
+      currentItem.atendimentoComplementarNaoCadeirante += metrics.atendimentoComplementarNaoCadeirante
+      currentItem.atendimentoComplementarCadeirante += metrics.atendimentoComplementarCadeirante
+      currentItem.continuaNaoCadeirante += metrics.continuaNaoCadeirante
+      currentItem.continuaCadeirante += metrics.continuaCadeirante
+
+      dateEntryMap.set(compositeKey, currentItem)
+      importedItemsByDate.set(dataReferencia, dateEntryMap)
+    }
+  }
+
+  return {
+    filePath: resolvedFilePath,
+    fileName: path.basename(resolvedFilePath),
+    mesAno,
+    dreCodigo: normalizeRequestValue(dreRecord.codigo),
+    dreDescricao: normalizeRequestValue(dreRecord.descricao),
+    tipoPessoa,
+    revisao: 0,
+    firstDataReferencia: Array.from(importedItemsByDate.keys()).sort()[0] ?? `${referenciaMes.slice(0, 8)}01`,
+    itemsByDate: importedItemsByDate,
+    skippedRecords,
+  }
+}
+
+const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, placa, revisao, tipoPessoa, dataReferencia, page = 1, pageSize = 20 }, executor = pool) => {
   const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
   const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
   const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
+  const normalizedPlaca = normalizeRequestValue(placa)
   const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
   const parsedRevisao = revisao === undefined || revisao === null || revisao === ''
     ? Number.NaN
@@ -1639,11 +2206,21 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, revisao, tipoPe
   }
 
   const values = [normalizedDate, monthRange.monthStart, monthRange.monthEnd, normalizedMesAno]
-  const filters = ['aps.mes_ano = $4', 'aps.data_referencia = $1::date']
+  const filters = ['aps.mes_ano = $4']
 
   if (normalizedDreCodigo) {
     values.push(normalizedDreCodigo)
     filters.push(`CAST(aps.dre_codigo AS text) = $${values.length}`)
+  }
+
+  if (normalizedCrmcCondutor) {
+    values.push(`%${normalizedCrmcCondutor}%`)
+    filters.push(`COALESCE(BTRIM((SELECT c.crmc FROM condutor c WHERE BTRIM(c.cpf_condutor) = BTRIM(os.cpf_condutor) LIMIT 1)), '') ILIKE $${values.length}`)
+  }
+
+  if (normalizedPlaca) {
+    values.push(`%${normalizedPlaca}%`)
+    filters.push(`COALESCE(BTRIM(os.veiculo_placas), '') ILIKE $${values.length}`)
   }
 
   if (Number.isInteger(parsedRevisao) && parsedRevisao >= 0) {
@@ -1656,64 +2233,187 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, revisao, tipoPe
     filters.push(`BTRIM(aps.tipo_pessoa) = $${values.length}`)
   }
 
-  const result = await executor.query(
-    `SELECT
-       BTRIM(aps.mes_ano) AS mes_ano,
-       CAST(aps.dre_codigo AS text) AS dre_codigo,
-       COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
-       BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
-       aps.ordem_servico_codigo::text AS ordem_servico_codigo,
-       COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
-       COALESCE(BTRIM(os.termo_adesao), '') AS ordem_servico_termo_adesao,
-       COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
-       aps.revisao AS revisao,
-       CAST(aps.tipo_escola_codigo AS text) AS tipo_escola_codigo,
-       COALESCE(BTRIM(tipo_escola.sigla), '') AS tipo_escola_sigla,
-       BTRIM(CAST(tipo_escola.descricao AS text)) AS tipo_escola_descricao,
-       COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
-       TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $2::date), 'YYYY-MM-DD') AS periodo_inicio,
-       TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $3::date), 'YYYY-MM-DD') AS periodo_fim,
-       COALESCE(BTRIM((SELECT c.crmc FROM condutor c WHERE BTRIM(c.cpf_condutor) = BTRIM(os.cpf_condutor) LIMIT 1)), '') AS crmc_condutor,
-       COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
-       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
-       COALESCE(BTRIM((SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS empresa,
-       COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
-       CASE UPPER(BTRIM(COALESCE(veiculo.tipo_de_bancada, '')))
-         WHEN 'CONVENCIONAL' THEN 'NORMAL'
-         WHEN 'CRECHE' THEN 'CRECHE'
-         WHEN 'ADAPTADO' THEN 'ACESSIVEL'
-         ELSE COALESCE(BTRIM(veiculo.tipo_de_bancada), '')
-       END AS tipo_veiculo,
-       COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
-       COALESCE(TO_CHAR(aps.data_referencia, 'YYYY-MM-DD'), $1::date::text) AS data_referencia,
-       CASE WHEN ${ordemServicoActiveStartDateExpression} <= $1::date AND ${ordemServicoActiveEndDateExpression} >= $1::date THEN TRUE ELSE FALSE END AS ativo_na_data,
-       COALESCE(aps.nc_pres, 0) AS nc_pres,
-       COALESCE(aps.cad, 0) AS cad,
-       COALESCE(aps.ac_nc, 0) AS ac_nc,
-       COALESCE(aps.ac_cad, 0) AS ac_cad,
-       COALESCE(aps.cont_nc, 0) AS cont_nc,
-       COALESCE(aps.cont_cad, 0) AS cont_cad,
-       TO_CHAR(COALESCE(aps.km, 0), 'FM9999999990.0000') AS km
-     FROM apuracao_servicos aps
-     INNER JOIN dre ON dre.codigo = aps.dre_codigo
-     INNER JOIN tipo_escola ON tipo_escola.codigo = aps.tipo_escola_codigo
-     INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
-     LEFT JOIN veiculo ON BTRIM(veiculo.crm) = BTRIM(os.crm)
-     INNER JOIN apuracao_financeira
-       ON apuracao_financeira.mes_ano = aps.mes_ano
-      AND apuracao_financeira.dre_codigo = aps.dre_codigo
-      AND apuracao_financeira.revisao = aps.revisao
-      AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(aps.tipo_pessoa)
-     WHERE ${filters.join('\n       AND ')}
-     ORDER BY UPPER(BTRIM(CAST(dre.descricao AS text))) ASC,
-              UPPER(BTRIM(COALESCE(os.termo_adesao, ''))) ASC,
-              UPPER(BTRIM(COALESCE(os.num_os, ''))) ASC,
-              aps.revisao ASC,
-              UPPER(BTRIM(CAST(tipo_escola.descricao AS text))) ASC`,
+  const normalizedPageSize = Math.min(Math.max(Number(pageSize) || 20, 1), 50)
+  const canonicalEntriesCte = `
+    WITH canonical_entries AS (
+      SELECT DISTINCT ON (
+        BTRIM(aps.mes_ano),
+        CAST(aps.dre_codigo AS text),
+        aps.ordem_servico_codigo::text,
+        aps.revisao,
+        CAST(aps.tipo_escola_codigo AS text),
+        COALESCE(BTRIM(aps.tipo_pessoa), '')
+      )
+        BTRIM(aps.mes_ano) AS mes_ano,
+        CAST(aps.dre_codigo AS text) AS dre_codigo,
+        COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+        BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+        aps.ordem_servico_codigo::text AS ordem_servico_codigo,
+        COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
+        COALESCE(BTRIM(os.termo_adesao), '') AS ordem_servico_termo_adesao,
+        COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+        aps.revisao AS revisao,
+        CAST(aps.tipo_escola_codigo AS text) AS tipo_escola_codigo,
+        COALESCE(BTRIM(tipo_escola.sigla), '') AS tipo_escola_sigla,
+        BTRIM(CAST(tipo_escola.descricao AS text)) AS tipo_escola_descricao,
+        COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+        TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $2::date), 'YYYY-MM-DD') AS periodo_inicio,
+        TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $3::date), 'YYYY-MM-DD') AS periodo_fim,
+        COALESCE(BTRIM((SELECT c.crmc FROM condutor c WHERE BTRIM(c.cpf_condutor) = BTRIM(os.cpf_condutor) LIMIT 1)), '') AS crmc_condutor,
+        COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
+        COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+        COALESCE(BTRIM((SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS empresa,
+        COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
+        CASE UPPER(BTRIM(COALESCE(veiculo.tipo_de_bancada, '')))
+          WHEN 'CONVENCIONAL' THEN 'NORMAL'
+          WHEN 'CRECHE' THEN 'CRECHE'
+          WHEN 'ADAPTADO' THEN 'ACESSIVEL'
+          ELSE COALESCE(BTRIM(veiculo.tipo_de_bancada), '')
+        END AS tipo_veiculo,
+        COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
+        TRUE AS ativo_na_data,
+        UPPER(BTRIM(CAST(dre.descricao AS text))) AS dre_descricao_order,
+        UPPER(COALESCE(BTRIM((SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '')) AS empresa_order,
+        UPPER(COALESCE(BTRIM(os.condutor), '')) AS nome_condutor_order,
+        UPPER(COALESCE(BTRIM(os.termo_adesao), '')) AS termo_adesao_order,
+        UPPER(COALESCE(BTRIM(os.num_os), '')) AS num_os_order,
+        ${buildApontamentoServicosTipoEscolaOrderExpression('tipo_escola')} AS tipo_escola_display_order,
+        UPPER(BTRIM(CAST(tipo_escola.descricao AS text))) AS tipo_escola_descricao_order
+      FROM apuracao_servicos aps
+      INNER JOIN dre ON dre.codigo = aps.dre_codigo
+      INNER JOIN tipo_escola ON tipo_escola.codigo = aps.tipo_escola_codigo
+      INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+      LEFT JOIN veiculo ON BTRIM(veiculo.crm) = BTRIM(os.crm)
+      INNER JOIN apuracao_financeira
+        ON apuracao_financeira.mes_ano = aps.mes_ano
+       AND apuracao_financeira.dre_codigo = aps.dre_codigo
+       AND apuracao_financeira.revisao = aps.revisao
+       AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(aps.tipo_pessoa)
+      WHERE ${filters.join('\n       AND ')}
+        AND ${ordemServicoActiveStartDateExpression} <= $1::date
+        AND ${ordemServicoActiveEndDateExpression} >= $1::date
+      ORDER BY
+        BTRIM(aps.mes_ano),
+        CAST(aps.dre_codigo AS text),
+        aps.ordem_servico_codigo::text,
+        aps.revisao,
+        CAST(aps.tipo_escola_codigo AS text),
+        COALESCE(BTRIM(aps.tipo_pessoa), ''),
+        aps.data_referencia ASC
+    ),
+    grouped_ordens AS (
+      SELECT
+        mes_ano,
+        dre_codigo,
+        ordem_servico_codigo,
+        revisao,
+        tipo_pessoa,
+        MAX(dre_descricao_order) AS dre_descricao_order,
+        MAX(empresa_order) AS empresa_order,
+        MAX(nome_condutor_order) AS nome_condutor_order,
+        MAX(termo_adesao_order) AS termo_adesao_order,
+        MAX(num_os_order) AS num_os_order
+      FROM canonical_entries
+      GROUP BY mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa
+    )`
+
+  const countResult = await executor.query(
+    `${canonicalEntriesCte}
+     SELECT COUNT(*)::int AS total
+     FROM grouped_ordens`,
     values,
   )
 
-  return result.rows.map(mapApontamentoServicosRow)
+  const total = countResult.rows[0]?.total ?? 0
+  const totalPages = Math.max(Math.ceil(total / normalizedPageSize), 1)
+  const normalizedPage = Math.min(Math.max(Number(page) || 1, 1), totalPages)
+  const offset = (normalizedPage - 1) * normalizedPageSize
+  const pagedValues = [...values, normalizedPageSize, offset]
+  const result = await executor.query(
+    `${canonicalEntriesCte},
+     paged_ordens AS (
+       SELECT
+         mes_ano,
+         dre_codigo,
+         ordem_servico_codigo,
+         revisao,
+         tipo_pessoa
+       FROM grouped_ordens
+        ORDER BY empresa_order ASC,
+             nome_condutor_order ASC,
+             dre_descricao_order ASC,
+                termo_adesao_order ASC,
+                num_os_order ASC,
+                revisao ASC,
+                ordem_servico_codigo ASC
+       LIMIT $${pagedValues.length - 1}
+       OFFSET $${pagedValues.length}
+     )
+     SELECT
+       canonical_entries.mes_ano,
+       canonical_entries.dre_codigo,
+       canonical_entries.dre_sigla,
+       canonical_entries.dre_descricao,
+       canonical_entries.ordem_servico_codigo,
+       canonical_entries.ordem_servico_os_concat,
+       canonical_entries.ordem_servico_termo_adesao,
+       canonical_entries.ordem_servico_num_os,
+       canonical_entries.revisao,
+       canonical_entries.tipo_escola_codigo,
+       canonical_entries.tipo_escola_sigla,
+       canonical_entries.tipo_escola_descricao,
+       canonical_entries.tipo_pessoa,
+       canonical_entries.periodo_inicio,
+       canonical_entries.periodo_fim,
+       canonical_entries.crmc_condutor,
+       canonical_entries.contrato,
+       canonical_entries.placa,
+       canonical_entries.empresa,
+       canonical_entries.nome_condutor,
+       canonical_entries.tipo_veiculo,
+       canonical_entries.apuracao_financeira_situacao,
+       $1::date::text AS data_referencia,
+       canonical_entries.ativo_na_data,
+       COALESCE(apontamento_dia.nc_pres, 0) AS nc_pres,
+       COALESCE(apontamento_dia.cad, 0) AS cad,
+       COALESCE(apontamento_dia.ac_nc, 0) AS ac_nc,
+       COALESCE(apontamento_dia.ac_cad, 0) AS ac_cad,
+       COALESCE(apontamento_dia.cont_nc, 0) AS cont_nc,
+       COALESCE(apontamento_dia.cont_cad, 0) AS cont_cad,
+       TO_CHAR(COALESCE(apontamento_dia.km, 0), 'FM9999999990.0000') AS km
+     FROM canonical_entries
+     INNER JOIN paged_ordens
+       ON paged_ordens.mes_ano = canonical_entries.mes_ano
+      AND paged_ordens.dre_codigo = canonical_entries.dre_codigo
+      AND paged_ordens.ordem_servico_codigo = canonical_entries.ordem_servico_codigo
+      AND paged_ordens.revisao = canonical_entries.revisao
+      AND paged_ordens.tipo_pessoa = canonical_entries.tipo_pessoa
+     LEFT JOIN apuracao_servicos apontamento_dia
+       ON apontamento_dia.mes_ano = canonical_entries.mes_ano
+      AND apontamento_dia.data_referencia = $1::date
+      AND CAST(apontamento_dia.dre_codigo AS text) = canonical_entries.dre_codigo
+      AND apontamento_dia.ordem_servico_codigo::text = canonical_entries.ordem_servico_codigo
+      AND apontamento_dia.revisao = canonical_entries.revisao
+      AND CAST(apontamento_dia.tipo_escola_codigo AS text) = canonical_entries.tipo_escola_codigo
+      AND COALESCE(BTRIM(apontamento_dia.tipo_pessoa), '') = canonical_entries.tipo_pessoa
+     ORDER BY canonical_entries.empresa_order ASC,
+              canonical_entries.nome_condutor_order ASC,
+              canonical_entries.dre_descricao_order ASC,
+              canonical_entries.termo_adesao_order ASC,
+              canonical_entries.num_os_order ASC,
+              canonical_entries.revisao ASC,
+              canonical_entries.tipo_escola_display_order ASC,
+              canonical_entries.tipo_escola_descricao_order ASC`,
+    pagedValues,
+  )
+
+  return {
+    items: result.rows.map(mapApontamentoServicosRow),
+    total,
+    page: normalizedPage,
+    pageSize: normalizedPageSize,
+    totalPages,
+  }
 }
 
 const syncApuracaoServicosDailyTotals = async (key, executor = pool) => {
@@ -2425,6 +3125,27 @@ const findDreByDescription = async (descricao) => {
   return result.rows[0] ?? null
 }
 
+const findDreByComparableDescription = async (descricao, executor = pool) => {
+  const normalizedDescricao = normalizeImportComparableText(descricao)
+
+  if (!normalizedDescricao) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${dreSelectClause}
+     FROM dre
+     ORDER BY codigo ASC`,
+  )
+
+  return result.rows.find((row) => {
+    return normalizeImportComparableText(row?.descricao) === normalizedDescricao
+      || normalizeImportComparableText(row?.sigla) === normalizedDescricao
+      || normalizeImportComparableText(row?.codigo_operacional) === normalizedDescricao
+      || normalizeImportComparableText(row?.codigo) === normalizedDescricao
+  }) ?? null
+}
+
 const ensureDreOperationalEntry = async ({ codigo, descricao }) => {
   const normalizedCodigo = normalizeDreOperationalCode(codigo)
   const normalizedDescricao = normalizeDreDescription(descricao)
@@ -3119,7 +3840,7 @@ const ensurePreviousApuracaoFinanceiraRevisionIsConcluded = async ({ mesAno, rev
   }
 }
 
-const ensureApuracaoServicosEditable = async ({ mesAno, dreCodigo, revisao, tipoPessoa }, executor = pool) => {
+const ensureApuracaoServicosEditable = async ({ mesAno, dreCodigo, revisao, tipoPessoa, createIfMissing = false }, executor = pool) => {
   const apuracaoFinanceiraResult = await executor.query(
     `SELECT BTRIM(COALESCE(situacao, '')) AS situacao
      FROM apuracao_financeira
@@ -3132,6 +3853,18 @@ const ensureApuracaoServicosEditable = async ({ mesAno, dreCodigo, revisao, tipo
   )
 
   if (apuracaoFinanceiraResult.rowCount === 0) {
+    if (createIfMissing) {
+      await executor.query(
+        `INSERT INTO apuracao_financeira (mes_ano, dre_codigo, revisao, tipo_pessoa, situacao, data_alteracao)
+         VALUES ($1, $2::integer, $3, $4, 'Em digitacao', NOW())
+         ON CONFLICT (mes_ano, dre_codigo, revisao, tipo_pessoa)
+         DO NOTHING`,
+        [mesAno, dreCodigo, revisao, tipoPessoa],
+      )
+
+      return
+    }
+
     throw createHttpError(404, 'Apuracao financeira da chave informada nao encontrada.')
   }
 
@@ -13470,6 +14203,59 @@ const syncAcessoPaginaCatalog = async (executor = pool) => {
       [item.chaveSistema, item.sigla, item.descricao, item.funcao],
     )
   }
+
+  await executor.query(
+    `UPDATE acesso_pagina
+     SET descricao = 'TOTAL SERVICOS'
+     WHERE chave_sistema = 'form_apursvc021'
+       AND COALESCE(descricao, '') <> 'TOTAL SERVICOS'`,
+  )
+
+  if (removedAcessoPaginaChaveSistema.length > 0) {
+    await executor.query(
+      `DELETE FROM perfil_acesso
+       WHERE acesso_pagina_codigo IN (
+         SELECT codigo
+         FROM acesso_pagina
+         WHERE chave_sistema = ANY($1::text[])
+       )`,
+      [removedAcessoPaginaChaveSistema],
+    )
+
+    await executor.query(
+      `DELETE FROM acesso_pagina
+       WHERE chave_sistema = ANY($1::text[])`,
+      [removedAcessoPaginaChaveSistema],
+    )
+  }
+}
+
+const syncResumoFinanceiroPerfilAcesso = async (executor = pool) => {
+  await executor.query(
+    `INSERT INTO perfil_acesso (perfil_codigo, acesso_pagina_codigo, permissao)
+     SELECT
+       perfil.codigo,
+       acesso_pagina.codigo,
+       CASE
+         WHEN UPPER(BTRIM(CAST(perfil.descricao AS text))) IN ('CONSULTA', 'ATENDIMENTO') THEN 'consulta'
+         ELSE 'todos'
+       END
+     FROM perfil
+     INNER JOIN acesso_pagina
+       ON COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') = ANY($1::text[])
+     WHERE UPPER(BTRIM(CAST(perfil.descricao AS text))) NOT IN ('SME', 'DRE')
+       AND (
+         UPPER(BTRIM(CAST(perfil.descricao AS text))) <> 'ADMINISTRATIVO'
+         OR COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') = ANY($2::text[])
+       )
+       AND (
+         UPPER(BTRIM(CAST(perfil.descricao AS text))) <> 'FINANCEIRO'
+         OR COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') = ANY($3::text[])
+       )
+     ON CONFLICT (perfil_codigo, acesso_pagina_codigo)
+     DO UPDATE SET permissao = EXCLUDED.permissao`,
+    [resumoFinanceiroAcessoPaginaChaveSistema, administrativoAllowedAcessoPaginaChaveSistema, financeiroAllowedAcessoPaginaChaveSistema],
+  )
 }
 
 const validatePerfilCodigos = async (perfilCodigos) => {
@@ -13993,6 +14779,7 @@ const ensureDatabaseSchema = async () => {
     END $$;
   `)
   await pool.query('SELECT setval(\'perfil_acesso_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM perfil_acesso), 0), 1), true)')
+  await syncResumoFinanceiroPerfilAcesso(pool)
   await pool.query("UPDATE apuracao_financeira SET situacao = 'Aprovacao SME' WHERE UPPER(BTRIM(COALESCE(situacao, ''))) = 'EM APROVACAO'")
   await pool.query('CREATE SEQUENCE IF NOT EXISTS dre_codigo_seq START WITH 1 INCREMENT BY 1')
   await pool.query(`
@@ -16867,6 +17654,264 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === '/api/resumo-financeiro') {
+    try {
+      const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
+      const sortBy = normalizeRequestValue(requestUrl.searchParams.get('sortBy') ?? 'mesAno')
+      const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
+        ? 'ASC'
+        : 'DESC'
+      const offset = (page - 1) * pageSize
+      const filters = []
+      const values = []
+      const resumoFinanceiroMesAnoOrderClause = `TO_DATE(CONCAT('01/', resumo_financeiro.mes_ano), 'DD/MM/YYYY')`
+      const orderByClause = sortBy === 'dreDescricao'
+        ? `BTRIM(CAST(resumo_financeiro.dre_descricao AS text)) ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
+        : sortBy === 'tipoPessoa'
+          ? `BTRIM(CAST(resumo_financeiro.tipo_pessoa AS text)) ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
+          : sortBy === 'totalRevisoes'
+            ? `resumo_financeiro.total_revisoes ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
+            : sortBy === 'totalRegistros'
+              ? `resumo_financeiro.total_registros ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
+              : sortBy === 'kilometragem'
+                ? `resumo_financeiro.km_total ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
+                : sortBy === 'dataAlteracaoOrigem'
+                  ? `resumo_financeiro.data_alteracao_origem ${sortDirection} NULLS LAST, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
+                  : `${resumoFinanceiroMesAnoOrderClause} ${sortDirection}, resumo_financeiro.dre_codigo ASC, resumo_financeiro.tipo_pessoa ASC`
+
+      if (search) {
+        values.push(`%${search}%`)
+        filters.push(`(
+          resumo_financeiro.mes_ano ILIKE $${values.length}
+          OR resumo_financeiro.dre_codigo ILIKE $${values.length}
+          OR COALESCE(resumo_financeiro.dre_sigla, '') ILIKE UPPER($${values.length})
+          OR COALESCE(resumo_financeiro.dre_descricao, '') ILIKE $${values.length}
+          OR COALESCE(resumo_financeiro.tipo_pessoa, '') ILIKE UPPER($${values.length})
+          OR COALESCE(resumo_financeiro.situacoes_apuracao_financeira, '') ILIKE $${values.length}
+        )`)
+      }
+
+      const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+      const baseQuery = `
+        WITH servicos AS (
+          SELECT
+            BTRIM(aps.mes_ano) AS mes_ano,
+            CAST(aps.dre_codigo AS text) AS dre_codigo,
+            COALESCE(BTRIM(aps.tipo_pessoa), 'PF') AS tipo_pessoa,
+            COUNT(*)::int AS total_registros,
+            COUNT(DISTINCT aps.ordem_servico_codigo)::int AS total_ordens_servico,
+            COUNT(DISTINCT aps.tipo_escola_codigo)::int AS total_tipos_escola,
+            COUNT(DISTINCT aps.data_referencia)::int AS total_datas_referencia,
+            COALESCE(SUM(aps.nc_pres), 0)::int AS nc_pres,
+            COALESCE(SUM(aps.cad), 0)::int AS cad,
+            COALESCE(SUM(aps.ac_nc), 0)::int AS ac_nc,
+            COALESCE(SUM(aps.ac_cad), 0)::int AS ac_cad,
+            COALESCE(SUM(aps.cont_nc), 0)::int AS cont_nc,
+            COALESCE(SUM(aps.cont_cad), 0)::int AS cont_cad,
+            COALESCE(SUM(aps.km), 0)::numeric(18, 4) AS km_total,
+            TO_CHAR(COALESCE(SUM(aps.km), 0), 'FM9999999990.0000') AS km,
+            COALESCE(MAX(aps.data_alteracao), MAX(aps.data_inclusao)) AS data_alteracao_origem
+          FROM apuracao_servicos aps
+          GROUP BY BTRIM(aps.mes_ano), CAST(aps.dre_codigo AS text), COALESCE(BTRIM(aps.tipo_pessoa), 'PF')
+        ),
+        financeiro AS (
+          SELECT
+            BTRIM(af.mes_ano) AS mes_ano,
+            CAST(af.dre_codigo AS text) AS dre_codigo,
+            COALESCE(BTRIM(af.tipo_pessoa), 'PF') AS tipo_pessoa,
+            COUNT(*)::int AS total_revisoes,
+            COALESCE(MAX(af.revisao), 0)::int AS maior_revisao,
+            COALESCE(STRING_AGG(DISTINCT BTRIM(CAST(af.situacao AS text)), ' / '), '') AS situacoes_apuracao_financeira
+          FROM apuracao_financeira af
+          GROUP BY BTRIM(af.mes_ano), CAST(af.dre_codigo AS text), COALESCE(BTRIM(af.tipo_pessoa), 'PF')
+        )
+        SELECT
+          servicos.mes_ano,
+          servicos.dre_codigo,
+          COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+          BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+          servicos.tipo_pessoa,
+          COALESCE(financeiro.total_revisoes, 0)::int AS total_revisoes,
+          COALESCE(financeiro.maior_revisao, 0)::int AS maior_revisao,
+          COALESCE(financeiro.situacoes_apuracao_financeira, '') AS situacoes_apuracao_financeira,
+          servicos.total_registros,
+          servicos.total_ordens_servico,
+          servicos.total_tipos_escola,
+          servicos.total_datas_referencia,
+          servicos.nc_pres,
+          servicos.cad,
+          servicos.ac_nc,
+          servicos.ac_cad,
+          servicos.cont_nc,
+          servicos.cont_cad,
+          servicos.km_total,
+          servicos.km,
+          COALESCE(CAST(servicos.data_alteracao_origem AS text), '') AS data_alteracao_origem
+        FROM servicos
+        INNER JOIN dre ON CAST(dre.codigo AS text) = servicos.dre_codigo
+        LEFT JOIN financeiro
+          ON financeiro.mes_ano = servicos.mes_ano
+         AND financeiro.dre_codigo = servicos.dre_codigo
+         AND financeiro.tipo_pessoa = servicos.tipo_pessoa`
+
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM (${baseQuery}) resumo_financeiro
+         ${whereClause}`,
+        values,
+      )
+
+      values.push(pageSize)
+      values.push(offset)
+      const result = await pool.query(
+        `SELECT *
+         FROM (${baseQuery}) resumo_financeiro
+         ${whereClause}
+         ORDER BY ${orderByClause}
+         LIMIT $${values.length - 1}
+         OFFSET $${values.length}`,
+        values,
+      )
+      const total = countResult.rows[0]?.total ?? 0
+
+      sendJson(response, 200, {
+        items: result.rows.map((row) => ({
+          mesAno: normalizeRequestValue(row?.mes_ano),
+          dreCodigo: normalizeRequestValue(row?.dre_codigo),
+          dreSigla: normalizeRequestValue(row?.dre_sigla),
+          dreDescricao: normalizeRequestValue(row?.dre_descricao),
+          tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa) || 'PF',
+          totalRevisoes: Number(row?.total_revisoes) || 0,
+          maiorRevisao: Number(row?.maior_revisao) || 0,
+          situacoesApuracaoFinanceira: normalizeRequestValue(row?.situacoes_apuracao_financeira),
+          totalRegistros: Number(row?.total_registros) || 0,
+          totalOrdensServico: Number(row?.total_ordens_servico) || 0,
+          totalTiposEscola: Number(row?.total_tipos_escola) || 0,
+          totalDatasReferencia: Number(row?.total_datas_referencia) || 0,
+          naoCadeirantePresencial: Number(row?.nc_pres) || 0,
+          cadeirante: Number(row?.cad) || 0,
+          atendimentoComplementarNaoCadeirante: Number(row?.ac_nc) || 0,
+          atendimentoComplementarCadeirante: Number(row?.ac_cad) || 0,
+          continuaNaoCadeirante: Number(row?.cont_nc) || 0,
+          continuaCadeirante: Number(row?.cont_cad) || 0,
+          kilometragem: normalizeRequestValue(row?.km),
+          dataAlteracaoOrigem: normalizeRequestValue(row?.data_alteracao_origem),
+        })),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
+        sortBy: ['mesAno', 'dreDescricao', 'tipoPessoa', 'totalRevisoes', 'totalRegistros', 'kilometragem', 'dataAlteracaoOrigem'].includes(sortBy) ? sortBy : 'mesAno',
+        sortDirection: sortDirection.toLowerCase(),
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar o resumo financeiro.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/apuracao-financeira/resumo-filhos') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeDreOperationalCode(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const revisao = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+
+      if (!isValidApuracaoFinanceiraMesAno(mesAno)) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dreCodigo) {
+        sendJson(response, 400, { message: 'DRE obrigatoria.' })
+        return
+      }
+
+      if (!Number.isInteger(revisao) || revisao < 0) {
+        sendJson(response, 400, { message: 'Revisao invalida.' })
+        return
+      }
+
+      if (!tipoPessoa) {
+        sendJson(response, 400, { message: 'Tipo pessoa invalido.' })
+        return
+      }
+
+      const summaryResult = await pool.query(
+        `SELECT
+           aps.mes_ano AS mes_ano,
+           CAST(aps.dre_codigo AS text) AS dre_codigo,
+           COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+           BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+           aps.revisao AS revisao,
+           COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+           COUNT(*)::int AS total_registros,
+           COUNT(DISTINCT aps.ordem_servico_codigo)::int AS total_ordens_servico,
+           COUNT(DISTINCT aps.tipo_escola_codigo)::int AS total_tipos_escola,
+           COUNT(DISTINCT aps.data_referencia)::int AS total_datas_referencia,
+           COALESCE(SUM(aps.nc_pres), 0)::int AS nc_pres,
+           COALESCE(SUM(aps.cad), 0)::int AS cad,
+           COALESCE(SUM(aps.ac_nc), 0)::int AS ac_nc,
+           COALESCE(SUM(aps.ac_cad), 0)::int AS ac_cad,
+           COALESCE(SUM(aps.cont_nc), 0)::int AS cont_nc,
+           COALESCE(SUM(aps.cont_cad), 0)::int AS cont_cad,
+           TO_CHAR(COALESCE(SUM(aps.km), 0), 'FM9999999990.0000') AS km
+         FROM apuracao_servicos aps
+         INNER JOIN dre ON dre.codigo = aps.dre_codigo
+         WHERE BTRIM(aps.mes_ano) = $1
+           AND CAST(aps.dre_codigo AS text) = $2
+           AND aps.revisao = $3
+           AND BTRIM(aps.tipo_pessoa) = $4
+         GROUP BY aps.mes_ano, aps.dre_codigo, dre.sigla, dre.descricao, aps.revisao, aps.tipo_pessoa`,
+        [mesAno, dreCodigo, revisao, tipoPessoa],
+      )
+
+      if (summaryResult.rowCount === 0) {
+        sendJson(response, 404, { message: 'Nenhum valor aglutinado de Total Servicos foi encontrado para a chave informada.' })
+        return
+      }
+
+      const row = summaryResult.rows[0]
+
+      sendJson(response, 200, {
+        summary: {
+          mesAno: normalizeRequestValue(row?.mes_ano),
+          dreCodigo: normalizeRequestValue(row?.dre_codigo),
+          dreSigla: normalizeRequestValue(row?.dre_sigla),
+          dreDescricao: normalizeRequestValue(row?.dre_descricao),
+          revisao: Number(row?.revisao) || 0,
+          tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa) || 'PF',
+          totalRegistros: Number(row?.total_registros) || 0,
+          totalOrdensServico: Number(row?.total_ordens_servico) || 0,
+          totalTiposEscola: Number(row?.total_tipos_escola) || 0,
+          totalDatasReferencia: Number(row?.total_datas_referencia) || 0,
+          naoCadeirantePresencial: Number(row?.nc_pres) || 0,
+          cadeirante: Number(row?.cad) || 0,
+          atendimentoComplementarNaoCadeirante: Number(row?.ac_nc) || 0,
+          atendimentoComplementarCadeirante: Number(row?.ac_cad) || 0,
+          continuaNaoCadeirante: Number(row?.cont_nc) || 0,
+          continuaCadeirante: Number(row?.cont_cad) || 0,
+          kilometragem: normalizeRequestValue(row?.km),
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar os valores aglutinados de total de servicos.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'GET' && pathname === '/api/apuracao-servicos/ordem-servico-options') {
     try {
       const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
@@ -16896,9 +17941,13 @@ const server = createServer(async (request, response) => {
     try {
       const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
       const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const crmcCondutor = normalizeRequestValue(requestUrl.searchParams.get('crmcCondutor') ?? '')
+      const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
       const revisao = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
       const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
       const dataReferencia = normalizeApontamentoServicosDate(requestUrl.searchParams.get('dataReferencia') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
 
       if (!mesAno) {
         sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
@@ -16910,17 +17959,24 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const items = await listApontamentoServicosItems({
+      const result = await listApontamentoServicosItems({
         mesAno,
         dreCodigo,
+        crmcCondutor,
+        placa,
         revisao: Number.isInteger(revisao) ? revisao : undefined,
         tipoPessoa,
         dataReferencia,
+        page,
+        pageSize,
       })
 
       sendJson(response, 200, {
-        items,
-        total: items.length,
+        items: result.items,
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize,
+        totalPages: result.totalPages,
         mesAno,
         dataReferencia,
       })
@@ -16931,6 +17987,114 @@ const server = createServer(async (request, response) => {
         : 'Erro ao consultar o apontamento de servicos.'
 
       sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/apontamento-servicos/import-excel') {
+    const client = await pool.connect()
+
+    try {
+      const body = await readJsonBody(request)
+      const resolvedImportFiles = await resolveApontamentoServicosImportFilePaths({
+        directoryPath: body?.directoryPath,
+        fileName: body?.fileName,
+      })
+
+      await client.query('BEGIN')
+
+      let sharedImportContext = null
+      let hasSharedImportContext = true
+      let processedFiles = 0
+      let processedItems = 0
+      let processedDates = 0
+      const skippedRecords = []
+
+      for (const filePath of resolvedImportFiles.filePaths) {
+        const importResult = await importApontamentoServicosWorkbook({ filePath }, client)
+        const currentContext = {
+          mesAno: importResult.mesAno,
+          dreCodigo: importResult.dreCodigo,
+          dreDescricao: importResult.dreDescricao,
+          revisao: importResult.revisao,
+          tipoPessoa: importResult.tipoPessoa,
+          dataReferencia: importResult.firstDataReferencia,
+        }
+
+        if (!sharedImportContext) {
+          sharedImportContext = currentContext
+        } else if (
+          sharedImportContext.mesAno !== currentContext.mesAno
+          || sharedImportContext.dreCodigo !== currentContext.dreCodigo
+          || sharedImportContext.dreDescricao !== currentContext.dreDescricao
+          || sharedImportContext.revisao !== currentContext.revisao
+          || sharedImportContext.tipoPessoa !== currentContext.tipoPessoa
+          || sharedImportContext.dataReferencia !== currentContext.dataReferencia
+        ) {
+          hasSharedImportContext = false
+        }
+
+        for (const [dataReferencia, itemsMap] of importResult.itemsByDate.entries()) {
+          const items = Array.from(itemsMap.values())
+
+          if (!items.length) {
+            continue
+          }
+
+          await upsertApontamentoServicosItems({
+            mesAno: importResult.mesAno,
+            dataReferencia,
+            items,
+            preserveExistingKilometragem: true,
+            createApuracaoFinanceiraIfMissing: true,
+          }, client)
+
+          processedItems += items.length
+        }
+
+        processedFiles += 1
+        processedDates += importResult.itemsByDate.size
+
+        for (const skippedRecord of importResult.skippedRecords) {
+          skippedRecords.push({
+            ...skippedRecord,
+            fileName: importResult.fileName,
+          })
+        }
+      }
+
+      await client.query('COMMIT')
+
+      const responseImportContext = hasSharedImportContext ? sharedImportContext : null
+
+      sendJson(response, 200, {
+        message: `Importacao concluida: ${processedFiles} arquivo(s), ${processedItems} linha(s) processada(s) e ${skippedRecords.length} OS nao processada(s).`,
+        directoryPath: resolvedImportFiles.directoryPath,
+        filePath: processedFiles === 1 ? resolvedImportFiles.filePaths[0] : '',
+        fileName: processedFiles === 1 ? path.basename(resolvedImportFiles.filePaths[0]) : '',
+        mesAno: responseImportContext?.mesAno ?? '',
+        dreCodigo: responseImportContext?.dreCodigo ?? '',
+        dreDescricao: responseImportContext?.dreDescricao ?? '',
+        revisao: responseImportContext?.revisao ?? 0,
+        tipoPessoa: responseImportContext?.tipoPessoa ?? '',
+        dataReferencia: responseImportContext?.dataReferencia ?? '',
+        processedFiles,
+        processedItems,
+        processedDates,
+        skippedRecords,
+      })
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {})
+
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao importar a planilha do apontamento de servicos.'
+
+      sendJson(response, statusCode, { message })
+    } finally {
+      client.release()
     }
 
     return
@@ -21975,6 +23139,24 @@ const server = createServer(async (request, response) => {
         [administrativoAllowedAcessoPaginaChaveSistema, financeiroAllowedAcessoPaginaChaveSistema],
       )
 
+      const apontamentoServicosResult = await pool.query(
+        `INSERT INTO perfil_acesso (perfil_codigo, acesso_pagina_codigo, permissao)
+         SELECT
+           perfil.codigo,
+           acesso_pagina.codigo,
+           CASE
+             WHEN UPPER(BTRIM(CAST(perfil.descricao AS text))) = ANY($1::text[]) THEN 'todos'
+             ELSE 'consulta'
+           END
+         FROM perfil
+         INNER JOIN acesso_pagina
+           ON COALESCE(BTRIM(CAST(acesso_pagina.chave_sistema AS text)), '') = $2
+         ON CONFLICT (perfil_codigo, acesso_pagina_codigo)
+         DO UPDATE SET permissao = EXCLUDED.permissao
+         RETURNING perfil_acesso.codigo::text AS codigo`,
+        [apontamentoServicosPermissaoTodosPerfis, apontamentoServicosAcessoPaginaChaveSistema],
+      )
+
       const totals = totalsResult.rows[0] ?? {
         total_perfis: 0,
         total_acessos: 0,
@@ -21985,10 +23167,11 @@ const server = createServer(async (request, response) => {
       const removedAdministrativoCount = removedAdministrativoResult.rowCount ?? 0
       const removedFinanceiroCount = removedFinanceiroResult.rowCount ?? 0
       const removedSmeDreCount = removedSmeDreResult.rowCount ?? 0
+      const apontamentoServicosCount = apontamentoServicosResult.rowCount ?? 0
 
       sendJson(response, 201, {
-        message: insertedCount > 0 || normalizedCount > 0 || removedAdministrativoCount > 0 || removedFinanceiroCount > 0 || removedSmeDreCount > 0
-          ? `${insertedCount} registro(s) de PerfilAcesso gerado(s), ${normalizedCount} registro(s) dos perfis Consulta/Atendimento ajustado(s), ${removedAdministrativoCount} registro(s) indevidos do perfil Administrativo removido(s), ${removedFinanceiroCount} registro(s) indevidos do perfil Financeiro removido(s) e ${removedSmeDreCount} registro(s) dos perfis SME/DRE removido(s).`
+        message: insertedCount > 0 || normalizedCount > 0 || removedAdministrativoCount > 0 || removedFinanceiroCount > 0 || removedSmeDreCount > 0 || apontamentoServicosCount > 0
+          ? `${insertedCount} registro(s) de PerfilAcesso gerado(s), ${normalizedCount} registro(s) dos perfis Consulta/Atendimento ajustado(s), ${removedAdministrativoCount} registro(s) indevidos do perfil Administrativo removido(s), ${removedFinanceiroCount} registro(s) indevidos do perfil Financeiro removido(s), ${removedSmeDreCount} registro(s) dos perfis SME/DRE removido(s) e ${apontamentoServicosCount} permissao(oes) de Apontamento Servicos sincronizada(s).`
           : 'Nenhum novo registro de PerfilAcesso foi gerado.',
         item: {
           total_perfis: totals.total_perfis ?? 0,
@@ -21999,6 +23182,7 @@ const server = createServer(async (request, response) => {
           removed_administrativo_relations: removedAdministrativoCount,
           removed_financeiro_relations: removedFinanceiroCount,
           removed_sme_dre_relations: removedSmeDreCount,
+          synchronized_apontamento_servicos_relations: apontamentoServicosCount,
         },
       })
     } catch (error) {
@@ -22549,6 +23733,88 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'POST' && pathname === '/api/apuracao-financeira/alterar-situacao-lote') {
+    try {
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa) || 'PF'
+      const situacao = normalizeApuracaoFinanceiraStatus(body.situacao)
+      const dreCodigos = Array.isArray(body.dreCodigos)
+        ? [...new Set(body.dreCodigos.map((item) => normalizeRequestValue(item)).filter(Boolean))]
+        : []
+
+      if (!isValidApuracaoFinanceiraMesAno(mesAno)) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (dreCodigos.length === 0) {
+        sendJson(response, 400, { message: 'Selecione ao menos uma DRE.' })
+        return
+      }
+
+      if (!tipoPessoa) {
+        sendJson(response, 400, { message: 'Tipo pessoa invalido.' })
+        return
+      }
+
+      if (!situacao) {
+        sendJson(response, 400, { message: 'Situacao invalida.' })
+        return
+      }
+
+      const matchingResult = await pool.query(
+        `SELECT COUNT(*)::int AS total_matched
+         FROM apuracao_financeira
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = ANY($2::text[])
+           AND BTRIM(tipo_pessoa) = $3`,
+        [mesAno, dreCodigos, tipoPessoa],
+      )
+
+      const totalMatched = Number(matchingResult.rows[0]?.total_matched) || 0
+
+      if (totalMatched === 0) {
+        sendJson(response, 404, { message: 'Nenhum registro de apuracao financeira foi encontrado para os filtros informados.' })
+        return
+      }
+
+      const updateResult = await pool.query(
+        `UPDATE apuracao_financeira
+         SET situacao = $1,
+             data_alteracao = NOW()
+         WHERE mes_ano = $2
+           AND CAST(dre_codigo AS text) = ANY($3::text[])
+           AND BTRIM(tipo_pessoa) = $4
+           AND BTRIM(situacao) <> $1
+         RETURNING 1`,
+        [situacao, mesAno, dreCodigos, tipoPessoa],
+      )
+
+      sendJson(response, 200, {
+        summary: {
+          mesAno,
+          tipoPessoa,
+          situacao,
+          totalMatched,
+          totalUpdated: updateResult.rowCount ?? 0,
+          totalSelectedDres: dreCodigos.length,
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao alterar a situacao da apuracao financeira em lote.'
+      const statusCode = error instanceof Error && typeof error.statusCode === 'number'
+        ? error.statusCode
+        : 500
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'POST' && pathname === '/api/apuracao-servicos') {
     try {
       const body = await readJsonBody(request)
@@ -22780,106 +24046,11 @@ const server = createServer(async (request, response) => {
 
       await client.query('BEGIN')
 
-      for (const item of items) {
-        const dreCodigo = normalizeRequestValue(item.dreCodigo)
-        const ordemServicoCodigo = normalizeRequestValue(item.ordemServicoCodigo)
-        const tipoEscolaCodigo = normalizeRequestValue(item.tipoEscolaCodigo)
-        const tipoPessoa = normalizeApuracaoTipoPessoa(item.tipoPessoa)
-        const revisao = Number.parseInt(String(item.revisao ?? ''), 10)
-        const metrics = {
-          naoCadeirantePresencial: normalizeApontamentoServicosInteger(item.naoCadeirantePresencial),
-          cadeirante: normalizeApontamentoServicosInteger(item.cadeirante),
-          atendimentoComplementarNaoCadeirante: normalizeApontamentoServicosInteger(item.atendimentoComplementarNaoCadeirante),
-          atendimentoComplementarCadeirante: normalizeApontamentoServicosInteger(item.atendimentoComplementarCadeirante),
-          continuaNaoCadeirante: normalizeApontamentoServicosInteger(item.continuaNaoCadeirante),
-          continuaCadeirante: normalizeApontamentoServicosInteger(item.continuaCadeirante),
-          kilometragem: normalizeApontamentoServicosKm(item.kilometragem),
-        }
-
-        if (!dreCodigo || !ordemServicoCodigo || !tipoEscolaCodigo || !tipoPessoa || !Number.isInteger(revisao) || revisao < 0) {
-          throw createHttpError(400, 'Chave do apontamento invalida.')
-        }
-
-        for (const [label, value] of Object.entries({
-          'Nao cadeirante presencial': metrics.naoCadeirantePresencial,
-          Cadeirante: metrics.cadeirante,
-          'Atendimento complementar nao cadeirante': metrics.atendimentoComplementarNaoCadeirante,
-          'Atendimento complementar cadeirante': metrics.atendimentoComplementarCadeirante,
-          'Continua nao cadeirante': metrics.continuaNaoCadeirante,
-          'Continua cadeirante': metrics.continuaCadeirante,
-        })) {
-          if (!Number.isInteger(value) || value < 0) {
-            throw createHttpError(400, `${label} invalido.`)
-          }
-        }
-
-        if (!Number.isFinite(metrics.kilometragem) || metrics.kilometragem < 0) {
-          throw createHttpError(400, 'Kilometragem invalida.')
-        }
-
-        const parentResult = await client.query(
-          `SELECT 1
-           FROM ${ordemServicoTableName} os
-           WHERE CAST(os.codigo AS text) = $1
-             AND ${ordemServicoActiveStartDateExpression} <= $2::date
-             AND ${ordemServicoActiveEndDateExpression} >= $2::date
-           LIMIT 1`,
-          [ordemServicoCodigo, dataReferencia],
-        )
-
-        if (parentResult.rowCount === 0) {
-          throw createHttpError(409, 'A ordem de servico da linha nao esta ativa na data informada.')
-        }
-
-        await ensureApuracaoServicosEditable({ mesAno, dreCodigo, revisao, tipoPessoa }, client)
-
-        await client.query(
-          `INSERT INTO apuracao_servicos (
-            mes_ano,
-            data_referencia,
-            dre_codigo,
-            ordem_servico_codigo,
-            revisao,
-            tipo_escola_codigo,
-            tipo_pessoa,
-            nc_pres,
-            cad,
-            ac_nc,
-            ac_cad,
-            cont_nc,
-            cont_cad,
-            km,
-            data_alteracao
-          )
-          VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
-          ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
-          DO UPDATE SET
-            nc_pres = EXCLUDED.nc_pres,
-            cad = EXCLUDED.cad,
-            ac_nc = EXCLUDED.ac_nc,
-            ac_cad = EXCLUDED.ac_cad,
-            cont_nc = EXCLUDED.cont_nc,
-            cont_cad = EXCLUDED.cont_cad,
-            km = EXCLUDED.km,
-            data_alteracao = NOW()`,
-          [
-            mesAno,
-            dataReferencia,
-            Number.parseInt(dreCodigo, 10),
-            Number.parseInt(ordemServicoCodigo, 10),
-            revisao,
-            Number.parseInt(tipoEscolaCodigo, 10),
-            tipoPessoa,
-            hasApontamentoServicosMetricValues(metrics) ? metrics.naoCadeirantePresencial : 0,
-            hasApontamentoServicosMetricValues(metrics) ? metrics.cadeirante : 0,
-            hasApontamentoServicosMetricValues(metrics) ? metrics.atendimentoComplementarNaoCadeirante : 0,
-            hasApontamentoServicosMetricValues(metrics) ? metrics.atendimentoComplementarCadeirante : 0,
-            hasApontamentoServicosMetricValues(metrics) ? metrics.continuaNaoCadeirante : 0,
-            hasApontamentoServicosMetricValues(metrics) ? metrics.continuaCadeirante : 0,
-            hasApontamentoServicosMetricValues(metrics) ? metrics.kilometragem : 0,
-          ],
-        )
-      }
+      await upsertApontamentoServicosItems({
+        mesAno,
+        dataReferencia,
+        items,
+      }, client)
 
       await client.query('COMMIT')
       sendJson(response, 200, { message: 'Apontamento de servicos gravado com sucesso.' })

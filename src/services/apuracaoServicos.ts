@@ -124,7 +124,7 @@ const parseJsonSafely = (value: string) => {
 const getErrorMessage = (payload: Record<string, unknown>) => {
   return typeof payload.message === 'string' && payload.message.trim()
     ? payload.message
-    : 'Falha ao processar dados da apuracao de servicos.'
+    : 'Falha ao processar dados de total de servicos.'
 }
 
 export async function listApuracaoServicosItemsPaginated(params: ApuracaoServicosListParams): Promise<ApuracaoServicosListResult> {
@@ -196,7 +196,7 @@ export async function listApuracaoServicosItemsPaginated(params: ApuracaoServico
     page: result.page ?? 1,
     pageSize: result.pageSize ?? params.pageSize ?? 20,
     totalPages: result.totalPages ?? 1,
-    sortBy: result.sortBy ?? params.sortBy ?? 'dataReferencia',
+    sortBy: result.sortBy ?? params.sortBy ?? 'mesAno',
     sortDirection: result.sortDirection ?? params.sortDirection ?? 'desc',
   }
 }
