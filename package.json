@@ -18,6 +18,7 @@
     "homol:stop": "powershell -ExecutionPolicy Bypass -File .\\parar-homologacao.ps1",
     "lint": "eslint .",
     "preview": "vite preview",
+    "import:xml:all": "node scripts/import-all-xml.mjs",
     "validate:ordem-servico:xml": "node scripts/validate-ordem-servico-xml.mjs",
     "import:ordem-servico": "node scripts/import-ordem-servico.mjs",
     "import:ordem-servico:background": "node scripts/import-ordem-servico-background.mjs",

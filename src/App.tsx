@@ -188,7 +188,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'xmlImportLote' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -479,6 +479,71 @@ type SmokeRunResponse = {
   invalidFixtureReport: SmokeInvalidFixtureReport | null
 }
 
+type XmlImportAllStepSummary = {
+  total: number | null
+  processed: number | null
+  inserted: number | null
+  updated: number | null
+  skipped: number | null
+}
+
+type XmlImportAllSkippedRecord = {
+  index?: number
+  message?: string
+  [key: string]: string | number | null | undefined
+}
+
+type XmlImportAllStepResponse = {
+  message?: string
+  skippedRecords?: XmlImportAllSkippedRecord[]
+}
+
+type XmlImportAllStepResult = {
+  key: string
+  label: string
+  fileName: string
+  endpoint: string
+  startedAt: string
+  finishedAt: string
+  ok: boolean
+  skipped?: boolean
+  optional?: boolean
+  message?: string
+  status?: number
+  statusText?: string
+  summary?: XmlImportAllStepSummary
+  response?: XmlImportAllStepResponse
+  error?: {
+    message?: string
+    cause?: {
+      message?: string
+    }
+  }
+}
+
+type XmlImportAllReport = {
+  startedAt: string
+  finishedAt: string | null
+  baseUrl: string
+  continueOnError: boolean
+  selectedStepKeys: string[]
+  ok: boolean
+  failedSteps: string[]
+  skippedSteps: string[]
+  results: XmlImportAllStepResult[]
+}
+
+type XmlImportAllRunResponse = {
+  message: string
+  scriptName: string
+  status: string
+  exitCode: number
+  reportPath: string
+  report: XmlImportAllReport | null
+  stdoutTail: string
+  stderrTail: string
+}
+
 const smokeSuiteOptions: Array<{ value: SmokeSuite, label: string }> = [
   { value: 'all', label: 'Aplicacao completa' },
   { value: 'condutor', label: 'Condutor' },
@@ -486,6 +551,21 @@ const smokeSuiteOptions: Array<{ value: SmokeSuite, label: string }> = [
   { value: 'veiculo', label: 'Veiculo' },
   { value: 'marca-modelo', label: 'Marca/Modelo' },
 ]
+
+const getXmlImportAllStepStatusLabel = (stepResult: XmlImportAllStepResult) => {
+  if (stepResult.skipped) {
+    return 'ignorado'
+  }
+
+  return stepResult.ok ? 'ok' : 'falhou'
+}
+
+const formatXmlImportAllSkippedRecordContext = (record: XmlImportAllSkippedRecord) => {
+  return Object.entries(record)
+    .filter(([key, value]) => key !== 'message' && value != null && String(value).trim() !== '')
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' | ')
+}
 
 type StoredSession = {
   email: string
@@ -539,6 +619,7 @@ const operationalAdministrativeViews: ActiveView[] = [
   'ordemServicoHistorico',
   'veiculo',
   'veiculoHistorico',
+  'xmlImportLote',
   'financeiroReprocessamento',
 ]
 const operationalFinanceiroViews: ActiveView[] = [
@@ -618,6 +699,7 @@ const menuAccessByView: Record<ActiveView, string> = {
   financeiroReprocessamento: 'menu_reprocessar_valores',
   emissaoDocumentoParametro: 'menu_param_emissao',
   cep: 'menu_cep',
+  xmlImportLote: 'menu_importacao_xml_lote',
   smoke: 'menu_smoke_test',
 }
 const orderedMenuViews: ActiveView[] = [
@@ -1274,6 +1356,14 @@ function App() {
   const [selectedSmokeLogStream, setSelectedSmokeLogStream] = useState<SmokeLogStream>('stdout')
   const [smokeReportActionMessage, setSmokeReportActionMessage] = useState('')
   const [smokeResult, setSmokeResult] = useState<SmokeRunResponse | null>(null)
+  const [isRunningXmlImportAll, setIsRunningXmlImportAll] = useState(false)
+  const [xmlImportAllStatusMessage, setXmlImportAllStatusMessage] = useState('')
+  const [xmlImportAllStatusTone, setXmlImportAllStatusTone] = useState<StatusTone>('idle')
+  const [xmlImportAllStdout, setXmlImportAllStdout] = useState('')
+  const [xmlImportAllStderr, setXmlImportAllStderr] = useState('')
+  const [selectedXmlImportAllLogStream, setSelectedXmlImportAllLogStream] = useState<SmokeLogStream>('stdout')
+  const [xmlImportAllResult, setXmlImportAllResult] = useState<XmlImportAllRunResponse | null>(null)
+  const [selectedXmlImportAllStepKey, setSelectedXmlImportAllStepKey] = useState('')
   const [dashboardMonth, setDashboardMonth] = useState(getCurrentMonthInputValue())
   const [dashboardData, setDashboardData] = useState<OrdemServicoDashboardData | null>(null)
   const [dashboardBancadaData, setDashboardBancadaData] = useState<OrdemServicoDashboardBancadaData | null>(null)
@@ -3595,6 +3685,55 @@ function App() {
       setIsRunningSmoke(false)
     }
   }
+
+  const handleRunXmlImportAll = async () => {
+    setIsRunningXmlImportAll(true)
+    setXmlImportAllStatusTone('idle')
+    setXmlImportAllStatusMessage('Executando importacao XML consolidada...')
+    setXmlImportAllStdout('')
+    setXmlImportAllStderr('')
+
+    try {
+      const response = await fetch('/api/xml-import-all/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      })
+
+      const payload = await response.json().catch(() => null) as XmlImportAllRunResponse | null
+
+      setXmlImportAllResult(payload)
+  setSelectedXmlImportAllStepKey(payload?.report?.results?.[0]?.key ?? '')
+      setXmlImportAllStdout(payload?.stdoutTail ?? '')
+      setXmlImportAllStderr(payload?.stderrTail ?? '')
+      setSelectedXmlImportAllLogStream(payload?.status === 'failed' ? 'stderr' : 'stdout')
+
+      if (!response.ok) {
+        throw new Error(payload?.message || 'Falha ao executar a importacao XML consolidada.')
+      }
+
+      setXmlImportAllStatusTone('success')
+      setXmlImportAllStatusMessage(payload?.message || 'Importacao XML consolidada executada com sucesso.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao executar a importacao XML consolidada.'
+      setXmlImportAllStatusTone('error')
+      setXmlImportAllStatusMessage(message)
+    } finally {
+      setIsRunningXmlImportAll(false)
+    }
+  }
+
+  const xmlImportAllStepResults = xmlImportAllResult?.report?.results ?? []
+  const selectedXmlImportAllStep = xmlImportAllStepResults.find((stepResult) => stepResult.key === selectedXmlImportAllStepKey)
+    ?? xmlImportAllStepResults[0]
+    ?? null
+  const selectedXmlImportAllSkippedRecords = selectedXmlImportAllStep?.response?.skippedRecords ?? []
+  const selectedXmlImportAllReason = selectedXmlImportAllStep?.message
+    || selectedXmlImportAllStep?.response?.message
+    || selectedXmlImportAllStep?.error?.message
+    || selectedXmlImportAllStep?.error?.cause?.message
 
   const handleCopySmokeReportPath = async () => {
     if (!smokeResult?.reportPath) {
@@ -7626,6 +7765,12 @@ function App() {
                     </li> : null}
                   </ul>
                 </li> : null}
+                    {isViewAllowed('xmlImportLote', menuPermissionKeys) ? <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'xmlImportLote' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('xmlImportLote')}
+                    >
+                      Importacao XML em lote
+                    </li> : null}
                     {isViewAllowed('financeiroReprocessamento', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('financeiroReprocessamento')}
@@ -13607,6 +13752,189 @@ function App() {
                     {selectedSmokeLogStream === 'stdout'
                       ? (smokeStdout || 'Nenhum stdout retornado para esta execucao.')
                       : (smokeStderr || 'Nenhum stderr retornado para esta execucao.')}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : activeView === 'xmlImportLote' ? (
+          <>
+            <div className="content-copy">
+              <p className="content-kicker">Importacao administrativa</p>
+              <h2 id="content-title">Importacao XML em lote</h2>
+              <p className="content-description">
+                Execute a carga consolidada de todos os XMLs operacionais a partir do menu administrativo e acompanhe o resultado por etapa no mesmo fluxo da API local.
+              </p>
+            </div>
+
+            <div className="management-layout">
+              <div className="management-toolbar">
+                <button
+                  type="button"
+                  className="primary-button dre-insert-button"
+                  onClick={handleRunXmlImportAll}
+                  disabled={isRunningXmlImportAll}
+                >
+                  {isRunningXmlImportAll ? 'Executando importacao...' : 'Executar importacao XML em lote'}
+                </button>
+              </div>
+
+              <div className="management-card smoke-card">
+                <h2>Resultado da execucao</h2>
+                <p className={`status-message status-${xmlImportAllStatusTone}`} aria-live="polite">
+                  {xmlImportAllStatusMessage}
+                </p>
+
+                {xmlImportAllResult ? (
+                  <div className="smoke-summary-grid">
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Status</span>
+                      <strong>{xmlImportAllResult.status}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Exit code</span>
+                      <strong>{xmlImportAllResult.exitCode}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Etapas</span>
+                      <strong>{xmlImportAllResult.report?.selectedStepKeys.length ?? 0}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Falhas</span>
+                      <strong>{xmlImportAllResult.report?.failedSteps.length ?? 0}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Ignoradas</span>
+                      <strong>{xmlImportAllResult.report?.skippedSteps.length ?? 0}</strong>
+                    </article>
+                    <article className="smoke-summary-card smoke-summary-card-wide">
+                      <span className="smoke-card-label">Script</span>
+                      <strong>{xmlImportAllResult.scriptName}</strong>
+                    </article>
+                    {xmlImportAllResult.reportPath ? (
+                      <article className="smoke-summary-card smoke-summary-card-wide">
+                        <span className="smoke-card-label">Relatorio JSON</span>
+                        <strong>{xmlImportAllResult.reportPath}</strong>
+                      </article>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {xmlImportAllResult?.status === 'failed' ? (
+                  <div className="smoke-error-card" role="alert">
+                    <h3>Erro detectado</h3>
+                    <p>{xmlImportAllResult.message}</p>
+                    {xmlImportAllStderr ? (
+                      <pre className="smoke-error-output">{xmlImportAllStderr}</pre>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {xmlImportAllResult?.report?.results.length ? (
+                  <div className="xml-import-all-detail-layout">
+                    <div className="xml-import-all-tab-list" role="tablist" aria-label="Arquivos importados">
+                      {xmlImportAllResult.report.results.map((stepResult) => {
+                        const isSelected = selectedXmlImportAllStep?.key === stepResult.key
+
+                        return (
+                          <button
+                            key={`${stepResult.key}-${stepResult.startedAt}`}
+                            type="button"
+                            role="tab"
+                            aria-selected={isSelected}
+                            className={`secondary-button xml-import-all-tab-button ${isSelected ? 'xml-import-all-tab-button-active' : ''}`}
+                            onClick={() => setSelectedXmlImportAllStepKey(stepResult.key)}
+                          >
+                            <span>{stepResult.label}</span>
+                            <span className={`smoke-suite-badge smoke-suite-badge-${stepResult.ok ? 'passed' : 'failed'}`}>
+                              {getXmlImportAllStepStatusLabel(stepResult)}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {selectedXmlImportAllStep ? (
+                      <article className="smoke-suite-card xml-import-all-step-panel" role="tabpanel">
+                        <div className="smoke-suite-card-header">
+                          <div>
+                            <span className="smoke-card-label">Arquivo</span>
+                            <h3>{selectedXmlImportAllStep.fileName}</h3>
+                          </div>
+                          <span className={`smoke-suite-badge smoke-suite-badge-${selectedXmlImportAllStep.ok ? 'passed' : 'failed'}`}>
+                            {getXmlImportAllStepStatusLabel(selectedXmlImportAllStep)}
+                          </span>
+                        </div>
+
+                        <div className="smoke-import-metrics">
+                          <span>Total: {selectedXmlImportAllStep.summary?.total ?? 0}</span>
+                          <span>Processados: {selectedXmlImportAllStep.summary?.processed ?? 0}</span>
+                          <span>Incluidos: {selectedXmlImportAllStep.summary?.inserted ?? 0}</span>
+                          <span>Alterados: {selectedXmlImportAllStep.summary?.updated ?? 0}</span>
+                          <span>Recusados: {selectedXmlImportAllStep.summary?.skipped ?? selectedXmlImportAllSkippedRecords.length}</span>
+                        </div>
+
+                        <div className="xml-import-all-meta-grid">
+                          <p className="smoke-suite-empty">Endpoint: {selectedXmlImportAllStep.endpoint}</p>
+                          {typeof selectedXmlImportAllStep.status === 'number' ? (
+                            <p className="smoke-suite-empty">HTTP {selectedXmlImportAllStep.status}{selectedXmlImportAllStep.statusText ? ` - ${selectedXmlImportAllStep.statusText}` : ''}</p>
+                          ) : null}
+                        </div>
+
+                        {selectedXmlImportAllReason ? (
+                          <div className="xml-import-all-reason-card">
+                            <span className="smoke-card-label">Motivo da ausencia ou falha de importacao</span>
+                            <p>{selectedXmlImportAllReason}</p>
+                          </div>
+                        ) : null}
+
+                        {selectedXmlImportAllSkippedRecords.length ? (
+                          <div className="smoke-skipped-list">
+                            <span className="smoke-card-label">Recusas registradas</span>
+                            <ul>
+                              {selectedXmlImportAllSkippedRecords.map((record, recordIndex) => {
+                                const recordContext = formatXmlImportAllSkippedRecordContext(record)
+                                return (
+                                  <li key={`${selectedXmlImportAllStep.key}-${record.index ?? recordIndex}`}>
+                                    {record.message || 'Registro recusado.'}
+                                    {recordContext ? ` (${recordContext})` : ''}
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          </div>
+                        ) : (
+                          <p className="smoke-suite-empty">Nenhuma recusa detalhada foi retornada para este arquivo.</p>
+                        )}
+                      </article>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="smoke-log-card">
+                  <h3>Log final</h3>
+                  <div className="smoke-log-filter" role="group" aria-label="Selecionar stream do log da importacao">
+                    <button
+                      type="button"
+                      className={`secondary-button smoke-log-filter-button ${selectedXmlImportAllLogStream === 'stdout' ? 'smoke-log-filter-button-active' : ''} ${xmlImportAllResult?.status === 'passed' ? 'smoke-log-filter-button-recommended' : ''}`}
+                      onClick={() => setSelectedXmlImportAllLogStream('stdout')}
+                    >
+                      stdout
+                      {xmlImportAllResult?.status === 'passed' ? <span className="smoke-log-filter-badge">principal</span> : null}
+                    </button>
+                    <button
+                      type="button"
+                      className={`secondary-button smoke-log-filter-button ${selectedXmlImportAllLogStream === 'stderr' ? 'smoke-log-filter-button-active' : ''} ${xmlImportAllResult?.status === 'failed' ? 'smoke-log-filter-button-recommended-error' : ''}`}
+                      onClick={() => setSelectedXmlImportAllLogStream('stderr')}
+                    >
+                      stderr
+                      {xmlImportAllResult?.status === 'failed' ? <span className="smoke-log-filter-badge smoke-log-filter-badge-error">erro</span> : null}
+                    </button>
+                  </div>
+                  <pre className="smoke-log-output">
+                    {selectedXmlImportAllLogStream === 'stdout'
+                      ? (xmlImportAllStdout || 'Nenhum stdout retornado para esta execucao.')
+                      : (xmlImportAllStderr || 'Nenhum stderr retornado para esta execucao.')}
                   </pre>
                 </div>
               </div>

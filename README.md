@@ -71,6 +71,7 @@ Aplicacao React + Vite com API Node para operacoes administrativas, CRUD e impor
 - `npm run dev -- --host 0.0.0.0`: sobe o frontend Vite.
 - `npm run build`: gera o build de producao.
 - `npm run lint`: executa o lint.
+- `npm run import:xml:all`: executa a sequencia consolidada de importacao XML para `Marca/Modelo`, `Credenciada`, `Credenciamento Termo`, `Condutor`, `Monitor`, `Vinculo Condutor`, `Vinculo Monitor`, `Veiculo` e `OrdemServico`; `CEP` entra como etapa opcional e so roda quando `importXML/Ceps.xml` existir.
 - `npm run smoke:api`: executa o smoke automatizado completo da API para `Condutor`, `Credenciada`, `Veiculo` e `Marca/Modelo`.
 - `npm run smoke:api:condutor`: executa apenas a suite de `Condutor`.
 - `npm run smoke:api:credenciada`: executa apenas a suite de `Credenciada`.
@@ -100,6 +101,41 @@ Para `Veiculo` e `Marca/Modelo`, a execucao pode ser feita pelos scripts `npm ru
 - Pela rede, use o mesmo host/IP da maquina que iniciou o Vite com a porta `5173`.
 - As telas HTML legadas ficam acessiveis por caminhos diretos em `src`, por exemplo: `http://HOST:5173/src/termoDataAssinatura.html`.
 - Se a porta `5173` estiver ocupada, o Vite agora falha na subida em vez de trocar silenciosamente para outra porta.
+
+## Importacao XML Consolidada
+
+Para atualizar todas as tabelas que ja possuem processo de importacao via XML, execute:
+
+```bash
+npm run import:xml:all
+```
+
+O runner chama cada endpoint em sequencia e grava o consolidado em `importXML/xml_import_all_summary.json`.
+
+O transporte HTTP do runner nao usa mais o timeout implicito de headers do `fetch`, que encerrava imports longos como `OrdemServico.xml` por volta de 5 minutos. Se precisar impor um limite explicito, use `XML_IMPORT_ALL_REQUEST_TIMEOUT_MS`.
+
+Opcoes uteis:
+
+```bash
+node scripts/import-all-xml.mjs --help
+node scripts/import-all-xml.mjs --base-url http://127.0.0.1:3002
+node scripts/import-all-xml.mjs --only credenciada --only termo
+node scripts/import-all-xml.mjs --continue-on-error
+XML_IMPORT_ALL_REQUEST_TIMEOUT_MS=900000 node scripts/import-all-xml.mjs
+```
+
+Sequencia padrao:
+
+- `marca-modelo.xml`
+- `Credenciados.xml`
+- `Credenciamento_Termo.xml`
+- `Condutor.xml`
+- `Monitor.xml`
+- `Vinculos_condutor.xml`
+- `Vinculos_monitor.xml`
+- `Veiculo.xml`
+- `OrdemServico.xml`
+- `Ceps.xml` como etapa opcional, ignorada quando o arquivo nao existir
 
 ## CI
 

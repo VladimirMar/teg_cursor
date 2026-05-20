@@ -72,6 +72,7 @@
 						<col style="TEXT-ALIGN: right; WIDTH: 3.412cm"/>
 						<col style="TEXT-ALIGN: right; WIDTH: 3.412cm"/>
 						<col style="WIDTH: 3.333cm"/>
+						<col style="WIDTH: 2.38cm"/>
 					</colgroup>
 					<tbody>
 						<tr>
@@ -380,6 +381,11 @@
 									<strong>TpOptante</strong>
 								</div>
 							</td>
+							<td>
+								<div align="center">
+									<strong>SEI_financeiro</strong>
+								</div>
+							</td>
 						</tr>
 					</tbody>
 					<tbody id="CTRL2">
@@ -569,6 +575,9 @@
 								</td>
 								<td>
 									<xsl:value-of select="TpOptante"/>
+								</td>
+								<td>
+									<xsl:value-of select="SEI_financeiro"/>
 								</td>
 							</tr>
 						</xsl:for-each>

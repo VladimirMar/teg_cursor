@@ -269,9 +269,9 @@
                   <span>Tipo optante</span>
                   <select class="dsc-form-control" id="credenciada-tp-optante">
                     <option value="">Selecione</option>
-                    <option value="O">O</option>
-                    <option value="N">N</option>
-                    <option value="C">C</option>
+                    <option value="O">Optante</option>
+                    <option value="N">Nao Optante</option>
+                    <option value="C">Cooperativa</option>
                   </select>
                   <div class="dsc-form-error" id="credenciada-tp-optante-error"></div>
                 </label>
@@ -487,6 +487,7 @@
       const cnpjCpfInput = document.getElementById('credenciada-cnpj-cpf');
       const tipoTermoInput = document.getElementById('credenciada-tipo-termo');
       const tpOptanteInput = document.getElementById('credenciada-tp-optante');
+      const tpOptanteOptions = Array.from(tpOptanteInput.querySelectorAll('option'));
       const termoPermissaoInput = document.getElementById('credenciada-termo-permissao');
       const logradouroInput = document.getElementById('credenciada-logradouro');
       const bairroInput = document.getElementById('credenciada-bairro');
@@ -734,6 +735,29 @@
 
         return '';
       };
+      const normalizeTpOptanteValue = (value) => {
+        const normalized = normalizeText(String(value || ''), 30)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+
+        if (!normalized) {
+          return '';
+        }
+
+        if (['O', 'OPTANTE', 'O = OPTANTE'].includes(normalized)) {
+          return 'O';
+        }
+
+        if (['N', 'NAO OPTANTE', 'N = NAO OPTANTE'].includes(normalized)) {
+          return 'N';
+        }
+
+        if (['C', 'COOPERATIVA', 'C = COOPERATIVA'].includes(normalized)) {
+          return 'C';
+        }
+
+        return '';
+      };
       const syncRepresentanteFieldsValue = () => {
         const isPessoaFisica = tipoTermoInput.value === 'PESSOA FISICA';
 
@@ -756,11 +780,40 @@
         const tipoTermo = normalizeTipoTermoValue(tipoTermoInput.value);
         const isPessoaFisica = tipoTermo === 'PESSOA FISICA';
         const isPessoaJuridica = tipoTermo === 'PESSOA JURIDICA';
+        const isCooperativa = tipoTermo === 'COOPERATIVA';
+
+        tpOptanteOptions.forEach((option) => {
+          if (!(option instanceof HTMLOptionElement) || !option.value) {
+            return;
+          }
+
+          if (option.value === 'C') {
+            option.disabled = !isCooperativa;
+            option.hidden = !isCooperativa;
+            return;
+          }
+
+          option.disabled = !isPessoaJuridica;
+          option.hidden = isCooperativa;
+        });
 
         tpOptanteInput.disabled = formMode === 'view' || !isPessoaJuridica;
         termoPermissaoInput.disabled = formMode === 'view' || isPessoaFisica;
 
-        if (!isPessoaJuridica) {
+        if (isCooperativa) {
+          tpOptanteInput.value = 'C';
+          tpOptanteError.textContent = '';
+        } else if (isPessoaFisica) {
+          tpOptanteError.textContent = '';
+
+          if (clearDisabledValues) {
+            tpOptanteInput.value = '';
+          }
+        } else if (isPessoaJuridica) {
+          const normalizedTpOptante = normalizeTpOptanteValue(tpOptanteInput.value);
+          tpOptanteInput.value = normalizedTpOptante === 'C' ? '' : normalizedTpOptante;
+          tpOptanteError.textContent = '';
+        } else {
           tpOptanteError.textContent = '';
 
           if (clearDisabledValues) {
@@ -1355,7 +1408,7 @@
         nomeInput.value = item.credenciado || '';
         cnpjCpfInput.value = normalizeCnpjCpf(item.cnpj_cpf || '');
         tipoTermoInput.value = normalizeTipoTermoValue(item.tipo_pessoa || '');
-        tpOptanteInput.value = item.tp_optante || '';
+        tpOptanteInput.value = normalizeTpOptanteValue(item.tp_optante || '');
         termoPermissaoInput.value = item.termo_permissao || '';
         logradouroInput.value = item.logradouro || '';
         bairroInput.value = item.bairro || '';
@@ -1378,7 +1431,7 @@
         nomeInput.value = item.credenciado || '';
         cnpjCpfInput.value = normalizeCnpjCpf(item.cnpj_cpf || '');
         tipoTermoInput.value = normalizeTipoTermoValue(item.tipo_pessoa || '');
-        tpOptanteInput.value = item.tp_optante || '';
+        tpOptanteInput.value = normalizeTpOptanteValue(item.tp_optante || '');
         termoPermissaoInput.value = item.termo_permissao || '';
         logradouroInput.value = item.logradouro || '';
         bairroInput.value = item.bairro || '';
@@ -1485,6 +1538,16 @@
         syncRepresentanteFieldsValue();
         syncRepresentanteFieldsState();
         syncTipoTermoDependentFieldsState({ clearDisabledValues: true });
+      });
+
+      tpOptanteInput.addEventListener('change', () => {
+        const tipoTermo = normalizeTipoTermoValue(tipoTermoInput.value);
+        const normalizedTpOptante = normalizeTpOptanteValue(tpOptanteInput.value);
+
+        tpOptanteInput.value = tipoTermo === 'PESSOA JURIDICA' && ['O', 'N'].includes(normalizedTpOptante)
+          ? normalizedTpOptante
+          : '';
+        tpOptanteError.textContent = '';
       });
 
       cnpjCpfInput.addEventListener('blur', () => {
@@ -1605,9 +1668,11 @@
         const credenciado = normalizeText(nomeInput.value, 255);
         const cnpjCpf = normalizeCnpjCpf(cnpjCpfInput.value);
         const tipoTermo = normalizeTipoTermoValue(tipoTermoInput.value);
-        const tpOptante = tipoTermo === 'PESSOA JURIDICA'
-          ? String(tpOptanteInput.value || '').trim().toUpperCase()
-          : '';
+        const tpOptante = tipoTermo === 'COOPERATIVA'
+          ? 'C'
+          : tipoTermo === 'PESSOA JURIDICA'
+            ? normalizeTpOptanteValue(tpOptanteInput.value)
+            : '';
         const termoPermissao = tipoTermo === 'PESSOA FISICA'
           ? ''
           : normalizeTermoPermissao(termoPermissaoInput.value);
@@ -1660,8 +1725,18 @@
           hasError = true;
         }
 
-        if (tpOptante && !['O', 'N', 'C'].includes(tpOptante)) {
-          tpOptanteError.textContent = 'Tipo optante invalido.';
+        if (tipoTermo === 'PESSOA JURIDICA' && tpOptante && !['O', 'N'].includes(tpOptante)) {
+          tpOptanteError.textContent = 'Para Pessoa Juridica, selecione Optante ou Nao Optante.';
+          hasError = true;
+        }
+
+        if (tipoTermo === 'COOPERATIVA' && tpOptante !== 'C') {
+          tpOptanteError.textContent = 'Para Cooperativa, o tipo optante deve ser Cooperativa.';
+          hasError = true;
+        }
+
+        if (!['PESSOA JURIDICA', 'COOPERATIVA'].includes(tipoTermo) && tpOptante) {
+          tpOptanteError.textContent = 'Tipo optante so pode ser informado para Pessoa Juridica ou Cooperativa.';
           hasError = true;
         }
 

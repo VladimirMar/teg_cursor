@@ -21,6 +21,7 @@ const xmlParser = new XMLParser({
   trimValues: true,
 })
 const smokeRunPath = '/api/smoke/run'
+const xmlImportAllRunPath = '/api/xml-import-all/run'
 const allowedSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo', 'marca-modelo'])
 const invalidFixtureSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo'])
 
@@ -158,6 +159,24 @@ const runSmokeSuiteCommand = async (suite = 'all') => {
     invalidFixtureStatus: invalidFixtureResult?.status ?? 'not-run',
     invalidFixtureReportPath: invalidFixtureResult?.reportPath ?? '',
     invalidFixtureReport: invalidFixtureResult?.report ?? null,
+  }
+}
+
+const runXmlImportAllCommand = async () => {
+  const importResult = await runWorkspaceScript({
+    scriptName: 'import:xml:all',
+    reportFileName: `xml-import-all-ui-report-${Date.now()}-${randomBytes(4).toString('hex')}.json`,
+    reportEnvName: 'XML_IMPORT_ALL_REPORT_PATH',
+  })
+
+  return {
+    scriptName: importResult.scriptName,
+    status: importResult.status,
+    exitCode: importResult.exitCode,
+    reportPath: importResult.reportPath,
+    report: importResult.report,
+    stdoutTail: importResult.stdoutTail,
+    stderrTail: importResult.stderrTail,
   }
 }
 
@@ -1171,6 +1190,7 @@ const acessoPaginaCatalogItems = [
   { chaveSistema: 'menu_tipo_troca', sigla: 'Tipo de Troca', descricao: 'Tabela Tipo de Troca', funcao: 'menu' },
   { chaveSistema: 'menu_param_emissao', sigla: 'Param. Emissao', descricao: 'Parametros de Emissao', funcao: 'menu' },
   { chaveSistema: 'menu_cep', sigla: 'CEP', descricao: 'CEP', funcao: 'menu' },
+  { chaveSistema: 'menu_importacao_xml_lote', sigla: 'Importacao XML em lote', descricao: 'Importacao XML em lote', funcao: 'menu' },
   { chaveSistema: 'menu_smoke_test', sigla: 'Smoke Test', descricao: 'Smoke Test da Aplicacao', funcao: 'menu' },
   { chaveSistema: 'menu_cadastros_financeiro', sigla: 'Financeiro', descricao: 'Financeiro', funcao: 'menu' },
   { chaveSistema: 'menu_condicao', sigla: 'Condicao', descricao: 'Tabela Condicao', funcao: 'menu' },
@@ -1248,6 +1268,7 @@ const administrativoAllowedAcessoPaginaChaveSistema = [
   'menu_tipo_troca',
   'menu_param_emissao',
   'menu_cep',
+  'menu_importacao_xml_lote',
   'menu_smoke_test',
   'form_ospopup002',
   'form_dreform003',
@@ -3148,6 +3169,7 @@ const findDreByComparableDescription = async (descricao, executor = pool) => {
 
 const ensureDreOperationalEntry = async ({ codigo, descricao }) => {
   const normalizedCodigo = normalizeDreOperationalCode(codigo)
+  const normalizedSigla = normalizeDreSigla(codigo)
   const normalizedDescricao = normalizeDreDescription(descricao)
 
   if (!normalizedCodigo && !normalizedDescricao) {
@@ -3181,10 +3203,10 @@ const ensureDreOperationalEntry = async ({ codigo, descricao }) => {
   }
 
   const insertResult = await pool.query(
-    `INSERT INTO dre (codigo_operacional, descricao)
-     VALUES ($1, $2)
+    `INSERT INTO dre (codigo_operacional, sigla, descricao)
+     VALUES ($1, $2, $3)
      RETURNING ${dreSelectClause}`,
-    [normalizedCodigo, normalizedDescricao],
+    [normalizedCodigo, normalizedSigla || normalizedCodigo.slice(0, 2), normalizedDescricao],
   )
 
   return insertResult.rows[0] ?? null
@@ -6341,7 +6363,7 @@ const parseCredenciadaXml = (xmlContent) => {
 
 const parseOrdemServicoXml = (xmlContent) => {
   const parsed = xmlParser.parse(xmlContent)
-  const rawRecords = parsed?.dataroot?.OrdemServico
+  const rawRecords = parsed?.dataroot?.OrdemServico ?? parsed?.dataroot?.Credenciamento_OS
   const records = (Array.isArray(rawRecords)
     ? rawRecords
     : rawRecords
@@ -9902,6 +9924,9 @@ const importVinculoMonitorXmlFile = async (fileName) => {
   }
 
   const skippedRecords = []
+  const ignoredImportMessages = new Set([
+    'Empregador nao encontrado na tabela de credenciada.',
+  ])
   let inserted = 0
   let updated = 0
   const client = await pool.connect()
@@ -10049,6 +10074,12 @@ const importVinculoMonitorXmlFile = async (fileName) => {
 
         inserted += 1
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`
+
+        if (ignoredImportMessages.has(errorMessage)) {
+          continue
+        }
+
         skippedRecords.push({
           index: index + 1,
           codigoXml: normalizeRequestValue(record.codigoXml),
@@ -10056,7 +10087,7 @@ const importVinculoMonitorXmlFile = async (fileName) => {
           cpfMonitorXml: normalizeRequestValue(record.cpfMonitor),
           dataOsXml: normalizeRequestValue(record.dataOs),
           admissaoXml: normalizeRequestValue(record.admissao),
-          message: error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`,
+          message: errorMessage,
         })
       }
     }
@@ -10094,6 +10125,7 @@ const importVinculoMonitorXmlFile = async (fileName) => {
       fileName: sanitizedFileName,
       filePath: resolvedPath,
       total: parsedRecords.length,
+      processed: inserted + updated,
       inserted,
       updated,
       skipped: skippedRecords.length,
@@ -10132,6 +10164,10 @@ const importVinculoCondutorXmlFile = async (fileName) => {
   }
 
   const skippedRecords = []
+  const ignoredImportMessages = new Set([
+    'Empregador nao encontrado na tabela de credenciada.',
+    'CPF do condutor nao informado no XML.',
+  ])
   let inserted = 0
   let updated = 0
   const client = await pool.connect()
@@ -10281,6 +10317,12 @@ const importVinculoCondutorXmlFile = async (fileName) => {
 
         inserted += 1
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`
+
+        if (ignoredImportMessages.has(errorMessage)) {
+          continue
+        }
+
         skippedRecords.push({
           index: index + 1,
           codigoXml: normalizeRequestValue(record.codigoXml),
@@ -10288,7 +10330,7 @@ const importVinculoCondutorXmlFile = async (fileName) => {
           cpfCondutorXml: normalizeRequestValue(record.cpfCondutor),
           dataOsXml: normalizeRequestValue(record.dataOs),
           admissaoXml: normalizeRequestValue(record.admissao),
-          message: error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`,
+          message: errorMessage,
         })
       }
     }
@@ -10326,7 +10368,7 @@ const importVinculoCondutorXmlFile = async (fileName) => {
       fileName: sanitizedFileName,
       filePath: resolvedPath,
       total: parsedRecords.length,
-      processed: parsedRecords.length - skippedRecords.length,
+      processed: inserted + updated,
       inserted,
       updated,
       skipped: skippedRecords.length,
@@ -10574,7 +10616,7 @@ const importCredenciadaXmlFile = async (fileName) => {
                telefone_02 = NULLIF($10, ''),
                representante = NULLIF($11, ''),
                cpf_representante = NULLIF($12, ''),
-                 status = NULLIF($13, ''),
+               status = NULLIF($13, ''),
                data_modificacao = NOW()
                WHERE codigo = $14`,
           [
@@ -10632,7 +10674,6 @@ const importCredenciadaXmlFile = async (fileName) => {
           record.telefone2,
           record.representante,
           record.cpfRepresentante,
-          record.rgRepresentante,
           record.status,
         ],
       )
@@ -13421,6 +13462,7 @@ const validateOrdemServicoPayload = async ({
   const normalizedNumOs = normalizeOperationalCode(numOs, 10)
   const normalizedRevisao = normalizeOperationalCode(revisao, 30) || ordemServicoSemRevisaoLabel
   const normalizedVigenciaOs = normalizeRequestValue(vigenciaOs)
+  const normalizedCredenciado = normalizeCredenciadaText(credenciado, 255)
   const normalizedCnpjCpf = normalizeCnpjCpf(cnpjCpf)
   const normalizedDreCodigo = normalizeRequestValue(dreCodigo).toUpperCase().slice(0, 30)
   const normalizedModalidadeDescricao = normalizeModalidadeDescriptionKey(modalidadeDescricao)
@@ -13598,6 +13640,10 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
       )
 
       if (activeOrdemServico) {
+        if (importMode && (cpfCheck.label === 'condutor' || cpfCheck.label === 'monitor')) {
+          continue
+        }
+
         if (cpfCheck.label === 'preposto') {
           const duplicateMessage = `CPF registrada na OS num.: ${buildOrdemServicoNumeroLabel(activeOrdemServico)}`
 
@@ -13631,6 +13677,11 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
       )
 
       if (activeOrdemServicoByPlaca) {
+        if (importMode) {
+          // XML import should not reject OS records only because the plate is already active elsewhere.
+          
+          
+        } else {
         const activeOsLabel = buildOrdemServicoNumeroLabel(activeOrdemServicoByPlaca)
         const activePlacaLabel = normalizeOperationalCode(activeOrdemServicoByPlaca.veiculo_placas, 20)
         return {
@@ -13640,6 +13691,7 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
               ? `Placa ${activePlacaLabel} ja utilizada na OrdemServico ativa num. ${activeOsLabel}.`
               : `Placa ${activePlacaLabel} ja utilizada em outra OrdemServico ativa.`,
           },
+        }
         }
       }
     }
@@ -25346,6 +25398,28 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao executar smoke da aplicacao.'
+
+      sendJson(response, 500, { message, status: 'failed' })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === xmlImportAllRunPath) {
+    try {
+      const result = await runXmlImportAllCommand()
+      const statusCode = result.status === 'passed' ? 200 : 500
+
+      sendJson(response, statusCode, {
+        message: result.status === 'passed'
+          ? 'Importacao XML consolidada executada com sucesso.'
+          : 'Importacao XML consolidada finalizada com falhas.',
+        ...result,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao executar a importacao XML consolidada.'
 
       sendJson(response, 500, { message, status: 'failed' })
     }

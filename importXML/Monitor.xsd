@@ -43,16 +43,7 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:tableProperty name="HideNewField" type="1" value="0"/>
 <od:tableProperty name="GUID" type="9" value="jk2Jy6XxkEW7mJqUs+Ce1A==
 "/>
-<od:tableProperty name="OrderBy" type="12" value="[Monitor].[Código] DESC, [Monitor].[Monitor], [Monitor].[CPF_monitor]"/>
-<od:tableProperty name="BackTint" type="6" value="100"/>
-<od:tableProperty name="BackShade" type="6" value="100"/>
-<od:tableProperty name="ThemeFontIndex" type="4" value="-1"/>
-<od:tableProperty name="AlternateBackThemeColorIndex" type="4" value="-1"/>
-<od:tableProperty name="AlternateBackTint" type="6" value="100"/>
-<od:tableProperty name="AlternateBackShade" type="6" value="100"/>
-<od:tableProperty name="DatasheetGridlinesThemeColorIndex" type="4" value="-1"/>
-<od:tableProperty name="DatasheetForeThemeColorIndex" type="4" value="-1"/>
-<od:tableProperty name="PublishToWeb" type="2" value="1"/>
+<od:tableProperty name="OrderBy" type="12" value="[Monitor].[Monitor], [Monitor].[Código], [Monitor].[CPF_monitor]"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:complexType>
@@ -67,7 +58,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="WxY57rXMxkudiKs3pO/HmA==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 </xsd:element>
@@ -88,7 +78,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="MbmqUl8bCUKvlF3t7ANhvw==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -114,7 +103,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="sJymdYbZSUy8XGV9qgf4kw==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -141,7 +129,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="7yjuNRfD5UCvQVl1PYG0vQ==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -165,7 +152,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="InputMask" type="10" value="00/00/0000;0;_"/>
 <od:fieldProperty name="GUID" type="9" value="vAxdd8XjQ0++DMLbgv/Hdg==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 </xsd:element>
@@ -183,7 +169,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="ShowDatePicker" type="3" value="1"/>
 <od:fieldProperty name="GUID" type="9" value="M6vKWiunSE+A/6XO11tSOw==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 </xsd:element>
@@ -204,7 +189,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="Description" type="10" value="Vínculo empregatício de monitor, sócio de empresa ou cooperado"/>
 <od:fieldProperty name="GUID" type="9" value="YjXI6QEHDU6V9qKHqa3ZLw==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -228,7 +212,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="InputMask" type="10" value="00/00/0000;0;_"/>
 <od:fieldProperty name="GUID" type="9" value="bv3aKtP8xEeWx9qXXhSLCQ==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 </xsd:element>
@@ -248,7 +231,6 @@ YwBvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAAAAAAAAAAAAAA
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="ZkcRX62JQUqnY+QzwXm6Ow==
 "/>
-<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>

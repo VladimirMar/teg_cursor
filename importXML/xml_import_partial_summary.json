@@ -1,0 +1,67 @@
+{
+  "startedAt": "2026-05-19T11:31:40.410Z",
+  "finishedAt": "2026-05-19T11:35:20.203Z",
+  "baseUrl": "http://localhost:3001",
+  "continueOnError": true,
+  "selectedStepKeys": [
+    "credenciada",
+    "termo"
+  ],
+  "ok": false,
+  "failedSteps": [
+    "credenciada"
+  ],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "credenciada",
+      "label": "Credenciada",
+      "fileName": "Credenciados.xml",
+      "endpoint": "http://localhost:3001/api/credenciada/import-xml",
+      "startedAt": "2026-05-19T11:31:40.425Z",
+      "finishedAt": "2026-05-19T11:31:46.744Z",
+      "ok": false,
+      "status": 500,
+      "statusText": "Internal Server Error",
+      "summary": {
+        "total": null,
+        "processed": null,
+        "inserted": null,
+        "updated": null,
+        "skipped": null
+      },
+      "response": {
+        "message": "mensagem de ligação forneceu 15 parâmetros, mas comando preparado \"\" requer 14"
+      }
+    },
+    {
+      "key": "termo",
+      "label": "Credenciamento Termo",
+      "fileName": "Credenciamento_Termo.xml",
+      "endpoint": "http://localhost:3001/api/termo/import-xml",
+      "startedAt": "2026-05-19T11:31:46.744Z",
+      "finishedAt": "2026-05-19T11:35:20.197Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 4056,
+        "processed": 10500,
+        "inserted": 169,
+        "updated": 10315,
+        "skipped": 0
+      },
+      "response": {
+        "message": "Importacao de credenciamento termo concluida com sucesso.",
+        "fileName": "Credenciamento_Termo.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Credenciamento_Termo.xml",
+        "total": 4056,
+        "processed": 10500,
+        "inserted": 169,
+        "updated": 10315,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    }
+  ]
+}

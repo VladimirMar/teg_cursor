@@ -1,0 +1,1137 @@
+{
+  "startedAt": "2026-05-19T12:32:20.306Z",
+  "finishedAt": "2026-05-19T12:54:59.923Z",
+  "baseUrl": "http://localhost:3001",
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "marca-modelo",
+    "credenciada",
+    "termo",
+    "condutor",
+    "monitor",
+    "vinculo-condutor",
+    "vinculo-monitor",
+    "veiculo",
+    "ordem-servico",
+    "cep"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [
+    "cep"
+  ],
+  "results": [
+    {
+      "key": "marca-modelo",
+      "label": "Marca/Modelo",
+      "fileName": "marca-modelo.xml",
+      "endpoint": "http://localhost:3001/api/marca-modelo/import-xml",
+      "startedAt": "2026-05-19T12:32:20.309Z",
+      "finishedAt": "2026-05-19T12:32:20.760Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 264,
+        "processed": 264,
+        "inserted": 0,
+        "updated": 264,
+        "skipped": null
+      },
+      "response": {
+        "fileName": "marca-modelo.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\marca-modelo.xml",
+        "total": 264,
+        "processed": 264,
+        "inserted": 0,
+        "updated": 264
+      }
+    },
+    {
+      "key": "credenciada",
+      "label": "Credenciada",
+      "fileName": "Credenciados.xml",
+      "endpoint": "http://localhost:3001/api/credenciada/import-xml",
+      "startedAt": "2026-05-19T12:32:20.760Z",
+      "finishedAt": "2026-05-19T12:32:27.627Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 2955,
+        "processed": 2955,
+        "inserted": 0,
+        "updated": 2955,
+        "skipped": 0
+      },
+      "response": {
+        "message": "Importacao de credenciadas concluida com sucesso.",
+        "fileName": "Credenciados.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Credenciados.xml",
+        "total": 2955,
+        "processed": 2955,
+        "inserted": 0,
+        "updated": 2955,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    },
+    {
+      "key": "termo",
+      "label": "Credenciamento Termo",
+      "fileName": "Credenciamento_Termo.xml",
+      "endpoint": "http://localhost:3001/api/termo/import-xml",
+      "startedAt": "2026-05-19T12:32:27.627Z",
+      "finishedAt": "2026-05-19T12:35:52.849Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 4056,
+        "processed": 10500,
+        "inserted": 15,
+        "updated": 10485,
+        "skipped": 0
+      },
+      "response": {
+        "message": "Importacao de credenciamento termo concluida com sucesso.",
+        "fileName": "Credenciamento_Termo.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Credenciamento_Termo.xml",
+        "total": 4056,
+        "processed": 10500,
+        "inserted": 15,
+        "updated": 10485,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    },
+    {
+      "key": "condutor",
+      "label": "Condutor",
+      "fileName": "Condutor.xml",
+      "endpoint": "http://localhost:3001/api/condutor/import-xml",
+      "startedAt": "2026-05-19T12:35:52.850Z",
+      "finishedAt": "2026-05-19T12:38:31.924Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 8101,
+        "processed": 8099,
+        "inserted": 90,
+        "updated": 8009,
+        "skipped": 2
+      },
+      "response": {
+        "message": "Importacao de condutores concluida com sucesso.",
+        "fileName": "Condutor.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Condutor.xml",
+        "total": 8101,
+        "processed": 8099,
+        "inserted": 90,
+        "updated": 8009,
+        "skipped": 2,
+        "skippedRecords": [
+          {
+            "index": 8089,
+            "codigoXml": "17371",
+            "condutorXml": "",
+            "cpfCondutorXml": "333.087.528-32",
+            "crmcXml": "",
+            "tipoVinculoXml": "",
+            "message": "Registro 8089: nome do condutor invalido no XML."
+          },
+          {
+            "index": 1066,
+            "codigoXml": "9982",
+            "condutorXml": "CARLOS PEREIRA DOS SANTOS",
+            "cpfCondutorXml": "075.273.588-82",
+            "crmcXml": "021.223-00",
+            "tipoVinculoXml": "",
+            "message": "CPF do condutor ja vinculado a outro codigo cadastrado."
+          }
+        ]
+      }
+    },
+    {
+      "key": "monitor",
+      "label": "Monitor",
+      "fileName": "Monitor.xml",
+      "endpoint": "http://localhost:3001/api/monitor/import-xml",
+      "startedAt": "2026-05-19T12:38:31.924Z",
+      "finishedAt": "2026-05-19T12:38:33.429Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 12194,
+        "processed": 12194,
+        "inserted": 159,
+        "updated": 12035,
+        "skipped": 0
+      },
+      "response": {
+        "message": "Importacao de monitores concluida com sucesso.",
+        "fileName": "Monitor.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Monitor.xml",
+        "total": 12194,
+        "processed": 12194,
+        "inserted": 159,
+        "updated": 12035,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    },
+    {
+      "key": "vinculo-condutor",
+      "label": "Vinculo Condutor",
+      "fileName": "Vinculos_condutor.xml",
+      "endpoint": "http://localhost:3001/api/vinculo-condutor/import-xml",
+      "startedAt": "2026-05-19T12:38:33.429Z",
+      "finishedAt": "2026-05-19T12:41:09.102Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 6467,
+        "processed": 6089,
+        "inserted": 146,
+        "updated": 5943,
+        "skipped": 378
+      },
+      "response": {
+        "message": "Importacao de vinculos do condutor concluida com sucesso.",
+        "fileName": "Vinculos_condutor.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Vinculos_condutor.xml",
+        "total": 6467,
+        "processed": 6089,
+        "inserted": 146,
+        "updated": 5943,
+        "skipped": 378,
+        "skippedRecords": [
+          {
+            "index": 42,
+            "codigoXml": "42",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "397.957.558-62",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-15",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 44,
+            "codigoXml": "44",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "398.560.608-00",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-10-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 45,
+            "codigoXml": "45",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "329.398.488-66",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-09-04",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 46,
+            "codigoXml": "46",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "323.871.318-35",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-09-09",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 47,
+            "codigoXml": "47",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "390.921.058-99",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-04-22",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 48,
+            "codigoXml": "48",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "195.808.818-80",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-09-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 49,
+            "codigoXml": "49",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "185.151.638-70",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-09-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 50,
+            "codigoXml": "50",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "411.036.258-02",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-01-09",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 51,
+            "codigoXml": "51",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "398.466.488-55",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-04-09",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 53,
+            "codigoXml": "53",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "278.379.458-67",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-10",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 74,
+            "codigoXml": "74",
+            "empregadorXml": "ELAINE MENDES DIAS - ME",
+            "cpfCondutorXml": "364.851.348-67",
+            "dataOsXml": "2022-06-22",
+            "admissaoXml": "2022-06-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 128,
+            "codigoXml": "128",
+            "empregadorXml": "",
+            "cpfCondutorXml": "153.664.678-45",
+            "dataOsXml": "",
+            "admissaoXml": "",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 358,
+            "codigoXml": "358",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "326.754.838-18",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-05-18",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 361,
+            "codigoXml": "361",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "362.963.238-67",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2021-09-27",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 362,
+            "codigoXml": "362",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "255.374.888-41",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2021-09-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 363,
+            "codigoXml": "363",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "301.569.788-90",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2019-09-26",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 365,
+            "codigoXml": "365",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "328.318.878-52",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2021-12-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 367,
+            "codigoXml": "367",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "221.630.978-89",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2021-08-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 368,
+            "codigoXml": "368",
+            "empregadorXml": "",
+            "cpfCondutorXml": "003.265.908-38",
+            "dataOsXml": "",
+            "admissaoXml": "",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 370,
+            "codigoXml": "370",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfCondutorXml": "114.474.188-24",
+            "dataOsXml": "2002-07-01",
+            "admissaoXml": "2022-01-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          }
+        ]
+      }
+    },
+    {
+      "key": "vinculo-monitor",
+      "label": "Vinculo Monitor",
+      "fileName": "Vinculos_monitor.xml",
+      "endpoint": "http://localhost:3001/api/vinculo-monitor/import-xml",
+      "startedAt": "2026-05-19T12:41:09.103Z",
+      "finishedAt": "2026-05-19T12:46:40.303Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 9888,
+        "processed": null,
+        "inserted": 0,
+        "updated": 9385,
+        "skipped": 503
+      },
+      "response": {
+        "message": "Importacao de vinculos do monitor concluida com sucesso.",
+        "fileName": "Vinculos_monitor.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Vinculos_monitor.xml",
+        "total": 9888,
+        "inserted": 0,
+        "updated": 9385,
+        "skipped": 503,
+        "skippedRecords": [
+          {
+            "index": 15,
+            "codigoXml": "15",
+            "empregadorXml": "FELIPE HENRIQUE DA SILVA BEZERRA 41125477814",
+            "cpfMonitorXml": "491.194.058-12",
+            "dataOsXml": "2022-06-20",
+            "admissaoXml": "2022-05-27",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 60,
+            "codigoXml": "60",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "526.033.468-06",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-15",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 62,
+            "codigoXml": "62",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "385.612.618-03",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-11-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 63,
+            "codigoXml": "63",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "425.788.048-18",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-11-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 64,
+            "codigoXml": "64",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "494.893.968-42",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 65,
+            "codigoXml": "65",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "398.273.098-89",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-04-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 66,
+            "codigoXml": "66",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "458.741.848-05",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-09-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 67,
+            "codigoXml": "67",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "423.682.478-74",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-04-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 68,
+            "codigoXml": "68",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "408.462.838-75",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-01-09",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 69,
+            "codigoXml": "69",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "407.906.368-75",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-01-31",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 71,
+            "codigoXml": "71",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "128.716.788-80",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-10",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 108,
+            "codigoXml": "108",
+            "empregadorXml": "ELAINE MENDES DIAS - ME",
+            "cpfMonitorXml": "432.205.518-40",
+            "dataOsXml": "2022-06-22",
+            "admissaoXml": "2022-06-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 393,
+            "codigoXml": "393",
+            "empregadorXml": "SONIA MARIA DE GOUVEIA BONTEMPO - ME",
+            "cpfMonitorXml": "070.831.698-02",
+            "dataOsXml": "2022-06-28",
+            "admissaoXml": "2016-12-16",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 404,
+            "codigoXml": "404",
+            "empregadorXml": "OSMAR ALVES JUNIOR 18741651812",
+            "cpfMonitorXml": "632.882.573-00",
+            "dataOsXml": "2022-06-29",
+            "admissaoXml": "2022-06-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 463,
+            "codigoXml": "463",
+            "empregadorXml": "HELLEN CRISTINA DE SOUZA SANT ANA",
+            "cpfMonitorXml": "213.806.028-40",
+            "dataOsXml": "2022-06-29",
+            "admissaoXml": "2020-03-02",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 512,
+            "codigoXml": "513",
+            "empregadorXml": "PL DE OLIVEIRA TRANSPORTES - ME",
+            "cpfMonitorXml": "163.818.608-12",
+            "dataOsXml": "2022-06-30",
+            "admissaoXml": "2020-12-18",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 574,
+            "codigoXml": "575",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "422.883.668-26",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-06-02",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 577,
+            "codigoXml": "578",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "431.920.428-00",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-03-12",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 578,
+            "codigoXml": "579",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "225.332.288-18",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-04-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 579,
+            "codigoXml": "580",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "092.462.188-50",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-02-23",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          }
+        ]
+      }
+    },
+    {
+      "key": "veiculo",
+      "label": "Veiculo",
+      "fileName": "Veiculo.xml",
+      "endpoint": "http://localhost:3001/api/veiculo/import-xml",
+      "startedAt": "2026-05-19T12:46:40.304Z",
+      "finishedAt": "2026-05-19T12:47:31.554Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 5708,
+        "processed": 5502,
+        "inserted": 0,
+        "updated": 5502,
+        "skipped": 206
+      },
+      "response": {
+        "message": "Importacao de veiculos concluida com sucesso.",
+        "fileName": "Veiculo.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Veiculo.xml",
+        "total": 5708,
+        "processed": 5502,
+        "inserted": 0,
+        "updated": 5502,
+        "skipped": 206,
+        "skippedRecords": [
+          {
+            "index": 48,
+            "codigoXml": "4175",
+            "crmXml": "009.937-00",
+            "placasXml": "FPL5243",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 48: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 50,
+            "codigoXml": "4177",
+            "crmXml": "009.957-00",
+            "placasXml": "ECT3366",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 50: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 55,
+            "codigoXml": "4181",
+            "crmXml": "010.276-00",
+            "placasXml": "EMU2739",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 55: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 56,
+            "codigoXml": "4182",
+            "crmXml": "010.290-00",
+            "placasXml": "EZP4549",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 56: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 69,
+            "codigoXml": "4192",
+            "crmXml": "010.754-00",
+            "placasXml": "LUB1246",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 69: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 71,
+            "codigoXml": "4194",
+            "crmXml": "010.811-00",
+            "placasXml": "FFN4888",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 71: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 78,
+            "codigoXml": "4197",
+            "crmXml": "011.100-00",
+            "placasXml": "EMU6454",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 78: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 141,
+            "codigoXml": "4245",
+            "crmXml": "012.546-00",
+            "placasXml": "FVR3747",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 141: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 164,
+            "codigoXml": "4260",
+            "crmXml": "013.176-00",
+            "placasXml": "ELQ6210",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 164: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 181,
+            "codigoXml": "4273",
+            "crmXml": "013.642-00",
+            "placasXml": "DTA7207",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 181: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 184,
+            "codigoXml": "4274",
+            "crmXml": "013.749-00",
+            "placasXml": "EFU9912",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 184: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 188,
+            "codigoXml": "4278",
+            "crmXml": "013.853-00",
+            "placasXml": "EPO0293",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 188: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 206,
+            "codigoXml": "4290",
+            "crmXml": "014.596-00",
+            "placasXml": "DTD7010",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 206: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 224,
+            "codigoXml": "4305",
+            "crmXml": "015.320-00",
+            "placasXml": "ELW1361",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 224: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 241,
+            "codigoXml": "4323",
+            "crmXml": "015.592-00",
+            "placasXml": "FMF5938",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 241: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 249,
+            "codigoXml": "4327",
+            "crmXml": "015.788-00",
+            "placasXml": "GFP6450",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 249: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 300,
+            "codigoXml": "4369",
+            "crmXml": "016.713-00",
+            "placasXml": "EFV1499",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 300: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 311,
+            "codigoXml": "4378",
+            "crmXml": "017.047-00",
+            "placasXml": "EFU6138",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 311: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 316,
+            "codigoXml": "4382",
+            "crmXml": "017.089-00",
+            "placasXml": "DTC8660",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 316: tipo de bancada invalido no XML."
+          },
+          {
+            "index": 375,
+            "codigoXml": "4439",
+            "crmXml": "017.722-00",
+            "placasXml": "EFU8011",
+            "tipoDeVeiculoXml": "",
+            "message": "Registro 375: tipo de bancada invalido no XML."
+          }
+        ]
+      }
+    },
+    {
+      "key": "ordem-servico",
+      "label": "OrdemServico",
+      "fileName": "OrdemServico.xml",
+      "endpoint": "http://localhost:3001/api/ordem-servico/import-xml",
+      "startedAt": "2026-05-19T12:47:31.555Z",
+      "finishedAt": "2026-05-19T12:54:59.911Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 7467,
+        "processed": 0,
+        "inserted": 0,
+        "updated": 0,
+        "skipped": 7467
+      },
+      "response": {
+        "message": "Importacao de OrdemServico concluida com sucesso.",
+        "fileName": "OrdemServico.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\OrdemServico.xml",
+        "total": 7467,
+        "processed": 0,
+        "inserted": 0,
+        "updated": 0,
+        "skipped": 7467,
+        "skippedRecords": [
+          {
+            "index": 1,
+            "codigoAccess": "7475",
+            "codigo_access": "7475",
+            "codigoXml": "7475",
+            "osXml": "2026/0011093-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "WANDERLEY PEREIRA WESTHOFER 07454068820",
+            "dreXml": "JTC",
+            "cpfCondutorXml": "074.540.688-20",
+            "cpfMonitorXml": "313.110.238-10",
+            "crmXml": "012.728-00",
+            "message": "o valor nulo na coluna \"sigla\" da relação \"dre\" viola a restrição de não-nulo"
+          },
+          {
+            "index": 2,
+            "codigoAccess": "7476",
+            "codigo_access": "7476",
+            "codigoXml": "7476",
+            "osXml": "2026/0011100-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "TAINARA CRISTINA CARVALHO CASTRO",
+            "dreXml": "G",
+            "cpfCondutorXml": "335.430.148-11",
+            "cpfMonitorXml": "471.801.268-61",
+            "crmXml": "037.680-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 3,
+            "codigoAccess": "7477",
+            "codigo_access": "7477",
+            "codigoXml": "7477",
+            "osXml": "2026/0011110-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "ROSANGELA RODRIGUES PARADA TRANSPORTE",
+            "dreXml": "JT",
+            "cpfCondutorXml": "092.350.648-99",
+            "cpfMonitorXml": "496.300.228-00",
+            "crmXml": "015.346-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 4,
+            "codigoAccess": "7478",
+            "codigo_access": "7478",
+            "codigoXml": "7478",
+            "osXml": "2026/0011461-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "VANDE TRANSPORTES LTDA",
+            "dreXml": "PE",
+            "cpfCondutorXml": "143.078.318-45",
+            "cpfMonitorXml": "281.950.348-96",
+            "crmXml": "037.511-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 5,
+            "codigoAccess": "7479",
+            "codigo_access": "7479",
+            "codigoXml": "7479",
+            "osXml": "2025/0008381-005",
+            "numOsXml": "005",
+            "num_os_xml": "005",
+            "credenciadoXml": "COOPER DIAS - COOPERATIVA DE TRANSPORTES",
+            "dreXml": "IQ",
+            "cpfCondutorXml": "134.271.618-38",
+            "cpfMonitorXml": "427.068.978-13",
+            "crmXml": "033.721-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 6,
+            "codigoAccess": "7480",
+            "codigo_access": "7480",
+            "codigoXml": "7480",
+            "osXml": "2025/0008381-006B",
+            "numOsXml": "006",
+            "num_os_xml": "006",
+            "credenciadoXml": "COOPER DIAS - COOPERATIVA DE TRANSPORTES",
+            "dreXml": "IQ",
+            "cpfCondutorXml": "351.503.698-96",
+            "cpfMonitorXml": "437.494.638-16",
+            "crmXml": "027.715-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 7,
+            "codigoAccess": "7481",
+            "codigo_access": "7481",
+            "codigoXml": "7481",
+            "osXml": "2025/0002608-012B",
+            "numOsXml": "012",
+            "num_os_xml": "012",
+            "credenciadoXml": "COOTRELUZ COOP DE TRANS DE PAS E ESC LUZ",
+            "dreXml": "SMC",
+            "cpfCondutorXml": "436.067.958-07",
+            "cpfMonitorXml": "256.574.778-04",
+            "crmXml": "042.564-00",
+            "message": "o valor nulo na coluna \"sigla\" da relação \"dre\" viola a restrição de não-nulo"
+          },
+          {
+            "index": 8,
+            "codigoAccess": "7482",
+            "codigo_access": "7482",
+            "codigoXml": "7482",
+            "osXml": "2026/0011558-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "COOPERATIVA DE TRANSPORTE NOVA ERA",
+            "dreXml": "CLC",
+            "cpfCondutorXml": "076.373.598-16",
+            "cpfMonitorXml": "442.172.548-06",
+            "crmXml": "045.615-00",
+            "message": "o valor nulo na coluna \"sigla\" da relação \"dre\" viola a restrição de não-nulo"
+          },
+          {
+            "index": 9,
+            "codigoAccess": "7483",
+            "codigo_access": "7483",
+            "codigoXml": "7483",
+            "osXml": "2026/0012052-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "SUSU TRANSPORTES ESCOLARES LTDA",
+            "dreXml": "CS",
+            "cpfCondutorXml": "336.672.038-70",
+            "cpfMonitorXml": "527.058.608-86",
+            "crmXml": "038.735-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 10,
+            "codigoAccess": "7484",
+            "codigo_access": "7484",
+            "codigoXml": "7484",
+            "osXml": "2026/0012472-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "CLAUDIO MANSO DA CONCEICAO 12859497811",
+            "dreXml": "JT",
+            "cpfCondutorXml": "128.594.978-11",
+            "cpfMonitorXml": "370.183.428-80",
+            "crmXml": "024.781-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 11,
+            "codigoAccess": "7485",
+            "codigo_access": "7485",
+            "codigoXml": "7485",
+            "osXml": "2025/0002370-008",
+            "numOsXml": "008",
+            "num_os_xml": "008",
+            "credenciadoXml": "COOPER TRANS MOBILY - C DE T D E M URBANA",
+            "dreXml": "FB",
+            "cpfCondutorXml": "806.310.294-00",
+            "cpfMonitorXml": "099.544.984-86",
+            "crmXml": "049.303-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 12,
+            "codigoAccess": "7486",
+            "codigo_access": "7486",
+            "codigoXml": "7486",
+            "osXml": "2026/0013465-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "MARCELO TAVARES DE SOUZA TRANSPORTES",
+            "dreXml": "JT",
+            "cpfCondutorXml": "116.543.538-17",
+            "cpfMonitorXml": "306.147.118-94",
+            "crmXml": "018.471-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 13,
+            "codigoAccess": "7487",
+            "codigo_access": "7487",
+            "codigoXml": "7487",
+            "osXml": "2025/0002483-086",
+            "numOsXml": "086",
+            "num_os_xml": "086",
+            "credenciadoXml": "COOPERTAIPAS COOPERATIVA DE TRANSPORTE",
+            "dreXml": "PJ",
+            "cpfCondutorXml": "365.681.138-59",
+            "cpfMonitorXml": "389.098.858-07",
+            "crmXml": "046.986-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 14,
+            "codigoAccess": "7488",
+            "codigo_access": "7488",
+            "codigoXml": "7488",
+            "osXml": "2025/0002118-021",
+            "numOsXml": "021",
+            "num_os_xml": "021",
+            "credenciadoXml": "COOPER MAIS - COOPERATIVA DE TRANSPORTES",
+            "dreXml": "BT",
+            "cpfCondutorXml": "130.282.498-80",
+            "cpfMonitorXml": "547.792.148-07",
+            "crmXml": "035.191-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 15,
+            "codigoAccess": "7489",
+            "codigo_access": "7489",
+            "codigoXml": "7489",
+            "osXml": "2025/0002118-022",
+            "numOsXml": "022",
+            "num_os_xml": "022",
+            "credenciadoXml": "COOPER MAIS - COOPERATIVA DE TRANSPORTES",
+            "dreXml": "BT",
+            "cpfCondutorXml": "325.182.358-25",
+            "cpfMonitorXml": "328.653.108-17",
+            "crmXml": "045.900-00",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 16,
+            "codigoAccess": "7490",
+            "codigo_access": "7490",
+            "codigoXml": "7490",
+            "osXml": "2025/0002223-023",
+            "numOsXml": "023",
+            "num_os_xml": "023",
+            "credenciadoXml": "COOPER SAO PAULO C T C P ESC E T DE SP",
+            "dreXml": "IQC",
+            "cpfCondutorXml": "345.570.988-51",
+            "cpfMonitorXml": "459.732.588-31",
+            "crmXml": "048.023-00",
+            "message": "o valor nulo na coluna \"sigla\" da relação \"dre\" viola a restrição de não-nulo"
+          },
+          {
+            "index": 17,
+            "codigoAccess": "7491",
+            "codigo_access": "7491",
+            "codigoXml": "7491",
+            "osXml": "2026/0013912-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "WALDOMIRO ANDRE DO NASCIMENTO 11132804841",
+            "dreXml": "JTC",
+            "cpfCondutorXml": "291.918.028-22",
+            "cpfMonitorXml": "548.240.008-58",
+            "crmXml": "046.776-00",
+            "message": "o valor nulo na coluna \"sigla\" da relação \"dre\" viola a restrição de não-nulo"
+          },
+          {
+            "index": 18,
+            "codigoAccess": "1",
+            "codigo_access": "1",
+            "codigoXml": "1",
+            "osXml": "2022/0023966-001",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "ROBINSON SOARES RIBEIRO",
+            "dreXml": "PJ",
+            "cpfCondutorXml": "",
+            "cpfMonitorXml": "248.601.368-70",
+            "crmXml": "",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 19,
+            "codigoAccess": "2",
+            "codigo_access": "2",
+            "codigoXml": "2",
+            "osXml": "2022/0023981-001C",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "JTI TRANSPORTES LTDA - ME",
+            "dreXml": "CL",
+            "cpfCondutorXml": "",
+            "cpfMonitorXml": "",
+            "crmXml": "",
+            "message": "normalizedCredenciado is not defined"
+          },
+          {
+            "index": 20,
+            "codigoAccess": "3",
+            "codigo_access": "3",
+            "codigoXml": "3",
+            "osXml": "2022/0023981-002B",
+            "numOsXml": "002",
+            "num_os_xml": "002",
+            "credenciadoXml": "JTI TRANSPORTES LTDA - ME",
+            "dreXml": "CL",
+            "cpfCondutorXml": "",
+            "cpfMonitorXml": "",
+            "crmXml": "",
+            "message": "normalizedCredenciado is not defined"
+          }
+        ]
+      }
+    },
+    {
+      "key": "cep",
+      "label": "CEP",
+      "fileName": "Ceps.xml",
+      "endpoint": "http://localhost:3001/api/cep/import-xml",
+      "startedAt": "2026-05-19T12:54:59.912Z",
+      "finishedAt": "2026-05-19T12:54:59.922Z",
+      "ok": false,
+      "skipped": true,
+      "optional": true,
+      "message": "Arquivo XML nao encontrado em C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Ceps.xml."
+    }
+  ]
+}

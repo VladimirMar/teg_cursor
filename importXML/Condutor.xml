@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:noNamespaceSchemaLocation="Condutor.xsd" generated="2026-04-07T13:26:45">
+<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:noNamespaceSchemaLocation="Condutor.xsd" generated="2026-05-19T08:15:34">
 <Condutor>
 <Código>9241</Código>
 <Condutor>CARLOS ROBERTO RODRIGUES</Condutor>
@@ -1981,7 +1981,7 @@
 <Condutor>JOSE BONIFACIO DE ARAUJO</Condutor>
 <CPF_condutor>012.440.988-17</CPF_condutor>
 <CRMC>038.960-00</CRMC>
-<VAL_CRMC>2025-07-29T00:00:00</VAL_CRMC>
+<VAL_CRMC>2030-05-12T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-07-24T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-07-24T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
@@ -2441,6 +2441,16 @@
 <Historico>6016.2024/0081218-8</Historico>
 </Condutor>
 <Condutor>
+<Código>17278</Código>
+<Condutor>FERNANDO ALVES SALGADO</Condutor>
+<CPF_condutor>013.912.588-43</CPF_condutor>
+<CRMC>035.401-00</CRMC>
+<VAL_CRMC>2026-08-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-31T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-31T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>9432</Código>
 <Condutor>NELSON FERNANDO COELHO</Condutor>
 <CPF_condutor>014.059.308-02</CPF_condutor>
@@ -2468,6 +2478,16 @@
 <VAL_CRMC>2023-07-06T00:00:00</VAL_CRMC>
 <Curso_condutor>2014-04-06T00:00:00</Curso_condutor>
 <VCurso_condutor>2019-04-06T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17307</Código>
+<Condutor>JULIO DOS SANTOS</Condutor>
+<CPF_condutor>014.126.978-24</CPF_condutor>
+<CRMC>053.468-00</CRMC>
+<VAL_CRMC>2027-10-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>9435</Código>
@@ -2734,6 +2754,7 @@
 <VAL_CRMC>2026-11-05T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-05-06T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-05-06T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15784</Código>
@@ -3328,7 +3349,7 @@
 <VAL_CRMC>2029-03-14T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-09-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-09-18T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>14736</Código>
@@ -3601,6 +3622,16 @@
 <VAL_CRMC>2023-11-23T00:00:00</VAL_CRMC>
 </Condutor>
 <Condutor>
+<Código>17272</Código>
+<Condutor>LUCIA HONORIO SANTOS DA SILVA</Condutor>
+<CPF_condutor>027.903.984-02</CPF_condutor>
+<CRMC>049.321-00</CRMC>
+<VAL_CRMC>2027-10-17T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-10-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-10-22T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16777</Código>
 <Condutor>RUTINEIZE DE ARAUJO LUNA TENORIO</Condutor>
 <CPF_condutor>028.096.324-64</CPF_condutor>
@@ -3631,6 +3662,16 @@
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17267</Código>
+<Condutor>LUIZ AUGUSTO DE SOUZA MONTEIRO</Condutor>
+<CPF_condutor>028.293.697-18</CPF_condutor>
+<CRMC>052.026-00</CRMC>
+<VAL_CRMC>2030-01-22T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-12-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-12-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>9517</Código>
 <Condutor>JORGE ISSAMU SUEDA</Condutor>
 <CPF_condutor>028.299.178-63</CPF_condutor>
@@ -3657,6 +3698,16 @@
 <VAL_CRMC>2029-10-18T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-09-15T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-09-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17240</Código>
+<Condutor>JOSE ATONIO DA SILVA</Condutor>
+<CPF_condutor>028.818.168-94</CPF_condutor>
+<CRMC>030.740-00</CRMC>
+<VAL_CRMC>2030-03-06T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-11-30T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-30T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -3838,6 +3889,16 @@
 <Curso_condutor>2022-06-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-06-18T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17265</Código>
+<Condutor>JOSE CARLOS DA SILVA</Condutor>
+<CPF_condutor>030.488.818-40</CPF_condutor>
+<CRMC>047.933-00</CRMC>
+<VAL_CRMC>2028-03-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-09-28T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-09-28T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>9532</Código>
@@ -4124,6 +4185,16 @@
 <CPF_condutor>032.305.348-32</CPF_condutor>
 <CRMC>009.569-00</CRMC>
 <VAL_CRMC>2017-05-09T00:00:00</VAL_CRMC>
+</Condutor>
+<Condutor>
+<Código>17283</Código>
+<Condutor>VANUSA FERREIRA CANDIDO ROCHA</Condutor>
+<CPF_condutor>032.347.866-23</CPF_condutor>
+<CRMC>053.341-00</CRMC>
+<VAL_CRMC>2031-03-06T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>9557</Código>
@@ -4454,9 +4525,10 @@
 <Condutor>RITA DE CASSIA FARIA</Condutor>
 <CPF_condutor>034.651.408-85</CPF_condutor>
 <CRMC>017.475-00</CRMC>
-<VAL_CRMC>2026-02-23T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-01-10T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-01-10T00:00:00</VCurso_condutor>
+<VAL_CRMC>2031-01-22T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-10T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-10T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>9588</Código>
@@ -5547,6 +5619,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17235</Código>
+<Condutor>CLENE ALVES DE OLIVEIRA BARBOSA</Condutor>
+<CPF_condutor>041.748.156-07</CPF_condutor>
+<CRMC>050.241-00</CRMC>
+<VAL_CRMC>2029-06-25T00:00:00</VAL_CRMC>
+<Curso_condutor>2021-12-19T00:00:00</Curso_condutor>
+<VCurso_condutor>2026-12-19T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>9666</Código>
 <Condutor>PEDRO PAULO FERREIRA DA LUZ</Condutor>
 <CPF_condutor>041.943.028-85</CPF_condutor>
@@ -5942,6 +6024,16 @@
 <VCurso_condutor>2020-02-22T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17258</Código>
+<Condutor>CARLOS ROBERTO ANJOLIM</Condutor>
+<CPF_condutor>044.606.908-61</CPF_condutor>
+<CRMC>050.525-00</CRMC>
+<VAL_CRMC>2030-01-10T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-10-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-10-22T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15671</Código>
 <Condutor>FELIZARDO SANTIAGO FILHO</Condutor>
 <CPF_condutor>044.642.828-06</CPF_condutor>
@@ -6260,6 +6352,26 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17262</Código>
+<Condutor>JOSE VALERIO DA SILVA</Condutor>
+<CPF_condutor>046.976.304-32</CPF_condutor>
+<CRMC>042.558-00</CRMC>
+<VAL_CRMC>2030-10-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-12-09T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-12-09T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17207</Código>
+<Condutor>GILMAR VIANA BRAGA</Condutor>
+<CPF_condutor>047.074.046-93</CPF_condutor>
+<CRMC>053.085-00</CRMC>
+<VAL_CRMC>2030-12-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-11-06T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-06T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>9716</Código>
 <Condutor>ALCIDES GOMES PEREIRA</Condutor>
 <CPF_condutor>047.329.728-02</CPF_condutor>
@@ -6325,6 +6437,16 @@
 <VAL_CRMC>2027-11-09T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-10-07T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-10-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17220</Código>
+<Condutor>JOSE ANTONIO DOS SANTOS</Condutor>
+<CPF_condutor>047.750.288-12</CPF_condutor>
+<CRMC>053.300-00</CRMC>
+<VAL_CRMC>2027-10-11T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-25T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -6628,6 +6750,16 @@
 <Curso_condutor>2023-09-16T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-09-16T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17305</Código>
+<Condutor>ALEXANDRE PEDROSA DE VASCONCELOS</Condutor>
+<CPF_condutor>049.850.578-27</CPF_condutor>
+<CRMC>051.453-00</CRMC>
+<VAL_CRMC>2028-09-29T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-04-27T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-04-27T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>9740</Código>
@@ -6972,6 +7104,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17304</Código>
+<Condutor>JOSE JACKSON DE SOUSA SILVA</Condutor>
+<CPF_condutor>052.183.393-00</CPF_condutor>
+<CRMC>053.461-00</CRMC>
+<VAL_CRMC>2030-03-26T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-25T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>9763</Código>
 <Condutor>EDMUNDO DUARTE CAVALCANTE</Condutor>
 <CPF_condutor>052.292.658-41</CPF_condutor>
@@ -7088,7 +7230,7 @@
 <Condutor>NILSON SANTANA MARTINS FERREIRA</Condutor>
 <CPF_condutor>053.010.956-50</CPF_condutor>
 <CRMC>052.221-00</CRMC>
-<VAL_CRMC>2026-03-02T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-03-17T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-02-27T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-02-27T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
@@ -7248,6 +7390,7 @@
 <VAL_CRMC>2030-08-26T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-04-26T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-04-26T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>9782</Código>
@@ -7462,13 +7605,23 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17301</Código>
+<Condutor>JOSUE FERREIRA LIMA</Condutor>
+<CPF_condutor>054.671.128-64</CPF_condutor>
+<CRMC>053.434-00</CRMC>
+<VAL_CRMC>2030-04-07T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-22T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>9795</Código>
 <Condutor>JOSE CLAUDIO DE ALMEIDA</Condutor>
 <CPF_condutor>054.704.298-14</CPF_condutor>
 <CRMC>018.297-00</CRMC>
 <VAL_CRMC>2029-06-18T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-01-28T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-01-28T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-04-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-25T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
 <Código>9796</Código>
@@ -7526,6 +7679,16 @@
 <VAL_CRMC>2018-05-08T00:00:00</VAL_CRMC>
 <Curso_condutor>2015-05-17T00:00:00</Curso_condutor>
 <VCurso_condutor>2020-05-17T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17316</Código>
+<Condutor>OLIVAR IRAPUAM DA SILVA</Condutor>
+<CPF_condutor>055.134.483-00</CPF_condutor>
+<CRMC>053.351-00</CRMC>
+<VAL_CRMC>2027-06-21T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-08T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16327</Código>
@@ -8441,6 +8604,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17227</Código>
+<Condutor>FLAVIO JOSE DE CARVALHO</Condutor>
+<CPF_condutor>064.071.198-71</CPF_condutor>
+<CRMC>053.271-00</CRMC>
+<VAL_CRMC>2030-07-15T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>9871</Código>
 <Condutor>WILSON GERALDO PRUDENCIO</Condutor>
 <CPF_condutor>064.076.388-01</CPF_condutor>
@@ -8659,6 +8832,7 @@
 <VAL_CRMC>2029-03-30T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-07-16T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-07-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>9887</Código>
@@ -8836,8 +9010,8 @@
 <CPF_condutor>065.762.018-18</CPF_condutor>
 <CRMC>001.119-00</CRMC>
 <VAL_CRMC>2030-06-17T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-11-28T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-11-28T00:00:00</VCurso_condutor>
+<Curso_condutor>2025-06-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-06-07T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
 <Código>9903</Código>
@@ -8848,9 +9022,42 @@
 <Curso_condutor>2018-11-24T00:00:00</Curso_condutor>
 <VCurso_condutor>2023-11-24T00:00:00</VCurso_condutor>
 </Condutor>
-<Condutor/>
-<Condutor/>
-<Condutor/>
+<Condutor>
+<Código>9904</Código>
+<Condutor>IVONE MOREIRA</Condutor>
+<CPF_condutor>065.813.698-45</CPF_condutor>
+<CRMC>016.776-00</CRMC>
+<VAL_CRMC>2029-01-16T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-01-06T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-01-06T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17208</Código>
+<Condutor>CRISTIANE SVENTKAUSKAS</Condutor>
+<CPF_condutor>065.825.028-08</CPF_condutor>
+<CRMC>024.096-00</CRMC>
+<VAL_CRMC>2028-07-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-06-04T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-06-04T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>9905</Código>
+<Condutor>LUCILENE DOS SANTOS BARROS</Condutor>
+<CPF_condutor>065.832.858-19</CPF_condutor>
+<CRMC>016.042-00</CRMC>
+<VAL_CRMC>2023-07-11T00:00:00</VAL_CRMC>
+</Condutor>
+<Condutor>
+<Código>9906</Código>
+<Condutor>HELIO DE JESUS MACEDO</Condutor>
+<CPF_condutor>065.838.918-16</CPF_condutor>
+<CRMC>018.075-00</CRMC>
+<VAL_CRMC>2026-09-30T00:00:00</VAL_CRMC>
+<Curso_condutor>2021-07-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2026-07-25T00:00:00</VCurso_condutor>
+</Condutor>
 <Condutor>
 <Código>9907</Código>
 <Condutor>ANTONIO PEREIRA DE ANDRADE</Condutor>
@@ -9254,8 +9461,18 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17194</Código>
+<Condutor>LORIVAL EDGAR DE BARROS</Condutor>
+<CPF_condutor>071.054.438-39</CPF_condutor>
+<CRMC>052.713-00</CRMC>
+<VAL_CRMC>2027-01-10T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-05-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-05-11T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>9937</Código>
-<Condutor>(OCORÊNCIA) ALUIZIO NUNES DOS SANTOS</Condutor>
+<Condutor>(OCORRÊNCIA) ALUIZIO NUNES DOS SANTOS</Condutor>
 <CPF_condutor>071.072.908-19</CPF_condutor>
 <CRMC>018.174-00</CRMC>
 <VAL_CRMC>2027-03-10T00:00:00</VAL_CRMC>
@@ -9609,7 +9826,7 @@
 <VAL_CRMC>2029-01-11T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-10-02T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-10-02T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>9959</Código>
@@ -10105,6 +10322,16 @@
 <VAL_CRMC>2023-02-14T00:00:00</VAL_CRMC>
 </Condutor>
 <Condutor>
+<Código>17256</Código>
+<Condutor>AURO NOVAES DANTAS</Condutor>
+<CPF_condutor>076.068.168-67</CPF_condutor>
+<CRMC>007.176-01</CRMC>
+<VAL_CRMC>2028-03-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-07-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-07-08T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10000</Código>
 <Condutor>ANTONIO ROBERTO JORGE</Condutor>
 <CPF_condutor>076.091.608-06</CPF_condutor>
@@ -10471,6 +10698,7 @@
 <VAL_CRMC>2027-06-17T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-05-08T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-05-08T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10025</Código>
@@ -10731,7 +10959,7 @@
 <VAL_CRMC>2028-11-30T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-10-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-10-18T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10040</Código>
@@ -11373,6 +11601,16 @@
 <VAL_CRMC>2019-02-08T00:00:00</VAL_CRMC>
 </Condutor>
 <Condutor>
+<Código>17294</Código>
+<Condutor>FRANCISCO AUGUSTO DA COSTA FILHO</Condutor>
+<CPF_condutor>084.998.288-09</CPF_condutor>
+<CRMC>044.318-00</CRMC>
+<VAL_CRMC>2026-08-16T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10092</Código>
 <Condutor>GILVANDO CERQUEIRA SANTOS</Condutor>
 <CPF_condutor>085.015.558-43</CPF_condutor>
@@ -11680,7 +11918,7 @@
 <Condutor>VALDECIR FERNANDES DE OLIVEIRA</Condutor>
 <CPF_condutor>086.312.528-08</CPF_condutor>
 <CRMC>044.193-00</CRMC>
-<VAL_CRMC>2025-10-23T00:00:00</VAL_CRMC>
+<VAL_CRMC>2030-10-06T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-10-09T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-10-09T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
@@ -12047,7 +12285,7 @@
 <Condutor>EDSON MOREIRA DE CASTRO</Condutor>
 <CPF_condutor>088.096.758-78</CPF_condutor>
 <CRMC>030.266-00</CRMC>
-<VAL_CRMC>2026-01-12T00:00:00</VAL_CRMC>
+<VAL_CRMC>2030-12-11T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-04-27T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-04-27T00:00:00</VCurso_condutor>
 </Condutor>
@@ -12208,6 +12446,16 @@
 <VAL_CRMC>2027-04-18T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-01-08T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-01-08T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17338</Código>
+<Condutor>GILMAR PASSOS DA SILVA</Condutor>
+<CPF_condutor>088.740.058-22</CPF_condutor>
+<CRMC>053.539-00</CRMC>
+<VAL_CRMC>2029-07-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-11T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10158</Código>
@@ -12457,6 +12705,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17246</Código>
+<Condutor>DOUGLAS DAVI GUATURA</Condutor>
+<CPF_condutor>089.530.756-10</CPF_condutor>
+<CRMC>053.369-00</CRMC>
+<VAL_CRMC>2031-03-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-08T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16717</Código>
 <Condutor>PAULO SERGIO DA SILVA</Condutor>
 <CPF_condutor>089.551.338-20</CPF_condutor>
@@ -12493,6 +12751,17 @@
 <VAL_CRMC>2028-08-30T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-05-22T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-05-22T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17343</Código>
+<Condutor>JOSE ANTONIO LYRA</Condutor>
+<CPF_condutor>089.822.848-42</CPF_condutor>
+<CRMC>053.536-00</CRMC>
+<VAL_CRMC>2030-01-30T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16623</Código>
@@ -12831,6 +13100,7 @@
 <VAL_CRMC>2027-02-18T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-03-23T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-03-23T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15251</Código>
@@ -13907,9 +14177,9 @@
 <CPF_condutor>100.549.858-03</CPF_condutor>
 <CRMC>020.439-00</CRMC>
 <VAL_CRMC>2026-10-20T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-09-19T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-09-19T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Curso_condutor>2025-10-02T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-10-02T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10283</Código>
@@ -14410,6 +14680,16 @@
 <VCurso_condutor>2028-12-09T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17257</Código>
+<Condutor>JOSE ALVES SILVA</Condutor>
+<CPF_condutor>103.774.398-94</CPF_condutor>
+<CRMC>001.022-01</CRMC>
+<VAL_CRMC>2028-04-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-09-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-09-05T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10320</Código>
 <Condutor>ALICE SETSUKO MIYAZAKI</Condutor>
 <CPF_condutor>103.924.338-00</CPF_condutor>
@@ -14573,6 +14853,16 @@
 <VAL_CRMC>2023-06-09T00:00:00</VAL_CRMC>
 <Curso_condutor>2016-01-24T00:00:00</Curso_condutor>
 <VCurso_condutor>2021-01-24T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17282</Código>
+<Condutor>SILVIO SIMOES DA COSTA</Condutor>
+<CPF_condutor>104.442.008-19</CPF_condutor>
+<CRMC>053.258-00</CRMC>
+<VAL_CRMC>2027-07-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10333</Código>
@@ -14848,6 +15138,7 @@
 <VAL_CRMC>2028-11-01T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-05-07T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-05-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10355</Código>
@@ -15138,6 +15429,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17284</Código>
+<Condutor>SIDNEI FERREIRA</Condutor>
+<CPF_condutor>107.369.898-03</CPF_condutor>
+<CRMC>053.430-00</CRMC>
+<VAL_CRMC>2030-03-19T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10380</Código>
 <Condutor>FRANCISCO ABDIAS DE CARVALHO</Condutor>
 <CPF_condutor>107.451.508-02</CPF_condutor>
@@ -15145,6 +15446,16 @@
 <VAL_CRMC>2023-07-07T00:00:00</VAL_CRMC>
 <Curso_condutor>2020-12-13T00:00:00</Curso_condutor>
 <VCurso_condutor>2025-12-13T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17297</Código>
+<Condutor>TOMAS EDSON VITAL</Condutor>
+<CPF_condutor>107.457.498-28</CPF_condutor>
+<CRMC>051.068-00</CRMC>
+<VAL_CRMC>2027-12-17T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-02-24T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-02-24T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10381</Código>
@@ -15465,6 +15776,16 @@
 <VCurso_condutor>2027-04-10T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17295</Código>
+<Condutor>MAGDA ROSARIA MULA ANDRETA</Condutor>
+<CPF_condutor>111.883.698-73</CPF_condutor>
+<CRMC>029.915-00</CRMC>
+<VAL_CRMC>2028-11-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-03-29T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-03-29T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10404</Código>
 <Condutor>MARIANA FERREIRA BARRETO RIBEIRO</Condutor>
 <CPF_condutor>111.908.898-46</CPF_condutor>
@@ -15551,6 +15872,16 @@
 <VAL_CRMC>2027-02-24T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-04-10T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-04-10T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17311</Código>
+<Condutor>ROBERTO CARLOS DE LIMA</Condutor>
+<CPF_condutor>112.253.958-44</CPF_condutor>
+<CRMC>017.916-00</CRMC>
+<VAL_CRMC>2028-04-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-11T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -15836,6 +16167,16 @@
 <VCurso_condutor>2023-08-05T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17287</Código>
+<Condutor>GEOVANE ROSENO DE ANDRADE CADETE</Condutor>
+<CPF_condutor>113.169.758-86</CPF_condutor>
+<CRMC>053.323-00</CRMC>
+<VAL_CRMC>2026-07-05T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-08-02T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-08-02T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10426</Código>
 <Condutor>SIDNEIA MAURICIO DA SILVA</Condutor>
 <CPF_condutor>113.186.858-77</CPF_condutor>
@@ -16040,6 +16381,7 @@
 <VAL_CRMC>2027-01-03T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-12-12T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-12-12T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10441</Código>
@@ -16863,6 +17205,17 @@
 <VAL_CRMC>2028-06-21T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-06-15T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-06-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17288</Código>
+<Condutor>MARCIA RODRIGUES DE MORAES SOUZA</Condutor>
+<CPF_condutor>117.578.498-23</CPF_condutor>
+<CRMC>053.426-00</CRMC>
+<VAL_CRMC>2029-12-11T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10505</Código>
@@ -16926,8 +17279,8 @@
 <CPF_condutor>117.640.448-27</CPF_condutor>
 <CRMC>031.368-00</CRMC>
 <VAL_CRMC>2029-01-23T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-09-27T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-09-27T00:00:00</VCurso_condutor>
+<Curso_condutor>2025-10-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-10-25T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
 <Código>10511</Código>
@@ -17111,6 +17464,7 @@
 <VAL_CRMC>2026-11-26T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-07-20T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-07-20T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10526</Código>
@@ -17290,6 +17644,16 @@
 <VAL_CRMC>2023-02-23T00:00:00</VAL_CRMC>
 <Curso_condutor>2017-03-05T00:00:00</Curso_condutor>
 <VCurso_condutor>2022-03-05T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17224</Código>
+<Condutor>UDSON ANTONIO ARAUJO LAURENT</Condutor>
+<CPF_condutor>122.993.568-19</CPF_condutor>
+<CRMC>053.321-00</CRMC>
+<VAL_CRMC>2028-12-11T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-26T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-26T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10542</Código>
@@ -17860,7 +18224,7 @@
 <Condutor>SEBASTIAO MARELLI BONASORTE</Condutor>
 <CPF_condutor>125.852.408-27</CPF_condutor>
 <CRMC>048.422-00</CRMC>
-<VAL_CRMC>2026-02-19T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-02-23T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-06-19T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-06-19T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
@@ -18152,6 +18516,16 @@
 <VAL_CRMC>2026-02-10T00:00:00</VAL_CRMC>
 <Curso_condutor>2020-12-07T00:00:00</Curso_condutor>
 <VCurso_condutor>2025-12-07T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17206</Código>
+<Condutor>VALDECI DE MELLO CARDOSO</Condutor>
+<CPF_condutor>126.812.098-70</CPF_condutor>
+<CRMC>053.294-00</CRMC>
+<VAL_CRMC>2031-02-25T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-23T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-23T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10606</Código>
@@ -18641,7 +19015,7 @@
 <Condutor>VANDA SABINO LISERRA</Condutor>
 <CPF_condutor>128.387.868-22</CPF_condutor>
 <CRMC>022.766-00</CRMC>
-<VAL_CRMC>2026-03-08T00:00:00</VAL_CRMC>
+<VAL_CRMC>2028-03-08T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-03-11T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-03-11T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
@@ -18726,8 +19100,8 @@
 <CPF_condutor>128.482.998-78</CPF_condutor>
 <CRMC>016.856-00</CRMC>
 <VAL_CRMC>2028-04-25T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-03-07T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-03-07T00:00:00</VCurso_condutor>
+<Curso_condutor>2025-04-26T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-04-26T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
 <Código>10648</Código>
@@ -19026,7 +19400,7 @@
 <Condutor>ISAK SALATIEL</Condutor>
 <CPF_condutor>129.545.108-54</CPF_condutor>
 <CRMC>040.780-00</CRMC>
-<VAL_CRMC>2026-03-06T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-03-16T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-12-01T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-12-01T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
@@ -19258,9 +19632,9 @@
 <Condutor>MARIA ALBERTINA DE OLIVEIRA DE LIMA</Condutor>
 <CPF_condutor>130.278.158-81</CPF_condutor>
 <CRMC>025.577-00</CRMC>
-<VAL_CRMC>2026-02-20T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-10-05T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-10-05T00:00:00</VCurso_condutor>
+<VAL_CRMC>2031-02-11T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-18T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-18T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
 <Código>10689</Código>
@@ -19762,6 +20136,16 @@
 <VCurso_condutor>2026-09-12T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17306</Código>
+<Condutor>JOSE MARCIO DA SILVA</Condutor>
+<CPF_condutor>132.913.418-48</CPF_condutor>
+<CRMC>053.467-00</CRMC>
+<VAL_CRMC>2027-08-15T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-05T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10724</Código>
 <Condutor>JOSE GERALDO DE OLIVEIRA</Condutor>
 <CPF_condutor>133.257.048-83</CPF_condutor>
@@ -19921,6 +20305,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17273</Código>
+<Condutor>CLARICE ABIATI GUSMAO SILVA</Condutor>
+<CPF_condutor>134.572.478-03</CPF_condutor>
+<CRMC>053.180-00</CRMC>
+<VAL_CRMC>2029-10-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10736</Código>
 <Condutor>FRANCISCO ALVES DE GOUVEIA</Condutor>
 <CPF_condutor>134.589.798-75</CPF_condutor>
@@ -19936,6 +20330,16 @@
 <Curso_condutor>2021-12-04T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-12-04T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17296</Código>
+<Condutor>AILTON SEVERINO DE SOUZA</Condutor>
+<CPF_condutor>134.600.128-62</CPF_condutor>
+<CRMC>052.957-00</CRMC>
+<VAL_CRMC>2028-11-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-09-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-09-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10738</Código>
@@ -20348,8 +20752,8 @@
 <CPF_condutor>135.587.568-43</CPF_condutor>
 <CRMC>015.243-00</CRMC>
 <VAL_CRMC>2030-04-01T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-08-29T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-08-29T00:00:00</VCurso_condutor>
+<Curso_condutor>2025-09-13T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-09-13T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -20478,6 +20882,16 @@
 <VCurso_condutor>2026-09-25T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17275</Código>
+<Condutor>PATRICIA SANTOS SILVA MAGALHAES</Condutor>
+<CPF_condutor>136.107.908-81</CPF_condutor>
+<CRMC>053.363-00</CRMC>
+<VAL_CRMC>2030-11-07T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15952</Código>
 <Condutor>REGINALDO NUNES</Condutor>
 <CPF_condutor>136.125.348-74</CPF_condutor>
@@ -20515,6 +20929,16 @@
 <Curso_condutor>2022-03-19T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-03-19T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17330</Código>
+<Condutor>CESAR VELAME DOS SANTOS</Condutor>
+<CPF_condutor>136.202.068-05</CPF_condutor>
+<CRMC>053.485-00</CRMC>
+<VAL_CRMC>2031-02-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10773</Código>
@@ -20727,6 +21151,7 @@
 <VAL_CRMC>2027-08-30T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-06-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-06-18T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10788</Código>
@@ -20856,6 +21281,16 @@
 <Curso_condutor>2021-11-06T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-11-06T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17315</Código>
+<Condutor>EDUARDO ANTONIO SILVA SEMEAO SANTOS</Condutor>
+<CPF_condutor>142.242.414-63</CPF_condutor>
+<CRMC>052.627-00</CRMC>
+<VAL_CRMC>2030-07-01T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-06-29T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-06-29T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10801</Código>
@@ -21747,6 +22182,16 @@
 <VCurso_condutor>2028-09-30T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17329</Código>
+<Condutor>GILMAR PEREIRA DA SILVA</Condutor>
+<CPF_condutor>146.222.838-08</CPF_condutor>
+<CRMC>053.441-00</CRMC>
+<VAL_CRMC>2030-11-07T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>14086</Código>
 <Condutor>CLEONICE ALVES DA SILVA FREITAS</Condutor>
 <CPF_condutor>146.234.408-93</CPF_condutor>
@@ -22045,6 +22490,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17203</Código>
+<Condutor>SERGIO SOARES DA SILVA</Condutor>
+<CPF_condutor>146.906.608-40</CPF_condutor>
+<CRMC>014.079-00</CRMC>
+<VAL_CRMC>2030-01-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-12-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-12-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10877</Código>
 <Condutor>JUCIE DA SILVA</Condutor>
 <CPF_condutor>146.913.008-48</CPF_condutor>
@@ -22340,7 +22795,7 @@
 <VAL_CRMC>2026-06-17T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-03-15T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-03-15T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>10899</Código>
@@ -23158,6 +23613,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17335</Código>
+<Condutor>LUCIANO SOUZA DA SILVA</Condutor>
+<CPF_condutor>151.725.718-25</CPF_condutor>
+<CRMC>041.781-00</CRMC>
+<VAL_CRMC>2031-04-22T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-19T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-19T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10955</Código>
 <Condutor>REGINALDO WAGNER PAULO</Condutor>
 <CPF_condutor>151.725.888-09</CPF_condutor>
@@ -23311,6 +23776,16 @@
 <VAL_CRMC>2024-12-12T00:00:00</VAL_CRMC>
 </Condutor>
 <Condutor>
+<Código>17344</Código>
+<Condutor>VERA LUCIA PASSOS</Condutor>
+<CPF_condutor>152.318.898-73</CPF_condutor>
+<CRMC>040.437-00</CRMC>
+<VAL_CRMC>2028-09-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-04-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-04-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>10967</Código>
 <Condutor>MANOEL FERNANDES BELMONTE</Condutor>
 <CPF_condutor>152.322.848-27</CPF_condutor>
@@ -23434,6 +23909,16 @@
 <VAL_CRMC>2028-05-16T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-05-07T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-05-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17199</Código>
+<Condutor>VANDER DOS SANTOS BARROS</Condutor>
+<CPF_condutor>152.662.688-83</CPF_condutor>
+<CRMC>051.624-00</CRMC>
+<VAL_CRMC>2029-08-30T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-08-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-08-01T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -23646,6 +24131,16 @@
 <VAL_CRMC>2029-05-22T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-03-09T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-03-09T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17218</Código>
+<Condutor>VIRLENE DE ASSIS SILVA</Condutor>
+<CPF_condutor>153.359.658-19</CPF_condutor>
+<CRMC>022.469-00</CRMC>
+<VAL_CRMC>2028-04-10T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-06-13T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-06-13T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -24134,6 +24629,16 @@
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17210</Código>
+<Condutor>RITA DE CASSIA ALVES</Condutor>
+<CPF_condutor>157.668.588-84</CPF_condutor>
+<CRMC>032.663-00</CRMC>
+<VAL_CRMC>2027-04-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-04-14T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-04-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>14333</Código>
 <Condutor>MARIA LUIZA MIRANDA PAZ</Condutor>
 <CPF_condutor>157.740.888-80</CPF_condutor>
@@ -24411,6 +24916,16 @@
 <VAL_CRMC>2028-03-16T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-03-12T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-03-12T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17232</Código>
+<Condutor>GERSON MARQUES MALMAGRO</Condutor>
+<CPF_condutor>162.511.448-66</CPF_condutor>
+<CRMC>051.533-00</CRMC>
+<VAL_CRMC>2029-08-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-08-04T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-08-04T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -25153,6 +25668,16 @@
 <VCurso_condutor>2027-08-13T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17328</Código>
+<Condutor>JESUEL CANDIDO DA CRUZ</Condutor>
+<CPF_condutor>165.937.688-20</CPF_condutor>
+<CRMC>053.500-00</CRMC>
+<VAL_CRMC>2030-08-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-05T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>11095</Código>
 <Condutor>RITA DE CASSIA ESTEVES DE LIMA</Condutor>
 <CPF_condutor>165.964.228-01</CPF_condutor>
@@ -25333,6 +25858,7 @@
 <VAL_CRMC>2028-04-12T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-03-02T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-03-02T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16807</Código>
@@ -26348,7 +26874,7 @@
 <Condutor>RAIMUNDO OLIVEIRA BRITO</Condutor>
 <CPF_condutor>173.058.628-78</CPF_condutor>
 <CRMC>034.897-00</CRMC>
-<VAL_CRMC>2026-03-19T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-03-19T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-09-27T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-09-27T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
@@ -26473,6 +26999,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17341</Código>
+<Condutor>REINALDO MEIRA LOPEZ</Condutor>
+<CPF_condutor>173.502.708-10</CPF_condutor>
+<CRMC>015.596-00</CRMC>
+<VAL_CRMC>2030-07-10T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-26T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-26T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15993</Código>
 <Condutor>RICARDO DAVID CAPUTO</Condutor>
 <CPF_condutor>173.568.828-25</CPF_condutor>
@@ -26528,6 +27064,7 @@
 <VAL_CRMC>2028-07-07T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-03-29T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-03-29T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15006</Código>
@@ -26685,6 +27222,16 @@
 <VAL_CRMC>2024-11-07T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-09-24T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-09-24T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17191</Código>
+<Condutor>ADENILSON DE LIMA</Condutor>
+<CPF_condutor>174.878.988-06</CPF_condutor>
+<CRMC>053.234-00</CRMC>
+<VAL_CRMC>2029-02-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-01-31T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-01-31T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -26965,7 +27512,7 @@
 <VAL_CRMC>2029-11-22T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-06-17T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-06-17T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>11218</Código>
@@ -27989,6 +28536,16 @@
 <VCurso_condutor>2028-06-03T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17309</Código>
+<Condutor>RONALDO PEREIRA DA SILVA FRANCO</Condutor>
+<CPF_condutor>183.041.728-28</CPF_condutor>
+<CRMC>051.782-00</CRMC>
+<VAL_CRMC>2029-10-14T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-09-14T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-09-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>11286</Código>
 <Condutor>ANA APARECIDA BITENCOURT LOPES</Condutor>
 <CPF_condutor>183.056.258-42</CPF_condutor>
@@ -28081,7 +28638,7 @@
 <Condutor>ALEXANDRO ALVES MOREIRA</Condutor>
 <CPF_condutor>183.845.398-98</CPF_condutor>
 <CRMC>051.728-00</CRMC>
-<VAL_CRMC>2025-11-19T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-03-30T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-05-29T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-05-29T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
@@ -28746,9 +29303,9 @@
 <Condutor>FABIANA MARA DIAS</Condutor>
 <CPF_condutor>188.546.968-38</CPF_condutor>
 <CRMC>030.348-00</CRMC>
-<VAL_CRMC>2023-11-23T00:00:00</VAL_CRMC>
-<Curso_condutor>2019-12-08T00:00:00</Curso_condutor>
-<VCurso_condutor>2024-12-08T00:00:00</VCurso_condutor>
+<VAL_CRMC>2029-01-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-03-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-03-15T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -29320,6 +29877,16 @@
 <VCurso_condutor>2022-09-17T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17189</Código>
+<Condutor>MARCELO ALVES MALVEIRA</Condutor>
+<CPF_condutor>193.534.928-74</CPF_condutor>
+<CRMC>046.818-00</CRMC>
+<VAL_CRMC>2030-03-06T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-03-02T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-03-02T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>11372</Código>
 <Condutor>MARCO AURELIO DE OLIVEIRA LOUZADA</Condutor>
 <CPF_condutor>193.535.348-95</CPF_condutor>
@@ -29394,6 +29961,16 @@
 <VAL_CRMC>2031-01-15T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-10-15T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-10-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17299</Código>
+<Condutor>EMERSON LUIS DE QUEIROZ ANGELO</Condutor>
+<CPF_condutor>194.603.148-80</CPF_condutor>
+<CRMC>053.447-00</CRMC>
+<VAL_CRMC>2031-04-01T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-21T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -30039,7 +30616,10 @@
 <Condutor>OSBERTO OLIVEIRA BATISTA</Condutor>
 <CPF_condutor>205.382.338-00</CPF_condutor>
 <CRMC>034.623-00</CRMC>
-<VAL_CRMC>2023-07-31T00:00:00</VAL_CRMC>
+<VAL_CRMC>2028-12-20T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-06-17T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-06-17T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>11421</Código>
@@ -30236,6 +30816,16 @@
 <VCurso_condutor>2029-08-21T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17236</Código>
+<Condutor>MARIA HELENA PESTANA DA SILVA</Condutor>
+<CPF_condutor>212.909.418-07</CPF_condutor>
+<CRMC>050.066-00</CRMC>
+<VAL_CRMC>2026-11-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-05-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-05-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16974</Código>
 <Condutor>EDUARDO COUTO COSTA</Condutor>
 <CPF_condutor>212.930.388-90</CPF_condutor>
@@ -30273,7 +30863,7 @@
 <VAL_CRMC>2030-04-03T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-09-13T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-09-13T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>11436</Código>
@@ -30988,6 +31578,16 @@
 <VCurso_condutor>2029-07-13T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17285</Código>
+<Condutor>FABRICIO PEREIRA DAS NEVES</Condutor>
+<CPF_condutor>217.612.268-27</CPF_condutor>
+<CRMC>023.937-00</CRMC>
+<VAL_CRMC>2031-03-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-04T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-04T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>11480</Código>
 <Condutor>ANDREIA ALEXANDRINA DE SOUZA</Condutor>
 <CPF_condutor>217.626.108-92</CPF_condutor>
@@ -31178,7 +31778,7 @@
 <VAL_CRMC>2030-02-04T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-02-01T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-02-01T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16176</Código>
@@ -31633,7 +32233,7 @@
 <VAL_CRMC>2030-04-22T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-04-13T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-04-13T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15160</Código>
@@ -31776,7 +32376,7 @@
 <VAL_CRMC>2028-08-09T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-03-29T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-03-29T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>11529</Código>
@@ -32062,7 +32662,7 @@
 <Condutor>FABIO DE MATOS</Condutor>
 <CPF_condutor>223.220.718-89</CPF_condutor>
 <CRMC>042.585-00</CRMC>
-<VAL_CRMC>2025-12-11T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-02-03T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-09-12T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-09-12T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
@@ -32116,6 +32716,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17239</Código>
+<Condutor>JEFFERSON DA SILVA CERQUEIRA</Condutor>
+<CPF_condutor>223.456.928-12</CPF_condutor>
+<CRMC>020.933-00</CRMC>
+<VAL_CRMC>2028-09-22T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-06-12T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-06-12T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>11550</Código>
 <Condutor>ROBSON DE SOUSA SILVA</Condutor>
 <CPF_condutor>223.504.598-70</CPF_condutor>
@@ -32139,9 +32749,10 @@
 <Condutor>CARLOS ALBERTO GOMES</Condutor>
 <CPF_condutor>223.525.468-34</CPF_condutor>
 <CRMC>010.295-00</CRMC>
-<VAL_CRMC>2026-03-21T00:00:00</VAL_CRMC>
+<VAL_CRMC>2029-03-11T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-12-19T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-12-19T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16455</Código>
@@ -32496,7 +33107,7 @@
 <VAL_CRMC>2029-02-21T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-11-26T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-11-26T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16481</Código>
@@ -32944,7 +33555,7 @@
 <VAL_CRMC>2027-08-26T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-12-11T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-12-11T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15876</Código>
@@ -33411,6 +34022,16 @@
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17327</Código>
+<Condutor>ULISSES DA SILVA ROSA</Condutor>
+<CPF_condutor>228.784.458-99</CPF_condutor>
+<CRMC>053.494-00</CRMC>
+<VAL_CRMC>2031-04-14T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-10-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-10-01T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>11620</Código>
 <Condutor>TRANSAT TRANSPORTE ESCOLAR LTDA - ME - FABIO APOLINARIO BARBOZA</Condutor>
 <CPF_condutor>228.816.998-20</CPF_condutor>
@@ -33517,6 +34138,16 @@
 <Curso_condutor>2020-02-09T00:00:00</Curso_condutor>
 <VCurso_condutor>2025-02-09T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17334</Código>
+<Condutor>RANDOLPHO PEREIRA</Condutor>
+<CPF_condutor>228.983.128-00</CPF_condutor>
+<CRMC>053.454-00</CRMC>
+<VAL_CRMC>2031-04-06T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>11628</Código>
@@ -33910,7 +34541,7 @@
 <VAL_CRMC>2028-08-21T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-09-11T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-09-11T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>11637</Código>
@@ -34064,8 +34695,8 @@
 <CPF_condutor>235.591.875-91</CPF_condutor>
 <CRMC>042.673-00</CRMC>
 <VAL_CRMC>2026-04-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-10-18T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-10-18T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-04-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-25T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -34180,6 +34811,16 @@
 <VAL_CRMC>2028-02-06T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-04-16T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-04-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17196</Código>
+<Condutor>MATEUS ROBERTO DANTAS MONTEIRO</Condutor>
+<CPF_condutor>243.013.728-30</CPF_condutor>
+<CRMC>053.143-00</CRMC>
+<VAL_CRMC>2031-01-15T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-11T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -34663,9 +35304,10 @@
 <Condutor>ANDRE LUIZ DE OLIVEIRA HERNANDES</Condutor>
 <CPF_condutor>248.610.048-29</CPF_condutor>
 <CRMC>015.475-00</CRMC>
-<VAL_CRMC>2024-08-28T00:00:00</VAL_CRMC>
-<Curso_condutor>2019-06-16T00:00:00</Curso_condutor>
-<VCurso_condutor>2024-06-16T00:00:00</VCurso_condutor>
+<VAL_CRMC>2029-09-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-06-09T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-06-09T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15716</Código>
@@ -35748,8 +36390,8 @@
 <CPF_condutor>255.204.948-60</CPF_condutor>
 <CRMC>041.556-00</CRMC>
 <VAL_CRMC>2029-09-06T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-02-08T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-02-08T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-04-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-05T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -36651,8 +37293,8 @@
 <CPF_condutor>259.682.598-84</CPF_condutor>
 <CRMC>017.432-00</CRMC>
 <VAL_CRMC>2030-08-06T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-02-13T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-02-13T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-02-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-11T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
 <Código>16915</Código>
@@ -36746,7 +37388,7 @@
 <VAL_CRMC>2029-03-13T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-07-20T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-07-20T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>11819</Código>
@@ -36933,6 +37575,16 @@
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17286</Código>
+<Condutor>FERNANDO DOS ANJOS</Condutor>
+<CPF_condutor>261.378.118-16</CPF_condutor>
+<CRMC>053.444-00</CRMC>
+<VAL_CRMC>2030-10-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-10-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-10-01T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>11833</Código>
 <Condutor>GILBERTO DIAS DA SILVA</Condutor>
 <CPF_condutor>261.384.548-12</CPF_condutor>
@@ -37074,9 +37726,9 @@
 <Condutor>ADILSON BATISTA DA SILVA</Condutor>
 <CPF_condutor>261.938.128-22</CPF_condutor>
 <CRMC>045.257-00</CRMC>
-<VAL_CRMC>2026-03-15T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-02-14T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-02-14T00:00:00</VCurso_condutor>
+<VAL_CRMC>2031-05-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-25T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -37297,6 +37949,16 @@
 <VAL_CRMC>2028-10-19T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-09-24T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-09-24T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17234</Código>
+<Condutor>ROGERIO DE OLIVEIRA</Condutor>
+<CPF_condutor>263.199.608-92</CPF_condutor>
+<CRMC>053.319-00</CRMC>
+<VAL_CRMC>2031-03-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -37586,6 +38248,16 @@
 <VCurso_condutor>2024-11-10T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17277</Código>
+<Condutor>FLAVIO ALEXANDRE DA SILVA</Condutor>
+<CPF_condutor>265.032.908-45</CPF_condutor>
+<CRMC>053.389-00</CRMC>
+<VAL_CRMC>2030-08-07T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>11874</Código>
 <Condutor>HELENA DE CARVALHO DA SILVA</Condutor>
 <CPF_condutor>265.036.408-46</CPF_condutor>
@@ -37811,7 +38483,7 @@
 <Condutor>VANDECLEI DOS SANTOS BELO</Condutor>
 <CPF_condutor>266.601.208-58</CPF_condutor>
 <CRMC>042.261-00</CRMC>
-<VAL_CRMC>2024-04-13T00:00:00</VAL_CRMC>
+<VAL_CRMC>2029-04-24T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-06-04T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-06-04T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
@@ -38474,8 +39146,8 @@
 <CPF_condutor>269.675.718-69</CPF_condutor>
 <CRMC>033.252-00</CRMC>
 <VAL_CRMC>2030-08-07T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-12-14T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-12-14T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-02-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-11T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -38798,6 +39470,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17261</Código>
+<Condutor>LUIZ WILSON GONCALVES</Condutor>
+<CPF_condutor>270.665.558-56</CPF_condutor>
+<CRMC>017.365-00</CRMC>
+<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-06-26T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-06-26T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15926</Código>
 <Condutor>MANOEL ALVES MUNIZ</Condutor>
 <CPF_condutor>270.666.778-89</CPF_condutor>
@@ -38889,6 +39571,16 @@
 <VAL_CRMC>2023-10-31T00:00:00</VAL_CRMC>
 <Curso_condutor>2016-06-12T00:00:00</Curso_condutor>
 <VCurso_condutor>2021-06-12T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17217</Código>
+<Condutor>MARCOS PAULO DA SILVA</Condutor>
+<CPF_condutor>271.012.888-80</CPF_condutor>
+<CRMC>051.350-00</CRMC>
+<VAL_CRMC>2029-06-14T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-04-28T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-04-28T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>11966</Código>
@@ -39087,6 +39779,16 @@
 <VAL_CRMC>2028-01-16T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-09-30T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-09-30T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17213</Código>
+<Condutor>LEDA DO CARMO CONCEICAO</Condutor>
+<CPF_condutor>271.730.688-94</CPF_condutor>
+<CRMC>053.305-00</CRMC>
+<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-08T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -39444,6 +40146,16 @@
 <VAL_CRMC>2028-09-19T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-08-14T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-08-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17318</Código>
+<Condutor>SOLANGE DOS SANTOS SANTANA</Condutor>
+<CPF_condutor>272.787.618-16</CPF_condutor>
+<CRMC>053.480-00</CRMC>
+<VAL_CRMC>2031-04-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-05T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -39864,6 +40576,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17281</Código>
+<Condutor>EDVAL ALVES DE LANA</Condutor>
+<CPF_condutor>274.159.218-79</CPF_condutor>
+<CRMC>053.412-00</CRMC>
+<VAL_CRMC>2031-03-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12027</Código>
 <Condutor>GILBERTO DA SILVA SOUSA</Condutor>
 <CPF_condutor>274.172.328-17</CPF_condutor>
@@ -39881,6 +40603,16 @@
 <Curso_condutor>2019-08-31T00:00:00</Curso_condutor>
 <VCurso_condutor>2024-08-31T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17219</Código>
+<Condutor>RENILSON JOSE DOS SANTOS</Condutor>
+<CPF_condutor>274.220.768-60</CPF_condutor>
+<CRMC>047.671-00</CRMC>
+<VAL_CRMC>2029-11-11T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-11-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12029</Código>
@@ -40335,6 +41067,26 @@
 <CPF_condutor>275.987.818-00</CPF_condutor>
 <CRMC>036.800-00</CRMC>
 <VAL_CRMC>2023-05-06T00:00:00</VAL_CRMC>
+</Condutor>
+<Condutor>
+<Código>17229</Código>
+<Condutor>ELIZANGELA DA SILVA VICENTE</Condutor>
+<CPF_condutor>275.997.658-08</CPF_condutor>
+<CRMC>052.438-00</CRMC>
+<VAL_CRMC>2027-12-02T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-02-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-02-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17324</Código>
+<Condutor>JACKSON SILVA DOS SANTOS</Condutor>
+<CPF_condutor>276.010.088-00</CPF_condutor>
+<CRMC>050.962-00</CRMC>
+<VAL_CRMC>2029-10-21T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-12-29T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-12-29T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12060</Código>
@@ -42749,8 +43501,8 @@
 <CPF_condutor>285.536.238-58</CPF_condutor>
 <CRMC>035.915-00</CRMC>
 <VAL_CRMC>2029-04-25T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-11-21T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-11-21T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-04-19T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-19T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -43503,6 +44255,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17223</Código>
+<Condutor>SIDNEI CLAUDINO</Condutor>
+<CPF_condutor>288.527.558-88</CPF_condutor>
+<CRMC>053.322-00</CRMC>
+<VAL_CRMC>2031-03-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-22T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12250</Código>
 <Condutor>VALTER MENDONCA</Condutor>
 <CPF_condutor>288.548.008-48</CPF_condutor>
@@ -43615,7 +44377,7 @@
 <VAL_CRMC>2028-03-13T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-08-06T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-08-06T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12258</Código>
@@ -43995,6 +44757,16 @@
 <CPF_condutor>290.062.628-54</CPF_condutor>
 <CRMC>044.570-00</CRMC>
 <VAL_CRMC>2023-10-05T00:00:00</VAL_CRMC>
+</Condutor>
+<Condutor>
+<Código>17197</Código>
+<Condutor>GEOVANO SILVA MORAES</Condutor>
+<CPF_condutor>290.086.408-99</CPF_condutor>
+<CRMC>053.215-00</CRMC>
+<VAL_CRMC>2031-02-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-11-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12283</Código>
@@ -44425,6 +45197,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17251</Código>
+<Condutor>ELIAS ADELINO DOS SANTOS</Condutor>
+<CPF_condutor>291.918.028-22</CPF_condutor>
+<CRMC>053.291-00</CRMC>
+<VAL_CRMC>2031-02-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12316</Código>
 <Condutor>FABIO SILVA DE CARVALHO</Condutor>
 <CPF_condutor>291.922.878-16</CPF_condutor>
@@ -44441,6 +45223,16 @@
 <VAL_CRMC>2030-01-28T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-09-14T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-09-14T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17291</Código>
+<Condutor>LEANDRO BARBOZA NUNES</Condutor>
+<CPF_condutor>291.941.538-76</CPF_condutor>
+<CRMC>042.695-00</CRMC>
+<VAL_CRMC>2030-05-19T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-02-24T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-02-24T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12318</Código>
@@ -44698,8 +45490,8 @@
 <CPF_condutor>292.920.058-80</CPF_condutor>
 <CRMC>043.988-00</CRMC>
 <VAL_CRMC>2029-07-31T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-02-14T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-02-14T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-04-18T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-18T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -45042,6 +45834,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17280</Código>
+<Condutor>JEFFERSON CRISTIANO DOS SANTOS</Condutor>
+<CPF_condutor>294.280.398-37</CPF_condutor>
+<CRMC>053.153-00</CRMC>
+<VAL_CRMC>2031-01-19T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-12-13T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-12-13T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16580</Código>
 <Condutor>MARCELO MAURICIO DA SILVA</Condutor>
 <CPF_condutor>294.314.648-02</CPF_condutor>
@@ -45138,6 +45940,16 @@
 <Curso_condutor>2024-02-10T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-02-10T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17193</Código>
+<Condutor>JANAINA DOS PASSOS FACHINI LOUREIRO THOME</Condutor>
+<CPF_condutor>294.926.498-02</CPF_condutor>
+<CRMC>045.305-00</CRMC>
+<VAL_CRMC>2028-11-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-02-20T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-02-20T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12363</Código>
@@ -46209,8 +47021,8 @@
 <CPF_condutor>298.896.248-00</CPF_condutor>
 <CRMC>026.381-00</CRMC>
 <VAL_CRMC>2028-03-06T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-01-24T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-01-24T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-03-28T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-28T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
 <Código>12426</Código>
@@ -46500,6 +47312,16 @@
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17254</Código>
+<Condutor>SOLANGE MARIANO DOS SANTOS SOUZA</Condutor>
+<CPF_condutor>299.913.648-03</CPF_condutor>
+<CRMC>053.387-00</CRMC>
+<VAL_CRMC>2031-03-16T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-05-12T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-05-12T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16503</Código>
 <Condutor>ABRAO JUNIOR MENDES DA SILVA SANTOS</Condutor>
 <CPF_condutor>299.986.888-09</CPF_condutor>
@@ -46716,7 +47538,7 @@
 <Condutor>ALBERTO CASTILHO QUILES</Condutor>
 <CPF_condutor>301.265.208-60</CPF_condutor>
 <CRMC>046.761-00</CRMC>
-<VAL_CRMC>2026-03-10T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-04-16T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-05-21T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-05-21T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
@@ -47335,6 +48157,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17238</Código>
+<Condutor>JOSE LAELTON RODRIGUES LIMA</Condutor>
+<CPF_condutor>305.042.708-69</CPF_condutor>
+<CRMC>053.306-00</CRMC>
+<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-11T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12504</Código>
 <Condutor>AMAURY ALECYR PEREIRA</Condutor>
 <CPF_condutor>305.063.529-00</CPF_condutor>
@@ -47919,6 +48751,16 @@
 <Curso_condutor>2022-05-08T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-05-08T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17252</Código>
+<Condutor>KELLI CRISTINA DA SILVA</Condutor>
+<CPF_condutor>308.563.338-32</CPF_condutor>
+<CRMC>052.858-00</CRMC>
+<VAL_CRMC>2030-09-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-07-28T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-07-28T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15962</Código>
@@ -48869,6 +49711,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17230</Código>
+<Condutor>ALINE GABRIELA SILVA DE ANDRADE</Condutor>
+<CPF_condutor>313.132.268-31</CPF_condutor>
+<CRMC>053.318-00</CRMC>
+<VAL_CRMC>2031-03-02T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-30T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-30T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12603</Código>
 <Condutor>DEISE PACHECO DA SILVA</Condutor>
 <CPF_condutor>313.175.278-52</CPF_condutor>
@@ -48961,6 +49813,16 @@
 <VAL_CRMC>2029-02-15T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-09-25T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-09-25T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17253</Código>
+<Condutor>LUIZ FERNANDO DE JESUS FRANCA</Condutor>
+<CPF_condutor>313.629.118-28</CPF_condutor>
+<CRMC>053.367-00</CRMC>
+<VAL_CRMC>2031-03-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-26T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-26T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -49275,7 +50137,7 @@
 <Condutor>BRUNO RODRIGO DE JESUS</Condutor>
 <CPF_condutor>315.252.568-07</CPF_condutor>
 <CRMC>043.210-00</CRMC>
-<VAL_CRMC>2025-11-27T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-02-04T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-02-26T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-02-26T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
@@ -49352,8 +50214,8 @@
 <CPF_condutor>315.369.838-45</CPF_condutor>
 <CRMC>048.601-00</CRMC>
 <VAL_CRMC>2029-05-16T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-01-24T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-01-24T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-01-17T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-17T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -49870,6 +50732,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17263</Código>
+<Condutor>SERGIO JARDIM DA SILVA</Condutor>
+<CPF_condutor>317.405.698-57</CPF_condutor>
+<CRMC>053.239-00</CRMC>
+<VAL_CRMC>2030-01-21T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-18T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-18T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12660</Código>
 <Condutor>SILVIO DE JESUS DOS SANTOS</Condutor>
 <CPF_condutor>317.445.308-90</CPF_condutor>
@@ -50074,6 +50946,16 @@
 <VAL_CRMC>2023-05-24T00:00:00</VAL_CRMC>
 <Curso_condutor>2015-05-10T00:00:00</Curso_condutor>
 <VCurso_condutor>2020-05-10T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17332</Código>
+<Condutor>JAIR JEZUINO DA SILVA</Condutor>
+<CPF_condutor>318.304.938-41</CPF_condutor>
+<CRMC>053.345-00</CRMC>
+<VAL_CRMC>2031-03-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-23T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-23T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12670</Código>
@@ -50675,6 +51557,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17212</Código>
+<Condutor>GILMAR APARECIDO CARVALHO DA SILVA</Condutor>
+<CPF_condutor>320.728.928-21</CPF_condutor>
+<CRMC>053.298-00</CRMC>
+<VAL_CRMC>2031-02-26T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-01T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12699</Código>
 <Condutor>GISELLE CAROLINE BADREDDINI DOTA</Condutor>
 <CPF_condutor>320.745.858-02</CPF_condutor>
@@ -50742,6 +51634,16 @@
 <Curso_condutor>2023-05-13T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-05-13T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17200</Código>
+<Condutor>CRISTIANO BISPO</Condutor>
+<CPF_condutor>321.207.938-08</CPF_condutor>
+<CRMC>052.236-00</CRMC>
+<VAL_CRMC>2030-03-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-11-23T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-11-23T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12704</Código>
@@ -51004,6 +51906,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17231</Código>
+<Condutor>RENAN SANTOS NASCIMENTO</Condutor>
+<CPF_condutor>322.276.668-11</CPF_condutor>
+<CRMC>053.151-00</CRMC>
+<VAL_CRMC>2031-01-16T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-10-04T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-10-04T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15212</Código>
 <Condutor>MARIA APARECIDA SILVA DE OLIVEIRA</Condutor>
 <CPF_condutor>322.308.368-54</CPF_condutor>
@@ -51057,6 +51969,16 @@
 <VAL_CRMC>2026-03-02T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-08-31T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-08-31T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17293</Código>
+<Condutor>THIAGO FRANCISCO DE OLIVEIRA</Condutor>
+<CPF_condutor>322.552.058-66</CPF_condutor>
+<CRMC>052.705-00</CRMC>
+<VAL_CRMC>2030-07-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-03-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-03-22T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -51387,6 +52309,16 @@
 <VAL_CRMC>2017-01-27T00:00:00</VAL_CRMC>
 </Condutor>
 <Condutor>
+<Código>17233</Código>
+<Condutor>CARLOS ALBERTO RODRIGUES JUNIOR</Condutor>
+<CPF_condutor>324.774.758-35</CPF_condutor>
+<CRMC>053.252-00</CRMC>
+<VAL_CRMC>2030-03-31T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-11-02T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-02T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15263</Código>
 <Condutor>BRUNA LUIZA RIBEIRO</Condutor>
 <CPF_condutor>324.801.588-88</CPF_condutor>
@@ -51626,6 +52558,16 @@
 <VCurso_condutor>2019-08-03T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17319</Código>
+<Condutor>LUCIANO RUTZATZ DE OLIVEIRA PEREIRA</Condutor>
+<CPF_condutor>325.561.358-24</CPF_condutor>
+<CRMC>038.434-00</CRMC>
+<VAL_CRMC>2031-02-19T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-25T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16252</Código>
 <Condutor>AMANDA DE JESUS SILVA FERNANDES</Condutor>
 <CPF_condutor>325.576.088-74</CPF_condutor>
@@ -51798,8 +52740,8 @@
 <CPF_condutor>326.194.688-17</CPF_condutor>
 <CRMC>043.292-00</CRMC>
 <VAL_CRMC>2030-10-10T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-02-05T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-02-05T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-03-03T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-03T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -52454,7 +53396,7 @@
 <Condutor>ANGELO DOS SANTOS</Condutor>
 <CPF_condutor>329.296.878-00</CPF_condutor>
 <CRMC>050.927-00</CRMC>
-<VAL_CRMC>2026-02-11T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-03-18T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-02-25T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-02-25T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
@@ -52577,10 +53519,6 @@
 <Curso_condutor>2023-05-21T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-05-21T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>16458</Código>
-<CPF_condutor>329.622.958-22</CPF_condutor>
 </Condutor>
 <Condutor>
 <Código>12802</Código>
@@ -52726,6 +53664,16 @@
 <Curso_condutor>2022-01-09T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-01-09T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17190</Código>
+<Condutor>MILLER PACHECO AUGUSTO</Condutor>
+<CPF_condutor>330.230.228-28</CPF_condutor>
+<CRMC>039.752-00</CRMC>
+<VAL_CRMC>2028-12-07T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-09-17T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-09-17T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12810</Código>
@@ -53226,6 +54174,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17241</Código>
+<Condutor>ERICO DE OLIVEIRA VASCONCELOS</Condutor>
+<CPF_condutor>332.726.418-07</CPF_condutor>
+<CRMC>053.281-00</CRMC>
+<VAL_CRMC>2031-01-05T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-10T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-10T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12834</Código>
 <Condutor>JULIANA CRISTHINA DE LIRA</Condutor>
 <CPF_condutor>332.769.508-39</CPF_condutor>
@@ -53339,7 +54297,7 @@
 <Condutor>RITA DE CASSIA REIS</Condutor>
 <CPF_condutor>333.124.748-09</CPF_condutor>
 <CRMC>034.494-00</CRMC>
-<VAL_CRMC>2025-11-23T00:00:00</VAL_CRMC>
+<VAL_CRMC>2030-11-14T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-11-06T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-11-06T00:00:00</VCurso_condutor>
 </Condutor>
@@ -53357,7 +54315,7 @@
 <Condutor>ANDREA OGEDA MACHADO BISPO</Condutor>
 <CPF_condutor>333.364.308-10</CPF_condutor>
 <CRMC>043.204-00</CRMC>
-<VAL_CRMC>2025-11-25T00:00:00</VAL_CRMC>
+<VAL_CRMC>2030-11-25T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-01-07T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-01-07T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
@@ -53486,7 +54444,7 @@
 <VAL_CRMC>2029-02-02T00:00:00</VAL_CRMC>
 <Curso_condutor>2024-01-28T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-01-28T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>14866</Código>
@@ -53608,6 +54566,16 @@
 <VCurso_condutor>2023-10-13T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17302</Código>
+<Condutor>RAFAEL ISIDORO DE OLIVEIRA</Condutor>
+<CPF_condutor>334.238.428-06</CPF_condutor>
+<CRMC>053.267-00</CRMC>
+<VAL_CRMC>2031-02-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-12-06T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-12-06T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12857</Código>
 <Condutor>VERONICA BEZERRA DE SOUSA</Condutor>
 <CPF_condutor>334.245.118-11</CPF_condutor>
@@ -53644,6 +54612,16 @@
 <VAL_CRMC>2023-07-17T00:00:00</VAL_CRMC>
 <Curso_condutor>2019-08-25T00:00:00</Curso_condutor>
 <VCurso_condutor>2024-08-25T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17310</Código>
+<Condutor>DANIEL NETO SILVESTRE</Condutor>
+<CPF_condutor>334.336.058-90</CPF_condutor>
+<CRMC>053.471-00</CRMC>
+<VAL_CRMC>2031-04-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12860</Código>
@@ -54255,6 +55233,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17216</Código>
+<Condutor>MICHEL APARECIDO NASCIMENTO DE LIMA</Condutor>
+<CPF_condutor>338.157.428-03</CPF_condutor>
+<CRMC>053.325-00</CRMC>
+<VAL_CRMC>2031-03-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-08-24T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-08-24T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12900</Código>
 <Condutor>DIEGO MATIAS FOGACA DE ALMEIDA</Condutor>
 <CPF_condutor>338.181.328-52</CPF_condutor>
@@ -54847,6 +55835,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17209</Código>
+<Condutor>RUBENS BARBOSA DE LIMA</Condutor>
+<CPF_condutor>341.372.598-01</CPF_condutor>
+<CRMC>053.313-00</CRMC>
+<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-11-06T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-06T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12934</Código>
 <Condutor>CLEITON NUNES DOS SANTOS</Condutor>
 <CPF_condutor>341.390.648-89</CPF_condutor>
@@ -54998,6 +55996,16 @@
 <VAL_CRMC>2024-07-10T00:00:00</VAL_CRMC>
 <Curso_condutor>2019-02-17T00:00:00</Curso_condutor>
 <VCurso_condutor>2024-02-17T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17244</Código>
+<Condutor>EMERSON SILVA DOS SANTOS</Condutor>
+<CPF_condutor>342.275.428-80</CPF_condutor>
+<CRMC>053.243-00</CRMC>
+<VAL_CRMC>2031-02-06T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-30T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-30T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -55195,6 +56203,26 @@
 <VAL_CRMC>2028-08-01T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-06-13T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-06-13T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17264</Código>
+<Condutor>ELBA VASCONCELOS DE JESUS</Condutor>
+<CPF_condutor>343.323.878-21</CPF_condutor>
+<CRMC>053.326-00</CRMC>
+<VAL_CRMC>2031-03-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-07-17T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-07-17T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17321</Código>
+<Condutor>VANESSA DOS SANTOS VIANA</Condutor>
+<CPF_condutor>343.407.928-96</CPF_condutor>
+<CRMC>048.908-00</CRMC>
+<VAL_CRMC>2027-06-06T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-02-12T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-02-12T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15601</Código>
@@ -55475,6 +56503,16 @@
 <VAL_CRMC>2030-04-24T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-04-19T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-04-19T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17317</Código>
+<Condutor>RAPHAEL ELLOY OLIVEIRA DA SILVA</Condutor>
+<CPF_condutor>344.825.358-85</CPF_condutor>
+<CRMC>052.577-00</CRMC>
+<VAL_CRMC>2030-06-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-02-06T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-02-06T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -56114,6 +57152,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17249</Código>
+<Condutor>JANAINA BARRETO DE OLIVEIRA</Condutor>
+<CPF_condutor>350.014.068-89</CPF_condutor>
+<CRMC>050.440-00</CRMC>
+<VAL_CRMC>2028-10-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2021-11-28T00:00:00</Curso_condutor>
+<VCurso_condutor>2026-11-28T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>12991</Código>
 <Condutor>ADEIR RODRIGUES DE MORAES JUNIOR</Condutor>
 <CPF_condutor>350.096.708-60</CPF_condutor>
@@ -56130,6 +57178,16 @@
 <VAL_CRMC>2029-05-20T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-10-08T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-10-08T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17274</Código>
+<Condutor>FABIO DE ALMEIDA BELO</Condutor>
+<CPF_condutor>350.142.178-85</CPF_condutor>
+<CRMC>052.260-00</CRMC>
+<VAL_CRMC>2030-03-17T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-03-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-03-08T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -56263,6 +57321,16 @@
 <VAL_CRMC>2023-04-27T00:00:00</VAL_CRMC>
 <Curso_condutor>2014-11-23T00:00:00</Curso_condutor>
 <VCurso_condutor>2019-11-23T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17247</Código>
+<Condutor>FABIOLA SOLER QUERIDO DE LIMA</Condutor>
+<CPF_condutor>351.503.698-96</CPF_condutor>
+<CRMC>041.690-00</CRMC>
+<VAL_CRMC>2031-03-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-11T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>12996</Código>
@@ -56533,6 +57601,16 @@
 <VAL_CRMC>2028-05-09T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-04-16T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-04-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17266</Código>
+<Condutor>HUGO DA SILVA GUILHERME</Condutor>
+<CPF_condutor>353.363.838-30</CPF_condutor>
+<CRMC>053.077-00</CRMC>
+<VAL_CRMC>2030-12-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-11-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-08T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -57144,7 +58222,7 @@
 <VAL_CRMC>2030-09-09T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-08-06T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-08-06T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13050</Código>
@@ -57533,6 +58611,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17225</Código>
+<Condutor>LARISSA HENGLEM</Condutor>
+<CPF_condutor>360.167.468-86</CPF_condutor>
+<CRMC>047.977-00</CRMC>
+<VAL_CRMC>2029-07-31T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-12-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-12-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>13070</Código>
 <Condutor>DANIELLE SOARES FERRO</Condutor>
 <CPF_condutor>360.239.478-67</CPF_condutor>
@@ -57575,6 +58663,16 @@
 <VAL_CRMC>2028-08-17T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-01-30T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-01-30T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17290</Código>
+<Condutor>JEFFERSON RODRIGUES ALVES FONSECA</Condutor>
+<CPF_condutor>360.509.698-09</CPF_condutor>
+<CRMC>053.236-00</CRMC>
+<VAL_CRMC>2031-02-05T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-06-03T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-06-03T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13075</Código>
@@ -57698,8 +58796,8 @@
 <CPF_condutor>361.298.978-20</CPF_condutor>
 <CRMC>046.592-00</CRMC>
 <VAL_CRMC>2028-05-30T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-11-14T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-11-14T00:00:00</VCurso_condutor>
+<Curso_condutor>2025-11-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-22T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -57828,7 +58926,7 @@
 <VAL_CRMC>2030-09-25T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-10-21T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-10-21T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16263</Código>
@@ -58081,8 +59179,8 @@
 <CPF_condutor>364.270.828-50</CPF_condutor>
 <CRMC>041.943-00</CRMC>
 <VAL_CRMC>2029-11-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-02-09T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-02-09T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-04-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-05T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -58240,6 +59338,16 @@
 <VAL_CRMC>2025-01-14T00:00:00</VAL_CRMC>
 <Curso_condutor>2019-12-22T00:00:00</Curso_condutor>
 <VCurso_condutor>2024-12-22T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17268</Código>
+<Condutor>CARLA CRISTINA MOREIRA</Condutor>
+<CPF_condutor>365.028.608-42</CPF_condutor>
+<CRMC>053.317-00</CRMC>
+<VAL_CRMC>2031-03-02T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -59311,6 +60419,16 @@
 <VCurso_condutor>2027-08-07T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
+<Código>17337</Código>
+<Condutor>PAULO HENIQUE GOMES DUARTE</Condutor>
+<CPF_condutor>372.277.368-73</CPF_condutor>
+<CRMC>053.513-00</CRMC>
+<VAL_CRMC>2031-04-17T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-14T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16050</Código>
 <Condutor>DANIELE DE OLIVEIRA SILVA</Condutor>
 <CPF_condutor>372.319.548-20</CPF_condutor>
@@ -59571,6 +60689,16 @@
 <Curso_condutor>2025-12-06T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-12-06T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17243</Código>
+<Condutor>MONICA GONCALVES DOS SANTOS</Condutor>
+<CPF_condutor>374.108.168-05</CPF_condutor>
+<CRMC>053.207-00</CRMC>
+<VAL_CRMC>2031-01-30T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-19T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-19T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13166</Código>
@@ -60032,6 +61160,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17313</Código>
+<Condutor>FRANCIELLE MOREIRA FREITAS MARQUES</Condutor>
+<CPF_condutor>377.664.198-31</CPF_condutor>
+<CRMC>053.481-00</CRMC>
+<VAL_CRMC>2031-04-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-05T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16612</Código>
 <Condutor>ANDERSON TRINDADE PEIXOTO</Condutor>
 <CPF_condutor>377.742.248-74</CPF_condutor>
@@ -60081,15 +61219,21 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17096</Código>
-<CPF_condutor>377.871.088-82</CPF_condutor>
-</Condutor>
-<Condutor>
 <Código>13199</Código>
 <Condutor>JEDSON MAILSON SILVA DE MELO</Condutor>
 <CPF_condutor>378.032.568-30</CPF_condutor>
 <CRMC>042.933-00</CRMC>
 <VAL_CRMC>2023-07-04T00:00:00</VAL_CRMC>
+</Condutor>
+<Condutor>
+<Código>17188</Código>
+<Condutor>DIEGO SANT ANA DOS SANTOS</Condutor>
+<CPF_condutor>378.127.098-09</CPF_condutor>
+<CRMC>052.531-00</CRMC>
+<VAL_CRMC>2030-05-28T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-04-27T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-04-27T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16524</Código>
@@ -60465,7 +61609,7 @@
 <Condutor>MAIARA CAVALCANTE COSTA</Condutor>
 <CPF_condutor>380.612.718-26</CPF_condutor>
 <CRMC>049.104-00</CRMC>
-<VAL_CRMC>2025-12-08T00:00:00</VAL_CRMC>
+<VAL_CRMC>2031-05-15T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-06-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-06-18T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
@@ -60538,6 +61682,16 @@
 <Curso_condutor>2020-01-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2025-01-18T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17228</Código>
+<Condutor>KARINA CARDOSO DA SILVA</Condutor>
+<CPF_condutor>381.006.248-01</CPF_condutor>
+<CRMC>052.178-00</CRMC>
+<VAL_CRMC>2030-02-19T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-05-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-05-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15149</Código>
@@ -60814,6 +61968,16 @@
 <Curso_condutor>2020-02-16T00:00:00</Curso_condutor>
 <VCurso_condutor>2025-02-16T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17292</Código>
+<Condutor>LUCELIA PEREIRA DE ABREU</Condutor>
+<CPF_condutor>382.394.848-24</CPF_condutor>
+<CRMC>053.364-00</CRMC>
+<VAL_CRMC>2031-03-11T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-06-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-06-08T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>17090</Código>
@@ -61357,6 +62521,16 @@
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17342</Código>
+<Condutor>NAGILA RIBEIRO BATISTA</Condutor>
+<CPF_condutor>387.115.668-09</CPF_condutor>
+<CRMC>047.473-00</CRMC>
+<VAL_CRMC>2031-04-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-28T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-28T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>14343</Código>
 <Condutor>ANA CARLA DA SILVA LOPES</Condutor>
 <CPF_condutor>387.177.848-67</CPF_condutor>
@@ -61754,6 +62928,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17320</Código>
+<Condutor>BRUNO KAIQUE DA SILVA</Condutor>
+<CPF_condutor>390.234.898-45</CPF_condutor>
+<CRMC>053.360-00</CRMC>
+<VAL_CRMC>2031-03-11T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>14567</Código>
 <Condutor>TATIANE SILVA</Condutor>
 <CPF_condutor>390.239.188-00</CPF_condutor>
@@ -61862,6 +63046,16 @@
 <Curso_condutor>2024-03-03T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-03-03T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17192</Código>
+<Condutor>MAXIMILIANO CORREA SILVA</Condutor>
+<CPF_condutor>391.159.558-18</CPF_condutor>
+<CRMC>051.710-00</CRMC>
+<VAL_CRMC>2029-09-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-09-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-09-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13274</Código>
@@ -63329,6 +64523,17 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17289</Código>
+<Condutor>HIDEKEL RIBEIRO BONFIM</Condutor>
+<CPF_condutor>404.235.908-63</CPF_condutor>
+<CRMC>053.279-00</CRMC>
+<VAL_CRMC>2027-02-01T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-31T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-31T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Historico> (PREPOSTO AUTORIZADO)</Historico>
+</Condutor>
+<Condutor>
 <Código>15461</Código>
 <Condutor>MAILON CARIA</Condutor>
 <CPF_condutor>404.337.088-16</CPF_condutor>
@@ -63804,6 +65009,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17312</Código>
+<Condutor>JACKELINE FERREIRA DOS SANTOS</Condutor>
+<CPF_condutor>410.683.758-76</CPF_condutor>
+<CRMC>053.446-00</CRMC>
+<VAL_CRMC>2030-10-31T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16917</Código>
 <Condutor>ALLAN LIMA SILVA</Condutor>
 <CPF_condutor>410.702.268-40</CPF_condutor>
@@ -63891,6 +65106,16 @@
 <Curso_condutor>2025-09-20T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-09-20T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17255</Código>
+<Condutor>GISELE GONCALVES DE ARRUDA</Condutor>
+<CPF_condutor>411.099.138-26</CPF_condutor>
+<CRMC>053.272-00</CRMC>
+<VAL_CRMC>2031-02-19T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-10-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-10-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16253</Código>
@@ -64185,7 +65410,7 @@
 <VAL_CRMC>2027-10-19T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-03-26T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-03-26T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16348</Código>
@@ -64275,6 +65500,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17204</Código>
+<Condutor>MILLA ANDRADE SAIJO</Condutor>
+<CPF_condutor>414.295.388-56</CPF_condutor>
+<CRMC>046.637-00</CRMC>
+<VAL_CRMC>2031-02-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15956</Código>
 <Condutor>TAMIRES BARBOSA DOS SANTOS</Condutor>
 <CPF_condutor>414.448.078-03</CPF_condutor>
@@ -64302,6 +65537,16 @@
 <VAL_CRMC>2029-06-04T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-08-19T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-08-19T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17333</Código>
+<Condutor>DAVI LUIS DA SILVA IZALINO</Condutor>
+<CPF_condutor>414.598.248-73</CPF_condutor>
+<CRMC>053.533-00</CRMC>
+<VAL_CRMC>2031-04-23T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-15T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -64570,6 +65815,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17331</Código>
+<Condutor>MARCUS VINICIUS DE OLIVEIRA MORAES</Condutor>
+<CPF_condutor>417.464.078-59</CPF_condutor>
+<CRMC>053.052-00</CRMC>
+<VAL_CRMC>2030-11-26T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-10-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-10-11T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15164</Código>
 <Condutor>DAIANE ALMEIDA TRINDADE</Condutor>
 <CPF_condutor>417.486.918-99</CPF_condutor>
@@ -64711,6 +65966,16 @@
 <Curso_condutor>2021-09-05T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-09-05T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17245</Código>
+<Condutor>PIETRA BIANCA FONSECA SILVA</Condutor>
+<CPF_condutor>419.628.568-60</CPF_condutor>
+<CRMC>052.174-00</CRMC>
+<VAL_CRMC>2030-02-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-07-03T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-07-03T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15581</Código>
@@ -65079,6 +66344,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17242</Código>
+<Condutor>ISABELLA DOS ANJOS E SOUZA</Condutor>
+<CPF_condutor>423.907.278-67</CPF_condutor>
+<CRMC>051.169-00</CRMC>
+<VAL_CRMC>2029-04-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-01-14T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-01-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15722</Código>
 <Condutor>VINICIUS CERRATTO GIRIBOLLA</Condutor>
 <CPF_condutor>424.112.148-98</CPF_condutor>
@@ -65263,7 +66538,7 @@
 <VAL_CRMC>2030-02-14T00:00:00</VAL_CRMC>
 <Curso_condutor>2025-02-08T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-02-08T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13407</Código>
@@ -65316,6 +66591,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17195</Código>
+<Condutor>MATHEUS CARVALHO DE OLIVEIRA</Condutor>
+<CPF_condutor>426.243.868-66</CPF_condutor>
+<CRMC>053.282-00</CRMC>
+<VAL_CRMC>2031-02-23T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-12-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-12-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>14081</Código>
 <Condutor>KAIAN CARVALHO DE OLIVEIRA</Condutor>
 <CPF_condutor>426.243.878-38</CPF_condutor>
@@ -65344,6 +66629,16 @@
 <Curso_condutor>2024-03-30T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-03-30T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17260</Código>
+<Condutor>PAULA ANDRADE XAVIER PIRES</Condutor>
+<CPF_condutor>426.670.248-50</CPF_condutor>
+<CRMC>052.504-00</CRMC>
+<VAL_CRMC>2030-05-21T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-09-04T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-09-04T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>14728</Código>
@@ -65413,6 +66708,16 @@
 <VAL_CRMC>2028-02-08T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-01-21T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-01-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17326</Código>
+<Condutor>MOISES DE ALMEIDA DA CRUZ</Condutor>
+<CPF_condutor>427.422.498-85</CPF_condutor>
+<CRMC>053.179-00</CRMC>
+<VAL_CRMC>2031-04-10T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-12-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-12-16T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -65601,6 +66906,16 @@
 <VAL_CRMC>2031-01-06T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-10-23T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-10-23T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17248</Código>
+<Condutor>FERNANDA RODRIGUES PERTON MACHADO</Condutor>
+<CPF_condutor>431.232.758-09</CPF_condutor>
+<CRMC>053.370-00</CRMC>
+<VAL_CRMC>2031-03-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -65832,6 +67147,16 @@
 <Curso_condutor>2025-05-11T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-05-11T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17325</Código>
+<Condutor>JENNIFER CAROLINE FURTADO</Condutor>
+<CPF_condutor>434.086.258-40</CPF_condutor>
+<CRMC>052.680-00</CRMC>
+<VAL_CRMC>2030-07-17T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-04-26T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-04-26T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>15943</Código>
@@ -66072,6 +67397,16 @@
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17323</Código>
+<Condutor>HENRIQUE VIANA DA SILVA</Condutor>
+<CPF_condutor>437.242.228-82</CPF_condutor>
+<CRMC>053.213-00</CRMC>
+<VAL_CRMC>2031-02-02T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-10-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-10-25T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>13426</Código>
 <Condutor>JADILSON BARBOSA</Condutor>
 <CPF_condutor>437.367.504-04</CPF_condutor>
@@ -66261,6 +67596,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17314</Código>
+<Condutor>MAIQUE SANTANA NOVAES</Condutor>
+<CPF_condutor>440.062.548-65</CPF_condutor>
+<CRMC>053.411-00</CRMC>
+<VAL_CRMC>2031-03-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-22T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16678</Código>
 <Condutor>NATALINO SILVA DOS REIS</Condutor>
 <CPF_condutor>440.199.538-48</CPF_condutor>
@@ -66269,6 +67614,16 @@
 <Curso_condutor>2025-03-15T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-03-15T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17269</Código>
+<Condutor>RAY DE OLIVEIRA MAIA</Condutor>
+<CPF_condutor>440.216.188-64</CPF_condutor>
+<CRMC>053.372-00</CRMC>
+<VAL_CRMC>2031-03-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13433</Código>
@@ -66456,6 +67811,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17276</Código>
+<Condutor>KAIO NUNES SANTOS SILVA</Condutor>
+<CPF_condutor>443.792.408-86</CPF_condutor>
+<CRMC>053.419-00</CRMC>
+<VAL_CRMC>2031-03-25T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>13441</Código>
 <Condutor>JULIANA IVO DA SILVA</Condutor>
 <CPF_condutor>443.811.488-86</CPF_condutor>
@@ -66520,6 +67885,16 @@
 <VAL_CRMC>2028-06-21T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-05-21T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-05-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17202</Código>
+<Condutor>GISEIDE FERREIRA DE JESUS</Condutor>
+<CPF_condutor>444.707.988-78</CPF_condutor>
+<CRMC>052.541-00</CRMC>
+<VAL_CRMC>2030-05-29T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-06-18T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-06-18T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -66698,7 +68073,7 @@
 <VAL_CRMC>2030-01-29T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-01-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-01-18T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>14591</Código>
@@ -67193,7 +68568,7 @@
 <VAL_CRMC>2029-12-04T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-10-03T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-10-03T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13461</Código>
@@ -67675,9 +69050,10 @@
 <Condutor>LUIZ HENRIQUE COSTA DO NASCIMENTO</Condutor>
 <CPF_condutor>463.909.638-07</CPF_condutor>
 <CRMC>045.323-00</CRMC>
-<VAL_CRMC>2023-05-31T00:00:00</VAL_CRMC>
-<Curso_condutor>2016-06-19T00:00:00</Curso_condutor>
-<VCurso_condutor>2021-06-19T00:00:00</VCurso_condutor>
+<VAL_CRMC>2029-02-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2021-06-12T00:00:00</Curso_condutor>
+<VCurso_condutor>2026-06-12T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13484</Código>
@@ -68092,7 +69468,7 @@
 <VAL_CRMC>2029-01-29T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-06-26T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-06-26T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>14667</Código>
@@ -68385,6 +69761,8 @@
 <CPF_condutor>478.028.518-66</CPF_condutor>
 <CRMC>053.228-00</CRMC>
 <VAL_CRMC>2031-02-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-11-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-08T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -68548,6 +69926,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17237</Código>
+<Condutor>FABIO AUGUSTO ANDRADE DE SOUSA</Condutor>
+<CPF_condutor>481.296.788-02</CPF_condutor>
+<CRMC>051.921-00</CRMC>
+<VAL_CRMC>2029-12-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-12-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-12-01T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16716</Código>
 <Condutor>ANA BEATRIZ ANDRADE DE SOUSA</Condutor>
 <CPF_condutor>481.296.998-00</CPF_condutor>
@@ -68707,6 +70095,16 @@
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17270</Código>
+<Condutor>VINICIUS NUNES BRANDAO</Condutor>
+<CPF_condutor>485.435.188-81</CPF_condutor>
+<CRMC>053.355-00</CRMC>
+<VAL_CRMC>2031-03-10T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-04T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-04T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16341</Código>
 <Condutor>KAUAN CHAHAD ROSA</Condutor>
 <CPF_condutor>485.955.848-00</CPF_condutor>
@@ -68795,6 +70193,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17214</Código>
+<Condutor>GUILHERME DE ALMEIDA SALGADO</Condutor>
+<CPF_condutor>487.638.138-07</CPF_condutor>
+<CRMC>053.105-00</CRMC>
+<VAL_CRMC>2030-12-19T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-03-23T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-03-23T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16773</Código>
 <Condutor>LUIZ FERNANDES MENDES</Condutor>
 <CPF_condutor>487.795.788-02</CPF_condutor>
@@ -68852,6 +70260,16 @@
 <VAL_CRMC>2028-12-06T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-07-16T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-07-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17279</Código>
+<Condutor>LUIZ MIGUEL JESUS DE SOUZA TOME</Condutor>
+<CPF_condutor>489.519.548-11</CPF_condutor>
+<CRMC>053.383-00</CRMC>
+<VAL_CRMC>2031-03-16T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -68935,6 +70353,16 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17340</Código>
+<Condutor>WENDER DE LIMA JUNIOR</Condutor>
+<CPF_condutor>491.300.038-14</CPF_condutor>
+<CRMC>053.541-00</CRMC>
+<VAL_CRMC>2031-04-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-13T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-13T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15357</Código>
 <Condutor>JOSE RAIMUNDO LIMA SANTOS</Condutor>
 <CPF_condutor>491.459.165-00</CPF_condutor>
@@ -68993,6 +70421,16 @@
 <Curso_condutor>2025-12-04T00:00:00</Curso_condutor>
 <VCurso_condutor>2030-12-04T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17222</Código>
+<Condutor>RAI RAMOS MEDEIROS SANTOS</Condutor>
+<CPF_condutor>492.840.988-40</CPF_condutor>
+<CRMC>053.238-00</CRMC>
+<VAL_CRMC>2031-02-05T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-02T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-02T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13514</Código>
@@ -69213,6 +70651,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17250</Código>
+<Condutor>IANCA MIRELLE LOPES SILVA</Condutor>
+<CPF_condutor>499.243.998-54</CPF_condutor>
+<CRMC>053.377-00</CRMC>
+<VAL_CRMC>2031-03-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-08T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>13521</Código>
 <Condutor>NIVALDO NUNES CRUZ</Condutor>
 <CPF_condutor>499.364.925-87</CPF_condutor>
@@ -69290,6 +70738,16 @@
 <Curso_condutor>2024-11-30T00:00:00</Curso_condutor>
 <VCurso_condutor>2029-11-30T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17259</Código>
+<Condutor>GUSTAVO HENRIQUE ALVES</Condutor>
+<CPF_condutor>502.232.448-21</CPF_condutor>
+<CRMC>052.334-00</CRMC>
+<VAL_CRMC>2030-04-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-12-14T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-12-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>17173</Código>
@@ -69529,6 +70987,36 @@
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17221</Código>
+<Condutor>ANTONIO SILVA MARTINS</Condutor>
+<CPF_condutor>512.821.128-21</CPF_condutor>
+<CRMC>053.310-00</CRMC>
+<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-22T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17339</Código>
+<Condutor>RAQUEL ASSUNCAO DE SOUSA</Condutor>
+<CPF_condutor>512.835.108-47</CPF_condutor>
+<CRMC>053.220-00</CRMC>
+<VAL_CRMC>2031-02-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2021-07-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2026-07-25T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17308</Código>
+<Condutor>BIANCA NOVAIS DOMINGOS DO SANTOS</Condutor>
+<CPF_condutor>512.864.398-09</CPF_condutor>
+<CRMC>052.363-00</CRMC>
+<VAL_CRMC>2030-04-11T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-04-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-04-05T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>16785</Código>
 <Condutor>DAVID WILLIAM DA SILVA</Condutor>
 <CPF_condutor>513.734.028-65</CPF_condutor>
@@ -69536,7 +71024,7 @@
 <VAL_CRMC>2028-08-03T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-01-29T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-01-29T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13531</Código>
@@ -69654,6 +71142,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17300</Código>
+<Condutor>GUILHERME MONTEIRO BRITO</Condutor>
+<CPF_condutor>522.818.588-71</CPF_condutor>
+<CRMC>053.375-00</CRMC>
+<VAL_CRMC>2031-03-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-06-18T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-06-18T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>15419</Código>
 <Condutor>NIKOLAS DE LIMA LAPA</Condutor>
 <CPF_condutor>523.658.318-77</CPF_condutor>
@@ -69680,6 +71178,16 @@
 <VAL_CRMC>2023-06-19T00:00:00</VAL_CRMC>
 <Curso_condutor>2016-01-31T00:00:00</Curso_condutor>
 <VCurso_condutor>2021-01-31T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17303</Código>
+<Condutor>MARCOS PAULO CARDOSO VENTURA DA SILVA</Condutor>
+<CPF_condutor>525.691.828-18</CPF_condutor>
+<CRMC>053.393-00</CRMC>
+<VAL_CRMC>2031-03-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-14T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13540</Código>
@@ -69784,8 +71292,8 @@
 <CPF_condutor>529.942.014-53</CPF_condutor>
 <CRMC>041.217-00</CRMC>
 <VAL_CRMC>2029-06-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-02-07T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-02-07T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-03-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-11T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -69998,6 +71506,16 @@
 <Curso_condutor>2022-06-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-06-18T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17226</Código>
+<Condutor>NELSON FRANCISCO BEZERRA</Condutor>
+<CPF_condutor>555.659.059-15</CPF_condutor>
+<CRMC>052.609-00</CRMC>
+<VAL_CRMC>2029-04-02T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-05-18T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-05-18T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>14368</Código>
@@ -70229,10 +71747,10 @@
 <Condutor>WALDOMIRO NUNES DOS SANTOS</Condutor>
 <CPF_condutor>574.602.488-00</CPF_condutor>
 <CRMC>007.087-00</CRMC>
-<VAL_CRMC>2025-11-26T00:00:00</VAL_CRMC>
+<VAL_CRMC>2028-11-26T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-10-22T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-10-22T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13581</Código>
@@ -70471,6 +71989,7 @@
 <VAL_CRMC>2026-09-14T00:00:00</VAL_CRMC>
 <Curso_condutor>2021-12-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2026-12-18T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13603</Código>
@@ -71581,6 +73100,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17271</Código>
+<Condutor>EDIVALDO BARBOSA MAGALHAES</Condutor>
+<CPF_condutor>683.692.044-49</CPF_condutor>
+<CRMC>053.338-00</CRMC>
+<VAL_CRMC>2026-10-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-11T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>17048</Código>
 <Condutor>JORGE ALEXANDRE DA SILVA</Condutor>
 <CPF_condutor>684.460.474-20</CPF_condutor>
@@ -72074,6 +73603,16 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
+<Código>17205</Código>
+<Condutor>JOSE CARLOS DE SOUZA SALES</Condutor>
+<CPF_condutor>739.166.255-00</CPF_condutor>
+<CRMC>053.292-00</CRMC>
+<VAL_CRMC>2030-10-15T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
 <Código>13737</Código>
 <Condutor>DIONE BRITO DA ROCHA</Condutor>
 <CPF_condutor>745.868.155-15</CPF_condutor>
@@ -72129,6 +73668,16 @@
 <VAL_CRMC>2023-11-18T00:00:00</VAL_CRMC>
 <Curso_condutor>2015-12-20T00:00:00</Curso_condutor>
 <VCurso_condutor>2020-12-20T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17201</Código>
+<Condutor>PAULO JOSE DE ALMEIDA MENDES</Condutor>
+<CPF_condutor>756.804.758-04</CPF_condutor>
+<CRMC>003.361-00</CRMC>
+<VAL_CRMC>2026-11-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-07-24T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-07-24T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>14024</Código>
@@ -72395,6 +73944,7 @@
 <VAL_CRMC>2028-04-13T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-01-21T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-01-21T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13765</Código>
@@ -72510,6 +74060,16 @@
 <Curso_condutor>2023-07-09T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-07-09T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17298</Código>
+<Condutor>NOEL TAVARES DO NASCIMENTO</Condutor>
+<CPF_condutor>793.739.848-53</CPF_condutor>
+<CRMC>048.553-00</CRMC>
+<VAL_CRMC>2029-03-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2021-10-23T00:00:00</Curso_condutor>
+<VCurso_condutor>2026-10-23T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>16345</Código>
@@ -73200,9 +74760,9 @@
 <Condutor>JAIME DOS REIS GOULART</Condutor>
 <CPF_condutor>854.959.218-87</CPF_condutor>
 <CRMC>015.453-00</CRMC>
-<VAL_CRMC>2026-04-09T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-03-05T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-03-05T00:00:00</VCurso_condutor>
+<VAL_CRMC>2030-03-17T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-02-21T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-02-21T00:00:00</VCurso_condutor>
 </Condutor>
 <Condutor>
 <Código>13824</Código>
@@ -73533,7 +75093,7 @@
 <VAL_CRMC>2027-11-24T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-02-18T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-02-18T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13850</Código>
@@ -73647,6 +75207,16 @@
 <VAL_CRMC>2023-06-24T00:00:00</VAL_CRMC>
 <Curso_condutor>2022-05-28T00:00:00</Curso_condutor>
 <VCurso_condutor>2027-05-28T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17211</Código>
+<Condutor>AILTON JOSE DO NASCIMENTO</Condutor>
+<CPF_condutor>876.677.548-53</CPF_condutor>
+<CRMC>049.889-00</CRMC>
+<VAL_CRMC>2028-02-23T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-04-02T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-04-02T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13861</Código>
@@ -73773,6 +75343,16 @@
 <VAL_CRMC>2023-07-01T00:00:00</VAL_CRMC>
 <Curso_condutor>2015-08-09T00:00:00</Curso_condutor>
 <VCurso_condutor>2020-08-09T00:00:00</VCurso_condutor>
+</Condutor>
+<Condutor>
+<Código>17336</Código>
+<Condutor>VIDEVALDO DE SOUZA FILHO</Condutor>
+<CPF_condutor>885.541.475-53</CPF_condutor>
+<CRMC>053.459-00</CRMC>
+<VAL_CRMC>2030-10-31T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-10-13T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-10-13T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13875</Código>
@@ -74565,6 +76145,16 @@
 <Curso_condutor>2023-03-25T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-03-25T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17198</Código>
+<Condutor>JOSE GOMES DE OLIVEIRA</Condutor>
+<CPF_condutor>932.555.944-72</CPF_condutor>
+<CRMC>049.063-00</CRMC>
+<VAL_CRMC>2031-02-02T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-07-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-07-16T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>13932</Código>
@@ -75489,8 +77079,8 @@
 <CPF_condutor>990.674.638-68</CPF_condutor>
 <CRMC>007.988-00</CRMC>
 <VAL_CRMC>2030-02-19T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-02-03T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-02-03T00:00:00</VCurso_condutor>
+<Curso_condutor>2026-04-18T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-18T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -75613,8 +77203,9 @@
 <CPF_condutor>994.340.678-04</CPF_condutor>
 <CRMC>019.462-00</CRMC>
 <VAL_CRMC>2027-01-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2020-12-13T00:00:00</Curso_condutor>
-<VCurso_condutor>2025-12-13T00:00:00</VCurso_condutor>
+<Curso_condutor>2025-11-29T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-11-29T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
 <Código>14009</Código>
@@ -75640,6 +77231,16 @@
 <VAL_CRMC>2028-07-03T00:00:00</VAL_CRMC>
 <Curso_condutor>2023-06-10T00:00:00</Curso_condutor>
 <VCurso_condutor>2028-06-10T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17322</Código>
+<Condutor>GILBERTO ALVES CARVALHO</Condutor>
+<CPF_condutor>996.472.068-87</CPF_condutor>
+<CRMC>020.508-00</CRMC>
+<VAL_CRMC>2029-03-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-08T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-08T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
@@ -75729,1038 +77330,387 @@
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17188</Código>
-<Condutor>DIEGO SANT ANA DOS SANTOS</Condutor>
-<CPF_condutor>378.127.098-09</CPF_condutor>
-<CRMC>052.531-00</CRMC>
-<VAL_CRMC>2030-05-28T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-04-27T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-04-27T00:00:00</VCurso_condutor>
+<Código>17345</Código>
+<Condutor>DOUGLAS SARAIVA DE OLIVEIRA</Condutor>
+<CPF_condutor>426.726.858-43</CPF_condutor>
+<CRMC>052.161-00</CRMC>
+<VAL_CRMC>2030-02-13T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-01-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-01-25T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17189</Código>
-<Condutor>MARCELO ALVES MALVEIRA</Condutor>
-<CPF_condutor>193.534.928-74</CPF_condutor>
-<CRMC>046.818-00</CRMC>
-<VAL_CRMC>2030-03-06T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-03-02T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-03-02T00:00:00</VCurso_condutor>
+<Código>17346</Código>
+<Condutor>DANIELA PEDROZO LEAL DE OLIVEIRA</Condutor>
+<CPF_condutor>377.336.498-97</CPF_condutor>
+<CRMC>049.171-00</CRMC>
+<VAL_CRMC>2030-06-17T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-05-31T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-05-31T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17347</Código>
+<Condutor>LUIZ GALVAO CUBA</Condutor>
+<CPF_condutor>023.268.888-55</CPF_condutor>
+<CRMC>053.196-00</CRMC>
+<VAL_CRMC>2030-03-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-24T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-24T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17190</Código>
-<Condutor>MILLER PACHECO AUGUSTO</Condutor>
-<CPF_condutor>330.230.228-28</CPF_condutor>
-<CRMC>039.752-00</CRMC>
-<VAL_CRMC>2028-12-07T00:00:00</VAL_CRMC>
-<Curso_condutor>2023-09-17T00:00:00</Curso_condutor>
-<VCurso_condutor>2028-09-17T00:00:00</VCurso_condutor>
+<Código>17348</Código>
+<Condutor>RAQUEL ALVES DE LIMA DIAS</Condutor>
+<CPF_condutor>489.925.078-95</CPF_condutor>
+<CRMC>053.495-00</CRMC>
+<VAL_CRMC>2031-04-14T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-12T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-12T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17349</Código>
+<Condutor>WAGNER ARTUR VALERIO</Condutor>
+<CPF_condutor>074.882.508-85</CPF_condutor>
+<CRMC>052.383-00</CRMC>
+<VAL_CRMC>2029-08-27T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-04-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-04-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17350</Código>
+<Condutor>PAULO HENRIQUE DOS SANTOS</Condutor>
+<CPF_condutor>298.093.378-33</CPF_condutor>
+<CRMC>053.269-00</CRMC>
+<VAL_CRMC>2031-02-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-04-12T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-04-12T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17191</Código>
-<Condutor>ADENILSON DE LIMA</Condutor>
-<CPF_condutor>174.878.988-06</CPF_condutor>
-<CRMC>053.234-00</CRMC>
-<VAL_CRMC>2029-02-08T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-01-31T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-01-31T00:00:00</VCurso_condutor>
+<Código>17351</Código>
+<Condutor>BARBARA BEZERRA AQUINO</Condutor>
+<CPF_condutor>357.360.958-90</CPF_condutor>
+<CRMC>053.545-00</CRMC>
+<VAL_CRMC>2031-04-28T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-09-28T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-09-28T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17192</Código>
-<Condutor>MAXIMILIANO CORREA SILVA</Condutor>
-<CPF_condutor>391.159.558-18</CPF_condutor>
-<CRMC>051.710-00</CRMC>
-<VAL_CRMC>2029-09-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-09-15T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-09-15T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17193</Código>
-<Condutor>JANAINA DOS PASSOS FACHINI LOUREIRO THOME</Condutor>
-<CPF_condutor>294.926.498-02</CPF_condutor>
-<CRMC>045.305-00</CRMC>
-<VAL_CRMC>2028-11-09T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-02-20T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-02-20T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17194</Código>
-<Condutor>LORIVAL EDGAR DE BARROS</Condutor>
-<CPF_condutor>071.054.438-39</CPF_condutor>
-<CRMC>052.713-00</CRMC>
-<VAL_CRMC>2027-01-10T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-05-11T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-05-11T00:00:00</VCurso_condutor>
+<Código>17352</Código>
+<Condutor>CLEIDE MARIM DOS SANTOS GODINHO</Condutor>
+<CPF_condutor>222.782.748-30</CPF_condutor>
+<CRMC>034.132-00</CRMC>
+<VAL_CRMC>2031-05-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-27T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-27T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17195</Código>
-<Condutor>MATHEUS CARVALHO DE OLIVEIRA</Condutor>
-<CPF_condutor>426.243.868-66</CPF_condutor>
-<CRMC>053.282-00</CRMC>
-<VAL_CRMC>2031-02-23T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-12-21T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-12-21T00:00:00</VCurso_condutor>
+<Código>17353</Código>
+<Condutor>TEREZINHA MARIA DE LIMA</Condutor>
+<CPF_condutor>256.626.238-13</CPF_condutor>
+<CRMC>053.509-00</CRMC>
+<VAL_CRMC>2028-10-28T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-29T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-29T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17196</Código>
-<Condutor>MATEUS ROBERTO DANTAS MONTEIRO</Condutor>
-<CPF_condutor>243.013.728-30</CPF_condutor>
-<CRMC>053.143-00</CRMC>
-<VAL_CRMC>2031-01-15T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-11T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-11T00:00:00</VCurso_condutor>
+<Código>17354</Código>
+<Condutor>CLEIDE MARINHO DOS SANTOS</Condutor>
+<CPF_condutor>135.892.258-66</CPF_condutor>
+<CRMC>019.994-00</CRMC>
+<VAL_CRMC>2027-06-03T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-13T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-13T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17197</Código>
-<Condutor>GEOVANO SILVA MORAES</Condutor>
-<CPF_condutor>290.086.408-99</CPF_condutor>
-<CRMC>053.215-00</CRMC>
-<VAL_CRMC>2031-02-03T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-11-16T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-11-16T00:00:00</VCurso_condutor>
+<Código>17355</Código>
+<Condutor>JAIR DORAL ANTUNES</Condutor>
+<CPF_condutor>182.695.388-41</CPF_condutor>
+<CRMC>043.733-00</CRMC>
+<VAL_CRMC>2028-06-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-05-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-05-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17356</Código>
+<Condutor>LIDIANE LIMA DOS SANTOS</Condutor>
+<CPF_condutor>344.315.408-57</CPF_condutor>
+<CRMC>053.555-00</CRMC>
+<VAL_CRMC>2031-04-30T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-09T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-09T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17357</Código>
+<Condutor>LUCIA PATRICIA VICENTE DAMAS</Condutor>
+<CPF_condutor>255.960.748-45</CPF_condutor>
+<CRMC>051.341-00</CRMC>
+<VAL_CRMC>2028-02-25T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-05-19T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-05-19T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17198</Código>
-<Condutor>JOSE GOMES DE OLIVEIRA</Condutor>
-<CPF_condutor>932.555.944-72</CPF_condutor>
-<CRMC>049.063-00</CRMC>
-<VAL_CRMC>2031-02-02T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-07-16T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-07-16T00:00:00</VCurso_condutor>
+<Código>17358</Código>
+<Condutor>ANDRE MARTINS DIAS</Condutor>
+<CPF_condutor>317.575.988-20</CPF_condutor>
+<CRMC>053.489-00</CRMC>
+<VAL_CRMC>2031-04-14T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-28T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-28T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17199</Código>
-<Condutor>VANDER DOS SANTOS BARROS</Condutor>
-<CPF_condutor>152.662.688-83</CPF_condutor>
-<CRMC>051.624-00</CRMC>
-<VAL_CRMC>2029-08-30T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-08-01T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-08-01T00:00:00</VCurso_condutor>
+<Código>17359</Código>
+<Condutor>SANDRA APARECIDA VASCONCELOS CARVALHO</Condutor>
+<CPF_condutor>266.861.788-02</CPF_condutor>
+<CRMC>053.422-00</CRMC>
+<VAL_CRMC>2030-11-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2024-06-10T00:00:00</Curso_condutor>
+<VCurso_condutor>2029-06-10T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17200</Código>
-<Condutor>CRISTIANO BISPO</Condutor>
-<CPF_condutor>321.207.938-08</CPF_condutor>
-<CRMC>052.236-00</CRMC>
-<VAL_CRMC>2030-03-12T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-11-23T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-11-23T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17201</Código>
-<Condutor>PAULO JOSE DE ALMEIDA MENDES</Condutor>
-<CPF_condutor>756.804.758-04</CPF_condutor>
-<CRMC>003.361-00</CRMC>
-<VAL_CRMC>2026-11-12T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-07-24T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-07-24T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17214</Código>
-<Condutor>GUILHERME DE ALMEIDA SALGADO</Condutor>
-<CPF_condutor>487.638.138-07</CPF_condutor>
-<CRMC>053.105-00</CRMC>
-<VAL_CRMC>2030-12-19T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-03-23T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-03-23T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17215</Código>
-<CPF_condutor>900.804.948-11</CPF_condutor>
-</Condutor>
-<Condutor>
-<Código>17216</Código>
-<Condutor>MICHEL APARECIDO NASCIMENTO DE LIMA</Condutor>
-<CPF_condutor>338.157.428-03</CPF_condutor>
-<CRMC>053.325-00</CRMC>
-<VAL_CRMC>2031-03-03T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-08-24T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-08-24T00:00:00</VCurso_condutor>
+<Código>17360</Código>
+<Condutor>EDSON PURCINO</Condutor>
+<CPF_condutor>044.681.108-48</CPF_condutor>
+<CRMC>047.015-00</CRMC>
+<VAL_CRMC>2028-05-15T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-12T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-12T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17217</Código>
-<Condutor>MARCOS PAULO DA SILVA</Condutor>
-<CPF_condutor>271.012.888-80</CPF_condutor>
-<CRMC>051.350-00</CRMC>
-<VAL_CRMC>2029-06-14T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-04-28T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-04-28T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17218</Código>
-<Condutor>VIRLENE DE ASSIS SILVA</Condutor>
-<CPF_condutor>153.359.658-19</CPF_condutor>
-<CRMC>022.469-00</CRMC>
-<VAL_CRMC>2028-04-10T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-06-13T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-06-13T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17219</Código>
-<Condutor>RENILSON JOSE DOS SANTOS</Condutor>
-<CPF_condutor>274.220.768-60</CPF_condutor>
-<CRMC>047.671-00</CRMC>
-<VAL_CRMC>2029-11-11T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-11-16T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-11-16T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17220</Código>
-<Condutor>JOSE ANTONIO DOS SANTOS</Condutor>
-<CPF_condutor>047.750.288-12</CPF_condutor>
-<CRMC>053.300-00</CRMC>
-<VAL_CRMC>2027-10-11T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-25T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-25T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17221</Código>
-<Condutor>ANTONIO SILVA MARTINS</Condutor>
-<CPF_condutor>512.821.128-21</CPF_condutor>
-<CRMC>053.310-00</CRMC>
-<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-22T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-22T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17222</Código>
-<Condutor>RAI RAMOS MEDEIROS SANTOS</Condutor>
-<CPF_condutor>492.840.988-40</CPF_condutor>
-<CRMC>053.238-00</CRMC>
-<VAL_CRMC>2031-02-05T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-02T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-02T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17223</Código>
-<Condutor>SIDNEI CLAUDINO</Condutor>
-<CPF_condutor>288.527.558-88</CPF_condutor>
-<CRMC>053.322-00</CRMC>
-<VAL_CRMC>2031-03-03T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-22T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-22T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17224</Código>
-<Condutor>UDSON ANTONIO ARAUJO LAURENT</Condutor>
-<CPF_condutor>122.993.568-19</CPF_condutor>
-<CRMC>053.321-00</CRMC>
-<VAL_CRMC>2028-12-11T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-26T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-26T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17225</Código>
-<Condutor>LARISSA HENGLEM</Condutor>
-<CPF_condutor>360.167.468-86</CPF_condutor>
-<CRMC>047.977-00</CRMC>
-<VAL_CRMC>2029-07-31T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-12-07T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-12-07T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17226</Código>
-<Condutor>NELSON FRANCISCO BEZERRA</Condutor>
-<CPF_condutor>555.659.059-15</CPF_condutor>
-<CRMC>052.609-00</CRMC>
-<VAL_CRMC>2029-04-02T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-05-18T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-05-18T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17227</Código>
-<Condutor>FLAVIO JOSE DE CARVALHO</Condutor>
-<CPF_condutor>064.071.198-71</CPF_condutor>
-<CRMC>053.271-00</CRMC>
-<VAL_CRMC>2030-07-15T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-07T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-07T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17228</Código>
-<Condutor>KARINA CARDOSO DA SILVA</Condutor>
-<CPF_condutor>381.006.248-01</CPF_condutor>
-<CRMC>052.178-00</CRMC>
-<VAL_CRMC>2030-02-19T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-05-16T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-05-16T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17229</Código>
-<Condutor>ELIZANGELA DA SILVA VICENTE</Condutor>
-<CPF_condutor>275.997.658-08</CPF_condutor>
-<CRMC>052.438-00</CRMC>
-<VAL_CRMC>2027-12-02T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-02-16T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-02-16T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17230</Código>
-<Condutor>ALINE GABRIELA SILVA DE ANDRADE</Condutor>
-<CPF_condutor>313.132.268-31</CPF_condutor>
-<CRMC>053.318-00</CRMC>
-<VAL_CRMC>2031-03-02T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-30T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-30T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17231</Código>
-<Condutor>RENAN SANTOS NASCIMENTO</Condutor>
-<CPF_condutor>322.276.668-11</CPF_condutor>
-<CRMC>053.151-00</CRMC>
-<VAL_CRMC>2031-01-16T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-10-04T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-10-04T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17232</Código>
-<Condutor>GERSON MARQUES MALMAGRO</Condutor>
-<CPF_condutor>162.511.448-66</CPF_condutor>
-<CRMC>051.533-00</CRMC>
-<VAL_CRMC>2029-08-08T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-08-04T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-08-04T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17233</Código>
-<Condutor>CARLOS ALBERTO RODRIGUES JUNIOR</Condutor>
-<CPF_condutor>324.774.758-35</CPF_condutor>
-<CRMC>053.252-00</CRMC>
-<VAL_CRMC>2030-03-31T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-11-02T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-11-02T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17234</Código>
-<Condutor>ROGERIO DE OLIVEIRA</Condutor>
-<CPF_condutor>263.199.608-92</CPF_condutor>
-<CRMC>053.319-00</CRMC>
-<VAL_CRMC>2031-03-03T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17235</Código>
-<Condutor>CLENE ALVES DE OLIVEIRA BARBOSA</Condutor>
-<CPF_condutor>041.748.156-07</CPF_condutor>
-<CRMC>050.241-00</CRMC>
-<VAL_CRMC>2029-06-25T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-12-19T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-12-19T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17236</Código>
-<Condutor>MARIA HELENA PESTANA DA SILVA</Condutor>
-<CPF_condutor>212.909.418-07</CPF_condutor>
-<CRMC>050.066-00</CRMC>
-<VAL_CRMC>2026-11-08T00:00:00</VAL_CRMC>
-<Curso_condutor>2023-05-21T00:00:00</Curso_condutor>
-<VCurso_condutor>2028-05-21T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17237</Código>
-<Condutor>FABIO AUGUSTO ANDRADE DE SOUSA</Condutor>
-<CPF_condutor>481.296.788-02</CPF_condutor>
-<CRMC>051.921-00</CRMC>
-<VAL_CRMC>2029-12-04T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-12-01T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-12-01T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17238</Código>
-<Condutor>JOSE LAELTON RODRIGUES LIMA</Condutor>
-<CPF_condutor>305.042.708-69</CPF_condutor>
-<CRMC>053.306-00</CRMC>
-<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-11T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-11T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17202</Código>
-<Condutor>GISEIDE FERREIRA DE JESUS</Condutor>
-<CPF_condutor>444.707.988-78</CPF_condutor>
-<CRMC>052.541-00</CRMC>
-<VAL_CRMC>2030-05-29T00:00:00</VAL_CRMC>
-<Curso_condutor>2023-06-18T00:00:00</Curso_condutor>
-<VCurso_condutor>2028-06-18T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17203</Código>
-<Condutor>SERGIO SOARES DA SILVA</Condutor>
-<CPF_condutor>146.906.608-40</CPF_condutor>
-<CRMC>014.079-00</CRMC>
-<VAL_CRMC>2030-01-13T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-12-15T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-12-15T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17204</Código>
-<Condutor>MILLA ANDRADE SAIJO</Condutor>
-<CPF_condutor>414.295.388-56</CPF_condutor>
-<CRMC>046.637-00</CRMC>
-<VAL_CRMC>2031-02-24T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-07T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-07T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17205</Código>
-<Condutor>JOSE CARLOS DE SOUZA SALES</Condutor>
-<CPF_condutor>739.166.255-00</CPF_condutor>
-<CRMC>053.292-00</CRMC>
-<VAL_CRMC>2030-10-15T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17206</Código>
-<Condutor>VALDECI DE MELLO CARDOSO</Condutor>
-<CPF_condutor>126.812.098-70</CPF_condutor>
-<CRMC>053.294-00</CRMC>
-<VAL_CRMC>2031-02-25T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-23T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-23T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17207</Código>
-<Condutor>GILMAR VIANA BRAGA</Condutor>
-<CPF_condutor>047.074.046-93</CPF_condutor>
-<CRMC>053.085-00</CRMC>
-<VAL_CRMC>2030-12-08T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-11-06T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-11-06T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17208</Código>
-<Condutor>CRISTIANE SVENTKAUSKAS</Condutor>
-<CPF_condutor>065.825.028-08</CPF_condutor>
-<CRMC>024.096-00</CRMC>
-<VAL_CRMC>2028-07-12T00:00:00</VAL_CRMC>
-<Curso_condutor>2023-06-04T00:00:00</Curso_condutor>
-<VCurso_condutor>2028-06-04T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17209</Código>
-<Condutor>RUBENS BARBOSA DE LIMA</Condutor>
-<CPF_condutor>341.372.598-01</CPF_condutor>
-<CRMC>053.313-00</CRMC>
-<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-11-06T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-11-06T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17210</Código>
-<Condutor>RITA DE CASSIA ALVES</Condutor>
-<CPF_condutor>157.668.588-84</CPF_condutor>
-<CRMC>032.663-00</CRMC>
-<VAL_CRMC>2027-04-18T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-04-14T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-04-14T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17211</Código>
-<Condutor>AILTON JOSE DO NASCIMENTO</Condutor>
-<CPF_condutor>876.677.548-53</CPF_condutor>
-<CRMC>049.889-00</CRMC>
-<VAL_CRMC>2028-02-23T00:00:00</VAL_CRMC>
-<Curso_condutor>2023-04-02T00:00:00</Curso_condutor>
-<VCurso_condutor>2028-04-02T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17212</Código>
-<Condutor>GILMAR APARECIDO CARVALHO DA SILVA</Condutor>
-<CPF_condutor>320.728.928-21</CPF_condutor>
-<CRMC>053.298-00</CRMC>
-<VAL_CRMC>2031-02-26T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-01T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-01T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17213</Código>
-<Condutor>LEDA DO CARMO CONCEICAO</Condutor>
-<CPF_condutor>271.730.688-94</CPF_condutor>
-<CRMC>053.305-00</CRMC>
-<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-08T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-08T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17239</Código>
-<Condutor>JEFFERSON DA SILVA CERQUEIRA</Condutor>
-<CPF_condutor>223.456.928-12</CPF_condutor>
-<CRMC>020.933-00</CRMC>
-<VAL_CRMC>2028-09-22T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-06-12T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-06-12T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17240</Código>
-<Condutor>JOSE ATONIO DA SILVA</Condutor>
-<CPF_condutor>028.818.168-94</CPF_condutor>
-<CRMC>030.740-00</CRMC>
-<VAL_CRMC>2030-03-06T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-11-30T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-11-30T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17241</Código>
-<Condutor>ERICO DE OLIVEIRA VASCONCELOS</Condutor>
-<CPF_condutor>332.726.418-07</CPF_condutor>
-<CRMC>053.281-00</CRMC>
-<VAL_CRMC>2031-01-05T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-10T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-10T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17242</Código>
-<Condutor>ISABELLA DOS ANJOS E SOUZA</Condutor>
-<CPF_condutor>423.907.278-67</CPF_condutor>
-<CRMC>051.169-00</CRMC>
-<VAL_CRMC>2029-04-18T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-01-14T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-01-14T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17243</Código>
-<Condutor>MONICA GONCALVES DOS SANTOS</Condutor>
-<CPF_condutor>374.108.168-05</CPF_condutor>
-<CRMC>053.207-00</CRMC>
-<VAL_CRMC>2031-01-30T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-19T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-19T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17244</Código>
-<Condutor>EMERSON SILVA DOS SANTOS</Condutor>
-<CPF_condutor>342.275.428-80</CPF_condutor>
-<CRMC>053.243-00</CRMC>
-<VAL_CRMC>2031-02-06T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-30T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-30T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17245</Código>
-<Condutor>PIETRA BIANCA FONSECA SILVA</Condutor>
-<CPF_condutor>419.628.568-60</CPF_condutor>
-<CRMC>052.174-00</CRMC>
-<VAL_CRMC>2030-02-18T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-07-03T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-07-03T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17246</Código>
-<Condutor>DOUGLAS DAVI GUATURA</Condutor>
-<CPF_condutor>089.530.756-10</CPF_condutor>
-<CRMC>053.369-00</CRMC>
-<VAL_CRMC>2031-03-12T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-08T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-08T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17247</Código>
-<Condutor>FABIOLA SOLER QUERIDO DE LIMA</Condutor>
-<CPF_condutor>351.503.698-96</CPF_condutor>
-<CRMC>041.690-00</CRMC>
-<VAL_CRMC>2031-03-13T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-11T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-11T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17248</Código>
-<Condutor>FERNANDA RODRIGUES PERTON MACHADO</Condutor>
-<CPF_condutor>431.232.758-09</CPF_condutor>
-<CRMC>053.370-00</CRMC>
-<VAL_CRMC>2031-03-12T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17249</Código>
-<Condutor>JANAINA BARRETO DE OLIVEIRA</Condutor>
-<CPF_condutor>350.014.068-89</CPF_condutor>
-<CRMC>050.440-00</CRMC>
-<VAL_CRMC>2028-10-04T00:00:00</VAL_CRMC>
-<Curso_condutor>2021-11-28T00:00:00</Curso_condutor>
-<VCurso_condutor>2026-11-28T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17250</Código>
-<Condutor>IANCA MIRELLE LOPES SILVA</Condutor>
-<CPF_condutor>499.243.998-54</CPF_condutor>
-<CRMC>053.377-00</CRMC>
-<VAL_CRMC>2031-03-13T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-08T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-08T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17251</Código>
-<Condutor>ELIAS ADELINO DOS SANTOS</Condutor>
-<CPF_condutor>291.918.028-22</CPF_condutor>
-<CRMC>053.291-00</CRMC>
-<VAL_CRMC>2031-02-24T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17252</Código>
-<Condutor>KELLI CRISTINA DA SILVA</Condutor>
-<CPF_condutor>308.563.338-32</CPF_condutor>
-<CRMC>052.858-00</CRMC>
-<VAL_CRMC>2030-09-09T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-07-28T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-07-28T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17253</Código>
-<Condutor>LUIZ FERNANDO DE JESUS FRANCA</Condutor>
-<CPF_condutor>313.629.118-28</CPF_condutor>
-<CRMC>053.367-00</CRMC>
-<VAL_CRMC>2031-03-12T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-26T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-26T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17254</Código>
-<Condutor>SOLANGE MARIANO DOS SANTOS SOUZA</Condutor>
-<CPF_condutor>299.913.648-03</CPF_condutor>
-<CRMC>053.387-00</CRMC>
-<VAL_CRMC>2031-03-16T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-05-12T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-05-12T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17255</Código>
-<Condutor>GISELE GONCALVES DE ARRUDA</Condutor>
-<CPF_condutor>411.099.138-26</CPF_condutor>
-<CRMC>053.272-00</CRMC>
-<VAL_CRMC>2031-02-19T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-10-15T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-10-15T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17256</Código>
-<Condutor>AURO NOVAES DANTAS</Condutor>
-<CPF_condutor>076.068.168-67</CPF_condutor>
-<CRMC>007.176-01</CRMC>
-<VAL_CRMC>2028-03-08T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-07-08T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-07-08T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17257</Código>
-<Condutor>JOSE ALVES SILVA</Condutor>
-<CPF_condutor>103.774.398-94</CPF_condutor>
-<CRMC>001.022-01</CRMC>
-<VAL_CRMC>2028-04-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-09-05T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-09-05T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17258</Código>
-<Condutor>CARLOS ROBERTO ANJOLIM</Condutor>
-<CPF_condutor>044.606.908-61</CPF_condutor>
-<CRMC>050.525-00</CRMC>
-<VAL_CRMC>2030-01-10T00:00:00</VAL_CRMC>
-<Curso_condutor>2023-10-22T00:00:00</Curso_condutor>
-<VCurso_condutor>2028-10-22T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17259</Código>
-<Condutor>GUSTAVO HENRIQUE ALVES</Condutor>
-<CPF_condutor>502.232.448-21</CPF_condutor>
-<CRMC>052.334-00</CRMC>
-<VAL_CRMC>2030-04-03T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-12-14T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-12-14T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17260</Código>
-<Condutor>PAULA ANDRADE XAVIER PIRES</Condutor>
-<CPF_condutor>426.670.248-50</CPF_condutor>
-<CRMC>052.504-00</CRMC>
-<VAL_CRMC>2030-05-21T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-09-04T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-09-04T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17261</Código>
-<Condutor>LUIZ WILSON GONCALVES</Condutor>
-<CPF_condutor>270.665.558-56</CPF_condutor>
-<CRMC>017.365-00</CRMC>
-<VAL_CRMC>2031-02-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-06-26T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-06-26T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17262</Código>
-<Condutor>JOSE VALERIO DA SILVA</Condutor>
-<CPF_condutor>046.976.304-32</CPF_condutor>
-<CRMC>042.558-00</CRMC>
-<VAL_CRMC>2030-10-13T00:00:00</VAL_CRMC>
-<Curso_condutor>2023-12-09T00:00:00</Curso_condutor>
-<VCurso_condutor>2028-12-09T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17263</Código>
-<Condutor>SERGIO JARDIM DA SILVA</Condutor>
-<CPF_condutor>317.405.698-57</CPF_condutor>
-<CRMC>053.239-00</CRMC>
-<VAL_CRMC>2030-01-21T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-18T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-18T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17264</Código>
-<Condutor>ELBA VASCONCELOS DE JESUS</Condutor>
-<CPF_condutor>343.323.878-21</CPF_condutor>
-<CRMC>053.326-00</CRMC>
-<VAL_CRMC>2031-03-03T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-07-17T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-07-17T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17265</Código>
-<Condutor>JOSE CARLOS DA SILVA</Condutor>
-<CPF_condutor>030.488.818-40</CPF_condutor>
-<CRMC>047.933-00</CRMC>
-<VAL_CRMC>2028-03-27T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-09-28T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-09-28T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17266</Código>
-<Condutor>HUGO DA SILVA GUILHERME</Condutor>
-<CPF_condutor>353.363.838-30</CPF_condutor>
-<CRMC>053.077-00</CRMC>
-<VAL_CRMC>2030-12-03T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-11-08T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-11-08T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17267</Código>
-<Condutor>LUIZ AUGUSTO DE SOUZA MONTEIRO</Condutor>
-<CPF_condutor>028.293.697-18</CPF_condutor>
-<CRMC>052.026-00</CRMC>
-<VAL_CRMC>2030-01-22T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-12-21T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-12-21T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17268</Código>
-<Condutor>CARLA CRISTINA MOREIRA</Condutor>
-<CPF_condutor>365.028.608-42</CPF_condutor>
-<CRMC>053.317-00</CRMC>
-<VAL_CRMC>2031-03-02T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-15T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-15T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17269</Código>
-<Condutor>RAY DE OLIVEIRA MAIA</Condutor>
-<CPF_condutor>440.216.188-64</CPF_condutor>
-<CRMC>053.372-00</CRMC>
-<VAL_CRMC>2031-03-12T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-21T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-21T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17270</Código>
-<Condutor>VINICIUS NUNES BRANDAO</Condutor>
-<CPF_condutor>485.435.188-81</CPF_condutor>
-<CRMC>053.355-00</CRMC>
-<VAL_CRMC>2031-03-10T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-04T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-04T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17271</Código>
-<Condutor>EDIVALDO BARBOSA MAGALHAES</Condutor>
-<CPF_condutor>683.692.044-49</CPF_condutor>
-<CRMC>053.338-00</CRMC>
-<VAL_CRMC>2026-10-18T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-11T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-11T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17272</Código>
-<Condutor>LUCIA HONORIO SANTOS DA SILVA</Condutor>
-<CPF_condutor>027.903.984-02</CPF_condutor>
-<CRMC>049.321-00</CRMC>
-<VAL_CRMC>2027-10-17T00:00:00</VAL_CRMC>
-<Curso_condutor>2022-10-22T00:00:00</Curso_condutor>
-<VCurso_condutor>2027-10-22T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17273</Código>
-<Condutor>CLARICE ABIATI GUSMAO SILVA</Condutor>
-<CPF_condutor>134.572.478-03</CPF_condutor>
-<CRMC>053.180-00</CRMC>
-<VAL_CRMC>2029-10-08T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-21T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-21T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17274</Código>
-<Condutor>FABIO DE ALMEIDA BELO</Condutor>
-<CPF_condutor>350.142.178-85</CPF_condutor>
-<CRMC>052.260-00</CRMC>
-<VAL_CRMC>2030-03-17T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-03-08T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-03-08T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17275</Código>
-<Condutor>PATRICIA SANTOS SILVA MAGALHAES</Condutor>
-<CPF_condutor>136.107.908-81</CPF_condutor>
-<CRMC>053.363-00</CRMC>
-<VAL_CRMC>2030-11-07T00:00:00</VAL_CRMC>
+<Código>17361</Código>
+<Condutor>ISMAEL ALVES LIRA</Condutor>
+<CPF_condutor>995.289.678-68</CPF_condutor>
+<CRMC>023.170-00</CRMC>
+<VAL_CRMC>2028-04-14T00:00:00</VAL_CRMC>
 <Curso_condutor>2026-02-07T00:00:00</Curso_condutor>
 <VCurso_condutor>2031-02-07T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17276</Código>
-<Condutor>KAIO NUNES SANTOS SILVA</Condutor>
-<CPF_condutor>443.792.408-86</CPF_condutor>
-<CRMC>053.419-00</CRMC>
-<VAL_CRMC>2031-03-25T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-21T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-21T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17277</Código>
-<Condutor>FLAVIO ALEXANDRE DA SILVA</Condutor>
-<CPF_condutor>265.032.908-45</CPF_condutor>
-<CRMC>053.389-00</CRMC>
-<VAL_CRMC>2030-08-07T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-07T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-07T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17278</Código>
-<Condutor>FERNANDO ALVES SALGADO</Condutor>
-<CPF_condutor>013.912.588-43</CPF_condutor>
-<CRMC>035.401-00</CRMC>
-<VAL_CRMC>2026-08-24T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-31T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-31T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17279</Código>
-<Condutor>LUIZ MIGUEL JESUS DE SOUZA TOME</Condutor>
-<CPF_condutor>489.519.548-11</CPF_condutor>
-<CRMC>053.383-00</CRMC>
-<VAL_CRMC>2031-03-16T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17280</Código>
-<Condutor>JEFFERSON CRISTIANO DOS SANTOS</Condutor>
-<CPF_condutor>294.280.398-37</CPF_condutor>
-<CRMC>053.153-00</CRMC>
-<VAL_CRMC>2031-01-19T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-12-13T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-12-13T00:00:00</VCurso_condutor>
+<Código>17362</Código>
+<Condutor>EVERTON RODRIGUES DA MOTA</Condutor>
+<CPF_condutor>225.120.408-36</CPF_condutor>
+<CRMC>053.564-00</CRMC>
+<VAL_CRMC>2031-05-06T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-29T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-29T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17281</Código>
-<Condutor>EDVAL ALVES DE LANA</Condutor>
-<CPF_condutor>274.159.218-79</CPF_condutor>
-<CRMC>053.412-00</CRMC>
-<VAL_CRMC>2031-03-24T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-21T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-21T00:00:00</VCurso_condutor>
+<Código>17363</Código>
+<Condutor>MARCELO ESTEVES DE OLIVEIRA</Condutor>
+<CPF_condutor>118.978.778-46</CPF_condutor>
+<CRMC>053.413-00</CRMC>
+<VAL_CRMC>2029-02-21T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-16T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-16T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17282</Código>
-<Condutor>SILVIO SIMOES DA COSTA</Condutor>
-<CPF_condutor>104.442.008-19</CPF_condutor>
-<CRMC>053.258-00</CRMC>
-<VAL_CRMC>2027-07-13T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-02-07T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-02-07T00:00:00</VCurso_condutor>
+<Código>17364</Código>
+<Condutor>WESLLEY OLIVEIRA DE MOURA</Condutor>
+<CPF_condutor>442.013.588-36</CPF_condutor>
+<CRMC>053.572-00</CRMC>
+<VAL_CRMC>2031-05-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-26T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-26T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17365</Código>
+<Condutor>MARLON SANTOS SOUSA</Condutor>
+<CPF_condutor>066.028.025-69</CPF_condutor>
+<CRMC>053.570-00</CRMC>
+<VAL_CRMC>2031-05-08T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-04-19T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-04-19T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17283</Código>
-<Condutor>VANUSA FERREIRA CANDIDO ROCHA</Condutor>
-<CPF_condutor>032.347.866-23</CPF_condutor>
-<CRMC>053.341-00</CRMC>
-<VAL_CRMC>2031-03-06T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
+<Código>17366</Código>
+<Condutor>JAIR CANDIDO CUSTODIO</Condutor>
+<CPF_condutor>162.526.108-01</CPF_condutor>
+<CRMC>052.344-00</CRMC>
+<VAL_CRMC>2028-09-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-03-09T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-03-09T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17284</Código>
-<Condutor>SIDNEI FERREIRA</Condutor>
-<CPF_condutor>107.369.898-03</CPF_condutor>
-<CRMC>053.430-00</CRMC>
-<VAL_CRMC>2030-03-19T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-01T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-01T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17285</Código>
-<Condutor>FABRICIO PEREIRA DAS NEVES</Condutor>
-<CPF_condutor>217.612.268-27</CPF_condutor>
-<CRMC>023.937-00</CRMC>
-<VAL_CRMC>2031-03-18T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-03-04T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-03-04T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17286</Código>
-<Condutor>FERNANDO DOS ANJOS</Condutor>
-<CPF_condutor>261.378.118-16</CPF_condutor>
-<CRMC>053.444-00</CRMC>
-<VAL_CRMC>2030-10-08T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-10-01T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-10-01T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17287</Código>
-<Condutor>GEOVANE ROSENO DE ANDRADE CADETE</Condutor>
-<CPF_condutor>113.169.758-86</CPF_condutor>
-<CRMC>053.323-00</CRMC>
-<VAL_CRMC>2026-07-05T00:00:00</VAL_CRMC>
-<Curso_condutor>2025-08-02T00:00:00</Curso_condutor>
-<VCurso_condutor>2030-08-02T00:00:00</VCurso_condutor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-</Condutor>
-<Condutor>
-<Código>17288</Código>
-<Condutor>MARCIA RODRIGUES DE MORAES SOUZA</Condutor>
-<CPF_condutor>117.578.498-23</CPF_condutor>
-<CRMC>053.426-00</CRMC>
-<VAL_CRMC>2029-12-11T00:00:00</VAL_CRMC>
+<Código>17367</Código>
+<Condutor>AURELIO AUGUSTO DE ALMEIDA FELIX</Condutor>
+<CPF_condutor>084.749.759-30</CPF_condutor>
+<CRMC>053.486-00</CRMC>
+<VAL_CRMC>2031-04-14T00:00:00</VAL_CRMC>
 <Curso_condutor>2026-02-21T00:00:00</Curso_condutor>
 <VCurso_condutor>2031-02-21T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17289</Código>
-<Condutor>HIDEKEL RIBEIRO BONFIM</Condutor>
-<CPF_condutor>404.235.908-63</CPF_condutor>
-<CRMC>053.279-00</CRMC>
-<VAL_CRMC>2027-02-01T00:00:00</VAL_CRMC>
-<Curso_condutor>2026-01-31T00:00:00</Curso_condutor>
-<VCurso_condutor>2031-01-31T00:00:00</VCurso_condutor>
+<Código>17368</Código>
+<Condutor>VILOBALDO NUNES GOMES</Condutor>
+<CPF_condutor>127.273.458-79</CPF_condutor>
+<CRMC>032.548-00</CRMC>
+<VAL_CRMC>2028-06-30T00:00:00</VAL_CRMC>
+<Curso_condutor>2023-04-22T00:00:00</Curso_condutor>
+<VCurso_condutor>2028-04-22T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Historico> (PREPOSTO AUTORIZADO)</Historico>
 </Condutor>
 <Condutor>
-<Código>17290</Código>
-<Condutor>JEFFERSON RODRIGUES ALVES FONSECA</Condutor>
-<CPF_condutor>360.509.698-09</CPF_condutor>
-<CRMC>053.236-00</CRMC>
-<VAL_CRMC>2031-02-05T00:00:00</VAL_CRMC>
-<Curso_condutor>2023-06-03T00:00:00</Curso_condutor>
-<VCurso_condutor>2028-06-03T00:00:00</VCurso_condutor>
+<Código>17369</Código>
+<Condutor>MATHEUS DE LEMOS SILVA</Condutor>
+<CPF_condutor>525.942.058-69</CPF_condutor>
+<CRMC>052.359-00</CRMC>
+<VAL_CRMC>2030-04-09T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-04-05T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-04-05T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 </Condutor>
 <Condutor>
-<Código>17291</Código>
-<Condutor>LEANDRO BARBOZA NUNES</Condutor>
-<CPF_condutor>291.941.538-76</CPF_condutor>
-<CRMC>042.695-00</CRMC>
-<VAL_CRMC>2030-05-19T00:00:00</VAL_CRMC>
-<Curso_condutor>2024-02-24T00:00:00</Curso_condutor>
-<VCurso_condutor>2029-02-24T00:00:00</VCurso_condutor>
+<Código>17370</Código>
+<Condutor>SANDRA BORGES DA SILVA</Condutor>
+<CPF_condutor>220.068.648-07</CPF_condutor>
+<CRMC>053.421-00</CRMC>
+<VAL_CRMC>2031-03-25T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-03-29T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-03-29T00:00:00</VCurso_condutor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17371</Código>
+<CPF_condutor>333.087.528-32</CPF_condutor>
+</Condutor>
+<Condutor>
+<Código>17372</Código>
+<Condutor>MARCOS ANTONIO FERREIRA DE OLIVEIRA</Condutor>
+<CPF_condutor>346.931.728-39</CPF_condutor>
+<CRMC>037.960-00</CRMC>
+<VAL_CRMC>2028-02-07T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-12-11T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-12-11T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17373</Código>
+<Condutor>ANTONIO MAXIMO DA SILVA</Condutor>
+<CPF_condutor>063.796.938-31</CPF_condutor>
+<CRMC>053.320-00</CRMC>
+<VAL_CRMC>2030-02-24T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-01-15T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-01-15T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17374</Código>
+<Condutor>MANOEL LAURENTINO DE MOURA</Condutor>
+<CPF_condutor>036.256.258-06</CPF_condutor>
+<CRMC>053.584-00</CRMC>
+<VAL_CRMC>2031-02-18T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-19T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-19T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17375</Código>
+<Condutor>EDIPO FERNANDES DE QUEIROZ</Condutor>
+<CPF_condutor>367.741.788-04</CPF_condutor>
+<CRMC>053.585-00</CRMC>
+<VAL_CRMC>2031-05-12T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-12-14T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-12-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17376</Código>
+<Condutor>ROBERTO CARLOS PENKAL PEREIRA</Condutor>
+<CPF_condutor>490.652.258-03</CPF_condutor>
+<CRMC>052.774-00</CRMC>
+<VAL_CRMC>2030-12-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-05-25T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-05-25T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17377</Código>
+<Condutor>RODRIGO BORGES SOARES</Condutor>
+<CPF_condutor>336.403.928-33</CPF_condutor>
+<CRMC>053.582-00</CRMC>
+<VAL_CRMC>2031-03-20T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-05-09T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-05-09T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17378</Código>
+<Condutor>IVAN PEREIRA DE ANDRADE</Condutor>
+<CPF_condutor>292.074.278-77</CPF_condutor>
+<CRMC>053.404-00</CRMC>
+<VAL_CRMC>2031-03-23T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-14T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-14T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17379</Código>
+<Condutor>HOZANAH MARCAL BOMFIM</Condutor>
+<CPF_condutor>249.503.158-70</CPF_condutor>
+<CRMC>053.386-00</CRMC>
+<VAL_CRMC>2030-09-29T00:00:00</VAL_CRMC>
+<Curso_condutor>2026-03-07T00:00:00</Curso_condutor>
+<VCurso_condutor>2031-03-07T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17380</Código>
+<Condutor>VALMIR BANAGOURO JUNIOR</Condutor>
+<CPF_condutor>375.492.148-75</CPF_condutor>
+<CRMC>048.528-00</CRMC>
+<VAL_CRMC>2026-12-15T00:00:00</VAL_CRMC>
+<Curso_condutor>2021-10-31T00:00:00</Curso_condutor>
+<VCurso_condutor>2026-10-31T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17381</Código>
+<Condutor>PAULO CESAR FLORENCIO</Condutor>
+<CPF_condutor>031.926.478-50</CPF_condutor>
+<CRMC>053.537-00</CRMC>
+<VAL_CRMC>2028-10-04T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-04-20T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-04-20T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17382</Código>
+<Condutor>ROBERTO DOS SANTOS MARQUES</Condutor>
+<CPF_condutor>275.919.508-27</CPF_condutor>
+<CRMC>053.550-00</CRMC>
+<VAL_CRMC>2031-04-29T00:00:00</VAL_CRMC>
+<Curso_condutor>2022-10-09T00:00:00</Curso_condutor>
+<VCurso_condutor>2027-10-09T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+</Condutor>
+<Condutor>
+<Código>17383</Código>
+<Condutor>ANDREIA DELMONDES BARROS BATISTA</Condutor>
+<CPF_condutor>042.150.674-13</CPF_condutor>
+<CRMC>041.535-00</CRMC>
+<VAL_CRMC>2030-09-10T00:00:00</VAL_CRMC>
+<Curso_condutor>2025-08-31T00:00:00</Curso_condutor>
+<VCurso_condutor>2030-08-31T00:00:00</VCurso_condutor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 </Condutor>
 </dataroot>

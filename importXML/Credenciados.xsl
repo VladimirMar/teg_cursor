@@ -24,7 +24,7 @@
 						<col style="WIDTH: 7.698cm"/>
 						<col style="WIDTH: 3.888cm"/>
 						<col style="WIDTH: 2.38cm"/>
-						<col style="WIDTH: 2.38cm"/>
+						<col style="WIDTH: 4.708cm"/>
 					</colgroup>
 					<tbody>
 						<tr>
@@ -90,12 +90,12 @@
 							</td>
 							<td>
 								<div align="center">
-									<strong>RG_representante</strong>
+									<strong>Status</strong>
 								</div>
 							</td>
 							<td>
 								<div align="center">
-									<strong>Status</strong>
+									<strong>TP</strong>
 								</div>
 							</td>
 						</tr>
@@ -142,10 +142,10 @@
 									<xsl:value-of select="CPF_representante"/>
 								</td>
 								<td>
-									<xsl:value-of select="RG_representante"/>
+									<xsl:value-of select="Status"/>
 								</td>
 								<td>
-									<xsl:value-of select="Status"/>
+									<xsl:value-of select="TP"/>
 								</td>
 							</tr>
 						</xsl:for-each>

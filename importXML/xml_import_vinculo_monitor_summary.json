@@ -1,0 +1,223 @@
+{
+  "startedAt": "2026-05-19T16:03:35.340Z",
+  "finishedAt": "2026-05-19T16:10:03.732Z",
+  "baseUrl": "http://localhost:3001",
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "vinculo-monitor"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "vinculo-monitor",
+      "label": "Vinculo Monitor",
+      "fileName": "Vinculos_monitor.xml",
+      "endpoint": "http://localhost:3001/api/vinculo-monitor/import-xml",
+      "startedAt": "2026-05-19T16:03:35.358Z",
+      "finishedAt": "2026-05-19T16:10:03.721Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 9888,
+        "processed": null,
+        "inserted": 0,
+        "updated": 9385,
+        "skipped": 503
+      },
+      "response": {
+        "message": "Importacao de vinculos do monitor concluida com sucesso.",
+        "fileName": "Vinculos_monitor.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Vinculos_monitor.xml",
+        "total": 9888,
+        "inserted": 0,
+        "updated": 9385,
+        "skipped": 503,
+        "skippedRecords": [
+          {
+            "index": 15,
+            "codigoXml": "15",
+            "empregadorXml": "FELIPE HENRIQUE DA SILVA BEZERRA 41125477814",
+            "cpfMonitorXml": "491.194.058-12",
+            "dataOsXml": "2022-06-20",
+            "admissaoXml": "2022-05-27",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 60,
+            "codigoXml": "60",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "526.033.468-06",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-15",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 62,
+            "codigoXml": "62",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "385.612.618-03",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-11-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 63,
+            "codigoXml": "63",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "425.788.048-18",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-11-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 64,
+            "codigoXml": "64",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "494.893.968-42",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 65,
+            "codigoXml": "65",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "398.273.098-89",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-04-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 66,
+            "codigoXml": "66",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "458.741.848-05",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-09-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 67,
+            "codigoXml": "67",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "423.682.478-74",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-04-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 68,
+            "codigoXml": "68",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "408.462.838-75",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-01-09",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 69,
+            "codigoXml": "69",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "407.906.368-75",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-01-31",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 71,
+            "codigoXml": "71",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "128.716.788-80",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-10",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 108,
+            "codigoXml": "108",
+            "empregadorXml": "ELAINE MENDES DIAS - ME",
+            "cpfMonitorXml": "432.205.518-40",
+            "dataOsXml": "2022-06-22",
+            "admissaoXml": "2022-06-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 393,
+            "codigoXml": "393",
+            "empregadorXml": "SONIA MARIA DE GOUVEIA BONTEMPO - ME",
+            "cpfMonitorXml": "070.831.698-02",
+            "dataOsXml": "2022-06-28",
+            "admissaoXml": "2016-12-16",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 404,
+            "codigoXml": "404",
+            "empregadorXml": "OSMAR ALVES JUNIOR 18741651812",
+            "cpfMonitorXml": "632.882.573-00",
+            "dataOsXml": "2022-06-29",
+            "admissaoXml": "2022-06-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 463,
+            "codigoXml": "463",
+            "empregadorXml": "HELLEN CRISTINA DE SOUZA SANT ANA",
+            "cpfMonitorXml": "213.806.028-40",
+            "dataOsXml": "2022-06-29",
+            "admissaoXml": "2020-03-02",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 512,
+            "codigoXml": "513",
+            "empregadorXml": "PL DE OLIVEIRA TRANSPORTES - ME",
+            "cpfMonitorXml": "163.818.608-12",
+            "dataOsXml": "2022-06-30",
+            "admissaoXml": "2020-12-18",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 574,
+            "codigoXml": "575",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "422.883.668-26",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-06-02",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 577,
+            "codigoXml": "578",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "431.920.428-00",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-03-12",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 578,
+            "codigoXml": "579",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "225.332.288-18",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-04-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 579,
+            "codigoXml": "580",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "092.462.188-50",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-02-23",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "startedAt": "2026-05-19T14:46:58.528Z",
+  "finishedAt": "2026-05-19T14:49:33.465Z",
+  "baseUrl": "http://localhost:3001",
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "vinculo-condutor"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "vinculo-condutor",
+      "label": "Vinculo Condutor",
+      "fileName": "Vinculos_condutor.xml",
+      "endpoint": "http://localhost:3001/api/vinculo-condutor/import-xml",
+      "startedAt": "2026-05-19T14:46:58.564Z",
+      "finishedAt": "2026-05-19T14:49:33.464Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 6467,
+        "processed": 6089,
+        "inserted": 0,
+        "updated": 6089,
+        "skipped": 0
+      },
+      "response": {
+        "message": "Importacao de vinculos do condutor concluida com sucesso.",
+        "fileName": "Vinculos_condutor.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Vinculos_condutor.xml",
+        "total": 6467,
+        "processed": 6089,
+        "inserted": 0,
+        "updated": 6089,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    }
+  ]
+}

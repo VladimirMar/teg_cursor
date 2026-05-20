@@ -13,7 +13,7 @@
 					<colgroup>
 						<col style="TEXT-ALIGN: right; WIDTH: 2.38cm"/>
 						<col style="WIDTH: 16.111cm"/>
-						<col style="TEXT-ALIGN: right; WIDTH: 3.095cm"/>
+						<col style="TEXT-ALIGN: right; WIDTH: 2.724cm"/>
 						<col style="TEXT-ALIGN: right; WIDTH: 2.328cm"/>
 						<col style="WIDTH: 3.015cm"/>
 					</colgroup>

@@ -1,3 +1,5 @@
+import { request as httpRequest } from 'node:http'
+import { request as httpsRequest } from 'node:https'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,6 +8,7 @@ const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 const importXmlDirectory = path.join(workspaceRoot, 'importXML')
 const defaultBaseUrl = 'http://localhost:3001'
 const defaultFileName = 'OrdemServico.xml'
+const requestTimeoutMs = Math.max(Number(process.env.ORDEM_SERVICO_IMPORT_TIMEOUT_MS ?? 0) || 0, 0)
 const rawArgs = process.argv.slice(2)
 
 let requestedBaseUrl = defaultBaseUrl
@@ -53,16 +56,60 @@ const payload = {
   fileName: path.basename(requestedFileName),
 }
 
-const response = await fetch(endpoint, {
-  method: 'POST',
-  headers: {
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify(payload),
+const postJson = (targetUrl, requestPayload) => new Promise((resolve, reject) => {
+  const url = new URL(targetUrl)
+  const requestBody = JSON.stringify(requestPayload)
+  const requestImpl = url.protocol === 'https:' ? httpsRequest : httpRequest
+  const request = requestImpl(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(requestBody),
+    },
+  }, (response) => {
+    let responseText = ''
+
+    response.setEncoding('utf8')
+    response.on('data', (chunk) => {
+      responseText += chunk
+    })
+    response.on('end', () => {
+      resolve({
+        ok: Number(response.statusCode ?? 500) >= 200 && Number(response.statusCode ?? 500) < 300,
+        status: Number(response.statusCode ?? 500),
+        statusText: String(response.statusMessage ?? ''),
+        bodyText: responseText,
+      })
+    })
+  })
+
+  request.on('error', reject)
+
+  if (requestTimeoutMs > 0) {
+    request.setTimeout(requestTimeoutMs, () => {
+      request.destroy(new Error(`Request timeout after ${requestTimeoutMs}ms`))
+    })
+  }
+
+  request.write(requestBody)
+  request.end()
 })
 
-const responseBody = await response.json().catch(() => null)
+const readJsonResponse = async (bodyText) => {
+  if (!bodyText) {
+    return {}
+  }
+
+  try {
+    return JSON.parse(bodyText)
+  } catch {
+    return { rawBody: bodyText }
+  }
+}
+
+const response = await postJson(endpoint, payload)
+const responseBody = await readJsonResponse(response.bodyText)
 const finishedAt = new Date().toISOString()
 
 const summary = {

@@ -5,7 +5,7 @@
 		<html>
 			<head>
 				<META HTTP-EQUIV="Content-Type" CONTENT="text/html;charset=UTF-8"/>
-				<title>OrdemServico</title>
+				<title>Credenciamento_OS</title>
 				<style type="text/css"></style>
 			</head>
 			<body link="#0c0000" vlink="#050000">
@@ -13,9 +13,7 @@
 					<colgroup>
 						<col style="TEXT-ALIGN: right; WIDTH: 2.38cm"/>
 						<col style="WIDTH: 2.38cm"/>
-						<col style="WIDTH: 4.1cm"/>
-						<col style="WIDTH: 2.38cm"/>
-						<col style="WIDTH: 4.285cm"/>
+						<col style="WIDTH: 3.28cm"/>
 						<col style="TEXT-ALIGN: right; WIDTH: 4.285cm"/>
 						<col style="WIDTH: 16.111cm"/>
 						<col style="WIDTH: 2.38cm"/>
@@ -49,16 +47,6 @@
 							<td>
 								<div align="center">
 									<strong>OS</strong>
-								</div>
-							</td>
-							<td>
-								<div align="center">
-									<strong>revisao</strong>
-								</div>
-							</td>
-							<td>
-								<div align="center">
-									<strong>OS_origem</strong>
 								</div>
 							</td>
 							<td>
@@ -149,7 +137,7 @@
 						</tr>
 					</tbody>
 					<tbody id="CTRL2">
-						<xsl:for-each select="OrdemServico">
+						<xsl:for-each select="Credenciamento_OS">
 							<!-- Cache the current node incase the a field is formatted -->
 							<xsl:value-of select="fx:CacheCurrentNode(.)"/>
 							<tr>
@@ -161,12 +149,6 @@
 								</td>
 								<td>
 									<xsl:value-of select="fx:FormatFromXSL('OS', '@', '', '', 202)"/>
-								</td>
-								<td>
-									<xsl:value-of select="revisao"/>
-								</td>
-								<td>
-									<xsl:value-of select="OS_origem"/>
 								</td>
 								<td>
 									<xsl:value-of select="fx:FormatFromXSL('Vigencia_da_OS', '', '', '', 7)"/>
@@ -772,4 +754,3 @@
 	End Function
 			]]></msxsl:script>
 </xsl:stylesheet>
-

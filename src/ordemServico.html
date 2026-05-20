@@ -837,6 +837,8 @@
       const anotacaoInput = document.getElementById('ordem-servico-anotacao');
       const codigoAccessInput = document.getElementById('ordem-servico-codigo-access');
       const situacaoRadios = Array.from(document.querySelectorAll('input[name="ordem-servico-situacao"]'));
+      const situacaoCanceladoRadio = document.getElementById('ordem-servico-situacao-cancelado');
+      const situacaoCanceladoOption = situacaoCanceladoRadio?.closest('.dsc-radio-option');
       const codigoAccessError = document.getElementById('ordem-servico-codigo-access-error');
       const termoAdesaoError = document.getElementById('ordem-servico-termo-adesao-error');
       const numOsError = document.getElementById('ordem-servico-num-os-error');
@@ -2162,6 +2164,8 @@
         });
       };
 
+      const removeSemRevisaoSuffix = (value) => String(value || '').trim().replace(/-S\/R$/i, '');
+
       const formatEmissaoDateLong = (value) => {
         const normalizedValue = normalizeEmissaoDateKey(value);
 
@@ -2651,6 +2655,7 @@
         const credenciado = String(termoItem?.credenciado || credenciadoInput.value || '').trim();
         const termoAdesao = String(termoItem?.termoAdesao || termoItem?.termo_adesao || termoAdesaoInput.value || '').trim();
         const ordemServicoLabel = buildOrdemServicoLabel();
+        const ordemServicoDocumentLabel = removeSemRevisaoSuffix(ordemServicoLabel) || ordemServicoLabel;
         const prefeituraImagem = String(parametroItem?.prefeitura_imagem || '').trim();
         const tituloEmissao = String(parametroItem?.titulo_emissao || '').trim();
         const diretorEmissao = String(parametroItem?.diretor_emissao || '').trim();
@@ -2683,7 +2688,7 @@
         const metaFields = [
           { label: 'Edital de Chamamento Publico', value: formatSummaryValue(parametroItem?.edital_chamamento_publico) },
           { label: 'Termo de Adesao ao Credenciamento', value: formatSummaryValue(termoAdesao) },
-          { label: 'N de Ordem de Servico', value: formatSummaryValue(ordemServicoLabel, 'OS em preenchimento') },
+          { label: 'N de Ordem de Servico', value: formatSummaryValue(ordemServicoDocumentLabel, 'OS em preenchimento') },
           { label: 'Diretoria Regional de Educacao (DRE)', value: formatSummaryValue(dreLabel) },
         ];
 
@@ -2708,8 +2713,8 @@
           <p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(motivoEmissao, 'Nao informado'))}</p>
         `));
 
-        lastEmissaoDocumentTitle = `Emissao ${formatSummaryValue(ordemServicoLabel, 'OS')}`;
-        lastEmissaoDocumentFileName = buildEmissaoDocumentFileName(ordemServicoLabel);
+        lastEmissaoDocumentTitle = `Emissao ${formatSummaryValue(ordemServicoDocumentLabel, 'OS')}`;
+        lastEmissaoDocumentFileName = buildEmissaoDocumentFileName(ordemServicoDocumentLabel);
         return `
           <article class="dsc-emissao-documento">
             <header class="dsc-emissao-documento-header">
@@ -3210,6 +3215,19 @@
         });
         syncDataEncerramentoState();
         syncEmissaoActionAvailability();
+        syncCanceladoOptionVisibility();
+      };
+
+      const syncCanceladoOptionVisibility = () => {
+        const shouldShowCancelado = formMode === 'view' && normalizeKey(getSelectedSituacao()) === 'cancelado';
+
+        if (situacaoCanceladoOption) {
+          situacaoCanceladoOption.classList.toggle('dsc-hidden', !shouldShowCancelado);
+        }
+
+        if (situacaoCanceladoRadio instanceof HTMLInputElement) {
+          situacaoCanceladoRadio.disabled = true;
+        }
       };
 
       const syncSituacaoRadioAvailability = ({
@@ -3217,7 +3235,7 @@
         allowRascunho = false,
         allowSubstituido = false,
         allowInativo = true,
-        allowCancelado = true,
+        allowCancelado = false,
         lockAll = false,
       } = {}) => {
         situacaoRadios.forEach((radio) => {
@@ -3255,6 +3273,8 @@
 
           radio.disabled = false;
         });
+
+        syncCanceladoOptionVisibility();
       };
 
       const readJsonResponse = async (response) => {
@@ -3736,6 +3756,7 @@
 
         updateSaveButtonAvailability();
         closeFormModalButton.disabled = false;
+        syncCanceladoOptionVisibility();
         focusFormForMode(mode);
       };
 
@@ -5456,6 +5477,7 @@
         revisaoInput.value = '-S/R';
         osConcatInput.value = buildOsConcat({ termoAdesao: termoAdesaoInput.value, numOs: numOsInput.value, revisao: revisaoInput.value });
         editingCodigo = null;
+        vigenciaOsInput.value = getCurrentDateInputValue();
         vigenciaOsInput.min = getCurrentDateInputValue();
         dataEmissaoInput.value = getCurrentDateInputValue();
         dataAdmissaoCondutorInput.max = getCurrentDateInputValue();
@@ -6445,8 +6467,8 @@
               ? 'Nova OrdemServico criada com sucesso.'
               : 'OrdemServico cadastrada com sucesso.';
 
-          const shouldGenerateEmissao = isSubstitutionRequest
-            ? window.confirm('Deseja gerar uma emissao de Documento ?')
+          const shouldGenerateEmissao = !isDraftSituacao(responsePayload?.item?.situacao || payload.situacao)
+            ? window.confirm('Deseja emitir o relatorio "Emissao DOC"?')
             : false;
 
           await loadItems();

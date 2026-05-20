@@ -420,7 +420,7 @@
 
                   <label class="dsc-field-group" for="credenciamento-termo-cnpj-cpf">
                     <span>CNPJ/CPF</span>
-                    <input class="dsc-form-control" id="credenciamento-termo-cnpj-cpf" type="text" maxlength="18" autocomplete="off" list="credenciamento-termo-cnpj-cpf-options" />
+                    <input class="dsc-form-control" id="credenciamento-termo-cnpj-cpf" type="text" inputmode="numeric" placeholder="DIGITE PARA SUGERIR CNPJ/CPF" maxlength="18" autocomplete="off" list="credenciamento-termo-cnpj-cpf-options" />
                     <datalist id="credenciamento-termo-cnpj-cpf-options"></datalist>
                     <div class="dsc-form-error" id="credenciamento-termo-cnpj-cpf-error"></div>
                   </label>
@@ -4439,6 +4439,7 @@
         resetRelatedOrdemServicoGrid();
         inheritedAditivoTermoAdesao = '';
         currentTermoTpOptante = '';
+        setDefaultCreateInicioVigenciaDate(new Date());
         applyCreateTermoDefaults();
         syncSaveButtonState();
         syncEmitDespachoRescisaoButtonState();
@@ -5127,7 +5128,7 @@
             .map((item) => {
               const cnpjCpf = String(item.cnpj_cpf || '').trim();
               const credenciado = String(item.credenciado || '').trim();
-              return `<option value="${cnpjCpf}" label="${credenciado}"></option>`;
+              return `<option value="${cnpjCpf}" label="${credenciado}">${cnpjCpf}${credenciado ? ` - ${credenciado}` : ''}</option>`;
             })
             .join('');
 
@@ -5463,7 +5464,16 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
             const responseMessage = responsePayload.message || 'Falha ao salvar o registro.';
             if (responsePayload.errors) {
               const normalizedResponseErrors = { ...responsePayload.errors };
+
+              if (isRescisao && 'tpOptante' in normalizedResponseErrors) {
+                delete normalizedResponseErrors.tpOptante;
+              }
+
               Object.entries(responsePayload.errors).forEach(([key, value]) => {
+                if (isRescisao && key === 'tpOptante') {
+                  return;
+                }
+
                 if (errors[key]) {
                   errors[key].textContent = value;
                   return;
@@ -5576,23 +5586,6 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
         clearForm();
         showForm('create');
         cnpjCpfInput.focus();
-
-        try {
-          const latestItem = await fetchLatestCredenciamentoTermoItem();
-
-          if (formMode !== 'create') {
-            return;
-          }
-
-          const nextInicioVigenciaDate = resolveNextInicioVigenciaDate(latestItem);
-          setDefaultCreateInicioVigenciaDate(nextInicioVigenciaDate);
-          applyCreateTermoDefaults(nextInicioVigenciaDate);
-        } catch {
-          if (formMode === 'create') {
-            setDefaultCreateInicioVigenciaDate(new Date());
-            applyCreateTermoDefaults();
-          }
-        }
       });
 
       cancelButton.addEventListener('click', hideForm);
@@ -5972,6 +5965,18 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
 
         cnpjCpfOptions.innerHTML = '<option value=""></option>';
         updateCredenciadaDocumentSuggestionFeedback([]);
+      });
+
+      cnpjCpfInput.addEventListener('focus', () => {
+        if (formMode !== 'create') {
+          return;
+        }
+
+        const documentDigitsLength = getDocumentDigits(cnpjCpfInput.value).length;
+
+        if (documentDigitsLength >= 3) {
+          void populateCredenciadaDocumentOptions(cnpjCpfInput.value);
+        }
       });
 
       cnpjCpfInput.addEventListener('blur', () => {

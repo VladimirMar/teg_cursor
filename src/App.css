@@ -2099,6 +2099,53 @@ body.management-modal-open {
   font-size: 0.95rem;
 }
 
+.xml-import-all-detail-layout {
+  display: grid;
+  gap: 14px;
+}
+
+.xml-import-all-tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.xml-import-all-tab-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 220px;
+}
+
+.xml-import-all-tab-button-active {
+  background: linear-gradient(135deg, rgba(24, 58, 81, 0.16), rgba(16, 45, 38, 0.14));
+  color: #163949;
+  box-shadow: inset 0 0 0 1px rgba(24, 58, 81, 0.18);
+}
+
+.xml-import-all-step-panel {
+  gap: 16px;
+}
+
+.xml-import-all-meta-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.xml-import-all-reason-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(117, 141, 138, 0.18);
+  background: rgba(248, 244, 238, 0.92);
+}
+
+.xml-import-all-reason-card p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
 .smoke-skipped-list {
   display: grid;
   gap: 8px;

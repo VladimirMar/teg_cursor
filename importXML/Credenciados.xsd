@@ -14,7 +14,7 @@
 <od:index index-name="CPF_representante" index-key="CPF_representante " primary="no" unique="no" clustered="no" order="asc"/>
 <od:index index-name="PrimaryKey" index-key="CNPJ_CPF " primary="yes" unique="yes" clustered="no" order="asc"/>
 <od:tableProperty name="Orientation" type="2" value="0"/>
-<od:tableProperty name="OrderByOn" type="1" value="1"/>
+<od:tableProperty name="OrderByOn" type="1" value="0"/>
 <od:tableProperty name="NameMap" type="11" value="CswOVQAAAADaDrSxRmjGS5HAgLLD0RdmAAAAANmgpu+O7eVA+JebAkyhdQBDAHIA
 ZQBkAGUAbgBjAGkAYQBkAG8AcwAAAAAAAAD9lb3psMo3RojecQ105wOMBwAAANoO
 tLFGaMZLkcCAssPRF2ZDAHIAZQBkAGUAbgBjAGkAYQBkAG8AAAAAAAAABQ3sZofo
@@ -46,8 +46,15 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:tableProperty name="HideNewField" type="1" value="0"/>
 <od:tableProperty name="GUID" type="9" value="2g60sUZoxkuRwICyw9EXZg==
 "/>
-<od:tableProperty name="OrderBy" type="12" value="[Credenciados].[Credenciado]"/>
-<od:tableProperty name="Filter" type="12" value="([Credenciados].[Credenciado] Like &quot;*COOTRELUZ*&quot;)"/>
+<od:tableProperty name="BackTint" type="6" value="100"/>
+<od:tableProperty name="BackShade" type="6" value="100"/>
+<od:tableProperty name="ThemeFontIndex" type="4" value="-1"/>
+<od:tableProperty name="AlternateBackThemeColorIndex" type="4" value="-1"/>
+<od:tableProperty name="AlternateBackTint" type="6" value="100"/>
+<od:tableProperty name="AlternateBackShade" type="6" value="100"/>
+<od:tableProperty name="DatasheetGridlinesThemeColorIndex" type="4" value="-1"/>
+<od:tableProperty name="DatasheetForeThemeColorIndex" type="4" value="-1"/>
+<od:tableProperty name="PublishToWeb" type="2" value="1"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:complexType>
@@ -56,12 +63,14 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <xsd:annotation>
 <xsd:appinfo>
 <od:fieldProperty name="ColumnWidth" type="3" value="1065"/>
-<od:fieldProperty name="ColumnOrder" type="3" value="1"/>
+<od:fieldProperty name="ColumnOrder" type="3" value="0"/>
 <od:fieldProperty name="ColumnHidden" type="1" value="0"/>
 <od:fieldProperty name="TextAlign" type="2" value="0"/>
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="mbNCVcK7rkiMGZaxI+qpgA==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 </xsd:element>
@@ -81,6 +90,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="/ZW96bDKN0aI3nENdOcDjA==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -89,13 +100,13 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 </xsd:restriction>
 </xsd:simpleType>
 </xsd:element>
-<xsd:element name="CNPJ_CPF" minOccurs="0" od:jetType="text" od:sqlSType="nvarchar">
+<xsd:element name="CNPJ_CPF" minOccurs="1" od:jetType="text" od:sqlSType="nvarchar" od:nonNullable="yes">
 <xsd:annotation>
 <xsd:appinfo>
 <od:fieldProperty name="ColumnWidth" type="3" value="1890"/>
 <od:fieldProperty name="ColumnOrder" type="3" value="0"/>
 <od:fieldProperty name="ColumnHidden" type="1" value="0"/>
-<od:fieldProperty name="Required" type="1" value="0"/>
+<od:fieldProperty name="Required" type="1" value="1"/>
 <od:fieldProperty name="AllowZeroLength" type="1" value="1"/>
 <od:fieldProperty name="DisplayControl" type="3" value="109"/>
 <od:fieldProperty name="IMEMode" type="2" value="0"/>
@@ -105,6 +116,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="KR4LM3dOl0asw3z+abA0Jg==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -129,6 +142,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="elNjzSITd0muVQI1STivcQ==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -153,6 +168,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="+ieLShZruEeBp50OsvDcBg==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -178,6 +195,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="EnYQlrGWeU+Qt+ykkXTSrg==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -202,6 +221,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="JopLRzsrg0uWuXD5igJPJw==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -226,6 +247,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="UYQXVJrnpEWnQph0aVVkSQ==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -250,6 +273,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="dtJWnMEm7EyiUFeS3fdjqQ==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -274,6 +299,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="Lb8v87AVP02hnzoKNb5QEQ==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -298,6 +325,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="f9YNUNHvM0CT2JoO8/KpOA==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -323,30 +352,8 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="iUVZ58UVF06tftRr6MNY3Q==
 "/>
-</xsd:appinfo>
-</xsd:annotation>
-<xsd:simpleType>
-<xsd:restriction base="xsd:string">
-<xsd:maxLength value="255"/>
-</xsd:restriction>
-</xsd:simpleType>
-</xsd:element>
-<xsd:element name="RG_representante" minOccurs="0" od:jetType="text" od:sqlSType="nvarchar">
-<xsd:annotation>
-<xsd:appinfo>
-<od:fieldProperty name="ColumnWidth" type="3" value="-1"/>
-<od:fieldProperty name="ColumnOrder" type="3" value="0"/>
-<od:fieldProperty name="ColumnHidden" type="1" value="0"/>
-<od:fieldProperty name="Required" type="1" value="0"/>
-<od:fieldProperty name="AllowZeroLength" type="1" value="1"/>
-<od:fieldProperty name="DisplayControl" type="3" value="109"/>
-<od:fieldProperty name="IMEMode" type="2" value="0"/>
-<od:fieldProperty name="IMESentenceMode" type="2" value="3"/>
-<od:fieldProperty name="UnicodeCompression" type="1" value="1"/>
-<od:fieldProperty name="TextAlign" type="2" value="0"/>
-<od:fieldProperty name="AggregateType" type="4" value="-1"/>
-<od:fieldProperty name="GUID" type="9" value="qif+LuGSdUewIuTYntPknA==
-"/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
@@ -371,6 +378,32 @@ AAAAAAAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAAAAAAAAA=
 <od:fieldProperty name="AggregateType" type="4" value="-1"/>
 <od:fieldProperty name="GUID" type="9" value="IQ54Bf1VYUyE4C2FojBbsQ==
 "/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
+</xsd:appinfo>
+</xsd:annotation>
+<xsd:simpleType>
+<xsd:restriction base="xsd:string">
+<xsd:maxLength value="255"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+<xsd:element name="TP" minOccurs="0" od:jetType="text" od:sqlSType="nvarchar">
+<xsd:annotation>
+<xsd:appinfo>
+<od:fieldProperty name="ColumnWidth" type="3" value="2670"/>
+<od:fieldProperty name="ColumnOrder" type="3" value="0"/>
+<od:fieldProperty name="ColumnHidden" type="1" value="0"/>
+<od:fieldProperty name="Required" type="1" value="0"/>
+<od:fieldProperty name="AllowZeroLength" type="1" value="1"/>
+<od:fieldProperty name="DisplayControl" type="3" value="109"/>
+<od:fieldProperty name="IMEMode" type="2" value="0"/>
+<od:fieldProperty name="IMESentenceMode" type="2" value="3"/>
+<od:fieldProperty name="UnicodeCompression" type="1" value="1"/>
+<od:fieldProperty name="TextAlign" type="2" value="0"/>
+<od:fieldProperty name="AggregateType" type="4" value="-1"/>
+<od:fieldProperty name="ResultType" type="2" value="0"/>
+<od:fieldProperty name="CurrencyLCID" type="4" value="0"/>
 </xsd:appinfo>
 </xsd:annotation>
 <xsd:simpleType>
