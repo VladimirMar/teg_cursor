@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { access, readFile, readdir } from 'node:fs/promises'
+import { access, appendFile, mkdir, readFile, readdir } from 'node:fs/promises'
 import { XMLParser } from 'fast-xml-parser'
 import JSZip from 'jszip'
 import path from 'node:path'
@@ -22,8 +22,36 @@ const xmlParser = new XMLParser({
 })
 const smokeRunPath = '/api/smoke/run'
 const xmlImportAllRunPath = '/api/xml-import-all/run'
+const xmlImportAllStatusPath = '/api/xml-import-all/status'
+const xmlImportAllResetPath = '/api/xml-import-all/reset'
 const allowedSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo', 'marca-modelo'])
 const invalidFixtureSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo'])
+
+const resolveXmlImportProgressFilePath = (filePath) => {
+  const normalizedValue = String(filePath ?? '').trim()
+
+  if (!normalizedValue) {
+    return ''
+  }
+
+  const resolvedPath = path.resolve(normalizedValue)
+  return resolvedPath.startsWith(workspaceRoot) ? resolvedPath : ''
+}
+
+const appendXmlImportProgress = async (progressFilePath, stepLabel, current, total, detail = '') => {
+  const resolvedPath = resolveXmlImportProgressFilePath(progressFilePath)
+
+  if (!resolvedPath) {
+    return
+  }
+
+  const normalizedStepLabel = String(stepLabel ?? 'Importacao XML').trim() || 'Importacao XML'
+  const normalizedDetail = String(detail ?? '').trim()
+  const progressLine = `[${new Date().toISOString()}] ${normalizedStepLabel}: registro ${current}/${total}${normalizedDetail ? ` - ${normalizedDetail}` : ''}\n`
+
+  await mkdir(path.dirname(resolvedPath), { recursive: true })
+  await appendFile(resolvedPath, progressLine, 'utf8')
+}
 
 const truncateCommandOutput = (value, maxLength = 12000) => {
   const normalizedValue = String(value ?? '')
@@ -178,6 +206,266 @@ const runXmlImportAllCommand = async () => {
     stdoutTail: importResult.stdoutTail,
     stderrTail: importResult.stderrTail,
   }
+}
+
+const resetXmlImportBatchTables = async () => {
+  const client = await pool.connect()
+  const tablesToTruncate = [
+    'apuracao_servicos',
+    ordemServicoHistoricoTableName,
+    termoHistoricoTableName,
+    ordemServicoImportRecusaTableName,
+    credenciamentoTermoImportRecusaTableName,
+    vinculoCondutorImportRecusaTableName,
+    vinculoMonitorImportRecusaTableName,
+    'condutor_import_recusa',
+    'monitor_import_recusa',
+    'veiculo_import_recusa',
+    'credenciada_import_recusa',
+    cepImportRecusaTableName,
+    ordemServicoTableName,
+    vinculoCondutorTableName,
+    vinculoMonitorTableName,
+    credenciamentoTermoTableName,
+    'veiculo',
+    'monitor',
+    'condutor',
+    credenciadaTableName,
+    cepTableName,
+    'marca_modelo',
+  ]
+
+  try {
+    await client.query('BEGIN')
+    await client.query(`TRUNCATE TABLE ${tablesToTruncate.join(', ')} RESTART IDENTITY`)
+    await client.query('COMMIT')
+
+    return {
+      truncated: true,
+      tableCount: tablesToTruncate.length,
+      tables: tablesToTruncate,
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+let xmlImportAllExecution = null
+
+const parseXmlImportAllProgressLog = (logContent) => {
+  const lines = String(logContent ?? '').split(/\r?\n/).filter(Boolean)
+  const startedFileByStep = new Map()
+  let latestStartedStep = ''
+  let latestStartedFileName = ''
+  let latestProgress = null
+
+  for (const line of lines) {
+    const startedMatch = line.match(/\[xml-import-all\] (.+?): iniciando importacao de (.+)$/)
+
+    if (startedMatch) {
+      latestStartedStep = startedMatch[1]?.trim() ?? ''
+      latestStartedFileName = startedMatch[2]?.trim() ?? ''
+
+      if (latestStartedStep) {
+        startedFileByStep.set(latestStartedStep, latestStartedFileName)
+      }
+
+      continue
+    }
+
+    const progressMatch = line.match(/\] (.+?): registro (\d+)\/(\d+)(?: - (.+))?$/)
+
+    if (!progressMatch) {
+      continue
+    }
+
+    latestProgress = {
+      stepLabel: progressMatch[1]?.trim() ?? '',
+      currentRecord: Number(progressMatch[2] ?? 0) || 0,
+      totalRecords: Number(progressMatch[3] ?? 0) || 0,
+      detail: progressMatch[4]?.trim() ?? '',
+    }
+  }
+
+  if (latestProgress) {
+    const currentFileName = startedFileByStep.get(latestProgress.stepLabel) ?? ''
+
+    return {
+      stepLabel: latestProgress.stepLabel,
+      fileName: currentFileName,
+      currentRecord: latestProgress.currentRecord,
+      totalRecords: latestProgress.totalRecords,
+      progressText: latestProgress.currentRecord > 0 && latestProgress.totalRecords > 0
+        ? `${latestProgress.currentRecord}/${latestProgress.totalRecords}`
+        : '',
+      detail: latestProgress.detail,
+    }
+  }
+
+  return {
+    stepLabel: latestStartedStep,
+    fileName: latestStartedFileName,
+    currentRecord: null,
+    totalRecords: null,
+    progressText: '',
+    detail: '',
+  }
+}
+
+const buildXmlImportAllExecutionResponse = async () => {
+  if (!xmlImportAllExecution) {
+    return {
+      message: 'Nenhuma importacao XML em lote em execucao.',
+      scriptName: 'import:xml:all',
+      status: 'idle',
+      exitCode: null,
+      reportPath: '',
+      logPath: '',
+      report: null,
+      stdoutTail: '',
+      stderrTail: '',
+      logTail: '',
+      isRunning: false,
+      startedAt: '',
+      finishedAt: '',
+      currentStepLabel: '',
+      currentFileName: '',
+      currentRecord: null,
+      totalRecords: null,
+      currentProgressText: '',
+      progressDetail: '',
+    }
+  }
+
+  let logContent = ''
+
+  if (xmlImportAllExecution.logPath) {
+    try {
+      logContent = await readFile(xmlImportAllExecution.logPath, 'utf8')
+    } catch {
+      logContent = ''
+    }
+  }
+
+  const parsedProgress = parseXmlImportAllProgressLog(logContent)
+  const status = xmlImportAllExecution.running
+    ? 'running'
+    : (xmlImportAllExecution.exitCode === 0 ? 'passed' : 'failed')
+
+  return {
+    message: xmlImportAllExecution.running
+      ? 'Importacao XML consolidada em execucao.'
+      : (xmlImportAllExecution.exitCode === 0
+        ? 'Importacao XML consolidada executada com sucesso.'
+        : 'Importacao XML consolidada finalizada com falhas.'),
+    scriptName: xmlImportAllExecution.scriptName,
+    status,
+    exitCode: xmlImportAllExecution.running ? null : xmlImportAllExecution.exitCode,
+    reportPath: xmlImportAllExecution.reportPath,
+    logPath: xmlImportAllExecution.logPath,
+    report: xmlImportAllExecution.report,
+    stdoutTail: truncateCommandOutput(xmlImportAllExecution.stdout),
+    stderrTail: truncateCommandOutput(xmlImportAllExecution.stderr),
+    logTail: truncateCommandOutput(logContent),
+    isRunning: xmlImportAllExecution.running,
+    startedAt: xmlImportAllExecution.startedAt,
+    finishedAt: xmlImportAllExecution.finishedAt,
+    currentStepLabel: parsedProgress.stepLabel,
+    currentFileName: parsedProgress.fileName,
+    currentRecord: parsedProgress.currentRecord,
+    totalRecords: parsedProgress.totalRecords,
+    currentProgressText: parsedProgress.progressText,
+    progressDetail: parsedProgress.detail,
+  }
+}
+
+const startXmlImportAllExecution = async () => {
+  if (xmlImportAllExecution?.running) {
+    return buildXmlImportAllExecutionResponse()
+  }
+
+  const reportFilePath = path.join(workspaceRoot, '.artifacts', `xml-import-all-ui-report-${Date.now()}-${randomBytes(4).toString('hex')}.json`)
+  const logFilePath = path.join(importXmlDirectory, `xml-import-all-ui-log-${Date.now()}-${randomBytes(4).toString('hex')}.log`)
+  const command = process.platform === 'win32'
+    ? (process.env.ComSpec ?? 'cmd.exe')
+    : 'npm'
+  const commandArgs = process.platform === 'win32'
+    ? ['/d', '/s', '/c', 'npm run import:xml:all']
+    : ['run', 'import:xml:all']
+
+  const child = spawn(command, commandArgs, {
+    cwd: workspaceRoot,
+    env: {
+      ...process.env,
+      API_BASE_URL: process.env.API_BASE_URL ?? `http://localhost:${port}`,
+      PORT: String(port),
+      XML_IMPORT_ALL_REPORT_PATH: reportFilePath,
+      XML_IMPORT_ALL_LOG_PATH: logFilePath,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+
+  xmlImportAllExecution = {
+    scriptName: 'import:xml:all',
+    startedAt: new Date().toISOString(),
+    finishedAt: '',
+    running: true,
+    exitCode: null,
+    reportPath: reportFilePath,
+    logPath: logFilePath,
+    report: null,
+    stdout: '',
+    stderr: '',
+  }
+
+  child.stdout.on('data', (chunk) => {
+    if (!xmlImportAllExecution) {
+      return
+    }
+
+    xmlImportAllExecution.stdout += chunk.toString()
+  })
+
+  child.stderr.on('data', (chunk) => {
+    if (!xmlImportAllExecution) {
+      return
+    }
+
+    xmlImportAllExecution.stderr += chunk.toString()
+  })
+
+  child.on('error', (error) => {
+    if (!xmlImportAllExecution) {
+      return
+    }
+
+    xmlImportAllExecution.running = false
+    xmlImportAllExecution.exitCode = 1
+    xmlImportAllExecution.finishedAt = new Date().toISOString()
+    xmlImportAllExecution.stderr += `\n${error instanceof Error ? error.message : String(error)}`
+  })
+
+  child.on('close', async (exitCode) => {
+    if (!xmlImportAllExecution) {
+      return
+    }
+
+    xmlImportAllExecution.running = false
+    xmlImportAllExecution.exitCode = exitCode ?? 1
+    xmlImportAllExecution.finishedAt = new Date().toISOString()
+
+    try {
+      const reportContent = await readFile(reportFilePath, 'utf8')
+      xmlImportAllExecution.report = JSON.parse(reportContent)
+    } catch {
+      xmlImportAllExecution.report = null
+    }
+  })
+
+  return buildXmlImportAllExecutionResponse()
 }
 
 const pool = new Pool({
@@ -1666,6 +1954,7 @@ const apontamentoServicosImportMainOsColumnIndex = XLSX.utils.decode_col('B')
 const apontamentoServicosImportMainPeriodStartColumnIndex = XLSX.utils.decode_col('F')
 const apontamentoServicosImportMainPeriodEndColumnIndex = XLSX.utils.decode_col('G')
 const apontamentoServicosImportMainTipoEscolaColumnIndex = XLSX.utils.decode_col('K')
+const apontamentoServicosImportMainKmColumnIndex = XLSX.utils.decode_col('N')
 const apontamentoServicosImportMainMetricsStartColumnIndex = XLSX.utils.decode_col('Q')
 const apontamentoServicosImportContinuaMetricsStartColumnIndex = XLSX.utils.decode_col('L')
 const apontamentoServicosImportDayCount = 30
@@ -1832,10 +2121,26 @@ const fileExists = async (targetPath) => {
   }
 }
 
-const resolveApontamentoServicosImportFilePaths = async ({ directoryPath, fileName }) => {
+const resolveApontamentoServicosImportFilePaths = async ({ directoryPath, fileName, filePath }) => {
   const normalizedDirectoryPath = normalizeRequestValue(directoryPath)
   const normalizedFileName = normalizeRequestValue(fileName)
+  const normalizedFilePath = normalizeRequestValue(filePath)
   const resolvedDirectoryPath = normalizedDirectoryPath || apontamentoServicosImportDefaultDirectoryPath
+
+  if (normalizedFilePath) {
+    const resolvedFilePath = path.isAbsolute(normalizedFilePath)
+      ? normalizedFilePath
+      : path.join(resolvedDirectoryPath, path.basename(normalizedFilePath))
+
+    if (!await fileExists(resolvedFilePath)) {
+      throw createHttpError(404, `Nao foi possivel localizar a planilha informada: ${resolvedFilePath}.`)
+    }
+
+    return {
+      directoryPath: path.dirname(resolvedFilePath),
+      filePaths: [resolvedFilePath],
+    }
+  }
 
   if (normalizedFileName) {
     const resolvedFilePath = path.isAbsolute(normalizedFileName)
@@ -2023,7 +2328,12 @@ const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, p
         ac_cad = EXCLUDED.ac_cad,
         cont_nc = EXCLUDED.cont_nc,
         cont_cad = EXCLUDED.cont_cad,
-        km = ${preserveExistingKilometragem ? 'apuracao_servicos.km' : 'EXCLUDED.km'},
+        km = ${preserveExistingKilometragem
+          ? `CASE
+              WHEN COALESCE(apuracao_servicos.km, 0) > 0 THEN apuracao_servicos.km
+              ELSE EXCLUDED.km
+            END`
+          : 'EXCLUDED.km'},
         data_alteracao = NOW()`,
       [
         mesAno,
@@ -2136,6 +2446,9 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
 
     const periodoInicio = getWorkbookCellDateValue(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainPeriodStartColumnIndex, rowNumber))
     const periodoFim = getWorkbookCellDateValue(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainPeriodEndColumnIndex, rowNumber))
+    const kmAdicionalPrimeiroDia = normalizeApontamentoServicosKm(
+      getWorkbookCell(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainKmColumnIndex, rowNumber))?.v,
+    )
 
     for (let dayIndex = 0; dayIndex < apontamentoServicosImportDayCount; dayIndex += 1) {
       const dayNumber = dayIndex + 1
@@ -2158,6 +2471,7 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
         atendimentoComplementarCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn + 3, rowNumber))?.v),
         continuaNaoCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(continuaSheet, buildWorksheetCellAddress(continuaMetricsBaseColumn, rowNumber))?.v),
         continuaCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(continuaSheet, buildWorksheetCellAddress(continuaMetricsBaseColumn + 1, rowNumber))?.v),
+        kilometragem: dayIndex === 0 ? kmAdicionalPrimeiroDia : 0,
       }
       const dateEntryMap = importedItemsByDate.get(dataReferencia) ?? new Map()
       const compositeKey = [dreRecord.codigo, ordemServicoItem.codigo, 0, tipoEscolaItem.codigo, tipoPessoa].join('|')
@@ -2182,6 +2496,9 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
       currentItem.atendimentoComplementarCadeirante += metrics.atendimentoComplementarCadeirante
       currentItem.continuaNaoCadeirante += metrics.continuaNaoCadeirante
       currentItem.continuaCadeirante += metrics.continuaCadeirante
+      currentItem.kilometragem = normalizeApontamentoServicosKm(
+        Number(currentItem.kilometragem) + metrics.kilometragem,
+      ).toFixed(4)
 
       dateEntryMap.set(compositeKey, currentItem)
       importedItemsByDate.set(dataReferencia, dateEntryMap)
@@ -5722,28 +6039,30 @@ const upsertImportedVeiculoByCodigo = async (executor, targetCodigo, payload) =>
   await executor.query(
     `UPDATE veiculo
      SET codigo = $1,
-         crm = NULLIF($2, ''),
-         placas = NULLIF($3, ''),
-         ano = $4,
-         cap_detran = $5,
-         cap_teg = $6,
-         cap_teg_creche = $7,
-         cap_acessivel = $8,
-         val_crm = NULLIF($9, '')::date,
-         seguradora = NULLIF($10, ''),
-         seguro_inicio = NULLIF($11, '')::date,
-         seguro_termino = NULLIF($12, '')::date,
-         tipo_de_bancada = NULLIF($13, ''),
-         tipo_de_veiculo = NULLIF($14, ''),
-         marca_modelo = NULLIF($15, ''),
-         titular = NULLIF($16, ''),
-         cnpj_cpf = NULLIF($17, ''),
-         valor_veiculo = $18,
-         os_especial = NULLIF($19, ''),
+         codigo_xml = $2,
+         crm = NULLIF($3, ''),
+         placas = NULLIF($4, ''),
+         ano = $5,
+         cap_detran = $6,
+         cap_teg = $7,
+         cap_teg_creche = $8,
+         cap_acessivel = $9,
+         val_crm = NULLIF($10, '')::date,
+         seguradora = NULLIF($11, ''),
+         seguro_inicio = NULLIF($12, '')::date,
+         seguro_termino = NULLIF($13, '')::date,
+         tipo_de_bancada = NULLIF($14, ''),
+         tipo_de_veiculo = NULLIF($15, ''),
+         marca_modelo = NULLIF($16, ''),
+         titular = NULLIF($17, ''),
+         cnpj_cpf = NULLIF($18, ''),
+         valor_veiculo = $19,
+         os_especial = NULLIF($20, ''),
          data_modificacao = NOW()
-     WHERE codigo = $20`,
+     WHERE codigo = $21`,
     [
       payload.codigo,
+      String(payload.codigo),
       payload.crm,
       payload.placas,
       payload.ano,
@@ -6224,10 +6543,6 @@ const normalizeImportedVeiculoRecord = (record, index) => {
 
   if (seguroInicio && seguroTermino && seguroTermino < seguroInicio) {
     throw new Error(`${itemLabel}: termino do seguro deve ser maior ou igual ao inicio no XML.`)
-  }
-
-  if (!tipoDeBancada) {
-    throw new Error(`${itemLabel}: tipo de bancada invalido no XML.`)
   }
 
   if (tipoDeVeiculo === null) {
@@ -6886,7 +7201,7 @@ const normalizeImportedMarcaModeloRecord = (record, index) => {
   }
 }
 
-const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_XML' } = {}) => {
+const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_XML', deleteMissing = false, progressFilePath = '' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -6914,6 +7229,8 @@ const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_
   const skippedRecords = []
 
   for (const [index, record] of parsedRecords.entries()) {
+    await appendXmlImportProgress(progressFilePath, 'OrdemServico', index + 1, parsedRecords.length, normalizeRequestValue(record.codigoAccess))
+
     try {
       await ensureDreOperationalEntry({
         codigo: record.dreCodigo,
@@ -6975,6 +7292,45 @@ const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_
     await client.query(`TRUNCATE TABLE ${ordemServicoImportRecusaTableName} RESTART IDENTITY`)
     let inserted = 0
     let updated = 0
+    let deleted = 0
+
+    if (deleteMissing) {
+      const importedCodigoAccess = Array.from(new Set(normalizedRecords
+        .map((record) => normalizeRequestValue(record.codigoAccess))
+        .filter(Boolean)))
+
+      if (importedCodigoAccess.length > 0) {
+        const deletedCodigoRows = await client.query(
+          `SELECT codigo
+             FROM ${ordemServicoTableName}
+            WHERE COALESCE(BTRIM(codigo_access), '') <> ''
+              AND NOT (BTRIM(codigo_access) = ANY($1::text[]))`,
+          [importedCodigoAccess],
+        )
+        const deletedCodigos = deletedCodigoRows.rows
+          .map((row) => Number(row.codigo || 0))
+          .filter((codigo) => codigo > 0)
+
+        if (deletedCodigos.length > 0) {
+          const deletedItems = await listOrdemServicoItemsByCodigos(client, deletedCodigos)
+
+          for (const deletedItem of deletedItems) {
+            await insertOrdemServicoHistoricoEntry(client, deletedItem, {
+              acao: 'IMPORTACAO_XML_EXCLUSAO',
+              realizadoPor,
+            })
+          }
+
+          const deleteResult = await client.query(
+            `DELETE FROM ${ordemServicoTableName}
+              WHERE COALESCE(BTRIM(codigo_access), '') <> ''
+                AND NOT (BTRIM(codigo_access) = ANY($1::text[]))`,
+            [importedCodigoAccess],
+          )
+          deleted = deleteResult.rowCount ?? 0
+        }
+      }
+    }
 
     for (const skippedRecord of skippedRecords) {
       await client.query(
@@ -7184,6 +7540,7 @@ const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_
       processed: inserted + updated,
       inserted,
       updated,
+      deleted,
       skipped: skippedRecords.length,
       skippedRecords: skippedRecords.slice(0, 20),
     }
@@ -7197,6 +7554,7 @@ const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_
 
 const condutorSelectClause = `
   codigo::text AS codigo,
+  COALESCE(BTRIM(codigo_xml), '') AS codigo_xml,
   BTRIM(condutor) AS condutor,
   BTRIM(cpf_condutor) AS cpf_condutor,
   BTRIM(crmc) AS crmc,
@@ -7221,6 +7579,7 @@ const condutorImportRecusaSelectClause = `
 
 const monitorSelectClause = `
   codigo::text AS codigo,
+  COALESCE(BTRIM(codigo_xml), '') AS codigo_xml,
   BTRIM(monitor) AS monitor,
   BTRIM(cpf_monitor) AS cpf_monitor,
   TO_CHAR(curso_monitor::date, 'YYYY-MM-DD') AS curso_monitor,
@@ -7266,6 +7625,7 @@ const cepImportRecusaSelectClause = `
 
 const veiculoSelectClause = `
   codigo::text AS codigo,
+  COALESCE(BTRIM(codigo_xml), '') AS codigo_xml,
   COALESCE(BTRIM(crm), '') AS crm,
   COALESCE(BTRIM(placas), '') AS placas,
   COALESCE(ano::text, '') AS ano,
@@ -7289,6 +7649,7 @@ const veiculoSelectClause = `
 
 const veiculoAuditSelectClause = `
   codigo,
+  COALESCE(BTRIM(codigo_xml), '') AS codigo_xml,
   COALESCE(BTRIM(crm), '') AS crm,
   COALESCE(BTRIM(placas), '') AS placas,
   ano,
@@ -7360,6 +7721,7 @@ const titularUniqueIndexName = '"titularCrm_codigo_unique_idx"'
 
 const credenciadaSelectClause = `
   codigo::text AS codigo,
+  COALESCE(BTRIM(codigo_xml), '') AS codigo_xml,
   BTRIM(credenciado) AS credenciado,
   COALESCE(BTRIM(tipo_pessoa), '') AS tipo_pessoa,
   COALESCE(BTRIM(tp_optante), '') AS tp_optante,
@@ -8157,9 +8519,12 @@ const syncCondutorVinculosFromOrdemServico = async (executor, scope = null) => {
   const deleteParams = []
   const insertParams = [ordemServicoSemRevisaoLabel]
   let deleteWhereClause = `
-     WHERE COALESCE(BTRIM(termo_adesao), '') <> ''
-        OR COALESCE(BTRIM(num_os), '') <> ''
-        OR COALESCE(BTRIM(revisao), '') <> ''`
+     WHERE (
+       COALESCE(BTRIM(termo_adesao), '') <> ''
+       OR COALESCE(BTRIM(num_os), '') <> ''
+       OR COALESCE(BTRIM(revisao), '') <> ''
+     )
+       AND codigo_xml IS NULL`
   let insertWhereClause = `
      WHERE COALESCE(BTRIM(os.termo_adesao), '') <> ''
        AND COALESCE(BTRIM(os.num_os), '') <> ''
@@ -8174,7 +8539,8 @@ const syncCondutorVinculosFromOrdemServico = async (executor, scope = null) => {
     deleteParams.push(ordemServicoSemRevisaoLabel, ...deleteCondition.params)
     insertParams.push(...insertCondition.params)
     deleteWhereClause = `
-     WHERE ${deleteCondition.condition}`
+      WHERE ${deleteCondition.condition}
+       AND vc.codigo_xml IS NULL`
     insertWhereClause += `
        AND (${insertCondition.condition})`
   }
@@ -8216,9 +8582,12 @@ const syncMonitorVinculosFromOrdemServico = async (executor, scope = null) => {
   const deleteParams = []
   const insertParams = [ordemServicoSemRevisaoLabel]
   let deleteWhereClause = `
-     WHERE COALESCE(BTRIM(termo_adesao), '') <> ''
-        OR COALESCE(BTRIM(num_os), '') <> ''
-        OR COALESCE(BTRIM(revisao), '') <> ''`
+     WHERE (
+       COALESCE(BTRIM(termo_adesao), '') <> ''
+       OR COALESCE(BTRIM(num_os), '') <> ''
+       OR COALESCE(BTRIM(revisao), '') <> ''
+     )
+       AND codigo_xml IS NULL`
   let insertWhereClause = `
      WHERE COALESCE(BTRIM(os.termo_adesao), '') <> ''
        AND COALESCE(BTRIM(os.num_os), '') <> ''
@@ -8233,7 +8602,8 @@ const syncMonitorVinculosFromOrdemServico = async (executor, scope = null) => {
     deleteParams.push(ordemServicoSemRevisaoLabel, ...deleteCondition.params)
     insertParams.push(...insertCondition.params)
     deleteWhereClause = `
-     WHERE ${deleteCondition.condition}`
+      WHERE ${deleteCondition.condition}
+       AND vm.codigo_xml IS NULL`
     insertWhereClause += `
        AND (${insertCondition.condition})`
   }
@@ -8300,7 +8670,7 @@ const seguradoraSelectClause = `
   TO_CHAR(data_inclusao, 'YYYY-MM-DD HH24:MI:SS') AS data_inclusao,
   TO_CHAR(data_modificacao, 'YYYY-MM-DD HH24:MI:SS') AS data_modificacao`
 
-const importCondutorXmlFile = async (fileName) => {
+const importCondutorXmlFile = async (fileName, { deleteMissing = false, progressFilePath = '' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -8327,7 +8697,9 @@ const importCondutorXmlFile = async (fileName) => {
   const normalizedRecords = []
   const skippedRecords = []
 
-  parsedRecords.forEach((record, index) => {
+  for (const [index, record] of parsedRecords.entries()) {
+    await appendXmlImportProgress(progressFilePath, 'Condutor', index + 1, parsedRecords.length, normalizeRequestValue(record.codigo))
+
     try {
       normalizedRecords.push(normalizeImportedCondutorRecord(record, index))
     } catch (error) {
@@ -8341,7 +8713,7 @@ const importCondutorXmlFile = async (fileName) => {
         message: error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`,
       })
     }
-  })
+  }
 
   const client = await pool.connect()
 
@@ -8350,6 +8722,18 @@ const importCondutorXmlFile = async (fileName) => {
     await client.query('TRUNCATE TABLE condutor_import_recusa RESTART IDENTITY')
     let inserted = 0
     let updated = 0
+    let deleted = 0
+    const importedCodigoXmlSet = new Set(normalizedRecords.map((record) => String(record.codigo)).filter(Boolean))
+
+    if (deleteMissing && importedCodigoXmlSet.size > 0) {
+      const deleteResult = await client.query(
+        `DELETE FROM condutor
+          WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+            AND NOT (BTRIM(codigo_xml) = ANY($1::text[]))`,
+        [Array.from(importedCodigoXmlSet)],
+      )
+      deleted = deleteResult.rowCount ?? 0
+    }
 
     for (const skippedRecord of skippedRecords) {
       await client.query(
@@ -8428,16 +8812,18 @@ const importCondutorXmlFile = async (fileName) => {
       if (targetCodigo > 0) {
         await client.query(
           `UPDATE condutor
-           SET condutor = $1,
-               cpf_condutor = $2,
-               crmc = $3,
-                validade_crmc = NULLIF($4, '')::date,
-               validade_curso = NULLIF($5, '')::date,
-               tipo_vinculo = NULLIF($6, ''),
-               historico = NULLIF($7, ''),
+           SET codigo_xml = $1,
+               condutor = $2,
+               cpf_condutor = $3,
+               crmc = $4,
+                validade_crmc = NULLIF($5, '')::date,
+               validade_curso = NULLIF($6, '')::date,
+               tipo_vinculo = NULLIF($7, ''),
+               historico = NULLIF($8, ''),
                data_modificacao = NOW()
-           WHERE codigo = $8`,
+           WHERE codigo = $9`,
           [
+            String(record.codigo),
             record.condutor,
             record.cpfCondutor,
             record.crmc,
@@ -8455,6 +8841,7 @@ const importCondutorXmlFile = async (fileName) => {
       await client.query(
         `INSERT INTO condutor (
            codigo,
+           codigo_xml,
            condutor,
            cpf_condutor,
            crmc,
@@ -8465,9 +8852,10 @@ const importCondutorXmlFile = async (fileName) => {
            data_inclusao,
            data_modificacao
          )
-         VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, NULLIF($6, '')::date, NULLIF($7, ''), NULLIF($8, ''), NOW(), NOW())`,
+         VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::date, NULLIF($7, '')::date, NULLIF($8, ''), NULLIF($9, ''), NOW(), NOW())`,
         [
           record.codigo,
+          String(record.codigo),
           record.condutor,
           record.cpfCondutor,
           record.crmc,
@@ -8492,6 +8880,7 @@ const importCondutorXmlFile = async (fileName) => {
       processed: inserted + updated,
       inserted,
       updated,
+      deleted,
       skipped: skippedRecords.length,
       skippedRecords: skippedRecords.slice(0, 20),
     }
@@ -8503,7 +8892,7 @@ const importCondutorXmlFile = async (fileName) => {
   }
 }
 
-const importMonitorXmlFile = async (fileName) => {
+const importMonitorXmlFile = async (fileName, { deleteMissing = false, progressFilePath = '' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -8530,7 +8919,9 @@ const importMonitorXmlFile = async (fileName) => {
   const normalizedRecords = []
   const skippedRecords = []
 
-  parsedRecords.forEach((record, index) => {
+  for (const [index, record] of parsedRecords.entries()) {
+    await appendXmlImportProgress(progressFilePath, 'Monitor', index + 1, parsedRecords.length, normalizeRequestValue(record.codigo))
+
     try {
       normalizedRecords.push(normalizeImportedMonitorRecord(record, index))
     } catch (error) {
@@ -8544,7 +8935,7 @@ const importMonitorXmlFile = async (fileName) => {
         message: error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`,
       })
     }
-  })
+  }
 
   const client = await pool.connect()
 
@@ -8553,6 +8944,19 @@ const importMonitorXmlFile = async (fileName) => {
     await client.query('TRUNCATE TABLE monitor_import_recusa RESTART IDENTITY')
     let inserted = 0
     let updated = 0
+    let deleted = 0
+    const importedCodigoXmlSet = new Set(normalizedRecords.map((record) => String(record.codigo)).filter(Boolean))
+
+    if (deleteMissing && importedCodigoXmlSet.size > 0) {
+      const deleteResult = await client.query(
+        `DELETE FROM monitor
+          WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+            AND NOT (BTRIM(codigo_xml) = ANY($1::text[]))`,
+        [Array.from(importedCodigoXmlSet)],
+      )
+      deleted = deleteResult.rowCount ?? 0
+    }
+
     const existingMonitorRowsResult = await client.query(
       `SELECT
          codigo::int AS codigo,
@@ -8654,6 +9058,7 @@ const importMonitorXmlFile = async (fileName) => {
       if (targetCodigo > 0) {
         const nextRecord = {
           codigo: targetCodigo,
+          codigo_xml: String(record.codigo),
           monitor: record.monitor,
           cpf_monitor: record.cpfMonitor,
           curso_monitor: record.cursoMonitor,
@@ -8677,6 +9082,7 @@ const importMonitorXmlFile = async (fileName) => {
 
       pendingMonitorInsertMap.set(record.codigo, {
         codigo: record.codigo,
+        codigo_xml: String(record.codigo),
         monitor: record.monitor,
         cpf_monitor: record.cpfMonitor,
         curso_monitor: record.cursoMonitor,
@@ -8699,6 +9105,7 @@ const importMonitorXmlFile = async (fileName) => {
            SELECT *
            FROM jsonb_to_recordset($1::jsonb) AS record(
              codigo int,
+             codigo_xml text,
              monitor text,
              cpf_monitor text,
              curso_monitor text,
@@ -8708,7 +9115,8 @@ const importMonitorXmlFile = async (fileName) => {
            )
          )
          UPDATE monitor AS target
-            SET monitor = import_records.monitor,
+          SET codigo_xml = NULLIF(import_records.codigo_xml, ''),
+            monitor = import_records.monitor,
                 rg_monitor = NULL,
                 cpf_monitor = import_records.cpf_monitor,
                 curso_monitor = NULLIF(import_records.curso_monitor, '')::date,
@@ -8728,6 +9136,7 @@ const importMonitorXmlFile = async (fileName) => {
       await client.query(
         `INSERT INTO monitor (
            codigo,
+            codigo_xml,
            monitor,
            cpf_monitor,
            curso_monitor,
@@ -8739,6 +9148,7 @@ const importMonitorXmlFile = async (fileName) => {
          )
          SELECT
            record.codigo,
+           NULLIF(record.codigo_xml, ''),
            record.monitor,
            record.cpf_monitor,
            NULLIF(record.curso_monitor, '')::date,
@@ -8749,6 +9159,7 @@ const importMonitorXmlFile = async (fileName) => {
            NOW()
          FROM jsonb_to_recordset($1::jsonb) AS record(
            codigo int,
+           codigo_xml text,
            monitor text,
            cpf_monitor text,
            curso_monitor text,
@@ -8772,6 +9183,7 @@ const importMonitorXmlFile = async (fileName) => {
       processed: normalizedRecords.length,
       inserted,
       updated,
+      deleted,
       skipped: skippedRecords.length,
       skippedRecords: skippedRecords.slice(0, 20),
     }
@@ -8965,7 +9377,7 @@ const importCepsXmlFile = async (fileName) => {
   }
 }
 
-const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
+const importVeiculoXmlFile = async (fileName, { actor = 'IMPORTACAO_XML', deleteMissing = false, progressFilePath = '' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -8991,21 +9403,32 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
 
   const normalizedRecords = []
   const skippedRecords = []
+  const ignoredImportMessageSuffixes = new Set([
+    ': tipo de bancada invalido no XML.',
+  ])
 
-  parsedRecords.forEach((record, index) => {
+  for (const [index, record] of parsedRecords.entries()) {
+    await appendXmlImportProgress(progressFilePath, 'Veiculo', index + 1, parsedRecords.length, normalizeRequestValue(record.crm || record.codigo))
+
     try {
       normalizedRecords.push(normalizeImportedVeiculoRecord(record, index))
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`
+
+      if ([...ignoredImportMessageSuffixes].some((suffix) => errorMessage.endsWith(suffix))) {
+        continue
+      }
+
       skippedRecords.push({
         index: index + 1,
         codigoXml: normalizeRequestValue(record.codigo),
         crmXml: normalizeRequestValue(record.crm),
         placasXml: normalizeRequestValue(record.placas),
         tipoDeVeiculoXml: normalizeRequestValue(record.tipoDeVeiculo),
-        message: error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`,
+        message: errorMessage,
       })
     }
-  })
+  }
 
   const client = await pool.connect()
 
@@ -9015,6 +9438,33 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
     const recalculateVehicleCodigos = new Set()
     let inserted = 0
     let updated = 0
+    let deleted = 0
+    const importedCodigoXmlSet = new Set(normalizedRecords.map((record) => String(record.codigo)).filter(Boolean))
+
+    if (deleteMissing && importedCodigoXmlSet.size > 0) {
+      const deletedItemsResult = await client.query(
+        `SELECT ${veiculoAuditSelectClause}
+           FROM veiculo
+          WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+            AND NOT (BTRIM(codigo_xml) = ANY($1::text[]))`,
+        [Array.from(importedCodigoXmlSet)],
+      )
+
+      for (const deletedItem of deletedItemsResult.rows) {
+        await insertVeiculoHistoricoEntry(client, deletedItem, {
+          acao: 'IMPORTACAO_XML_EXCLUSAO',
+          realizadoPor: actor,
+        })
+      }
+
+      const deleteResult = await client.query(
+        `DELETE FROM veiculo
+          WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+            AND NOT (BTRIM(codigo_xml) = ANY($1::text[]))`,
+        [Array.from(importedCodigoXmlSet)],
+      )
+      deleted = deleteResult.rowCount ?? 0
+    }
 
     for (const skippedRecord of skippedRecords) {
       await client.query(
@@ -9091,6 +9541,7 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
       await client.query(
         `INSERT INTO veiculo (
            codigo,
+           codigo_xml,
            crm,
            placas,
            ano,
@@ -9112,9 +9563,10 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
            data_inclusao,
            data_modificacao
          )
-         VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, $5, $6, $7, $8, NULLIF($9, '')::date, NULLIF($10, ''), NULLIF($11, '')::date, NULLIF($12, '')::date, NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), NULLIF($17, ''), $18, NULLIF($19, ''), NOW(), NOW())`,
+         VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), NULLIF($4, ''), $5, $6, $7, $8, $9, NULLIF($10, '')::date, NULLIF($11, ''), NULLIF($12, '')::date, NULLIF($13, '')::date, NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), NULLIF($17, ''), NULLIF($18, ''), $19, NULLIF($20, ''), NOW(), NOW())`,
         [
           record.codigo,
+          String(record.codigo),
           record.crm,
           record.placas,
           record.ano,
@@ -9168,6 +9620,7 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
       processed: normalizedRecords.length,
       inserted,
       updated,
+      deleted,
       skipped: skippedRecords.length,
       skippedRecords: skippedRecords.slice(0, 20),
     }
@@ -9179,7 +9632,7 @@ const importVeiculoXmlFile = async (fileName, actor = 'IMPORTACAO_XML') => {
   }
 }
 
-const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_XML' } = {}) => {
+const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_XML', deleteMissing = true, progressFilePath = '' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -9206,7 +9659,9 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
   const normalizedRecords = []
   const skippedRecords = []
 
-  parsedRecords.forEach((record, index) => {
+  for (const [index, record] of parsedRecords.entries()) {
+    await appendXmlImportProgress(progressFilePath, 'Credenciamento Termo', index + 1, parsedRecords.length, normalizeRequestValue(record['C�digo']))
+
     try {
       normalizedRecords.push(...buildImportedCredenciamentoTermoRecords(record, index))
     } catch (error) {
@@ -9218,7 +9673,7 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
         message: error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`,
       })
     }
-  })
+  }
 
   const client = await pool.connect()
 
@@ -9227,6 +9682,7 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
     await client.query(`TRUNCATE TABLE ${credenciamentoTermoImportRecusaTableName} RESTART IDENTITY`)
     let inserted = 0
     let updated = 0
+    let deleted = 0
     const allowedAditivosByCodigoXml = new Map()
 
     for (const record of normalizedRecords) {
@@ -9235,19 +9691,22 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
       allowedAditivosByCodigoXml.set(record.codigoXml, currentAditivos)
     }
 
-    for (const [codigoXml, aditivos] of allowedAditivosByCodigoXml.entries()) {
-      const deletedItems = await listCredenciamentoTermoItemsByCodigoXmlExceptAditivos(client, codigoXml, Array.from(aditivos))
-      await insertTermoHistoricoEntries(client, deletedItems, {
-        acao: 'IMPORTACAO_XML_EXCLUSAO',
-        realizadoPor,
-      })
+    if (deleteMissing) {
+      for (const [codigoXml, aditivos] of allowedAditivosByCodigoXml.entries()) {
+        const deletedItems = await listCredenciamentoTermoItemsByCodigoXmlExceptAditivos(client, codigoXml, Array.from(aditivos))
+        await insertTermoHistoricoEntries(client, deletedItems, {
+          acao: 'IMPORTACAO_XML_EXCLUSAO',
+          realizadoPor,
+        })
 
-      await client.query(
-        `DELETE FROM ${credenciamentoTermoTableName}
-         WHERE codigo_xml = $1
-           AND NOT (aditivo = ANY($2::integer[]))`,
-        [codigoXml, Array.from(aditivos)],
-      )
+        const deleteResult = await client.query(
+          `DELETE FROM ${credenciamentoTermoTableName}
+           WHERE codigo_xml = $1
+             AND NOT (aditivo = ANY($2::integer[]))`,
+          [codigoXml, Array.from(aditivos)],
+        )
+        deleted += deleteResult.rowCount ?? 0
+      }
     }
 
     for (const skippedRecord of skippedRecords) {
@@ -9308,14 +9767,7 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
 
       await syncCredenciadaTpOptante(credenciadaItem.codigo, record.tpOptante, client)
 
-      const existingResult = await client.query(
-        `SELECT codigo
-         FROM ${credenciamentoTermoTableName}
-         WHERE codigo_xml = $1
-           AND aditivo = $2
-         LIMIT 1`,
-        [record.codigoXml, record.aditivo],
-      )
+      const existingResult = await findExistingCredenciamentoTermoImportItem(client, record)
 
       const values = [
         record.codigoXml,
@@ -9343,8 +9795,8 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
         record.mesRenovacao,
       ]
 
-      if (existingResult.rowCount > 0) {
-        const existingItem = await fetchCredenciamentoTermoItemByCodigo(client, existingResult.rows[0].codigo)
+      if (existingResult?.codigo) {
+        const existingItem = await fetchCredenciamentoTermoItemByCodigo(client, existingResult.codigo)
         await insertTermoHistoricoEntry(client, existingItem, {
           acao: 'IMPORTACAO_XML_ALTERACAO',
           realizadoPor,
@@ -9377,7 +9829,7 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
                mes_renovacao = NULLIF($23, ''),
                data_modificacao = NOW()
               WHERE codigo = $24`,
-          [...values, existingResult.rows[0].codigo],
+          [...values, existingResult.codigo],
         )
         updated += 1
         continue
@@ -9430,6 +9882,7 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
       processed: normalizedRecords.length,
       inserted,
       updated,
+      deleted,
       skipped: skippedRecords.length,
       skippedRecords: skippedRecords.slice(0, 20),
     }
@@ -9439,6 +9892,37 @@ const importCredenciamentoTermoXmlFile = async (fileName, { realizadoPor = 'IMPO
   } finally {
     client.release()
   }
+}
+
+const findExistingCredenciamentoTermoImportItem = async (executor, record) => {
+  const normalizedTermoAdesao = normalizeOrdemServicoTermoAdesao(record.termoAdesao)
+
+  if (normalizedTermoAdesao) {
+    const existingByTermoResult = await executor.query(
+      `SELECT codigo
+         FROM ${credenciamentoTermoTableName}
+        WHERE aditivo = $1
+          AND ${credenciamentoTermoNormalizedTermoExpression} = REGEXP_REPLACE($2, '\\D', '', 'g')
+        ORDER BY codigo ASC
+        LIMIT 1`,
+      [record.aditivo, normalizedTermoAdesao],
+    )
+
+    if (existingByTermoResult.rowCount > 0) {
+      return existingByTermoResult.rows[0]
+    }
+  }
+
+  const existingByCodigoXmlResult = await executor.query(
+    `SELECT codigo
+       FROM ${credenciamentoTermoTableName}
+      WHERE codigo_xml = $1
+        AND aditivo = $2
+      LIMIT 1`,
+    [record.codigoXml, record.aditivo],
+  )
+
+  return existingByCodigoXmlResult.rows[0] ?? null
 }
 
 const fetchCredenciamentoTermoItemByCodigo = async (executor, codigo) => {
@@ -9899,7 +10383,111 @@ const getVinculoMonitorPersistenceError = (error, fallbackMessage) => {
   }
 }
 
-const importVinculoMonitorXmlFile = async (fileName) => {
+const findDerivedVinculoMonitorOrdemServicoLink = async (executor, { credenciadaCodigo, cpfMonitor, dataOs }) => {
+  const normalizedCredenciadaCodigo = normalizeCondutorCodigo(credenciadaCodigo)
+  const normalizedCpfMonitorDigits = normalizeRequestValue(cpfMonitor).replace(/\D/g, '').slice(0, 11)
+  const normalizedDataOs = normalizeXmlDateInput(dataOs)
+
+  if (!Number.isInteger(normalizedCredenciadaCodigo) || normalizedCredenciadaCodigo <= 0 || !normalizedCpfMonitorDigits) {
+    return null
+  }
+
+  const candidateResult = await executor.query(
+    `SELECT
+       os.termo_adesao,
+       os.num_os,
+       COALESCE(NULLIF(BTRIM(os.revisao), ''), $1) AS revisao,
+       os.vigencia_os,
+       os.codigo
+     FROM ${ordemServicoTableName} os
+     INNER JOIN ${credenciamentoTermoTableName} t ON t.codigo = os.termo_codigo
+     WHERE t.credenciada_codigo = $2
+       AND regexp_replace(COALESCE(os.cpf_monitor, ''), '[^0-9]', '', 'g') = $3
+       AND COALESCE(BTRIM(os.termo_adesao), '') <> ''
+       AND COALESCE(BTRIM(os.num_os), '') <> ''
+     ORDER BY
+       CASE
+         WHEN $4::date IS NOT NULL AND os.vigencia_os = $4::date THEN 0
+         ELSE 1
+       END,
+       os.codigo DESC`,
+     [ordemServicoSemRevisaoLabel, normalizedCredenciadaCodigo, normalizedCpfMonitorDigits, normalizedDataOs || null],
+  )
+
+  if (candidateResult.rowCount === 0) {
+    return null
+  }
+
+  const exactDateMatches = normalizedDataOs
+    ? candidateResult.rows.filter((row) => {
+      if (row.vigencia_os instanceof Date && !Number.isNaN(row.vigencia_os.getTime())) {
+        return row.vigencia_os.toISOString().slice(0, 10) === normalizedDataOs
+      }
+
+      return normalizeXmlDateInput(row.vigencia_os) === normalizedDataOs
+    })
+    : []
+
+  if (exactDateMatches.length === 1) {
+    return exactDateMatches[0]
+  }
+
+  return candidateResult.rowCount === 1 ? candidateResult.rows[0] : null
+}
+
+const findDerivedVinculoCondutorOrdemServicoLink = async (executor, { credenciadaCodigo, cpfCondutor, dataOs }) => {
+  const normalizedCredenciadaCodigo = normalizeCondutorCodigo(credenciadaCodigo)
+  const normalizedCpfCondutorDigits = normalizeRequestValue(cpfCondutor).replace(/\D/g, '').slice(0, 11)
+  const normalizedDataOs = normalizeXmlDateInput(dataOs)
+
+  if (!Number.isInteger(normalizedCredenciadaCodigo) || normalizedCredenciadaCodigo <= 0 || !normalizedCpfCondutorDigits) {
+    return null
+  }
+
+  const candidateResult = await executor.query(
+    `SELECT
+       os.termo_adesao,
+       os.num_os,
+       COALESCE(NULLIF(BTRIM(os.revisao), ''), $1) AS revisao,
+       os.vigencia_os,
+       os.codigo
+     FROM ${ordemServicoTableName} os
+     INNER JOIN ${credenciamentoTermoTableName} t ON t.codigo = os.termo_codigo
+     WHERE t.credenciada_codigo = $2
+       AND regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g') = $3
+       AND COALESCE(BTRIM(os.termo_adesao), '') <> ''
+       AND COALESCE(BTRIM(os.num_os), '') <> ''
+     ORDER BY
+       CASE
+         WHEN $4::date IS NOT NULL AND os.vigencia_os = $4::date THEN 0
+         ELSE 1
+       END,
+       os.codigo DESC`,
+    [ordemServicoSemRevisaoLabel, normalizedCredenciadaCodigo, normalizedCpfCondutorDigits, normalizedDataOs || null],
+  )
+
+  if (candidateResult.rowCount === 0) {
+    return null
+  }
+
+  const exactDateMatches = normalizedDataOs
+    ? candidateResult.rows.filter((row) => {
+      if (row.vigencia_os instanceof Date && !Number.isNaN(row.vigencia_os.getTime())) {
+        return row.vigencia_os.toISOString().slice(0, 10) === normalizedDataOs
+      }
+
+      return normalizeXmlDateInput(row.vigencia_os) === normalizedDataOs
+    })
+    : []
+
+  if (exactDateMatches.length === 1) {
+    return exactDateMatches[0]
+  }
+
+  return candidateResult.rowCount === 1 ? candidateResult.rows[0] : null
+}
+
+const importVinculoMonitorXmlFile = async (fileName, { deleteMissing = false, progressFilePath = '' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -9924,19 +10512,20 @@ const importVinculoMonitorXmlFile = async (fileName) => {
   }
 
   const skippedRecords = []
-  const ignoredImportMessages = new Set([
-    'Empregador nao encontrado na tabela de credenciada.',
-  ])
   let inserted = 0
   let updated = 0
+  let deleted = 0
   const client = await pool.connect()
 
   try {
     await client.query('BEGIN')
     await client.query(`TRUNCATE TABLE ${vinculoMonitorImportRecusaTableName} RESTART IDENTITY`)
 
+    const importedCodigoXmlSet = new Set()
+
     for (let index = 0; index < parsedRecords.length; index += 1) {
       const record = parsedRecords[index]
+      await appendXmlImportProgress(progressFilePath, 'Vinculo Monitor', index + 1, parsedRecords.length, normalizeRequestValue(record.codigoXml))
 
       try {
         const normalizedCodigoXml = normalizeRequestValue(record.codigoXml)
@@ -9973,12 +10562,106 @@ const importVinculoMonitorXmlFile = async (fileName) => {
           throw new Error('CPF do monitor nao encontrado na tabela de monitor.')
         }
 
+        const derivedOrdemServicoLink = await findDerivedVinculoMonitorOrdemServicoLink(client, {
+          credenciadaCodigo: Number(credenciadaItem.codigo),
+          cpfMonitor: monitorItem.cpf_monitor,
+          dataOs: normalizedDataOs,
+        })
+
+        const linkedTermoAdesao = normalizeRequestValue(derivedOrdemServicoLink?.termo_adesao) || null
+        const linkedNumOs = normalizeRequestValue(derivedOrdemServicoLink?.num_os) || null
+        const linkedRevisao = normalizeRequestValue(derivedOrdemServicoLink?.revisao) || null
+        const hasDerivedBusinessKey = Boolean(linkedTermoAdesao && linkedNumOs && linkedRevisao)
+        const existingByDerivedKey = hasDerivedBusinessKey
+          ? await client.query(
+            `SELECT id, codigo_xml
+               FROM ${vinculoMonitorTableName}
+              WHERE UPPER(BTRIM(termo_adesao)) = UPPER($1)
+                AND UPPER(BTRIM(num_os)) = UPPER($2)
+                AND UPPER(BTRIM(revisao)) = UPPER($3)
+                AND credenciada_codigo = $4
+                AND monitor_codigo = $5
+              ORDER BY id ASC
+              LIMIT 1`,
+            [
+              linkedTermoAdesao,
+              linkedNumOs,
+              linkedRevisao,
+              Number(credenciadaItem.codigo),
+              Number(monitorItem.codigo),
+            ],
+          )
+          : { rowCount: 0, rows: [] }
+
+        if (normalizedCodigoXml) {
+          importedCodigoXmlSet.add(normalizedCodigoXml)
+        }
+
         if (normalizedCodigoXml) {
           const existingByCodigoXml = await client.query(
             `SELECT id FROM ${vinculoMonitorTableName} WHERE BTRIM(codigo_xml) = $1 LIMIT 1`,
             [normalizedCodigoXml],
           )
           if (existingByCodigoXml.rowCount > 0) {
+            if (existingByDerivedKey.rowCount > 0 && existingByDerivedKey.rows[0].id !== existingByCodigoXml.rows[0].id) {
+              await client.query(
+                `UPDATE ${vinculoMonitorTableName}
+                    SET codigo_xml = CASE
+                          WHEN COALESCE(BTRIM(codigo_xml), '') = '' THEN $1
+                          ELSE codigo_xml
+                        END,
+                        data_os = NULLIF($2, '')::date,
+                        data_admissao_monitor = NULLIF($3, '')::date
+                  WHERE id = $4`,
+                [normalizedCodigoXml, normalizedDataOs, normalizedAdmissao, existingByDerivedKey.rows[0].id],
+              )
+              await client.query(
+                `DELETE FROM ${vinculoMonitorTableName}
+                  WHERE id = $1`,
+                [existingByCodigoXml.rows[0].id],
+              )
+              updated += 1
+              deleted += 1
+              continue
+            }
+
+            await client.query(
+              `UPDATE ${vinculoMonitorTableName}
+                  SET termo_adesao = $1,
+                      num_os = $2,
+                      revisao = $3,
+                      credenciada_codigo = $4,
+                      monitor_codigo = $5,
+                      data_os = NULLIF($6, '')::date,
+                      data_admissao_monitor = NULLIF($7, '')::date
+                WHERE id = $8`,
+              [
+                linkedTermoAdesao,
+                linkedNumOs,
+                linkedRevisao,
+                Number(credenciadaItem.codigo),
+                Number(monitorItem.codigo),
+                normalizedDataOs,
+                normalizedAdmissao,
+                existingByCodigoXml.rows[0].id,
+              ],
+            )
+            updated += 1
+            continue
+          }
+
+          if (existingByDerivedKey.rowCount > 0) {
+            await client.query(
+              `UPDATE ${vinculoMonitorTableName}
+                  SET codigo_xml = CASE
+                        WHEN COALESCE(BTRIM(codigo_xml), '') = '' THEN $1
+                        ELSE codigo_xml
+                      END,
+                      data_os = NULLIF($2, '')::date,
+                      data_admissao_monitor = NULLIF($3, '')::date
+                WHERE id = $4`,
+              [normalizedCodigoXml, normalizedDataOs, normalizedAdmissao, existingByDerivedKey.rows[0].id],
+            )
             updated += 1
             continue
           }
@@ -10002,10 +10685,13 @@ const importVinculoMonitorXmlFile = async (fileName) => {
             await client.query(
               `UPDATE ${vinculoMonitorTableName}
                   SET codigo_xml = $1,
-                      data_os = NULLIF($2, '')::date,
-                      data_admissao_monitor = NULLIF($3, '')::date
-                WHERE id = $4`,
-              [normalizedCodigoXml, normalizedDataOs, normalizedAdmissao, unclaimedResult.rows[0].id],
+                      termo_adesao = $2,
+                      num_os = $3,
+                      revisao = $4,
+                      data_os = NULLIF($5, '')::date,
+                      data_admissao_monitor = NULLIF($6, '')::date
+                WHERE id = $7`,
+              [normalizedCodigoXml, linkedTermoAdesao, linkedNumOs, linkedRevisao, normalizedDataOs, normalizedAdmissao, unclaimedResult.rows[0].id],
             )
             updated += 1
             continue
@@ -10023,8 +10709,8 @@ const importVinculoMonitorXmlFile = async (fileName) => {
                codigo_xml,
                data_inclusao
              )
-             VALUES (NULL, NULL, NULL, $1, NULLIF($2, '')::date, NULLIF($3, '')::date, $4, $5, NOW())`,
-            [Number(credenciadaItem.codigo), normalizedDataOs, normalizedAdmissao, Number(monitorItem.codigo), normalizedCodigoXml],
+             VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, NULLIF($6, '')::date, $7, $8, NOW())`,
+            [linkedTermoAdesao, linkedNumOs, linkedRevisao, Number(credenciadaItem.codigo), normalizedDataOs, normalizedAdmissao, Number(monitorItem.codigo), normalizedCodigoXml],
           )
 
           inserted += 1
@@ -10045,13 +10731,28 @@ const importVinculoMonitorXmlFile = async (fileName) => {
           [Number(credenciadaItem.codigo), Number(monitorItem.codigo)],
         )
 
-        if (existingResult.rowCount > 0) {
+        if (existingByDerivedKey.rowCount > 0) {
           await client.query(
             `UPDATE ${vinculoMonitorTableName}
                 SET data_os = NULLIF($1, '')::date,
                     data_admissao_monitor = NULLIF($2, '')::date
               WHERE id = $3`,
-            [normalizedDataOs, normalizedAdmissao, existingResult.rows[0].id],
+            [normalizedDataOs, normalizedAdmissao, existingByDerivedKey.rows[0].id],
+          )
+          updated += 1
+          continue
+        }
+
+        if (existingResult.rowCount > 0) {
+          await client.query(
+            `UPDATE ${vinculoMonitorTableName}
+                SET termo_adesao = $1,
+                    num_os = $2,
+                    revisao = $3,
+                    data_os = NULLIF($4, '')::date,
+                    data_admissao_monitor = NULLIF($5, '')::date
+              WHERE id = $6`,
+            [linkedTermoAdesao, linkedNumOs, linkedRevisao, normalizedDataOs, normalizedAdmissao, existingResult.rows[0].id],
           )
           updated += 1
           continue
@@ -10068,17 +10769,13 @@ const importVinculoMonitorXmlFile = async (fileName) => {
              monitor_codigo,
              data_inclusao
            )
-           VALUES (NULL, NULL, NULL, $1, NULLIF($2, '')::date, NULLIF($3, '')::date, $4, NOW())`,
-          [Number(credenciadaItem.codigo), normalizedDataOs, normalizedAdmissao, Number(monitorItem.codigo)],
+             VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, NULLIF($6, '')::date, $7, NOW())`,
+            [linkedTermoAdesao, linkedNumOs, linkedRevisao, Number(credenciadaItem.codigo), normalizedDataOs, normalizedAdmissao, Number(monitorItem.codigo)],
         )
 
         inserted += 1
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`
-
-        if (ignoredImportMessages.has(errorMessage)) {
-          continue
-        }
 
         skippedRecords.push({
           index: index + 1,
@@ -10090,6 +10787,16 @@ const importVinculoMonitorXmlFile = async (fileName) => {
           message: errorMessage,
         })
       }
+    }
+
+    if (deleteMissing && importedCodigoXmlSet.size > 0) {
+      const deleteResult = await client.query(
+        `DELETE FROM ${vinculoMonitorTableName}
+          WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+            AND NOT (BTRIM(codigo_xml) = ANY($1::text[]))`,
+        [Array.from(importedCodigoXmlSet)],
+      )
+      deleted = deleteResult.rowCount ?? 0
     }
 
     for (const skippedRecord of skippedRecords) {
@@ -10128,6 +10835,7 @@ const importVinculoMonitorXmlFile = async (fileName) => {
       processed: inserted + updated,
       inserted,
       updated,
+      deleted,
       skipped: skippedRecords.length,
       skippedRecords: skippedRecords.slice(0, 20),
     }
@@ -10139,7 +10847,7 @@ const importVinculoMonitorXmlFile = async (fileName) => {
   }
 }
 
-const importVinculoCondutorXmlFile = async (fileName) => {
+const importVinculoCondutorXmlFile = async (fileName, { deleteMissing = false, progressFilePath = '' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -10170,14 +10878,18 @@ const importVinculoCondutorXmlFile = async (fileName) => {
   ])
   let inserted = 0
   let updated = 0
+  let deleted = 0
   const client = await pool.connect()
 
   try {
     await client.query('BEGIN')
     await client.query(`TRUNCATE TABLE ${vinculoCondutorImportRecusaTableName} RESTART IDENTITY`)
 
+    const importedCodigoXmlSet = new Set()
+
     for (let index = 0; index < parsedRecords.length; index += 1) {
       const record = parsedRecords[index]
+      await appendXmlImportProgress(progressFilePath, 'Vinculo Condutor', index + 1, parsedRecords.length, normalizeRequestValue(record.codigoXml))
 
       try {
         const normalizedCodigoXml = normalizeRequestValue(record.codigoXml)
@@ -10216,12 +10928,106 @@ const importVinculoCondutorXmlFile = async (fileName) => {
           condutorItem = newCondutorResult.rows[0]
         }
 
+        const derivedOrdemServicoLink = await findDerivedVinculoCondutorOrdemServicoLink(client, {
+          credenciadaCodigo: Number(credenciadaItem.codigo),
+          cpfCondutor: condutorItem.cpf_condutor,
+          dataOs: normalizedDataOs,
+        })
+
+        const linkedTermoAdesao = normalizeRequestValue(derivedOrdemServicoLink?.termo_adesao) || null
+        const linkedNumOs = normalizeRequestValue(derivedOrdemServicoLink?.num_os) || null
+        const linkedRevisao = normalizeRequestValue(derivedOrdemServicoLink?.revisao) || null
+        const hasDerivedBusinessKey = Boolean(linkedTermoAdesao && linkedNumOs && linkedRevisao)
+        const existingByDerivedKey = hasDerivedBusinessKey
+          ? await client.query(
+            `SELECT id, codigo_xml
+               FROM ${vinculoCondutorTableName}
+              WHERE UPPER(BTRIM(termo_adesao)) = UPPER($1)
+                AND UPPER(BTRIM(num_os)) = UPPER($2)
+                AND UPPER(BTRIM(revisao)) = UPPER($3)
+                AND credenciada_codigo = $4
+                AND condutor_codigo = $5
+              ORDER BY id ASC
+              LIMIT 1`,
+            [
+              linkedTermoAdesao,
+              linkedNumOs,
+              linkedRevisao,
+              Number(credenciadaItem.codigo),
+              Number(condutorItem.codigo),
+            ],
+          )
+          : { rowCount: 0, rows: [] }
+
+        if (normalizedCodigoXml) {
+          importedCodigoXmlSet.add(normalizedCodigoXml)
+        }
+
         if (normalizedCodigoXml) {
           const existingByCodigoXml = await client.query(
             `SELECT id FROM ${vinculoCondutorTableName} WHERE BTRIM(codigo_xml) = $1 LIMIT 1`,
             [normalizedCodigoXml],
           )
           if (existingByCodigoXml.rowCount > 0) {
+            if (existingByDerivedKey.rowCount > 0 && existingByDerivedKey.rows[0].id !== existingByCodigoXml.rows[0].id) {
+              await client.query(
+                `UPDATE ${vinculoCondutorTableName}
+                    SET codigo_xml = CASE
+                          WHEN COALESCE(BTRIM(codigo_xml), '') = '' THEN $1
+                          ELSE codigo_xml
+                        END,
+                        data_os = NULLIF($2, '')::date,
+                        data_admissao_condutor = NULLIF($3, '')::date
+                  WHERE id = $4`,
+                [normalizedCodigoXml, normalizedDataOs, normalizedAdmissao, existingByDerivedKey.rows[0].id],
+              )
+              await client.query(
+                `DELETE FROM ${vinculoCondutorTableName}
+                  WHERE id = $1`,
+                [existingByCodigoXml.rows[0].id],
+              )
+              updated += 1
+              deleted += 1
+              continue
+            }
+
+            await client.query(
+              `UPDATE ${vinculoCondutorTableName}
+                  SET termo_adesao = $1,
+                      num_os = $2,
+                      revisao = $3,
+                      credenciada_codigo = $4,
+                      condutor_codigo = $5,
+                      data_os = NULLIF($6, '')::date,
+                      data_admissao_condutor = NULLIF($7, '')::date
+                WHERE id = $8`,
+              [
+                linkedTermoAdesao,
+                linkedNumOs,
+                linkedRevisao,
+                Number(credenciadaItem.codigo),
+                Number(condutorItem.codigo),
+                normalizedDataOs,
+                normalizedAdmissao,
+                existingByCodigoXml.rows[0].id,
+              ],
+            )
+            updated += 1
+            continue
+          }
+
+          if (existingByDerivedKey.rowCount > 0) {
+            await client.query(
+              `UPDATE ${vinculoCondutorTableName}
+                  SET codigo_xml = CASE
+                        WHEN COALESCE(BTRIM(codigo_xml), '') = '' THEN $1
+                        ELSE codigo_xml
+                      END,
+                      data_os = NULLIF($2, '')::date,
+                      data_admissao_condutor = NULLIF($3, '')::date
+                WHERE id = $4`,
+              [normalizedCodigoXml, normalizedDataOs, normalizedAdmissao, existingByDerivedKey.rows[0].id],
+            )
             updated += 1
             continue
           }
@@ -10245,10 +11051,13 @@ const importVinculoCondutorXmlFile = async (fileName) => {
             await client.query(
               `UPDATE ${vinculoCondutorTableName}
                   SET codigo_xml = $1,
-                      data_os = NULLIF($2, '')::date,
-                      data_admissao_condutor = NULLIF($3, '')::date
-                WHERE id = $4`,
-              [normalizedCodigoXml, normalizedDataOs, normalizedAdmissao, unclaimedResult.rows[0].id],
+                      termo_adesao = $2,
+                      num_os = $3,
+                      revisao = $4,
+                      data_os = NULLIF($5, '')::date,
+                      data_admissao_condutor = NULLIF($6, '')::date
+                WHERE id = $7`,
+              [normalizedCodigoXml, linkedTermoAdesao, linkedNumOs, linkedRevisao, normalizedDataOs, normalizedAdmissao, unclaimedResult.rows[0].id],
             )
             updated += 1
             continue
@@ -10266,8 +11075,8 @@ const importVinculoCondutorXmlFile = async (fileName) => {
                codigo_xml,
                data_inclusao
              )
-             VALUES (NULL, NULL, NULL, $1, NULLIF($2, '')::date, NULLIF($3, '')::date, $4, $5, NOW())`,
-            [Number(credenciadaItem.codigo), normalizedDataOs, normalizedAdmissao, Number(condutorItem.codigo), normalizedCodigoXml],
+             VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, NULLIF($6, '')::date, $7, $8, NOW())`,
+            [linkedTermoAdesao, linkedNumOs, linkedRevisao, Number(credenciadaItem.codigo), normalizedDataOs, normalizedAdmissao, Number(condutorItem.codigo), normalizedCodigoXml],
           )
 
           inserted += 1
@@ -10288,13 +11097,28 @@ const importVinculoCondutorXmlFile = async (fileName) => {
           [Number(credenciadaItem.codigo), Number(condutorItem.codigo)],
         )
 
-        if (existingResult.rowCount > 0) {
+        if (existingByDerivedKey.rowCount > 0) {
           await client.query(
             `UPDATE ${vinculoCondutorTableName}
                 SET data_os = NULLIF($1, '')::date,
                     data_admissao_condutor = NULLIF($2, '')::date
               WHERE id = $3`,
-            [normalizedDataOs, normalizedAdmissao, existingResult.rows[0].id],
+            [normalizedDataOs, normalizedAdmissao, existingByDerivedKey.rows[0].id],
+          )
+          updated += 1
+          continue
+        }
+
+        if (existingResult.rowCount > 0) {
+          await client.query(
+            `UPDATE ${vinculoCondutorTableName}
+                SET termo_adesao = $1,
+                    num_os = $2,
+                    revisao = $3,
+                    data_os = NULLIF($4, '')::date,
+                    data_admissao_condutor = NULLIF($5, '')::date
+              WHERE id = $6`,
+            [linkedTermoAdesao, linkedNumOs, linkedRevisao, normalizedDataOs, normalizedAdmissao, existingResult.rows[0].id],
           )
           updated += 1
           continue
@@ -10311,8 +11135,8 @@ const importVinculoCondutorXmlFile = async (fileName) => {
              condutor_codigo,
              data_inclusao
            )
-           VALUES (NULL, NULL, NULL, $1, NULLIF($2, '')::date, NULLIF($3, '')::date, $4, NOW())`,
-          [Number(credenciadaItem.codigo), normalizedDataOs, normalizedAdmissao, Number(condutorItem.codigo)],
+           VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, NULLIF($6, '')::date, $7, NOW())`,
+          [linkedTermoAdesao, linkedNumOs, linkedRevisao, Number(credenciadaItem.codigo), normalizedDataOs, normalizedAdmissao, Number(condutorItem.codigo)],
         )
 
         inserted += 1
@@ -10333,6 +11157,16 @@ const importVinculoCondutorXmlFile = async (fileName) => {
           message: errorMessage,
         })
       }
+    }
+
+    if (deleteMissing && importedCodigoXmlSet.size > 0) {
+      const deleteResult = await client.query(
+        `DELETE FROM ${vinculoCondutorTableName}
+          WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+            AND NOT (BTRIM(codigo_xml) = ANY($1::text[]))`,
+        [Array.from(importedCodigoXmlSet)],
+      )
+      deleted = deleteResult.rowCount ?? 0
     }
 
     for (const skippedRecord of skippedRecords) {
@@ -10371,6 +11205,7 @@ const importVinculoCondutorXmlFile = async (fileName) => {
       processed: inserted + updated,
       inserted,
       updated,
+      deleted,
       skipped: skippedRecords.length,
       skippedRecords: skippedRecords.slice(0, 20),
     }
@@ -10518,7 +11353,7 @@ const upsertCredenciadaImportCep = async (client, record, importedCepSet = null)
   return record.cep
 }
 
-const importCredenciadaXmlFile = async (fileName) => {
+const importCredenciadaXmlFile = async (fileName, { deleteMissing = false, progressFilePath = '' } = {}) => {
   const sanitizedFileName = path.basename(normalizeRequestValue(fileName))
 
   if (!sanitizedFileName) {
@@ -10545,7 +11380,9 @@ const importCredenciadaXmlFile = async (fileName) => {
   const normalizedRecords = []
   const skippedRecords = []
 
-  parsedRecords.forEach((record, index) => {
+  for (const [index, record] of parsedRecords.entries()) {
+    await appendXmlImportProgress(progressFilePath, 'Credenciada', index + 1, parsedRecords.length, normalizeRequestValue(record.codigo))
+
     try {
       normalizedRecords.push(normalizeImportedCredenciadaRecord(record, index))
     } catch (error) {
@@ -10559,7 +11396,7 @@ const importCredenciadaXmlFile = async (fileName) => {
         message: error instanceof Error ? error.message : `Registro ${index + 1}: erro ao validar o XML.`,
       })
     }
-  })
+  }
 
   const client = await pool.connect()
 
@@ -10569,6 +11406,23 @@ const importCredenciadaXmlFile = async (fileName) => {
     const importedCepSet = new Set()
     let inserted = 0
     let updated = 0
+    let deleted = 0
+    const importedCodigoXmlSet = new Set(normalizedRecords.map((record) => String(record.codigo)).filter(Boolean))
+
+    if (deleteMissing && importedCodigoXmlSet.size > 0) {
+      const deleteResult = await client.query(
+        `DELETE FROM credenciada
+          WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+            AND NOT (BTRIM(codigo_xml) = ANY($1::text[]))
+            AND NOT EXISTS (
+              SELECT 1
+                FROM ${credenciamentoTermoTableName} termo
+               WHERE termo.credenciada_codigo = credenciada.codigo
+            )`,
+        [Array.from(importedCodigoXmlSet)],
+      )
+      deleted = deleteResult.rowCount ?? 0
+    }
 
     for (const skippedRecord of skippedRecords) {
       await client.query(
@@ -10604,22 +11458,24 @@ const importCredenciadaXmlFile = async (fileName) => {
       if (existingResult.rowCount > 0) {
         await client.query(
           `UPDATE credenciada
-           SET placa = $1,
-               empresa = $2,
-               condutor = $3,
-               tipo_pessoa = $4,
-               credenciado = $5,
-               cnpj_cpf = $6,
-               cep = NULLIF($7, ''),
-               email = NULLIF($8, ''),
-               telefone_01 = $9,
-               telefone_02 = NULLIF($10, ''),
-               representante = NULLIF($11, ''),
-               cpf_representante = NULLIF($12, ''),
-               status = NULLIF($13, ''),
+           SET codigo_xml = $1,
+               placa = $2,
+               empresa = $3,
+               condutor = $4,
+               tipo_pessoa = $5,
+               credenciado = $6,
+               cnpj_cpf = $7,
+               cep = NULLIF($8, ''),
+               email = NULLIF($9, ''),
+               telefone_01 = $10,
+               telefone_02 = NULLIF($11, ''),
+               representante = NULLIF($12, ''),
+               cpf_representante = NULLIF($13, ''),
+               status = NULLIF($14, ''),
                data_modificacao = NOW()
-               WHERE codigo = $14`,
+               WHERE codigo = $15`,
           [
+            String(record.codigo),
             record.placa,
             record.empresa,
             record.condutor,
@@ -10643,6 +11499,7 @@ const importCredenciadaXmlFile = async (fileName) => {
       await client.query(
         `INSERT INTO credenciada (
            codigo,
+          codigo_xml,
            placa,
            empresa,
            condutor,
@@ -10659,9 +11516,10 @@ const importCredenciadaXmlFile = async (fileName) => {
            data_inclusao,
            data_modificacao
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NOW(), NOW())`,
+         VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, NULLIF($9, ''), $10, NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NOW(), NOW())`,
         [
           record.codigo,
+          String(record.codigo),
           record.placa,
           record.empresa,
           record.condutor,
@@ -10692,6 +11550,7 @@ const importCredenciadaXmlFile = async (fileName) => {
       processed: normalizedRecords.length,
       inserted,
       updated,
+      deleted,
       skipped: skippedRecords.length,
       skippedRecords: skippedRecords.slice(0, 20),
     }
@@ -15475,6 +16334,7 @@ const ensureDatabaseSchema = async () => {
     ON continua_valor (tipo_continua, data)
   `)
   await pool.query('CREATE SEQUENCE IF NOT EXISTS condutor_codigo_seq START WITH 1 INCREMENT BY 1')
+  await pool.query('ALTER TABLE condutor ADD COLUMN IF NOT EXISTS codigo_xml varchar(50)')
   await pool.query('ALTER TABLE condutor ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone')
   await pool.query('ALTER TABLE condutor ADD COLUMN IF NOT EXISTS data_modificacao timestamp without time zone')
   await pool.query('ALTER TABLE condutor ALTER COLUMN codigo SET DEFAULT nextval(\'condutor_codigo_seq\')')
@@ -15499,13 +16359,21 @@ const ensureDatabaseSchema = async () => {
   `)
   await pool.query(`
     UPDATE condutor
-    SET data_inclusao = COALESCE(data_inclusao, NOW()),
+    SET codigo_xml = COALESCE(NULLIF(BTRIM(codigo_xml), ''), codigo::text),
+      data_inclusao = COALESCE(data_inclusao, NOW()),
         data_modificacao = COALESCE(data_modificacao, COALESCE(data_inclusao, NOW()))
-    WHERE data_inclusao IS NULL OR data_modificacao IS NULL
+    WHERE COALESCE(BTRIM(codigo_xml), '') = ''
+       OR data_inclusao IS NULL
+       OR data_modificacao IS NULL
   `)
   await pool.query('SELECT setval(\'condutor_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM condutor), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS login_codigo_unique_idx ON login (codigo)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS condutor_codigo_unique_idx ON condutor (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS condutor_codigo_xml_unique_idx
+    ON condutor (codigo_xml)
+    WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+  `)
   await pool.query(`
     DO $$
     BEGIN
@@ -15530,6 +16398,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS monitor (
       codigo integer PRIMARY KEY DEFAULT nextval('monitor_codigo_seq'),
+      codigo_xml varchar(50),
       monitor varchar(255) NOT NULL,
       rg_monitor varchar(20),
       cpf_monitor varchar(14) NOT NULL,
@@ -15543,6 +16412,7 @@ const ensureDatabaseSchema = async () => {
   `)
   await pool.query('ALTER SEQUENCE monitor_codigo_seq OWNED BY monitor.codigo')
   await pool.query('ALTER TABLE monitor ALTER COLUMN codigo SET DEFAULT nextval(\'monitor_codigo_seq\')')
+  await pool.query('ALTER TABLE monitor ADD COLUMN IF NOT EXISTS codigo_xml varchar(50)')
   await pool.query('ALTER TABLE monitor ALTER COLUMN monitor TYPE varchar(255)')
   await pool.query('ALTER TABLE monitor ALTER COLUMN data_inclusao SET DEFAULT NOW()')
   await pool.query('ALTER TABLE monitor ALTER COLUMN data_modificacao SET DEFAULT NOW()')
@@ -15562,12 +16432,20 @@ const ensureDatabaseSchema = async () => {
   `)
   await pool.query(`
     UPDATE monitor
-    SET data_inclusao = COALESCE(data_inclusao, NOW()),
+    SET codigo_xml = COALESCE(NULLIF(BTRIM(codigo_xml), ''), codigo::text),
+        data_inclusao = COALESCE(data_inclusao, NOW()),
         data_modificacao = COALESCE(data_modificacao, COALESCE(data_inclusao, NOW()))
-    WHERE data_inclusao IS NULL OR data_modificacao IS NULL
+    WHERE COALESCE(BTRIM(codigo_xml), '') = ''
+       OR data_inclusao IS NULL
+       OR data_modificacao IS NULL
   `)
   await pool.query('SELECT setval(\'monitor_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM monitor), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS monitor_codigo_unique_idx ON monitor (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS monitor_codigo_xml_unique_idx
+    ON monitor (codigo_xml)
+    WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+  `)
   await pool.query(`
     DO $$
     BEGIN
@@ -15592,6 +16470,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS veiculo (
       codigo integer PRIMARY KEY DEFAULT nextval('veiculo_codigo_seq'),
+      codigo_xml varchar(50),
       crm varchar(20),
       placas varchar(7),
       ano integer,
@@ -15616,6 +16495,7 @@ const ensureDatabaseSchema = async () => {
   `)
   await pool.query('ALTER SEQUENCE veiculo_codigo_seq OWNED BY veiculo.codigo')
   await pool.query('ALTER TABLE veiculo ALTER COLUMN codigo SET DEFAULT nextval(\'veiculo_codigo_seq\')')
+  await pool.query('ALTER TABLE veiculo ADD COLUMN IF NOT EXISTS codigo_xml varchar(50)')
   await pool.query('ALTER TABLE veiculo ALTER COLUMN data_inclusao SET DEFAULT NOW()')
   await pool.query('ALTER TABLE veiculo ALTER COLUMN data_modificacao SET DEFAULT NOW()')
   await pool.query(`
@@ -15662,12 +16542,20 @@ const ensureDatabaseSchema = async () => {
   `)
   await pool.query(`
     UPDATE veiculo
-    SET data_inclusao = COALESCE(data_inclusao, NOW()),
+    SET codigo_xml = COALESCE(NULLIF(BTRIM(codigo_xml), ''), codigo::text),
+        data_inclusao = COALESCE(data_inclusao, NOW()),
         data_modificacao = COALESCE(data_modificacao, COALESCE(data_inclusao, NOW()))
-    WHERE data_inclusao IS NULL OR data_modificacao IS NULL
+    WHERE COALESCE(BTRIM(codigo_xml), '') = ''
+       OR data_inclusao IS NULL
+       OR data_modificacao IS NULL
   `)
   await pool.query('SELECT setval(\'veiculo_codigo_seq\', GREATEST(COALESCE((SELECT MAX(codigo) FROM veiculo), 0), 1), true)')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS veiculo_codigo_unique_idx ON veiculo (codigo)')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS veiculo_codigo_xml_unique_idx
+    ON veiculo (codigo_xml)
+    WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+  `)
   await deduplicateVeiculoByExpression(pool, {
     keyExpression: `regexp_replace(UPPER(COALESCE(placas, '')), '[^A-Z0-9]', '', 'g')`,
     action: 'DEDUPLICACAO_PLACA',
@@ -15900,6 +16788,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS credenciada (
       codigo integer PRIMARY KEY DEFAULT nextval('credenciada_codigo_seq'),
+      codigo_xml varchar(50),
       placa varchar(20) NOT NULL,
       empresa varchar(255) NOT NULL,
       condutor varchar(255) NOT NULL,
@@ -15921,6 +16810,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS placa varchar(20)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS empresa varchar(255)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS condutor varchar(255)')
+  await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS codigo_xml varchar(50)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS tipo_pessoa varchar(20)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS credenciado varchar(255)')
   await pool.query('ALTER TABLE credenciada ADD COLUMN IF NOT EXISTS cnpj_cpf varchar(20)')
@@ -15938,11 +16828,13 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE credenciada DROP COLUMN IF EXISTS rg_representante')
   await pool.query(`
     UPDATE credenciada
-       SET status = CASE
+       SET codigo_xml = COALESCE(NULLIF(BTRIM(codigo_xml), ''), codigo::text),
+           status = CASE
          WHEN UPPER(BTRIM(COALESCE(status, ''))) = 'CANCELADO' THEN 'CANCELADO'
          ELSE 'ATIVO'
        END
-     WHERE status IS NULL
+     WHERE COALESCE(BTRIM(codigo_xml), '') = ''
+        OR status IS NULL
         OR BTRIM(COALESCE(status, '')) = ''
         OR UPPER(BTRIM(COALESCE(status, ''))) <> 'ATIVO'
            AND UPPER(BTRIM(COALESCE(status, ''))) <> 'CANCELADO'
@@ -15951,6 +16843,11 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE credenciada ALTER COLUMN data_inclusao SET DEFAULT NOW()')
   await pool.query('ALTER TABLE credenciada ALTER COLUMN data_modificacao SET DEFAULT NOW()')
   await pool.query('ALTER SEQUENCE credenciada_codigo_seq OWNED BY credenciada.codigo')
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS credenciada_codigo_xml_unique_idx
+    ON credenciada (codigo_xml)
+    WHERE COALESCE(BTRIM(codigo_xml), '') <> ''
+  `)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS credenciada_import_recusa (
       id bigserial PRIMARY KEY,
@@ -18052,6 +18949,7 @@ const server = createServer(async (request, response) => {
       const resolvedImportFiles = await resolveApontamentoServicosImportFilePaths({
         directoryPath: body?.directoryPath,
         fileName: body?.fileName,
+        filePath: body?.filePath,
       })
 
       await client.query('BEGIN')
@@ -25365,7 +26263,10 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === '/api/condutor/import-xml') {
     try {
       const body = await readJsonBody(request)
-      const result = await importCondutorXmlFile(body.fileName)
+      const result = await importCondutorXmlFile(body.fileName, {
+        deleteMissing: body.deleteMissing !== false,
+        progressFilePath: body.progressFilePath,
+      })
 
       sendJson(response, 200, {
         message: 'Importacao de condutores concluida com sucesso.',
@@ -25407,13 +26308,10 @@ const server = createServer(async (request, response) => {
 
   if (request.method === 'POST' && pathname === xmlImportAllRunPath) {
     try {
-      const result = await runXmlImportAllCommand()
-      const statusCode = result.status === 'passed' ? 200 : 500
+      const result = await startXmlImportAllExecution()
+      const statusCode = result.isRunning ? 202 : (result.status === 'passed' ? 200 : 500)
 
       sendJson(response, statusCode, {
-        message: result.status === 'passed'
-          ? 'Importacao XML consolidada executada com sucesso.'
-          : 'Importacao XML consolidada finalizada com falhas.',
         ...result,
       })
     } catch (error) {
@@ -25422,6 +26320,39 @@ const server = createServer(async (request, response) => {
         : 'Erro ao executar a importacao XML consolidada.'
 
       sendJson(response, 500, { message, status: 'failed' })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === xmlImportAllResetPath) {
+    try {
+      const result = await resetXmlImportBatchTables()
+      sendJson(response, 200, {
+        message: 'Tabelas da importacao XML em lote truncadas com sucesso.',
+        ...result,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao truncar as tabelas da importacao XML em lote.'
+
+      sendJson(response, 500, { message, truncated: false })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === xmlImportAllStatusPath) {
+    try {
+      const result = await buildXmlImportAllExecutionResponse()
+      sendJson(response, 200, result)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a importacao XML consolidada.'
+
+      sendJson(response, 500, { message })
     }
 
     return
@@ -25504,7 +26435,10 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === '/api/monitor/import-xml') {
     try {
       const body = await readJsonBody(request)
-      const result = await importMonitorXmlFile(body.fileName)
+      const result = await importMonitorXmlFile(body.fileName, {
+        deleteMissing: body.deleteMissing !== false,
+        progressFilePath: body.progressFilePath,
+      })
 
       sendJson(response, 200, {
         message: 'Importacao de monitores concluida com sucesso.',
@@ -25825,6 +26759,8 @@ const server = createServer(async (request, response) => {
       const body = await readJsonBody(request)
       const result = await importCredenciamentoTermoXmlFile(body.fileName, {
         realizadoPor: resolveRequestActor(request, 'IMPORTACAO_XML'),
+        deleteMissing: body.deleteMissing !== false,
+        progressFilePath: body.progressFilePath,
       })
 
       sendJson(response, 200, {
@@ -25845,7 +26781,11 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === '/api/veiculo/import-xml') {
     try {
       const body = await readJsonBody(request)
-      const result = await importVeiculoXmlFile(body.fileName, resolveRequestActor(request, 'IMPORTACAO_XML'))
+      const result = await importVeiculoXmlFile(body.fileName, {
+        actor: resolveRequestActor(request, 'IMPORTACAO_XML'),
+        deleteMissing: body.deleteMissing !== false,
+        progressFilePath: body.progressFilePath,
+      })
 
       sendJson(response, 200, {
         message: 'Importacao de veiculos concluida com sucesso.',
@@ -26151,7 +27091,10 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === vinculoCondutorImportXmlPath) {
     try {
       const body = await readJsonBody(request)
-      const result = await importVinculoCondutorXmlFile(body.fileName)
+      const result = await importVinculoCondutorXmlFile(body.fileName, {
+        deleteMissing: body.deleteMissing === true,
+        progressFilePath: body.progressFilePath,
+      })
 
       sendJson(response, 200, {
         message: 'Importacao de vinculos do condutor concluida com sucesso.',
@@ -26225,7 +27168,10 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === vinculoMonitorImportXmlPath) {
     try {
       const body = await readJsonBody(request)
-      const result = await importVinculoMonitorXmlFile(body.fileName)
+      const result = await importVinculoMonitorXmlFile(body.fileName, {
+        deleteMissing: body.deleteMissing === true,
+        progressFilePath: body.progressFilePath,
+      })
 
       sendJson(response, 200, {
         message: 'Importacao de vinculos do monitor concluida com sucesso.',
@@ -26522,6 +27468,8 @@ const server = createServer(async (request, response) => {
       const body = await readJsonBody(request)
       const result = await importOrdemServicoXmlFile(body.fileName, {
         realizadoPor: resolveRequestActor(request, 'IMPORTACAO_XML'),
+        deleteMissing: body.deleteMissing === true,
+        progressFilePath: body.progressFilePath,
       })
 
       sendJson(response, 200, {
@@ -26670,7 +27618,10 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === '/api/credenciada/import-xml') {
     try {
       const body = await readJsonBody(request)
-      const result = await importCredenciadaXmlFile(body.fileName)
+      const result = await importCredenciadaXmlFile(body.fileName, {
+        deleteMissing: body.deleteMissing !== false,
+        progressFilePath: body.progressFilePath,
+      })
 
       sendJson(response, 200, {
         message: 'Importacao de credenciadas concluida com sucesso.',
@@ -31059,5 +32010,7 @@ Promise.resolve()
     await pool.end()
     process.exit(1)
   })
+
+
 
 

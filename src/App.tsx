@@ -484,6 +484,7 @@ type XmlImportAllStepSummary = {
   processed: number | null
   inserted: number | null
   updated: number | null
+  deleted: number | null
   skipped: number | null
 }
 
@@ -511,6 +512,7 @@ type XmlImportAllStepResult = {
   message?: string
   status?: number
   statusText?: string
+  logPath?: string
   summary?: XmlImportAllStepSummary
   response?: XmlImportAllStepResponse
   error?: {
@@ -525,6 +527,8 @@ type XmlImportAllReport = {
   startedAt: string
   finishedAt: string | null
   baseUrl: string
+  logPath?: string
+  deleteMissing?: boolean
   continueOnError: boolean
   selectedStepKeys: string[]
   ok: boolean
@@ -537,11 +541,22 @@ type XmlImportAllRunResponse = {
   message: string
   scriptName: string
   status: string
-  exitCode: number
+  exitCode: number | null
   reportPath: string
+  logPath?: string
   report: XmlImportAllReport | null
   stdoutTail: string
   stderrTail: string
+  logTail?: string
+  isRunning?: boolean
+  startedAt?: string
+  finishedAt?: string
+  currentStepLabel?: string
+  currentFileName?: string
+  currentRecord?: number | null
+  totalRecords?: number | null
+  currentProgressText?: string
+  progressDetail?: string
 }
 
 const smokeSuiteOptions: Array<{ value: SmokeSuite, label: string }> = [
@@ -1896,14 +1911,6 @@ function App() {
       window.removeEventListener('message', handleDashboardOsPopupMessage)
     }
   }, [handleCloseDashboardOsPopup])
-
-  useEffect(() => {
-    if (!session || activeView !== 'inicio' || (dashboardData && dashboardBancadaData)) {
-      return
-    }
-
-    void loadDashboardAtivos(dashboardMonth)
-  }, [activeView, dashboardBancadaData, dashboardData, dashboardMonth, loadDashboardAtivos, session])
 
   const loadDreItems = useCallback(async (pageToLoad: number) => {
     setIsLoadingDre(true)
@@ -3689,7 +3696,7 @@ function App() {
   const handleRunXmlImportAll = async () => {
     setIsRunningXmlImportAll(true)
     setXmlImportAllStatusTone('idle')
-    setXmlImportAllStatusMessage('Executando importacao XML consolidada...')
+    setXmlImportAllStatusMessage('Iniciando importacao XML consolidada...')
     setXmlImportAllStdout('')
     setXmlImportAllStderr('')
 
@@ -3705,8 +3712,8 @@ function App() {
       const payload = await response.json().catch(() => null) as XmlImportAllRunResponse | null
 
       setXmlImportAllResult(payload)
-  setSelectedXmlImportAllStepKey(payload?.report?.results?.[0]?.key ?? '')
-      setXmlImportAllStdout(payload?.stdoutTail ?? '')
+      setSelectedXmlImportAllStepKey(payload?.report?.results?.[0]?.key ?? '')
+      setXmlImportAllStdout(payload?.logTail || payload?.stdoutTail || '')
       setXmlImportAllStderr(payload?.stderrTail ?? '')
       setSelectedXmlImportAllLogStream(payload?.status === 'failed' ? 'stderr' : 'stdout')
 
@@ -3714,16 +3721,87 @@ function App() {
         throw new Error(payload?.message || 'Falha ao executar a importacao XML consolidada.')
       }
 
-      setXmlImportAllStatusTone('success')
-      setXmlImportAllStatusMessage(payload?.message || 'Importacao XML consolidada executada com sucesso.')
+      setIsRunningXmlImportAll(payload?.isRunning === true)
+      setXmlImportAllStatusTone('idle')
+      setXmlImportAllStatusMessage(payload?.message || 'Importacao XML consolidada iniciada.')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha ao executar a importacao XML consolidada.'
       setXmlImportAllStatusTone('error')
       setXmlImportAllStatusMessage(message)
-    } finally {
       setIsRunningXmlImportAll(false)
     }
   }
+
+  const loadXmlImportAllStatus = useCallback(async () => {
+    const response = await fetch('/api/xml-import-all/status', {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    const payload = await response.json().catch(() => null) as XmlImportAllRunResponse | null
+
+    if (!response.ok || !payload) {
+      throw new Error(payload?.message || 'Falha ao consultar o status da importacao XML consolidada.')
+    }
+
+    setXmlImportAllResult(payload)
+    setSelectedXmlImportAllStepKey((currentValue) => currentValue || payload.report?.results?.[0]?.key || '')
+    setXmlImportAllStdout(payload.logTail || payload.stdoutTail || '')
+    setXmlImportAllStderr(payload.stderrTail || '')
+    setIsRunningXmlImportAll(payload.isRunning === true)
+
+    if (payload.isRunning) {
+      const runningMessage = payload.currentFileName
+        ? `Importando ${payload.currentFileName}${payload.currentProgressText ? ` - registro ${payload.currentProgressText}` : ''}`
+        : (payload.message || 'Importacao XML consolidada em execucao.')
+      setXmlImportAllStatusTone('idle')
+      setXmlImportAllStatusMessage(runningMessage)
+      return payload
+    }
+
+    if (payload.status === 'passed') {
+      setXmlImportAllStatusTone('success')
+      setXmlImportAllStatusMessage(payload.message || 'Importacao XML consolidada executada com sucesso.')
+    } else if (payload.status === 'failed') {
+      setXmlImportAllStatusTone('error')
+      setXmlImportAllStatusMessage(payload.message || 'Importacao XML consolidada finalizada com falhas.')
+    } else {
+      setXmlImportAllStatusTone('idle')
+      setXmlImportAllStatusMessage(payload.message || 'Nenhuma importacao XML em lote em execucao.')
+    }
+
+    return payload
+  }, [])
+
+  useEffect(() => {
+    if (activeView !== 'xmlImportLote') {
+      return
+    }
+
+    void loadXmlImportAllStatus().catch(() => {
+      // Ignore initial status read failures and keep the current idle UI state.
+    })
+  }, [activeView, loadXmlImportAllStatus])
+
+  useEffect(() => {
+    if (!isRunningXmlImportAll) {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadXmlImportAllStatus().catch((error) => {
+        const message = error instanceof Error ? error.message : 'Falha ao consultar a importacao XML consolidada.'
+        setIsRunningXmlImportAll(false)
+        setXmlImportAllStatusTone('error')
+        setXmlImportAllStatusMessage(message)
+      })
+    }, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [isRunningXmlImportAll, loadXmlImportAllStatus])
 
   const xmlImportAllStepResults = xmlImportAllResult?.report?.results ?? []
   const selectedXmlImportAllStep = xmlImportAllStepResults.find((stepResult) => stepResult.key === selectedXmlImportAllStepKey)
@@ -13763,7 +13841,7 @@ function App() {
               <p className="content-kicker">Importacao administrativa</p>
               <h2 id="content-title">Importacao XML em lote</h2>
               <p className="content-description">
-                Execute a carga consolidada de todos os XMLs operacionais a partir do menu administrativo e acompanhe o resultado por etapa no mesmo fluxo da API local.
+                Execute a carga consolidada dos XMLs operacionais e acompanhe na tela o arquivo atual e o progresso por registro no formato 1/x.
               </p>
             </div>
 
@@ -13775,7 +13853,9 @@ function App() {
                   onClick={handleRunXmlImportAll}
                   disabled={isRunningXmlImportAll}
                 >
-                  {isRunningXmlImportAll ? 'Executando importacao...' : 'Executar importacao XML em lote'}
+                  {isRunningXmlImportAll
+                    ? 'Executando importacao...'
+                    : 'Executar importacao XML em lote'}
                 </button>
               </div>
 
@@ -13784,6 +13864,29 @@ function App() {
                 <p className={`status-message status-${xmlImportAllStatusTone}`} aria-live="polite">
                   {xmlImportAllStatusMessage}
                 </p>
+
+                {xmlImportAllResult?.isRunning || xmlImportAllResult?.currentFileName || xmlImportAllResult?.currentProgressText ? (
+                  <div className="smoke-summary-grid">
+                    <article className="smoke-summary-card smoke-summary-card-wide">
+                      <span className="smoke-card-label">XML atual</span>
+                      <strong>{xmlImportAllResult?.currentFileName || 'Aguardando inicio da etapa...'}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Etapa atual</span>
+                      <strong>{xmlImportAllResult?.currentStepLabel || '-'}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Progresso</span>
+                      <strong>{xmlImportAllResult?.currentProgressText || '-'}</strong>
+                    </article>
+                    {xmlImportAllResult?.progressDetail ? (
+                      <article className="smoke-summary-card smoke-summary-card-wide">
+                        <span className="smoke-card-label">Detalhe do registro</span>
+                        <strong>{xmlImportAllResult.progressDetail}</strong>
+                      </article>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {xmlImportAllResult ? (
                   <div className="smoke-summary-grid">
@@ -13807,6 +13910,10 @@ function App() {
                       <span className="smoke-card-label">Ignoradas</span>
                       <strong>{xmlImportAllResult.report?.skippedSteps.length ?? 0}</strong>
                     </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Excluir ausentes</span>
+                      <strong>{xmlImportAllResult.report?.deleteMissing === false ? 'Nao' : 'Sim'}</strong>
+                    </article>
                     <article className="smoke-summary-card smoke-summary-card-wide">
                       <span className="smoke-card-label">Script</span>
                       <strong>{xmlImportAllResult.scriptName}</strong>
@@ -13815,6 +13922,12 @@ function App() {
                       <article className="smoke-summary-card smoke-summary-card-wide">
                         <span className="smoke-card-label">Relatorio JSON</span>
                         <strong>{xmlImportAllResult.reportPath}</strong>
+                      </article>
+                    ) : null}
+                    {xmlImportAllResult.report?.logPath || xmlImportAllResult.logPath ? (
+                      <article className="smoke-summary-card smoke-summary-card-wide">
+                        <span className="smoke-card-label">Log detalhado</span>
+                        <strong>{xmlImportAllResult.report?.logPath || xmlImportAllResult.logPath}</strong>
                       </article>
                     ) : null}
                   </div>
@@ -13871,11 +13984,15 @@ function App() {
                           <span>Processados: {selectedXmlImportAllStep.summary?.processed ?? 0}</span>
                           <span>Incluidos: {selectedXmlImportAllStep.summary?.inserted ?? 0}</span>
                           <span>Alterados: {selectedXmlImportAllStep.summary?.updated ?? 0}</span>
+                          <span>Excluidos: {selectedXmlImportAllStep.summary?.deleted ?? 0}</span>
                           <span>Recusados: {selectedXmlImportAllStep.summary?.skipped ?? selectedXmlImportAllSkippedRecords.length}</span>
                         </div>
 
                         <div className="xml-import-all-meta-grid">
                           <p className="smoke-suite-empty">Endpoint: {selectedXmlImportAllStep.endpoint}</p>
+                          {selectedXmlImportAllStep.logPath ? (
+                            <p className="smoke-suite-empty">Log: {selectedXmlImportAllStep.logPath}</p>
+                          ) : null}
                           {typeof selectedXmlImportAllStep.status === 'number' ? (
                             <p className="smoke-suite-empty">HTTP {selectedXmlImportAllStep.status}{selectedXmlImportAllStep.statusText ? ` - ${selectedXmlImportAllStep.statusText}` : ''}</p>
                           ) : null}

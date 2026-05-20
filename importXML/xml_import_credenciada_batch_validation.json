@@ -1,0 +1,48 @@
+{
+  "startedAt": "2026-05-19T18:47:10.645Z",
+  "finishedAt": "2026-05-19T18:47:26.589Z",
+  "baseUrl": "http://localhost:3001",
+  "logPath": "importXML/xml_import_credenciada_batch_validation.log",
+  "deleteMissing": true,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "credenciada"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "credenciada",
+      "label": "Credenciada",
+      "fileName": "Credenciados.xml",
+      "endpoint": "http://localhost:3001/api/credenciada/import-xml",
+      "startedAt": "2026-05-19T18:47:10.648Z",
+      "finishedAt": "2026-05-19T18:47:26.587Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 2955,
+        "processed": 2955,
+        "inserted": 0,
+        "updated": 2955,
+        "deleted": 0,
+        "skipped": 0
+      },
+      "logPath": "importXML/xml_import_credenciada_batch_validation.log",
+      "response": {
+        "message": "Importacao de credenciadas concluida com sucesso.",
+        "fileName": "Credenciados.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Credenciados.xml",
+        "total": 2955,
+        "processed": 2955,
+        "inserted": 0,
+        "updated": 2955,
+        "deleted": 0,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    }
+  ]
+}

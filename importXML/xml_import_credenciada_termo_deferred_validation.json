@@ -1,0 +1,81 @@
+{
+  "startedAt": "2026-05-19T19:28:39.509Z",
+  "finishedAt": "2026-05-19T19:34:01.863Z",
+  "baseUrl": "http://localhost:3001",
+  "logPath": "importXML/xml_import_credenciada_termo_deferred_validation.log",
+  "deleteMissing": true,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "credenciada",
+    "termo"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "credenciada",
+      "label": "Credenciada",
+      "fileName": "Credenciados.xml",
+      "endpoint": "http://localhost:3001/api/credenciada/import-xml",
+      "startedAt": "2026-05-19T19:28:39.513Z",
+      "finishedAt": "2026-05-19T19:34:01.860Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 2955,
+        "processed": 2955,
+        "inserted": 0,
+        "updated": 2955,
+        "deleted": 0,
+        "skipped": 0
+      },
+      "logPath": "importXML/xml_import_credenciada_termo_deferred_validation.log",
+      "response": {
+        "message": "Importacao de credenciadas concluida com sucesso.",
+        "fileName": "Credenciados.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Credenciados.xml",
+        "total": 2955,
+        "processed": 2955,
+        "inserted": 0,
+        "updated": 2955,
+        "deleted": 0,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    },
+    {
+      "key": "termo",
+      "label": "Credenciamento Termo",
+      "fileName": "Credenciamento_Termo.xml",
+      "endpoint": "http://localhost:3001/api/termo/import-xml",
+      "startedAt": "2026-05-19T19:29:13.774Z",
+      "finishedAt": "2026-05-19T19:33:44.901Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 4056,
+        "processed": 10500,
+        "inserted": 0,
+        "updated": 10500,
+        "deleted": 0,
+        "skipped": 0
+      },
+      "logPath": "importXML/xml_import_credenciada_termo_deferred_validation.log",
+      "response": {
+        "message": "Importacao de credenciamento termo concluida com sucesso.",
+        "fileName": "Credenciamento_Termo.xml",
+        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Credenciamento_Termo.xml",
+        "total": 4056,
+        "processed": 10500,
+        "inserted": 0,
+        "updated": 10500,
+        "deleted": 0,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    }
+  ]
+}

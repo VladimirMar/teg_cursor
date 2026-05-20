@@ -1,6 +1,6 @@
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
-import { access, mkdir, writeFile } from 'node:fs/promises'
+import { access, appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -9,6 +9,8 @@ const importXmlDirectory = path.join(workspaceRoot, 'importXML')
 const defaultBaseUrl = process.env.API_BASE_URL?.trim() || 'http://localhost:3001'
 const defaultReportPath = process.env.XML_IMPORT_ALL_REPORT_PATH?.trim()
   || path.join(importXmlDirectory, 'xml_import_all_summary.json')
+const defaultLogPath = process.env.XML_IMPORT_ALL_LOG_PATH?.trim()
+  || path.join(importXmlDirectory, 'xml_import_all.log')
 const requestTimeoutMs = Math.max(Number(process.env.XML_IMPORT_ALL_REQUEST_TIMEOUT_MS ?? 0) || 0, 0)
 
 const importSteps = [
@@ -43,18 +45,6 @@ const importSteps = [
     fileName: 'Monitor.xml',
   },
   {
-    key: 'vinculo-condutor',
-    label: 'Vinculo Condutor',
-    endpoint: '/api/vinculo-condutor/import-xml',
-    fileName: 'Vinculos_condutor.xml',
-  },
-  {
-    key: 'vinculo-monitor',
-    label: 'Vinculo Monitor',
-    endpoint: '/api/vinculo-monitor/import-xml',
-    fileName: 'Vinculos_monitor.xml',
-  },
-  {
     key: 'veiculo',
     label: 'Veiculo',
     endpoint: '/api/veiculo/import-xml',
@@ -65,6 +55,18 @@ const importSteps = [
     label: 'OrdemServico',
     endpoint: '/api/ordem-servico/import-xml',
     fileName: 'OrdemServico.xml',
+  },
+  {
+    key: 'vinculo-condutor',
+    label: 'Vinculo Condutor',
+    endpoint: '/api/vinculo-condutor/import-xml',
+    fileName: 'Vinculos_condutor.xml',
+  },
+  {
+    key: 'vinculo-monitor',
+    label: 'Vinculo Monitor',
+    endpoint: '/api/vinculo-monitor/import-xml',
+    fileName: 'Vinculos_monitor.xml',
   },
   {
     key: 'cep',
@@ -78,8 +80,10 @@ const importSteps = [
 const rawArgs = process.argv.slice(2)
 let requestedBaseUrl = defaultBaseUrl
 let requestedReportPath = defaultReportPath
+let requestedLogPath = defaultLogPath
 let requestedStepKeys = []
 let continueOnError = /^(1|true|yes)$/i.test(process.env.XML_IMPORT_ALL_CONTINUE_ON_ERROR ?? '')
+let deleteMissing = !/^(0|false|no)$/i.test(process.env.XML_IMPORT_ALL_DELETE_MISSING ?? 'true')
 let shouldPrintHelp = false
 
 for (let index = 0; index < rawArgs.length; index += 1) {
@@ -116,6 +120,17 @@ for (let index = 0; index < rawArgs.length; index += 1) {
     continue
   }
 
+  if (currentArg === '--log') {
+    requestedLogPath = String(rawArgs[index + 1] ?? defaultLogPath).trim() || defaultLogPath
+    index += 1
+    continue
+  }
+
+  if (currentArg.startsWith('--log=')) {
+    requestedLogPath = currentArg.slice('--log='.length).trim() || defaultLogPath
+    continue
+  }
+
   if (currentArg === '--only' || currentArg === '--step') {
     requestedStepKeys.push(String(rawArgs[index + 1] ?? '').trim())
     index += 1
@@ -135,6 +150,15 @@ for (let index = 0; index < rawArgs.length; index += 1) {
   if (currentArg === '--continue-on-error') {
     continueOnError = true
   }
+
+  if (currentArg === '--delete-missing') {
+    deleteMissing = true
+    continue
+  }
+
+  if (currentArg === '--no-delete-missing') {
+    deleteMissing = false
+  }
 }
 
 if (shouldPrintHelp) {
@@ -143,9 +167,12 @@ if (shouldPrintHelp) {
 Opcoes:
   --base-url <url>         URL base da API. Padrao: ${defaultBaseUrl}
   --report <arquivo>       Caminho do relatorio consolidado JSON.
+  --log <arquivo>          Caminho do log detalhado da execucao.
   --only <etapa>           Executa apenas a etapa informada. Pode repetir.
   --step <etapa>           Alias de --only.
   --continue-on-error      Continua nas etapas seguintes quando uma falhar.
+  --delete-missing         Exclui registros importados ausentes do XML onde suportado.
+  --no-delete-missing      Desabilita a exclusao de ausentes do XML.
   --help                   Exibe esta ajuda.
 
 Etapas disponiveis:
@@ -168,6 +195,12 @@ if (unknownStepKeys.length) {
 const selectedSteps = normalizedRequestedKeys.length
   ? importSteps.filter((step) => normalizedRequestedKeys.includes(step.key))
   : importSteps
+const shouldTruncateBeforeImport = selectedSteps.length === importSteps.length
+
+const selectedStepKeySet = new Set(selectedSteps.map((step) => step.key))
+const shouldDeferCredenciadaDeleteMissing = deleteMissing
+  && selectedStepKeySet.has('credenciada')
+  && selectedStepKeySet.has('termo')
 
 const serializeError = (error) => {
   if (!(error instanceof Error)) {
@@ -260,11 +293,93 @@ const fileExists = async (filePath) => {
   }
 }
 
+const appendExecutionLog = async (message) => {
+  const line = `[${new Date().toISOString()}] ${message}`
+  console.log(line)
+  await appendFile(requestedLogPath, `${line}\n`, 'utf8')
+}
+
+let consumedProgressLogLength = 0
+
+let deferredCredenciadaCleanupResultIndex = -1
+
+const flushProgressLog = async () => {
+  try {
+    const logContent = await readFile(requestedLogPath, 'utf8')
+    const nextChunk = logContent.slice(consumedProgressLogLength)
+    consumedProgressLogLength = logContent.length
+
+    if (!nextChunk.trim()) {
+      return
+    }
+
+    for (const line of nextChunk.split(/\r?\n/).filter(Boolean)) {
+      console.log(line)
+    }
+  } catch {
+    // Ignore log flush errors to avoid interrupting the batch import.
+  }
+}
+
+await mkdir(path.dirname(requestedLogPath), { recursive: true })
+await writeFile(requestedLogPath, '', 'utf8')
+
 const results = []
 const startedAt = new Date().toISOString()
 let shouldAbort = false
 
+if (shouldTruncateBeforeImport) {
+  const resetStartedAt = new Date().toISOString()
+  await appendExecutionLog('[xml-import-all] Preparacao: truncando tabelas da importacao XML antes do lote completo')
+
+  try {
+    const response = await postJson(`${requestedBaseUrl}/api/xml-import-all/reset`, {})
+    const payload = await readJsonResponse({ text: async () => response.bodyText })
+    const resetResult = {
+      key: 'reset',
+      label: 'Preparacao',
+      endpoint: `${requestedBaseUrl}/api/xml-import-all/reset`,
+      startedAt: resetStartedAt,
+      finishedAt: new Date().toISOString(),
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      response: payload,
+    }
+
+    results.push(resetResult)
+
+    if (!response.ok) {
+      const responseMessage = typeof payload?.message === 'string' ? payload.message : ''
+      await appendExecutionLog(`[xml-import-all] Preparacao: falhou com HTTP ${response.status}${responseMessage ? ` - ${responseMessage}` : ''}`)
+      shouldAbort = true
+    } else {
+      await appendExecutionLog(`[xml-import-all] Preparacao: tabelas truncadas (${payload?.tableCount ?? 0} tabela(s))`)
+    }
+  } catch (error) {
+    const errorDetails = serializeError(error)
+    results.push({
+      key: 'reset',
+      label: 'Preparacao',
+      endpoint: `${requestedBaseUrl}/api/xml-import-all/reset`,
+      startedAt: resetStartedAt,
+      finishedAt: new Date().toISOString(),
+      ok: false,
+      message: errorDetails.message,
+      error: errorDetails,
+    })
+    await appendExecutionLog(`[xml-import-all] Preparacao: falhou - ${errorDetails.message}`)
+    shouldAbort = true
+  }
+} else {
+  await appendExecutionLog('[xml-import-all] Preparacao: truncamento completo ignorado porque o lote foi filtrado por etapa')
+}
+
 for (const step of selectedSteps) {
+  if (shouldAbort) {
+    break
+  }
+
   const stepStartedAt = new Date().toISOString()
   const xmlPath = path.join(importXmlDirectory, step.fileName)
   const xmlExists = await fileExists(xmlPath)
@@ -285,7 +400,7 @@ for (const step of selectedSteps) {
     }
 
     results.push(skippedResult)
-    console.log(`[xml-import-all] ${step.label}: ${step.optional ? 'ignorado' : 'falhou'} - ${missingMessage}`)
+    await appendExecutionLog(`[xml-import-all] ${step.label}: ${step.optional ? 'ignorado' : 'falhou'} - ${missingMessage}`)
 
     if (!step.optional) {
       shouldAbort = !continueOnError
@@ -298,11 +413,19 @@ for (const step of selectedSteps) {
     continue
   }
 
-  console.log(`[xml-import-all] ${step.label}: iniciando importacao de ${step.fileName}`)
+  await appendExecutionLog(`[xml-import-all] ${step.label}: iniciando importacao de ${step.fileName}`)
+
+  const shouldDisableDeleteMissingForCurrentStep = shouldDeferCredenciadaDeleteMissing && step.key === 'credenciada'
+  const requestDeleteMissing = shouldDisableDeleteMissingForCurrentStep ? false : deleteMissing
 
   try {
-    const response = await postJson(`${requestedBaseUrl}${step.endpoint}`, { fileName: step.fileName })
+    const response = await postJson(`${requestedBaseUrl}${step.endpoint}`, {
+      fileName: step.fileName,
+      deleteMissing: requestDeleteMissing,
+      progressFilePath: requestedLogPath,
+    })
     const payload = await readJsonResponse({ text: async () => response.bodyText })
+    await flushProgressLog()
     const stepResult = {
       key: step.key,
       label: step.label,
@@ -318,16 +441,23 @@ for (const step of selectedSteps) {
         processed: payload?.processed ?? null,
         inserted: payload?.inserted ?? null,
         updated: payload?.updated ?? null,
+        deleted: payload?.deleted ?? null,
         skipped: payload?.skipped ?? null,
       },
+      logPath: requestedLogPath,
       response: payload,
     }
 
     results.push(stepResult)
 
+    if (shouldDisableDeleteMissingForCurrentStep && response.ok) {
+      deferredCredenciadaCleanupResultIndex = results.length - 1
+      await appendExecutionLog('[xml-import-all] Credenciada: exclusao de ausentes adiada ate apos Credenciamento Termo para evitar conflito de chave estrangeira.')
+    }
+
     if (!response.ok) {
       const responseMessage = typeof payload?.message === 'string' ? payload.message : ''
-      console.error(`[xml-import-all] ${step.label}: falhou com HTTP ${response.status}${responseMessage ? ` - ${responseMessage}` : ''}`)
+      await appendExecutionLog(`[xml-import-all] ${step.label}: falhou com HTTP ${response.status}${responseMessage ? ` - ${responseMessage}` : ''}`)
       if (!continueOnError) {
         shouldAbort = true
         break
@@ -335,9 +465,64 @@ for (const step of selectedSteps) {
       continue
     }
 
-    console.log(
-      `[xml-import-all] ${step.label}: ok - processados=${stepResult.summary.processed ?? 0}, inseridos=${stepResult.summary.inserted ?? 0}, atualizados=${stepResult.summary.updated ?? 0}, recusados=${stepResult.summary.skipped ?? 0}`,
+    await appendExecutionLog(
+      `[xml-import-all] ${step.label}: ok - processados=${stepResult.summary.processed ?? 0}, inseridos=${stepResult.summary.inserted ?? 0}, atualizados=${stepResult.summary.updated ?? 0}, excluidos=${stepResult.summary.deleted ?? 0}, recusados=${stepResult.summary.skipped ?? 0}`,
     )
+
+    if (step.key === 'termo' && deferredCredenciadaCleanupResultIndex >= 0) {
+      await appendExecutionLog('[xml-import-all] Credenciada: iniciando exclusao final de ausentes apos Credenciamento Termo')
+
+      const cleanupResponse = await postJson(`${requestedBaseUrl}/api/credenciada/import-xml`, {
+        fileName: 'Credenciados.xml',
+        deleteMissing: true,
+        progressFilePath: requestedLogPath,
+      })
+      const cleanupPayload = await readJsonResponse({ text: async () => cleanupResponse.bodyText })
+      await flushProgressLog()
+
+      if (!cleanupResponse.ok) {
+        const responseMessage = typeof cleanupPayload?.message === 'string' ? cleanupPayload.message : ''
+        results[deferredCredenciadaCleanupResultIndex] = {
+          ...results[deferredCredenciadaCleanupResultIndex],
+          ok: false,
+          status: cleanupResponse.status,
+          statusText: cleanupResponse.statusText,
+          response: cleanupPayload,
+          summary: {
+            total: cleanupPayload?.total ?? null,
+            processed: cleanupPayload?.processed ?? null,
+            inserted: cleanupPayload?.inserted ?? null,
+            updated: cleanupPayload?.updated ?? null,
+            deleted: cleanupPayload?.deleted ?? null,
+            skipped: cleanupPayload?.skipped ?? null,
+          },
+          finishedAt: new Date().toISOString(),
+        }
+        await appendExecutionLog(`[xml-import-all] Credenciada: falhou na exclusao final com HTTP ${cleanupResponse.status}${responseMessage ? ` - ${responseMessage}` : ''}`)
+        if (!continueOnError) {
+          shouldAbort = true
+          break
+        }
+      } else {
+        results[deferredCredenciadaCleanupResultIndex] = {
+          ...results[deferredCredenciadaCleanupResultIndex],
+          finishedAt: new Date().toISOString(),
+          summary: {
+            ...results[deferredCredenciadaCleanupResultIndex].summary,
+            deleted: cleanupPayload?.deleted ?? results[deferredCredenciadaCleanupResultIndex].summary?.deleted ?? 0,
+          },
+          response: {
+            ...results[deferredCredenciadaCleanupResultIndex].response,
+            deleted: cleanupPayload?.deleted ?? results[deferredCredenciadaCleanupResultIndex].response?.deleted ?? 0,
+          },
+        }
+        await appendExecutionLog(
+          `[xml-import-all] Credenciada: exclusao final concluida - excluidos=${cleanupPayload?.deleted ?? 0}`,
+        )
+      }
+
+      deferredCredenciadaCleanupResultIndex = -1
+    }
   } catch (error) {
     const errorDetails = serializeError(error)
     results.push({
@@ -351,10 +536,10 @@ for (const step of selectedSteps) {
       message: errorDetails.message,
       error: errorDetails,
     })
-    console.error(`[xml-import-all] ${step.label}: falhou - ${errorDetails.message}`)
+    await appendExecutionLog(`[xml-import-all] ${step.label}: falhou - ${errorDetails.message}`)
 
     if (errorDetails.cause?.message) {
-      console.error(`[xml-import-all] ${step.label}: causa - ${errorDetails.cause.message}`)
+      await appendExecutionLog(`[xml-import-all] ${step.label}: causa - ${errorDetails.cause.message}`)
     }
 
     if (!continueOnError) {
@@ -371,6 +556,9 @@ const summary = {
   startedAt,
   finishedAt,
   baseUrl: requestedBaseUrl,
+  logPath: requestedLogPath,
+  deleteMissing,
+  truncateBeforeImport: shouldTruncateBeforeImport,
   continueOnError,
   selectedStepKeys: selectedSteps.map((step) => step.key),
   ok: failedSteps.length === 0,
@@ -388,6 +576,7 @@ console.log(JSON.stringify({
   failedSteps: summary.failedSteps,
   skippedSteps: summary.skippedSteps,
   reportPath: requestedReportPath,
+  logPath: requestedLogPath,
 }, null, 2))
 
 process.exit(summary.ok ? 0 : 1)
