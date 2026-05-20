@@ -6663,6 +6663,7 @@ const parseCredenciadaXml = (xmlContent) => {
     codigo: normalizeRequestValue(record?.['C\u00f3digo']),
     credenciado: normalizeRequestValue(record?.Credenciado),
     cnpjCpf: normalizeRequestValue(record?.CNPJ_CPF),
+    termoPermissao: normalizeRequestValue(record?.TP),
     logradouro: normalizeRequestValue(record?.Logradouro),
     bairro: normalizeRequestValue(record?.Bairro),
     cep: normalizeRequestValue(record?.CEP),
@@ -6767,6 +6768,7 @@ const normalizeImportedCredenciadaRecord = (record, index) => {
   const codigo = normalizeCondutorCodigo(record.codigo)
   const credenciado = normalizeCredenciadaText(record.credenciado, 255)
   const cnpjCpf = normalizeCnpjCpf(record.cnpjCpf)
+  const termoPermissao = normalizeCredenciadaText(record.termoPermissao, 6)
   const logradouro = normalizeCredenciadaText(record.logradouro, 255)
   const bairro = normalizeCredenciadaText(record.bairro, 120)
   const cep = normalizeCep(record.cep)
@@ -6816,6 +6818,7 @@ const normalizeImportedCredenciadaRecord = (record, index) => {
     codigo,
     credenciado,
     cnpjCpf,
+    termoPermissao,
     logradouro,
     bairro,
     cep,
@@ -11471,9 +11474,10 @@ const importCredenciadaXmlFile = async (fileName, { deleteMissing = false, progr
                telefone_02 = NULLIF($11, ''),
                representante = NULLIF($12, ''),
                cpf_representante = NULLIF($13, ''),
-               status = NULLIF($14, ''),
+               termo_permissao = NULLIF($14, ''),
+               status = NULLIF($15, ''),
                data_modificacao = NOW()
-               WHERE codigo = $15`,
+               WHERE codigo = $16`,
           [
             String(record.codigo),
             record.placa,
@@ -11488,6 +11492,7 @@ const importCredenciadaXmlFile = async (fileName, { deleteMissing = false, progr
             record.telefone2,
             record.representante,
             record.cpfRepresentante,
+            record.termoPermissao,
             record.status,
             record.codigo,
           ],
@@ -11499,7 +11504,7 @@ const importCredenciadaXmlFile = async (fileName, { deleteMissing = false, progr
       await client.query(
         `INSERT INTO credenciada (
            codigo,
-          codigo_xml,
+           codigo_xml,
            placa,
            empresa,
            condutor,
@@ -11512,11 +11517,12 @@ const importCredenciadaXmlFile = async (fileName, { deleteMissing = false, progr
            telefone_02,
            representante,
            cpf_representante,
+           termo_permissao,
            status,
            data_inclusao,
            data_modificacao
          )
-         VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, NULLIF($9, ''), $10, NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NOW(), NOW())`,
+         VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, NULLIF($9, ''), $10, NULLIF($11, ''), NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), NOW(), NOW())`,
         [
           record.codigo,
           String(record.codigo),
@@ -11532,6 +11538,7 @@ const importCredenciadaXmlFile = async (fileName, { deleteMissing = false, progr
           record.telefone2,
           record.representante,
           record.cpfRepresentante,
+          record.termoPermissao,
           record.status,
         ],
       )
@@ -13076,8 +13083,8 @@ const validateCredenciamentoTermoPayload = async ({
     errors.dataRescisao = 'Data de rescisao e obrigatoria quando o status do termo for Rescindido.'
   }
 
-  if (normalizedStatusTermo === 'RESCINDIDO' && normalizedDataRescisao && normalizedDataRescisao < getCurrentDateInputValue()) {
-    errors.dataRescisao = 'Data de rescisao deve ser maior ou igual a hoje.'
+  if (normalizedStatusTermo === 'RESCINDIDO' && normalizedDataRescisao && normalizedDataRescisao > getCurrentDateInputValue()) {
+    errors.dataRescisao = 'Data de rescisao deve ser menor ou igual a hoje.'
   }
 
   let credenciadaItem = null
@@ -29690,21 +29697,28 @@ const server = createServer(async (request, response) => {
       }
 
       const body = await readJsonBody(request)
-      const validationResult = await validateCredenciamentoTermoPayload(body)
+      const requestedStatusTermo = normalizeCredenciadaText(body.statusTermo, 100)
+      const isRescisaoUpdate = requestedStatusTermo === 'RESCINDIDO'
+      const requestedDataRescisao = normalizeXmlDateInput(body.dataRescisao) || normalizeRequestValue(body.dataRescisao)
+      let validationResult = null
 
-      if (validationResult.status !== 200) {
-        sendJson(response, validationResult.status, validationResult.payload)
-        return
-      }
+      if (!isRescisaoUpdate) {
+        validationResult = await validateCredenciamentoTermoPayload(body)
 
-      if (validationResult.payload.statusTermo === 'RESCINDIDO' && body.confirmRescisao !== true) {
-        sendJson(response, 400, {
-          message: 'Confirme a rescisao do termo para continuar.',
-          errors: {
-            statusTermo: 'Confirme a rescisao do termo antes de gravar.',
-          },
-        })
-        return
+        if (validationResult.status !== 200) {
+          sendJson(response, validationResult.status, validationResult.payload)
+          return
+        }
+
+        if (validationResult.payload.statusTermo === 'RESCINDIDO' && body.confirmRescisao !== true) {
+          sendJson(response, 400, {
+            message: 'Confirme a rescisao do termo para continuar.',
+            errors: {
+              statusTermo: 'Confirme a rescisao do termo antes de gravar.',
+            },
+          })
+          return
+        }
       }
 
       const client = await pool.connect()
@@ -29716,6 +29730,75 @@ const server = createServer(async (request, response) => {
         if (!existingItem) {
           await client.query('ROLLBACK')
           sendJson(response, 404, { message: 'Credenciamento termo nao encontrado.' })
+          return
+        }
+
+        if (isRescisaoUpdate) {
+          const rescisaoErrors = {}
+
+          if (!requestedDataRescisao) {
+            rescisaoErrors.dataRescisao = 'Data de rescisao e obrigatoria quando o status do termo for Rescindido.'
+          } else if (!isDateInputValid(requestedDataRescisao)) {
+            rescisaoErrors.dataRescisao = 'Data de rescisao invalida.'
+          } else if (requestedDataRescisao > getCurrentDateInputValue()) {
+            rescisaoErrors.dataRescisao = 'Data de rescisao deve ser menor ou igual a hoje.'
+          }
+
+          if (body.confirmRescisao !== true) {
+            rescisaoErrors.statusTermo = 'Confirme a rescisao do termo antes de gravar.'
+          }
+
+          if (Object.keys(rescisaoErrors).length > 0) {
+            await client.query('ROLLBACK')
+            sendJson(response, 400, {
+              message: 'Corrija os campos do credenciamento termo para continuar.',
+              errors: rescisaoErrors,
+            })
+            return
+          }
+
+          await insertTermoHistoricoEntry(client, existingItem, {
+            acao: 'ALTERACAO_MANUAL',
+            realizadoPor: performedBy,
+          })
+
+          const updateResult = await client.query(
+            `UPDATE ${credenciamentoTermoTableName}
+             SET status_termo = 'RESCINDIDO',
+                 data_rescisao = $2::date,
+                 data_modificacao = NOW()
+             WHERE codigo = $1
+             RETURNING codigo`,
+            [originalCodigo, requestedDataRescisao],
+          )
+
+          const canceledOrdemServicos = await cancelActiveOrdemServicosByTermoAdesao(
+            client,
+            normalizeRequestValue(existingItem.termo_adesao),
+            requestedDataRescisao,
+            {
+              acao: 'ALTERACAO_TERMO',
+              realizadoPor: performedBy,
+            },
+          )
+
+          if (updateResult.rowCount === 0) {
+            await client.query('ROLLBACK')
+            sendJson(response, 404, { message: 'Credenciamento termo nao encontrado.' })
+            return
+          }
+
+          await syncCredenciamentoTermoValoresByTermos([
+            existingItem.termo_adesao,
+          ], client, {
+            acao: 'RECALCULO_TERMO',
+            realizadoPor: performedBy,
+          })
+
+          await client.query('COMMIT')
+
+          const item = await fetchCredenciamentoTermoItemByCodigo(pool, originalCodigo)
+          sendJson(response, 200, { item, canceledOrdemServicos })
           return
         }
 

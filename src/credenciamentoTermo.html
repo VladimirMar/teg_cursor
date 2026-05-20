@@ -1758,7 +1758,8 @@
       const isStatusTermoRescindido = () => normalizeText(statusTermoInput.value, 100).toUpperCase() === 'RESCINDIDO';
       const syncDataRescisaoState = () => {
         const shouldEnable = !isFormReadOnly && isStatusTermoRescindido();
-        dataRescisaoInput.min = getTodayDateInputValue();
+        dataRescisaoInput.min = '';
+        dataRescisaoInput.max = getTodayDateInputValue();
 
         dataRescisaoInput.disabled = !shouldEnable;
         dataRescisaoInput.readOnly = !shouldEnable;
@@ -5375,6 +5376,7 @@
         compDataAditivo: compDataAditivoInput.value,
         dataRescisao: isStatusTermoRescindido() ? dataRescisaoInput.value : '',
         tipoTermo: normalizeText(tipoTermoInput.value, 100),
+        tpOptante: String(currentTermoTpOptante || '').trim(),
         especificacaoSei: normalizeText(especificacaoSeiInput.value, 255),
         valorContrato: normalizeDecimalInput(valorContratoInput.value),
         valorContratoAtualizado: normalizeDecimalInput(valorContratoInput.value),
@@ -5392,7 +5394,7 @@
         }
 
         resetMessages();
-        const payload = collectPayload();
+        let payload = collectPayload();
 
         if (formMode === 'create' && isExistingTermCreateBlocked) {
           errors.termoAdesao.textContent = 'O cadastro principal aceita somente termo novo com aditivo 0.';
@@ -5406,6 +5408,11 @@
           feedback.textContent = 'Corrija os campos do credenciamento termo para continuar.';
           revealFirstFormError({ aditivo: errors.aditivo.textContent });
           return;
+        }
+
+        if (!payload.credenciadaCodigo && getDocumentDigits(cnpjCpfInput.value).length) {
+          await syncCredenciadaByDocument();
+          payload = collectPayload();
         }
 
         if (!payload.credenciadaCodigo) {
@@ -5428,8 +5435,8 @@
           return;
         }
 
-        if (payload.dataRescisao && payload.dataRescisao < getTodayDateInputValue()) {
-          errors.dataRescisao.textContent = 'Data de rescisao deve ser maior ou igual a hoje.';
+        if (payload.dataRescisao && payload.dataRescisao > getTodayDateInputValue()) {
+          errors.dataRescisao.textContent = 'Data de rescisao deve ser menor ou igual a hoje.';
           feedback.textContent = 'Corrija os campos do credenciamento termo para continuar.';
           revealFirstFormError({ dataRescisao: errors.dataRescisao.textContent });
           return;
@@ -5484,10 +5491,14 @@ As OrdemServico ativas relacionadas serao canceladas e receberao data de encerra
                   normalizedResponseErrors.credenciado = value;
                 }
               });
-              feedback.textContent = responseMessage;
               revealFirstFormError(normalizedResponseErrors);
+
+              const firstDetailedError = Object.values(normalizedResponseErrors)
+                .map((value) => String(value || '').trim())
+                .find(Boolean);
+
+              throw new Error(firstDetailedError ? `${responseMessage} ${firstDetailedError}` : responseMessage);
             }
-            feedback.textContent = responseMessage;
             throw new Error(responseMessage);
           }
 
