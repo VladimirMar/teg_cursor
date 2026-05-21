@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { access, appendFile, mkdir, readFile, readdir } from 'node:fs/promises'
+import { access, appendFile, mkdir, readFile, readdir, rename } from 'node:fs/promises'
 import { XMLParser } from 'fast-xml-parser'
 import JSZip from 'jszip'
 import path from 'node:path'
@@ -24,8 +24,64 @@ const smokeRunPath = '/api/smoke/run'
 const xmlImportAllRunPath = '/api/xml-import-all/run'
 const xmlImportAllStatusPath = '/api/xml-import-all/status'
 const xmlImportAllResetPath = '/api/xml-import-all/reset'
+const apontamentoServicosImportStatusPath = '/api/apontamento-servicos/import-excel/status'
 const allowedSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo', 'marca-modelo'])
 const invalidFixtureSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo'])
+const apontamentoServicosImportRuns = new Map()
+
+const normalizeApontamentoServicosImportId = (value) => {
+  return String(value ?? '').trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80)
+}
+
+const getApontamentoServicosImportStatus = (importId) => {
+  const normalizedImportId = normalizeApontamentoServicosImportId(importId)
+
+  if (!normalizedImportId) {
+    return null
+  }
+
+  return apontamentoServicosImportRuns.get(normalizedImportId) ?? null
+}
+
+const setApontamentoServicosImportStatus = (importId, nextStatus) => {
+  const normalizedImportId = normalizeApontamentoServicosImportId(importId)
+
+  if (!normalizedImportId) {
+    return null
+  }
+
+  const currentStatus = apontamentoServicosImportRuns.get(normalizedImportId) ?? {
+    importId: normalizedImportId,
+    status: 'pending',
+    directoryPath: '',
+    currentFileName: '',
+    currentFilePath: '',
+    currentFileIndex: 0,
+    totalFiles: 0,
+    currentRecord: 0,
+    totalRecords: 0,
+    currentRowNumber: 0,
+    processedFiles: 0,
+    processedItems: 0,
+    processedDates: 0,
+    skippedRecords: 0,
+    oldDirectoryPath: '',
+    movedFileName: '',
+    message: '',
+    errorMessage: '',
+    updatedAt: new Date().toISOString(),
+  }
+
+  const mergedStatus = {
+    ...currentStatus,
+    ...nextStatus,
+    importId: normalizedImportId,
+    updatedAt: new Date().toISOString(),
+  }
+
+  apontamentoServicosImportRuns.set(normalizedImportId, mergedStatus)
+  return mergedStatus
+}
 
 const resolveXmlImportProgressFilePath = (filePath) => {
   const normalizedValue = String(filePath ?? '').trim()
@@ -2205,6 +2261,48 @@ const resolveApontamentoServicosImportFilePaths = async ({ directoryPath, fileNa
   }
 }
 
+const moveApontamentoServicosImportedWorkbookToOld = async (filePath) => {
+  const resolvedFilePath = path.resolve(String(filePath ?? '').trim())
+
+  if (!resolvedFilePath) {
+    return {
+      oldDirectoryPath: '',
+      movedFilePath: '',
+      movedFileName: '',
+    }
+  }
+
+  const sourceDirectoryPath = path.dirname(resolvedFilePath)
+
+  if (path.basename(sourceDirectoryPath).toLowerCase() === 'old') {
+    return {
+      oldDirectoryPath: sourceDirectoryPath,
+      movedFilePath: resolvedFilePath,
+      movedFileName: path.basename(resolvedFilePath),
+    }
+  }
+
+  const oldDirectoryPath = path.join(sourceDirectoryPath, 'old')
+  await mkdir(oldDirectoryPath, { recursive: true })
+
+  const parsedPath = path.parse(resolvedFilePath)
+  let targetFilePath = path.join(oldDirectoryPath, parsedPath.base)
+  let suffixIndex = 1
+
+  while (await fileExists(targetFilePath)) {
+    targetFilePath = path.join(oldDirectoryPath, `${parsedPath.name}-${suffixIndex}${parsedPath.ext}`)
+    suffixIndex += 1
+  }
+
+  await rename(resolvedFilePath, targetFilePath)
+
+  return {
+    oldDirectoryPath,
+    movedFilePath: targetFilePath,
+    movedFileName: path.basename(targetFilePath),
+  }
+}
+
 const buildApontamentoServicosImportOsLookupKey = (value) => {
   return normalizeImportComparableText(value).replace(/\s+/g, '')
 }
@@ -2399,7 +2497,7 @@ const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, p
   }
 }
 
-const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServicosImportDefaultFilePath }, executor = pool) => {
+const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServicosImportDefaultFilePath, onProgress = null }, executor = pool) => {
   const resolvedFilePath = normalizeRequestValue(filePath) || apontamentoServicosImportDefaultFilePath
   let workbook
 
@@ -2440,15 +2538,44 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
   const lastMainRow = findWorksheetLastDataRow(mainSheet, apontamentoServicosImportMainOsColumnIndex, apontamentoServicosImportFirstDataRow)
   const lastContinuaRow = findWorksheetLastDataRow(continuaSheet, apontamentoServicosImportMainOsColumnIndex, apontamentoServicosImportFirstDataRow)
   const lastRow = Math.max(lastMainRow, lastContinuaRow)
-  const importedItemsByDate = new Map()
-  const skippedRecords = []
-  const skippedRecordKeys = new Set()
+  const rowNumbers = []
 
   for (let rowNumber = apontamentoServicosImportFirstDataRow; rowNumber <= lastRow; rowNumber += 1) {
     const ordemServicoPlanilha = getWorkbookCellDisplayValue(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainOsColumnIndex, rowNumber))
 
-    if (!ordemServicoPlanilha) {
-      continue
+    if (ordemServicoPlanilha) {
+      rowNumbers.push(rowNumber)
+    }
+  }
+
+  if (typeof onProgress === 'function') {
+    await onProgress({
+      fileName: path.basename(resolvedFilePath),
+      filePath: resolvedFilePath,
+      currentRecord: 0,
+      totalRecords: rowNumbers.length,
+      currentRowNumber: 0,
+      message: `Processando ${path.basename(resolvedFilePath)}.`,
+    })
+  }
+
+  const importedItemsByDate = new Map()
+  const skippedRecords = []
+  const skippedRecordKeys = new Set()
+
+  for (const [rowIndex, rowNumber] of rowNumbers.entries()) {
+    const ordemServicoPlanilha = getWorkbookCellDisplayValue(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainOsColumnIndex, rowNumber))
+
+    if (typeof onProgress === 'function') {
+      await onProgress({
+        fileName: path.basename(resolvedFilePath),
+        filePath: resolvedFilePath,
+        currentRecord: rowIndex + 1,
+        totalRecords: rowNumbers.length,
+        currentRowNumber: rowNumber,
+        ordemServico: ordemServicoPlanilha,
+        message: `Processando registro ${rowIndex + 1} de ${rowNumbers.length} da planilha ${path.basename(resolvedFilePath)}.`,
+      })
     }
 
     const ordemServicoLookupKey = buildApontamentoServicosImportOsLookupKey(ordemServicoPlanilha)
@@ -2558,6 +2685,7 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
     tipoPessoa,
     revisao: 0,
     firstDataReferencia: Array.from(importedItemsByDate.keys()).sort()[0] ?? `${referenciaMes.slice(0, 8)}01`,
+    totalRecords: rowNumbers.length,
     itemsByDate: importedItemsByDate,
     skippedRecords,
   }
@@ -19101,86 +19229,162 @@ const server = createServer(async (request, response) => {
 
   if (request.method === 'POST' && pathname === '/api/apontamento-servicos/import-excel') {
     const client = await pool.connect()
+    let importId = ''
 
     try {
       const body = await readJsonBody(request)
+      importId = normalizeApontamentoServicosImportId(body?.importId) || randomBytes(8).toString('hex')
       const resolvedImportFiles = await resolveApontamentoServicosImportFilePaths({
         directoryPath: body?.directoryPath,
         fileName: body?.fileName,
         filePath: body?.filePath,
       })
 
-      await client.query('BEGIN')
+      setApontamentoServicosImportStatus(importId, {
+        status: 'running',
+        directoryPath: resolvedImportFiles.directoryPath,
+        totalFiles: resolvedImportFiles.filePaths.length,
+        processedFiles: 0,
+        processedItems: 0,
+        processedDates: 0,
+        skippedRecords: 0,
+        message: `Iniciando importacao de ${resolvedImportFiles.filePaths.length} planilha(s).`,
+        errorMessage: '',
+      })
 
       let sharedImportContext = null
       let hasSharedImportContext = true
       let processedFiles = 0
       let processedItems = 0
       let processedDates = 0
+      let lastMovedFilePath = ''
+      let lastOldDirectoryPath = ''
       const skippedRecords = []
 
-      for (const filePath of resolvedImportFiles.filePaths) {
-        const importResult = await importApontamentoServicosWorkbook({ filePath }, client)
-        const currentContext = {
-          mesAno: importResult.mesAno,
-          dreCodigo: importResult.dreCodigo,
-          dreDescricao: importResult.dreDescricao,
-          revisao: importResult.revisao,
-          tipoPessoa: importResult.tipoPessoa,
-          dataReferencia: importResult.firstDataReferencia,
-        }
+      for (const [fileIndex, filePath] of resolvedImportFiles.filePaths.entries()) {
+        await client.query('BEGIN')
 
-        if (!sharedImportContext) {
-          sharedImportContext = currentContext
-        } else if (
-          sharedImportContext.mesAno !== currentContext.mesAno
-          || sharedImportContext.dreCodigo !== currentContext.dreCodigo
-          || sharedImportContext.dreDescricao !== currentContext.dreDescricao
-          || sharedImportContext.revisao !== currentContext.revisao
-          || sharedImportContext.tipoPessoa !== currentContext.tipoPessoa
-          || sharedImportContext.dataReferencia !== currentContext.dataReferencia
-        ) {
-          hasSharedImportContext = false
-        }
-
-        for (const [dataReferencia, itemsMap] of importResult.itemsByDate.entries()) {
-          const items = Array.from(itemsMap.values())
-
-          if (!items.length) {
-            continue
-          }
-
-          await upsertApontamentoServicosItems({
-            mesAno: importResult.mesAno,
-            dataReferencia,
-            items,
-            preserveExistingKilometragem: true,
-            createApuracaoFinanceiraIfMissing: true,
+        try {
+          const importResult = await importApontamentoServicosWorkbook({
+            filePath,
+            onProgress: async (progress) => {
+              setApontamentoServicosImportStatus(importId, {
+                status: 'running',
+                currentFileIndex: fileIndex + 1,
+                currentFileName: progress.fileName,
+                currentFilePath: progress.filePath,
+                currentRecord: progress.currentRecord,
+                totalRecords: progress.totalRecords,
+                currentRowNumber: progress.currentRowNumber,
+                processedFiles,
+                processedItems,
+                processedDates,
+                skippedRecords: skippedRecords.length,
+                message: progress.message,
+              })
+            },
           }, client)
 
-          processedItems += items.length
-        }
+          const currentContext = {
+            mesAno: importResult.mesAno,
+            dreCodigo: importResult.dreCodigo,
+            dreDescricao: importResult.dreDescricao,
+            revisao: importResult.revisao,
+            tipoPessoa: importResult.tipoPessoa,
+            dataReferencia: importResult.firstDataReferencia,
+          }
 
-        processedFiles += 1
-        processedDates += importResult.itemsByDate.size
+          if (!sharedImportContext) {
+            sharedImportContext = currentContext
+          } else if (
+            sharedImportContext.mesAno !== currentContext.mesAno
+            || sharedImportContext.dreCodigo !== currentContext.dreCodigo
+            || sharedImportContext.dreDescricao !== currentContext.dreDescricao
+            || sharedImportContext.revisao !== currentContext.revisao
+            || sharedImportContext.tipoPessoa !== currentContext.tipoPessoa
+            || sharedImportContext.dataReferencia !== currentContext.dataReferencia
+          ) {
+            hasSharedImportContext = false
+          }
 
-        for (const skippedRecord of importResult.skippedRecords) {
-          skippedRecords.push({
-            ...skippedRecord,
-            fileName: importResult.fileName,
+          for (const [dataReferencia, itemsMap] of importResult.itemsByDate.entries()) {
+            const items = Array.from(itemsMap.values())
+
+            if (!items.length) {
+              continue
+            }
+
+            await upsertApontamentoServicosItems({
+              mesAno: importResult.mesAno,
+              dataReferencia,
+              items,
+              preserveExistingKilometragem: true,
+              createApuracaoFinanceiraIfMissing: true,
+            }, client)
+
+            processedItems += items.length
+          }
+
+          processedFiles += 1
+          processedDates += importResult.itemsByDate.size
+
+          for (const skippedRecord of importResult.skippedRecords) {
+            skippedRecords.push({
+              ...skippedRecord,
+              fileName: importResult.fileName,
+            })
+          }
+
+          await client.query('COMMIT')
+
+          const movedFileResult = await moveApontamentoServicosImportedWorkbookToOld(filePath)
+          lastMovedFilePath = movedFileResult.movedFilePath
+          lastOldDirectoryPath = movedFileResult.oldDirectoryPath
+
+          setApontamentoServicosImportStatus(importId, {
+            status: 'running',
+            currentFileIndex: fileIndex + 1,
+            currentFileName: importResult.fileName,
+            currentFilePath: movedFileResult.movedFilePath || filePath,
+            currentRecord: importResult.totalRecords,
+            totalRecords: importResult.totalRecords,
+            currentRowNumber: 0,
+            processedFiles,
+            processedItems,
+            processedDates,
+            skippedRecords: skippedRecords.length,
+            oldDirectoryPath: movedFileResult.oldDirectoryPath,
+            movedFileName: movedFileResult.movedFileName,
+            message: `Planilha ${importResult.fileName} concluida e movida para ${movedFileResult.oldDirectoryPath || 'old'}.`,
           })
+        } catch (error) {
+          await client.query('ROLLBACK').catch(() => {})
+          throw error
         }
       }
 
-      await client.query('COMMIT')
-
       const responseImportContext = hasSharedImportContext ? sharedImportContext : null
 
+      setApontamentoServicosImportStatus(importId, {
+        status: 'completed',
+        currentRecord: 0,
+        totalRecords: 0,
+        currentRowNumber: 0,
+        processedFiles,
+        processedItems,
+        processedDates,
+        skippedRecords: skippedRecords.length,
+        message: `Importacao concluida: ${processedFiles} arquivo(s), ${processedItems} linha(s) processada(s) e ${skippedRecords.length} OS nao processada(s).`,
+        errorMessage: '',
+      })
+
       sendJson(response, 200, {
+        importId,
         message: `Importacao concluida: ${processedFiles} arquivo(s), ${processedItems} linha(s) processada(s) e ${skippedRecords.length} OS nao processada(s).`,
         directoryPath: resolvedImportFiles.directoryPath,
-        filePath: processedFiles === 1 ? resolvedImportFiles.filePaths[0] : '',
-        fileName: processedFiles === 1 ? path.basename(resolvedImportFiles.filePaths[0]) : '',
+        filePath: processedFiles === 1 ? (lastMovedFilePath || resolvedImportFiles.filePaths[0]) : '',
+        fileName: processedFiles === 1 ? path.basename(lastMovedFilePath || resolvedImportFiles.filePaths[0]) : '',
+        oldDirectoryPath: lastOldDirectoryPath,
         mesAno: responseImportContext?.mesAno ?? '',
         dreCodigo: responseImportContext?.dreCodigo ?? '',
         dreDescricao: responseImportContext?.dreDescricao ?? '',
@@ -19200,11 +19404,38 @@ const server = createServer(async (request, response) => {
         ? error.message
         : 'Erro ao importar a planilha do apontamento de servicos.'
 
+      if (importId) {
+        setApontamentoServicosImportStatus(importId, {
+          status: 'error',
+          errorMessage: message,
+          message,
+        })
+      }
+
       sendJson(response, statusCode, { message })
     } finally {
       client.release()
     }
 
+    return
+  }
+
+  if (request.method === 'GET' && pathname === apontamentoServicosImportStatusPath) {
+    const importId = normalizeApontamentoServicosImportId(requestUrl.searchParams.get('importId') ?? '')
+
+    if (!importId) {
+      sendJson(response, 400, { message: 'Informe o identificador da importacao.' })
+      return
+    }
+
+    const status = getApontamentoServicosImportStatus(importId)
+
+    if (!status) {
+      sendJson(response, 404, { message: 'Importacao nao encontrada.' })
+      return
+    }
+
+    sendJson(response, 200, status)
     return
   }
 

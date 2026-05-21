@@ -3,9 +3,11 @@ import type { FormEvent } from 'react'
 import { listDreItemsPaginated } from './services/dre'
 import type { DreItem } from './services/dre'
 import {
+  getApontamentoServicosImportStatus,
   importApontamentoServicosExcel,
   listApontamentoServicosItems,
   saveApontamentoServicosItems,
+  type ApontamentoServicosImportStatus,
   type ApontamentoServicosImportSkippedRecord,
   type ApontamentoServicosItem,
   type ApontamentoServicosSaveItem,
@@ -257,11 +259,13 @@ export default function ApontamentoServicosView() {
   const [importDialogMessage, setImportDialogMessage] = useState('')
   const [importDialogSkippedRecords, setImportDialogSkippedRecords] = useState<ApontamentoServicosImportSkippedRecord[]>([])
   const [isImportDialogVisible, setIsImportDialogVisible] = useState(false)
+  const [importProgress, setImportProgress] = useState<ApontamentoServicosImportStatus | null>(null)
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
+  const importStatusPollTimerRef = useRef<number | null>(null)
   const shouldFocusFirstGridRecordRef = useRef(false)
   const shouldShowKmAdicionalColumn = appliedFilters.dataReferencia.endsWith('-01')
   const tableColumnCount = shouldShowKmAdicionalColumn ? 16 : 15
@@ -294,10 +298,35 @@ export default function ApontamentoServicosView() {
   }, [isImporting])
 
   const closeImportDialog = useCallback(() => {
+    if (isImporting) {
+      return
+    }
+
     setIsImportDialogVisible(false)
     setImportDialogMessage('')
     setImportDialogSkippedRecords([])
+    setImportProgress(null)
+  }, [isImporting])
+
+  const stopImportStatusPolling = useCallback(() => {
+    if (importStatusPollTimerRef.current !== null) {
+      window.clearInterval(importStatusPollTimerRef.current)
+      importStatusPollTimerRef.current = null
+    }
   }, [])
+
+  const refreshImportStatus = useCallback(async (importId: string) => {
+    try {
+      const nextStatus = await getApontamentoServicosImportStatus(importId)
+      setImportProgress(nextStatus)
+
+      if (nextStatus.status === 'completed' || nextStatus.status === 'error') {
+        stopImportStatusPolling()
+      }
+    } catch {
+      // Ignore transient polling failures while the import request is still being established.
+    }
+  }, [stopImportStatusPolling])
 
   const updateDraftDateConsistencyMessage = (nextMesAno: string, nextDataOperacaoInput: string) => {
     if (!isValidMonthYear(nextMesAno)) {
@@ -643,31 +672,75 @@ export default function ApontamentoServicosView() {
 
     const importDisplayName = getApontamentoServicosImportDisplayName(params.fileName)
     const normalizedCrmcCondutor = crmcCondutor.trim() || 'todos'
+    const importId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
     setIsImporting(true)
     setStatusTone('idle')
     setStatusMessage(`Importando planilha ${importDisplayName}. CRMC em andamento: ${normalizedCrmcCondutor}.`)
+    setImportDialogMessage(`Importacao iniciada para ${importDisplayName}.`)
+    setImportDialogSkippedRecords([])
+    setImportProgress({
+      importId,
+      status: 'pending',
+      directoryPath: params.directoryPath,
+      currentFileName: params.fileName ?? '',
+      currentFilePath: '',
+      currentFileIndex: 0,
+      totalFiles: 0,
+      currentRecord: 0,
+      totalRecords: 0,
+      currentRowNumber: 0,
+      processedFiles: 0,
+      processedItems: 0,
+      processedDates: 0,
+      skippedRecords: 0,
+      oldDirectoryPath: '',
+      movedFileName: '',
+      message: `Aguardando inicio da importacao de ${importDisplayName}.`,
+      errorMessage: '',
+      updatedAt: '',
+    })
+    setIsImportDialogVisible(true)
+    stopImportStatusPolling()
+    importStatusPollTimerRef.current = window.setInterval(() => {
+      void refreshImportStatus(importId)
+    }, 700)
+    void refreshImportStatus(importId)
 
     try {
-      const result = await importApontamentoServicosExcel(params)
+      const result = await importApontamentoServicosExcel({
+        ...params,
+        importId,
+      })
+      await refreshImportStatus(importId)
       setStatusTone('success')
       setStatusMessage(`Importacao concluida para ${getApontamentoServicosImportDisplayName(result.fileName || params.fileName)}. ${result.message}`)
+      setImportDialogMessage(`Importacao concluida para ${getApontamentoServicosImportDisplayName(result.fileName || params.fileName)}. ${result.message}`)
 
       if (result.skippedRecords.length > 0 || result.processedFiles > 1) {
-        setImportDialogMessage(`Importacao concluida para ${getApontamentoServicosImportDisplayName(result.fileName || params.fileName)}. ${result.message}`)
         setImportDialogSkippedRecords(result.skippedRecords)
         setIsImportDialogVisible(true)
       }
 
       await loadImportedFilters(result)
     } catch (error) {
+      await refreshImportStatus(importId)
       const message = error instanceof Error ? error.message : 'Falha ao importar a planilha de apontamento de servicos.'
       setStatusTone('error')
       setStatusMessage(message)
+      setImportDialogMessage(message)
+      setIsImportDialogVisible(true)
     } finally {
+      stopImportStatusPolling()
       setIsImporting(false)
     }
   }
+
+  useEffect(() => {
+    return () => {
+      stopImportStatusPolling()
+    }
+  }, [stopImportStatusPolling])
 
   const handleImportRequestSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -815,6 +888,23 @@ export default function ApontamentoServicosView() {
 
               <p className="management-modal-subtitle">{importDialogMessage}</p>
 
+              {importProgress ? (
+                <div className="smoke-skipped-list">
+                  <strong>Progresso da importacao</strong>
+                  <ul>
+                    <li>Status: {importProgress.status === 'completed' ? 'Concluida' : importProgress.status === 'error' ? 'Erro' : 'Em processamento'}</li>
+                    <li>Planilha atual: {importProgress.currentFileName || '-'}</li>
+                    <li>Planilhas processadas: {importProgress.processedFiles} de {importProgress.totalFiles || '-'}</li>
+                    <li>Registro atual: {importProgress.currentRecord} de {importProgress.totalRecords || '-'}</li>
+                    <li>Linha atual da planilha: {importProgress.currentRowNumber || '-'}</li>
+                    <li>Linhas processadas no banco: {importProgress.processedItems}</li>
+                    <li>Datas processadas: {importProgress.processedDates}</li>
+                    <li>Movida para old: {importProgress.movedFileName ? `${importProgress.movedFileName} (${importProgress.oldDirectoryPath || 'old'})` : '-'}</li>
+                    <li>Mensagem: {importProgress.errorMessage || importProgress.message || '-'}</li>
+                  </ul>
+                </div>
+              ) : null}
+
               {importDialogSkippedRecords.length > 0 ? (
                 <div className="smoke-skipped-list">
                   <strong>OS nao processadas</strong>
@@ -829,7 +919,7 @@ export default function ApontamentoServicosView() {
               ) : null}
 
               <div className="button-row dre-button-row management-modal-footer">
-                <button type="button" className="primary-button" onClick={closeImportDialog}>
+                <button type="button" className="primary-button" onClick={closeImportDialog} disabled={isImporting}>
                   Ok
                 </button>
               </div>

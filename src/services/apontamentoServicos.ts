@@ -79,6 +79,7 @@ export type ApontamentoServicosImportSkippedRecord = {
 }
 
 export type ApontamentoServicosImportResponse = {
+  importId?: string
   directoryPath: string
   message: string
   filePath: string
@@ -98,6 +99,29 @@ export type ApontamentoServicosImportResponse = {
 export type ApontamentoServicosImportParams = {
   directoryPath?: string
   fileName?: string
+  importId?: string
+}
+
+export type ApontamentoServicosImportStatus = {
+  importId: string
+  status: 'pending' | 'running' | 'completed' | 'error'
+  directoryPath: string
+  currentFileName: string
+  currentFilePath: string
+  currentFileIndex: number
+  totalFiles: number
+  currentRecord: number
+  totalRecords: number
+  currentRowNumber: number
+  processedFiles: number
+  processedItems: number
+  processedDates: number
+  skippedRecords: number
+  oldDirectoryPath: string
+  movedFileName: string
+  message: string
+  errorMessage: string
+  updatedAt: string
 }
 
 export type ApontamentoServicosListParams = {
@@ -229,6 +253,7 @@ export async function importApontamentoServicosExcel(params?: ApontamentoServico
     body: JSON.stringify({
       directoryPath: params?.directoryPath,
       fileName: params?.fileName,
+      importId: params?.importId,
     }),
   })
 
@@ -240,6 +265,9 @@ export async function importApontamentoServicosExcel(params?: ApontamentoServico
   }
 
   return {
+    importId: typeof (payload as ApontamentoServicosImportResponse).importId === 'string'
+      ? (payload as ApontamentoServicosImportResponse).importId
+      : '',
     directoryPath: typeof (payload as ApontamentoServicosImportResponse).directoryPath === 'string'
       ? (payload as ApontamentoServicosImportResponse).directoryPath
       : '',
@@ -272,5 +300,50 @@ export async function importApontamentoServicosExcel(params?: ApontamentoServico
     skippedRecords: Array.isArray((payload as ApontamentoServicosImportResponse).skippedRecords)
       ? (payload as ApontamentoServicosImportResponse).skippedRecords
       : [],
+  }
+}
+
+export async function getApontamentoServicosImportStatus(importId: string): Promise<ApontamentoServicosImportStatus> {
+  const queryParams = new URLSearchParams({ importId })
+  const response = await fetch(`${getApontamentoServicosUrl()}/import-excel/status?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  const responseText = await response.text()
+  const payload = parseJsonSafely(responseText)
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(payload))
+  }
+
+  return {
+    importId: typeof (payload as ApontamentoServicosImportStatus).importId === 'string' ? (payload as ApontamentoServicosImportStatus).importId : importId,
+    status: (payload as ApontamentoServicosImportStatus).status === 'error'
+      ? 'error'
+      : (payload as ApontamentoServicosImportStatus).status === 'completed'
+        ? 'completed'
+        : (payload as ApontamentoServicosImportStatus).status === 'running'
+          ? 'running'
+          : 'pending',
+    directoryPath: typeof (payload as ApontamentoServicosImportStatus).directoryPath === 'string' ? (payload as ApontamentoServicosImportStatus).directoryPath : '',
+    currentFileName: typeof (payload as ApontamentoServicosImportStatus).currentFileName === 'string' ? (payload as ApontamentoServicosImportStatus).currentFileName : '',
+    currentFilePath: typeof (payload as ApontamentoServicosImportStatus).currentFilePath === 'string' ? (payload as ApontamentoServicosImportStatus).currentFilePath : '',
+    currentFileIndex: Number((payload as ApontamentoServicosImportStatus).currentFileIndex) || 0,
+    totalFiles: Number((payload as ApontamentoServicosImportStatus).totalFiles) || 0,
+    currentRecord: Number((payload as ApontamentoServicosImportStatus).currentRecord) || 0,
+    totalRecords: Number((payload as ApontamentoServicosImportStatus).totalRecords) || 0,
+    currentRowNumber: Number((payload as ApontamentoServicosImportStatus).currentRowNumber) || 0,
+    processedFiles: Number((payload as ApontamentoServicosImportStatus).processedFiles) || 0,
+    processedItems: Number((payload as ApontamentoServicosImportStatus).processedItems) || 0,
+    processedDates: Number((payload as ApontamentoServicosImportStatus).processedDates) || 0,
+    skippedRecords: Number((payload as ApontamentoServicosImportStatus).skippedRecords) || 0,
+    oldDirectoryPath: typeof (payload as ApontamentoServicosImportStatus).oldDirectoryPath === 'string' ? (payload as ApontamentoServicosImportStatus).oldDirectoryPath : '',
+    movedFileName: typeof (payload as ApontamentoServicosImportStatus).movedFileName === 'string' ? (payload as ApontamentoServicosImportStatus).movedFileName : '',
+    message: typeof (payload as ApontamentoServicosImportStatus).message === 'string' ? (payload as ApontamentoServicosImportStatus).message : '',
+    errorMessage: typeof (payload as ApontamentoServicosImportStatus).errorMessage === 'string' ? (payload as ApontamentoServicosImportStatus).errorMessage : '',
+    updatedAt: typeof (payload as ApontamentoServicosImportStatus).updatedAt === 'string' ? (payload as ApontamentoServicosImportStatus).updatedAt : '',
   }
 }
