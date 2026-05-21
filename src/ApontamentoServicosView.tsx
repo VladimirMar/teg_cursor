@@ -264,7 +264,7 @@ export default function ApontamentoServicosView() {
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
   const shouldFocusFirstGridRecordRef = useRef(false)
   const shouldShowKmAdicionalColumn = appliedFilters.dataReferencia.endsWith('-01')
-  const tableColumnCount = shouldShowKmAdicionalColumn ? 10 : 9
+  const tableColumnCount = shouldShowKmAdicionalColumn ? 16 : 15
   const monthYearMismatchMessage = 'A data de operacao deve pertencer ao mes/ano informado.'
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
@@ -455,7 +455,14 @@ export default function ApontamentoServicosView() {
       document.body.classList.remove('management-modal-open')
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [closeImportDialog, closeValidationDialog, isImportDialogVisible, isValidationDialogVisible])
+  }, [
+    closeImportDialog,
+    closeImportRequestDialog,
+    closeValidationDialog,
+    isImportDialogVisible,
+    isImportRequestDialogVisible,
+    isValidationDialogVisible,
+  ])
 
   useEffect(() => {
     if (!shouldFocusFirstGridRecordRef.current || isLoading) {
@@ -985,6 +992,12 @@ export default function ApontamentoServicosView() {
                   <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">AT. COMPL.<br />CAD</th>
                   <th className="apontamento-servicos-header-metric-continua apontamento-servicos-header-compact">Cont<br />N CAD</th>
                   <th className="apontamento-servicos-header-metric-continua apontamento-servicos-header-compact">Cont<br />CAD</th>
+                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum.<br />N CAD</th>
+                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum.<br />CAD</th>
+                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. AT.<br />N CAD</th>
+                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. AT.<br />CAD</th>
+                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. Cont<br />N CAD</th>
+                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. Cont<br />CAD</th>
                 </tr>
               </thead>
               <tbody>
@@ -1108,6 +1121,24 @@ export default function ApontamentoServicosView() {
                             onChange={(event) => updateMetricField(rowKey, 'continuaCadeirante', event.target.value)}
                             disabled={!isEditableRow || isSaving}
                           />
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.naoCadeirantePresencialAcm}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.cadeiranteAcm}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.atendimentoComplementarNaoCadeiranteAcm}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.atendimentoComplementarCadeiranteAcm}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.continuaNaoCadeiranteAcm}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.continuaCadeiranteAcm}</span>
                         </td>
                       </tr>
                     </Fragment>

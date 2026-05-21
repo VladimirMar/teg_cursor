@@ -1192,8 +1192,24 @@ const normalizeImportComparableText = (value) => {
   return normalizeRequestValue(value)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s*([/\\-])\s*/g, '$1')
     .replace(/\s+/g, ' ')
     .toUpperCase()
+}
+
+const buildComparableDreSigla = (value) => {
+  const normalizedValue = normalizeImportComparableText(value)
+
+  if (!normalizedValue) {
+    return ''
+  }
+
+  return normalizedValue
+    .split(/[^A-Z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
 }
 
 const normalizeEmailList = (value) => {
@@ -1900,6 +1916,12 @@ const mapApontamentoServicosRow = (row) => ({
   atendimentoComplementarCadeirante: Number(row?.ac_cad) || 0,
   continuaNaoCadeirante: Number(row?.cont_nc) || 0,
   continuaCadeirante: Number(row?.cont_cad) || 0,
+  naoCadeirantePresencialAcm: Number(row?.nc_pres_acm) || 0,
+  cadeiranteAcm: Number(row?.cad_acm) || 0,
+  atendimentoComplementarNaoCadeiranteAcm: Number(row?.ac_nc_acm) || 0,
+  atendimentoComplementarCadeiranteAcm: Number(row?.ac_cad_acm) || 0,
+  continuaNaoCadeiranteAcm: Number(row?.cont_nc_acm) || 0,
+  continuaCadeiranteAcm: Number(row?.cont_cad_acm) || 0,
   kilometragem: normalizeRequestValue(row?.km) || '0.0000',
 })
 
@@ -2241,7 +2263,15 @@ const buildApontamentoServicosTipoEscolaOrderExpression = (tableAlias) => {
         END`
 }
 
+const buildApontamentoServicosLocaleOrderExpression = (valueExpression) => {
+  const normalizedExpression = normalizeRequestValue(valueExpression) || "''"
+
+  return `BTRIM(REGEXP_REPLACE(REGEXP_REPLACE(UPPER(BTRIM(COALESCE(${normalizedExpression}, ''))), '[[:punct:]]+', ' ', 'g'), '\\s+', ' ', 'g'))`
+}
+
 const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, preserveExistingKilometragem = false, createApuracaoFinanceiraIfMissing = false }, executor = pool) => {
+  const touchedKeys = new Map()
+
   for (const item of items) {
     const dreCodigo = normalizeRequestValue(item.dreCodigo)
     const ordemServicoCodigo = normalizeRequestValue(item.ordemServicoCodigo)
@@ -2352,6 +2382,20 @@ const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, p
         hasApontamentoServicosMetricValues(metrics) ? metrics.kilometragem : 0,
       ],
     )
+
+    const touchedKey = [mesAno, dreCodigo, ordemServicoCodigo, revisao, tipoEscolaCodigo, tipoPessoa].join('|')
+    touchedKeys.set(touchedKey, {
+      mesAno,
+      dreCodigo,
+      ordemServicoCodigo,
+      revisao,
+      tipoEscolaCodigo,
+      tipoPessoa,
+    })
+  }
+
+  for (const touchedKey of touchedKeys.values()) {
+    await syncApuracaoServicosDailyTotals(touchedKey, executor)
   }
 }
 
@@ -2553,7 +2597,7 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
 
   if (normalizedCrmcCondutor) {
     values.push(`%${normalizedCrmcCondutor}%`)
-    filters.push(`COALESCE(BTRIM((SELECT c.crmc FROM condutor c WHERE BTRIM(c.cpf_condutor) = BTRIM(os.cpf_condutor) LIMIT 1)), '') ILIKE $${values.length}`)
+    filters.push(`COALESCE(BTRIM(condutor_lookup.crmc), '') ILIKE $${values.length}`)
   }
 
   if (normalizedPlaca) {
@@ -2597,7 +2641,7 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
         TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $2::date), 'YYYY-MM-DD') AS periodo_inicio,
         TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $3::date), 'YYYY-MM-DD') AS periodo_fim,
-        COALESCE(BTRIM((SELECT c.crmc FROM condutor c WHERE BTRIM(c.cpf_condutor) = BTRIM(os.cpf_condutor) LIMIT 1)), '') AS crmc_condutor,
+        COALESCE(BTRIM(condutor_lookup.crmc), '') AS crmc_condutor,
         COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
         COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
         COALESCE(BTRIM((SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS empresa,
@@ -2610,17 +2654,19 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         END AS tipo_veiculo,
         COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
         TRUE AS ativo_na_data,
-        UPPER(BTRIM(CAST(dre.descricao AS text))) AS dre_descricao_order,
-        UPPER(COALESCE(BTRIM((SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '')) AS empresa_order,
-        UPPER(COALESCE(BTRIM(os.condutor), '')) AS nome_condutor_order,
-        UPPER(COALESCE(BTRIM(os.termo_adesao), '')) AS termo_adesao_order,
-        UPPER(COALESCE(BTRIM(os.num_os), '')) AS num_os_order,
+        ${buildApontamentoServicosLocaleOrderExpression('CAST(dre.descricao AS text)')} AS dre_descricao_order,
+        ${buildApontamentoServicosLocaleOrderExpression(`(SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))`)} AS empresa_order,
+        ${buildApontamentoServicosLocaleOrderExpression('os.condutor')} AS nome_condutor_order,
+        ${buildApontamentoServicosLocaleOrderExpression('os.termo_adesao')} AS termo_adesao_order,
+        ${buildApontamentoServicosLocaleOrderExpression('os.num_os')} AS num_os_order,
         ${buildApontamentoServicosTipoEscolaOrderExpression('tipo_escola')} AS tipo_escola_display_order,
-        UPPER(BTRIM(CAST(tipo_escola.descricao AS text))) AS tipo_escola_descricao_order
+        ${buildApontamentoServicosLocaleOrderExpression('CAST(tipo_escola.descricao AS text)')} AS tipo_escola_descricao_order
       FROM apuracao_servicos aps
       INNER JOIN dre ON dre.codigo = aps.dre_codigo
       INNER JOIN tipo_escola ON tipo_escola.codigo = aps.tipo_escola_codigo
       INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+      LEFT JOIN condutor condutor_lookup
+        ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
       LEFT JOIN veiculo ON BTRIM(veiculo.crm) = BTRIM(os.crm)
       INNER JOIN apuracao_financeira
         ON apuracao_financeira.mes_ano = aps.mes_ano
@@ -2718,6 +2764,12 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
        COALESCE(apontamento_dia.ac_cad, 0) AS ac_cad,
        COALESCE(apontamento_dia.cont_nc, 0) AS cont_nc,
        COALESCE(apontamento_dia.cont_cad, 0) AS cont_cad,
+       COALESCE(apontamento_dia.nc_pres_acm, 0) AS nc_pres_acm,
+       COALESCE(apontamento_dia.cad_acm, 0) AS cad_acm,
+       COALESCE(apontamento_dia.ac_nc_acm, 0) AS ac_nc_acm,
+       COALESCE(apontamento_dia.ac_cad_acm, 0) AS ac_cad_acm,
+       COALESCE(apontamento_dia.cont_nc_acm, 0) AS cont_nc_acm,
+       COALESCE(apontamento_dia.cont_cad_acm, 0) AS cont_cad_acm,
        TO_CHAR(COALESCE(apontamento_dia.km, 0), 'FM9999999990.0000') AS km
      FROM canonical_entries
      INNER JOIN paged_ordens
@@ -2756,38 +2808,49 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
 
 const syncApuracaoServicosDailyTotals = async (key, executor = pool) => {
   await executor.query(
-    `UPDATE apuracao_servicos aps
-     SET nc_pres = COALESCE(totals.nc_pres, 0),
-         cad = COALESCE(totals.cad, 0),
-         ac_nc = COALESCE(totals.ac_nc, 0),
-         ac_cad = COALESCE(totals.ac_cad, 0),
-         cont_nc = COALESCE(totals.cont_nc, 0),
-         cont_cad = COALESCE(totals.cont_cad, 0),
-         km = COALESCE(totals.km, 0),
-         data_alteracao = NOW()
-     FROM (
+    `WITH accumulated AS (
        SELECT
-         COALESCE(SUM(nc_pres), 0)::integer AS nc_pres,
-         COALESCE(SUM(cad), 0)::integer AS cad,
-         COALESCE(SUM(ac_nc), 0)::integer AS ac_nc,
-         COALESCE(SUM(ac_cad), 0)::integer AS ac_cad,
-         COALESCE(SUM(cont_nc), 0)::integer AS cont_nc,
-         COALESCE(SUM(cont_cad), 0)::integer AS cont_cad,
-         COALESCE(SUM(km), 0)::numeric(14, 4) AS km
-       FROM apuracao_servicos_apontamento
-       WHERE mes_ano = $1
-         AND dre_codigo = $2
-         AND ordem_servico_codigo = $3
-         AND revisao = $4
-         AND tipo_escola_codigo = $5
-         AND BTRIM(tipo_pessoa) = $6
-     ) totals
-     WHERE aps.mes_ano = $1
-       AND aps.dre_codigo = $2
-       AND aps.ordem_servico_codigo = $3
-       AND aps.revisao = $4
-       AND aps.tipo_escola_codigo = $5
-       AND BTRIM(aps.tipo_pessoa) = $6`,
+         aps.mes_ano,
+         aps.data_referencia,
+         aps.dre_codigo,
+         aps.ordem_servico_codigo,
+         aps.revisao,
+         aps.tipo_escola_codigo,
+         COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+         COALESCE(SUM(aps.nc_pres) OVER service_window, 0)::integer AS nc_pres_acm,
+         COALESCE(SUM(aps.cad) OVER service_window, 0)::integer AS cad_acm,
+         COALESCE(SUM(aps.ac_nc) OVER service_window, 0)::integer AS ac_nc_acm,
+         COALESCE(SUM(aps.ac_cad) OVER service_window, 0)::integer AS ac_cad_acm,
+         COALESCE(SUM(aps.cont_nc) OVER service_window, 0)::integer AS cont_nc_acm,
+         COALESCE(SUM(aps.cont_cad) OVER service_window, 0)::integer AS cont_cad_acm
+       FROM apuracao_servicos aps
+       WHERE aps.mes_ano = $1
+         AND aps.dre_codigo = $2
+         AND aps.ordem_servico_codigo = $3
+         AND aps.revisao = $4
+         AND aps.tipo_escola_codigo = $5
+         AND COALESCE(BTRIM(aps.tipo_pessoa), '') = $6
+       WINDOW service_window AS (
+         PARTITION BY aps.mes_ano, aps.dre_codigo, aps.ordem_servico_codigo, aps.revisao, aps.tipo_escola_codigo, COALESCE(BTRIM(aps.tipo_pessoa), '')
+         ORDER BY aps.data_referencia ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       )
+     )
+     UPDATE apuracao_servicos aps
+     SET nc_pres_acm = accumulated.nc_pres_acm,
+         cad_acm = accumulated.cad_acm,
+         ac_nc_acm = accumulated.ac_nc_acm,
+         ac_cad_acm = accumulated.ac_cad_acm,
+         cont_nc_acm = accumulated.cont_nc_acm,
+         cont_cad_acm = accumulated.cont_cad_acm
+     FROM accumulated
+     WHERE aps.mes_ano = accumulated.mes_ano
+       AND aps.data_referencia = accumulated.data_referencia
+       AND aps.dre_codigo = accumulated.dre_codigo
+       AND aps.ordem_servico_codigo = accumulated.ordem_servico_codigo
+       AND aps.revisao = accumulated.revisao
+       AND aps.tipo_escola_codigo = accumulated.tipo_escola_codigo
+       AND COALESCE(BTRIM(aps.tipo_pessoa), '') = accumulated.tipo_pessoa`,
     [key.mesAno, Number.parseInt(key.dreCodigo, 10), Number.parseInt(key.ordemServicoCodigo, 10), key.revisao, Number.parseInt(key.tipoEscolaCodigo, 10), key.tipoPessoa],
   )
 }
@@ -3465,6 +3528,27 @@ const findDreByDescription = async (descricao) => {
 
 const findDreByComparableDescription = async (descricao, executor = pool) => {
   const normalizedDescricao = normalizeImportComparableText(descricao)
+  const normalizedSigla = buildComparableDreSigla(descricao)
+
+  if (!normalizedDescricao && !normalizedSigla) {
+    return null
+  }
+
+  if (normalizedSigla) {
+    const siglaResult = await executor.query(
+      `SELECT ${dreSelectClause}
+       FROM dre
+       WHERE UPPER(BTRIM(COALESCE(sigla, ''))) = $1
+          OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
+       ORDER BY codigo ASC
+       LIMIT 1`,
+      [normalizedSigla],
+    )
+
+    if (siglaResult.rows[0]) {
+      return siglaResult.rows[0]
+    }
+  }
 
   if (!normalizedDescricao) {
     return null
@@ -3478,8 +3562,6 @@ const findDreByComparableDescription = async (descricao, executor = pool) => {
 
   return result.rows.find((row) => {
     return normalizeImportComparableText(row?.descricao) === normalizedDescricao
-      || normalizeImportComparableText(row?.sigla) === normalizedDescricao
-      || normalizeImportComparableText(row?.codigo_operacional) === normalizedDescricao
       || normalizeImportComparableText(row?.codigo) === normalizedDescricao
   }) ?? null
 }
@@ -16021,6 +16103,12 @@ const ensureDatabaseSchema = async () => {
       ac_cad integer NOT NULL DEFAULT 0,
       cont_nc integer NOT NULL DEFAULT 0,
       cont_cad integer NOT NULL DEFAULT 0,
+      nc_pres_acm integer NOT NULL DEFAULT 0,
+      cad_acm integer NOT NULL DEFAULT 0,
+      ac_nc_acm integer NOT NULL DEFAULT 0,
+      ac_cad_acm integer NOT NULL DEFAULT 0,
+      cont_nc_acm integer NOT NULL DEFAULT 0,
+      cont_cad_acm integer NOT NULL DEFAULT 0,
       km numeric(14, 4) NOT NULL DEFAULT 0,
       data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
       data_alteracao timestamp without time zone,
@@ -17751,6 +17839,12 @@ const ensureDatabaseSchema = async () => {
       ac_cad integer NOT NULL DEFAULT 0,
       cont_nc integer NOT NULL DEFAULT 0,
       cont_cad integer NOT NULL DEFAULT 0,
+      nc_pres_acm integer NOT NULL DEFAULT 0,
+      cad_acm integer NOT NULL DEFAULT 0,
+      ac_nc_acm integer NOT NULL DEFAULT 0,
+      ac_cad_acm integer NOT NULL DEFAULT 0,
+      cont_nc_acm integer NOT NULL DEFAULT 0,
+      cont_cad_acm integer NOT NULL DEFAULT 0,
       km numeric(14, 4) NOT NULL DEFAULT 0,
       data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
       data_alteracao timestamp without time zone,
@@ -17770,6 +17864,12 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS ac_cad integer DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cont_nc integer DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cont_cad integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS nc_pres_acm integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cad_acm integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS ac_nc_acm integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS ac_cad_acm integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cont_nc_acm integer DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cont_cad_acm integer DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS km numeric(14, 4) DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS data_alteracao timestamp without time zone')
@@ -17833,13 +17933,58 @@ const ensureDatabaseSchema = async () => {
       AND COALESCE(BTRIM(aps.tipo_pessoa), '') <> COALESCE(BTRIM(ap.tipo_pessoa), '')
     ON CONFLICT DO NOTHING
   `)
-  await pool.query('UPDATE apuracao_servicos SET nc_pres = 0 WHERE nc_pres IS NULL OR nc_pres < 0')
-  await pool.query('UPDATE apuracao_servicos SET cad = 0 WHERE cad IS NULL OR cad < 0')
-  await pool.query('UPDATE apuracao_servicos SET ac_nc = 0 WHERE ac_nc IS NULL OR ac_nc < 0')
-  await pool.query('UPDATE apuracao_servicos SET ac_cad = 0 WHERE ac_cad IS NULL OR ac_cad < 0')
-  await pool.query('UPDATE apuracao_servicos SET cont_nc = 0 WHERE cont_nc IS NULL OR cont_nc < 0')
-  await pool.query('UPDATE apuracao_servicos SET cont_cad = 0 WHERE cont_cad IS NULL OR cont_cad < 0')
+  await pool.query('UPDATE apuracao_servicos SET nc_pres = 0 WHERE nc_pres IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET cad = 0 WHERE cad IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET ac_nc = 0 WHERE ac_nc IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET ac_cad = 0 WHERE ac_cad IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET cont_nc = 0 WHERE cont_nc IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET cont_cad = 0 WHERE cont_cad IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET nc_pres_acm = 0 WHERE nc_pres_acm IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET cad_acm = 0 WHERE cad_acm IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET ac_nc_acm = 0 WHERE ac_nc_acm IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET ac_cad_acm = 0 WHERE ac_cad_acm IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET cont_nc_acm = 0 WHERE cont_nc_acm IS NULL')
+  await pool.query('UPDATE apuracao_servicos SET cont_cad_acm = 0 WHERE cont_cad_acm IS NULL')
   await pool.query('UPDATE apuracao_servicos SET km = 0 WHERE km IS NULL OR km < 0')
+  await pool.query(`
+    WITH accumulated AS (
+      SELECT
+        mes_ano,
+        data_referencia,
+        dre_codigo,
+        ordem_servico_codigo,
+        revisao,
+        tipo_escola_codigo,
+        COALESCE(BTRIM(tipo_pessoa), '') AS tipo_pessoa,
+        COALESCE(SUM(nc_pres) OVER service_window, 0)::integer AS nc_pres_acm,
+        COALESCE(SUM(cad) OVER service_window, 0)::integer AS cad_acm,
+        COALESCE(SUM(ac_nc) OVER service_window, 0)::integer AS ac_nc_acm,
+        COALESCE(SUM(ac_cad) OVER service_window, 0)::integer AS ac_cad_acm,
+        COALESCE(SUM(cont_nc) OVER service_window, 0)::integer AS cont_nc_acm,
+        COALESCE(SUM(cont_cad) OVER service_window, 0)::integer AS cont_cad_acm
+      FROM apuracao_servicos
+      WINDOW service_window AS (
+        PARTITION BY mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, COALESCE(BTRIM(tipo_pessoa), '')
+        ORDER BY data_referencia ASC
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      )
+    )
+    UPDATE apuracao_servicos aps
+    SET nc_pres_acm = accumulated.nc_pres_acm,
+        cad_acm = accumulated.cad_acm,
+        ac_nc_acm = accumulated.ac_nc_acm,
+        ac_cad_acm = accumulated.ac_cad_acm,
+        cont_nc_acm = accumulated.cont_nc_acm,
+        cont_cad_acm = accumulated.cont_cad_acm
+    FROM accumulated
+    WHERE aps.mes_ano = accumulated.mes_ano
+      AND aps.data_referencia = accumulated.data_referencia
+      AND aps.dre_codigo = accumulated.dre_codigo
+      AND aps.ordem_servico_codigo = accumulated.ordem_servico_codigo
+      AND aps.revisao = accumulated.revisao
+      AND aps.tipo_escola_codigo = accumulated.tipo_escola_codigo
+      AND COALESCE(BTRIM(aps.tipo_pessoa), '') = accumulated.tipo_pessoa
+  `)
   const duplicateApuracaoServicosResult = await pool.query(`
     WITH ranked_rows AS (
       SELECT
@@ -17878,6 +18023,12 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN ac_cad SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cont_nc SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cont_cad SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN nc_pres_acm SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cad_acm SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN ac_nc_acm SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN ac_cad_acm SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cont_nc_acm SET NOT NULL')
+  await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN cont_cad_acm SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN km SET NOT NULL')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN data_inclusao SET NOT NULL')
   await pool.query(`

@@ -32,6 +32,12 @@ export type ApontamentoServicosItem = {
   atendimentoComplementarCadeirante: number
   continuaNaoCadeirante: number
   continuaCadeirante: number
+  naoCadeirantePresencialAcm: number
+  cadeiranteAcm: number
+  atendimentoComplementarNaoCadeiranteAcm: number
+  atendimentoComplementarCadeiranteAcm: number
+  continuaNaoCadeiranteAcm: number
+  continuaCadeiranteAcm: number
   kilometragem: string
 }
 
