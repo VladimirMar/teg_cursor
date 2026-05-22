@@ -152,6 +152,24 @@ const getApontamentoServicosImportDisplayName = (fileName?: string) => {
   return normalizedFileName || 'todos os arquivos Excel do diretorio informado'
 }
 
+const buildImportRealtimeMessage = (progress: ApontamentoServicosImportStatus) => {
+  if (progress.status === 'error') {
+    return progress.errorMessage || progress.message || 'Falha ao importar a planilha.'
+  }
+
+  if (progress.status === 'completed') {
+    return progress.message || 'Importacao concluida.'
+  }
+
+  const fileLabel = progress.currentFileName || 'planilha em processamento'
+  const lineLabel = progress.currentRowNumber > 0 ? `linha ${progress.currentRowNumber}` : 'linha inicial'
+  const recordLabel = progress.totalRecords > 0
+    ? `registro ${progress.currentRecord} de ${progress.totalRecords}`
+    : 'preparando registros'
+
+  return `Processando ${fileLabel} em tempo real: ${lineLabel} (${recordLabel}).`
+}
+
 const buildRowKey = (item: Pick<ApontamentoServicosItem, 'mesAno' | 'dreCodigo' | 'ordemServicoCodigo' | 'revisao' | 'tipoEscolaCodigo' | 'tipoPessoa'>) => {
   return `${item.mesAno}|${item.dreCodigo}|${item.ordemServicoCodigo}|${item.revisao}|${item.tipoEscolaCodigo}|${item.tipoPessoa}`
 }
@@ -260,15 +278,18 @@ export default function ApontamentoServicosView() {
   const [importDialogSkippedRecords, setImportDialogSkippedRecords] = useState<ApontamentoServicosImportSkippedRecord[]>([])
   const [isImportDialogVisible, setIsImportDialogVisible] = useState(false)
   const [importProgress, setImportProgress] = useState<ApontamentoServicosImportStatus | null>(null)
+  const [showAccumulatedColumns, setShowAccumulatedColumns] = useState(true)
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const topScrollWrapperRef = useRef<HTMLDivElement | null>(null)
+  const topScrollContentRef = useRef<HTMLDivElement | null>(null)
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
   const importStatusPollTimerRef = useRef<number | null>(null)
   const shouldFocusFirstGridRecordRef = useRef(false)
   const shouldShowKmAdicionalColumn = appliedFilters.dataReferencia.endsWith('-01')
-  const tableColumnCount = shouldShowKmAdicionalColumn ? 16 : 15
+  const tableColumnCount = (shouldShowKmAdicionalColumn ? 10 : 9) + (showAccumulatedColumns ? 6 : 0)
   const monthYearMismatchMessage = 'A data de operacao deve pertencer ao mes/ano informado.'
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
@@ -319,6 +340,12 @@ export default function ApontamentoServicosView() {
     try {
       const nextStatus = await getApontamentoServicosImportStatus(importId)
       setImportProgress(nextStatus)
+      setImportDialogMessage(buildImportRealtimeMessage(nextStatus))
+
+      if (nextStatus.status === 'running') {
+        setStatusTone('idle')
+        setStatusMessage(buildImportRealtimeMessage(nextStatus))
+      }
 
       if (nextStatus.status === 'completed' || nextStatus.status === 'error') {
         stopImportStatusPolling()
@@ -742,6 +769,76 @@ export default function ApontamentoServicosView() {
     }
   }, [stopImportStatusPolling])
 
+  useEffect(() => {
+    const tableWrapper = tableWrapperRef.current
+    const topScrollWrapper = topScrollWrapperRef.current
+    const topScrollContent = topScrollContentRef.current
+
+    if (!tableWrapper || !topScrollWrapper || !topScrollContent) {
+      return
+    }
+
+    let isSyncingFromTop = false
+    let isSyncingFromBottom = false
+    const tableElement = tableWrapper.querySelector('table')
+
+    const syncScrollMetrics = () => {
+      const nextWidth = Math.max(tableWrapper.scrollWidth, tableElement?.scrollWidth ?? 0, tableWrapper.clientWidth)
+      topScrollContent.style.width = `${nextWidth}px`
+      topScrollWrapper.scrollLeft = tableWrapper.scrollLeft
+    }
+
+    const handleBottomScroll = () => {
+      if (isSyncingFromTop) {
+        return
+      }
+
+      isSyncingFromBottom = true
+      topScrollWrapper.scrollLeft = tableWrapper.scrollLeft
+      isSyncingFromBottom = false
+    }
+
+    const handleTopScroll = () => {
+      if (isSyncingFromBottom) {
+        return
+      }
+
+      isSyncingFromTop = true
+      tableWrapper.scrollLeft = topScrollWrapper.scrollLeft
+      isSyncingFromTop = false
+    }
+
+    syncScrollMetrics()
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => syncScrollMetrics())
+      : null
+
+    if (resizeObserver) {
+      resizeObserver.observe(tableWrapper)
+
+      if (tableElement) {
+        resizeObserver.observe(tableElement)
+      }
+    } else {
+      window.addEventListener('resize', syncScrollMetrics)
+    }
+
+    tableWrapper.addEventListener('scroll', handleBottomScroll)
+    topScrollWrapper.addEventListener('scroll', handleTopScroll)
+
+    return () => {
+      tableWrapper.removeEventListener('scroll', handleBottomScroll)
+      topScrollWrapper.removeEventListener('scroll', handleTopScroll)
+
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      } else {
+        window.removeEventListener('resize', syncScrollMetrics)
+      }
+    }
+  }, [items, pageSize, shouldShowKmAdicionalColumn, showAccumulatedColumns])
+
   const handleImportRequestSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -893,10 +990,10 @@ export default function ApontamentoServicosView() {
                   <strong>Progresso da importacao</strong>
                   <ul>
                     <li>Status: {importProgress.status === 'completed' ? 'Concluida' : importProgress.status === 'error' ? 'Erro' : 'Em processamento'}</li>
+                    <li>Linha em processamento: {importProgress.currentRowNumber > 0 ? importProgress.currentRowNumber : '-'}</li>
                     <li>Planilha atual: {importProgress.currentFileName || '-'}</li>
                     <li>Planilhas processadas: {importProgress.processedFiles} de {importProgress.totalFiles || '-'}</li>
                     <li>Registro atual: {importProgress.currentRecord} de {importProgress.totalRecords || '-'}</li>
-                    <li>Linha atual da planilha: {importProgress.currentRowNumber || '-'}</li>
                     <li>Linhas processadas no banco: {importProgress.processedItems}</li>
                     <li>Datas processadas: {importProgress.processedDates}</li>
                     <li>Movida para old: {importProgress.movedFileName ? `${importProgress.movedFileName} (${importProgress.oldDirectoryPath || 'old'})` : '-'}</li>
@@ -1051,6 +1148,15 @@ export default function ApontamentoServicosView() {
             <span>
               {isLoading ? 'Atualizando...' : `${totalItems} ordem(ns) de servico encontrada(s)`}
             </span>
+            <label className="apontamento-servicos-accumulated-toggle">
+              <input
+                type="checkbox"
+                checked={showAccumulatedColumns}
+                onChange={(event) => setShowAccumulatedColumns(event.target.checked)}
+                disabled={isLoading || isSaving || isImporting}
+              />
+              <span>Mostrar acumulados</span>
+            </label>
             <label className="apontamento-servicos-page-size-control">
               <span>OS por pagina</span>
               <select
@@ -1068,8 +1174,12 @@ export default function ApontamentoServicosView() {
             </label>
           </div>
 
+          <div ref={topScrollWrapperRef} className="apontamento-servicos-top-scrollbar" aria-label="Rolagem horizontal superior da tabela">
+            <div ref={topScrollContentRef} className="apontamento-servicos-top-scrollbar-content" />
+          </div>
+
           <div ref={tableWrapperRef} className="apontamento-servicos-table-wrapper">
-            <table className="management-table apontamento-servicos-table">
+            <table className={`management-table apontamento-servicos-table${showAccumulatedColumns ? '' : ' apontamento-servicos-table-sem-acumulados'}`}>
               <thead>
                 <tr>
                   <th className="apontamento-servicos-header-detail apontamento-servicos-header-compact">CRMC</th>
@@ -1082,12 +1192,16 @@ export default function ApontamentoServicosView() {
                   <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">AT. COMPL.<br />CAD</th>
                   <th className="apontamento-servicos-header-metric-continua apontamento-servicos-header-compact">Cont<br />N CAD</th>
                   <th className="apontamento-servicos-header-metric-continua apontamento-servicos-header-compact">Cont<br />CAD</th>
-                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum.<br />N CAD</th>
-                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum.<br />CAD</th>
-                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. AT.<br />N CAD</th>
-                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. AT.<br />CAD</th>
-                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. Cont<br />N CAD</th>
-                  <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. Cont<br />CAD</th>
+                  {showAccumulatedColumns ? (
+                    <>
+                      <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum.<br />N CAD</th>
+                      <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum.<br />CAD</th>
+                      <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. AT.<br />N CAD</th>
+                      <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. AT.<br />CAD</th>
+                      <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. Cont<br />N CAD</th>
+                      <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum. Cont<br />CAD</th>
+                    </>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -1212,24 +1326,28 @@ export default function ApontamentoServicosView() {
                             disabled={!isEditableRow || isSaving}
                           />
                         </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <span className="apontamento-servicos-grid-readonly">{item.naoCadeirantePresencialAcm}</span>
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <span className="apontamento-servicos-grid-readonly">{item.cadeiranteAcm}</span>
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <span className="apontamento-servicos-grid-readonly">{item.atendimentoComplementarNaoCadeiranteAcm}</span>
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <span className="apontamento-servicos-grid-readonly">{item.atendimentoComplementarCadeiranteAcm}</span>
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <span className="apontamento-servicos-grid-readonly">{item.continuaNaoCadeiranteAcm}</span>
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <span className="apontamento-servicos-grid-readonly">{item.continuaCadeiranteAcm}</span>
-                        </td>
+                        {showAccumulatedColumns ? (
+                          <>
+                            <td className="apontamento-servicos-cell-compact">
+                              <span className="apontamento-servicos-grid-readonly">{item.naoCadeirantePresencialAcm}</span>
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <span className="apontamento-servicos-grid-readonly">{item.cadeiranteAcm}</span>
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <span className="apontamento-servicos-grid-readonly">{item.atendimentoComplementarNaoCadeiranteAcm}</span>
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <span className="apontamento-servicos-grid-readonly">{item.atendimentoComplementarCadeiranteAcm}</span>
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <span className="apontamento-servicos-grid-readonly">{item.continuaNaoCadeiranteAcm}</span>
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <span className="apontamento-servicos-grid-readonly">{item.continuaCadeiranteAcm}</span>
+                            </td>
+                          </>
+                        ) : null}
                       </tr>
                     </Fragment>
                   )
