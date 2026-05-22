@@ -69,6 +69,9 @@ Aplicacao React + Vite com API Node para operacoes administrativas, CRUD e impor
 
 - `npm run api`: sobe a API em `http://localhost:3001`.
 - `npm run dev -- --host 0.0.0.0`: sobe o frontend Vite.
+- `npm run homol:publish`: executa o fluxo completo da homologacao publicada: para a instancia atual, gera o pacote, sobe a publicacao e prepara a massa operacional usada pelo smoke.
+- `npm run homol:prepare-smoke`: libera a apuracao financeira operacional da homologacao, reimporta a planilha oficial de `Apontamento Servicos` e restaura a massa de `Veiculo` para o smoke.
+- `npm run homol:smoke`: executa o preparo operacional da homologacao e, na sequencia, roda `smoke:api` contra `http://127.0.0.1:3002`.
 - `npm run build`: gera o build de producao.
 - `npm run lint`: executa o lint.
 - `npm run import:xml:all`: executa a sequencia consolidada de importacao XML para `Marca/Modelo`, `Credenciada`, `Credenciamento Termo`, `Condutor`, `Monitor`, `Vinculo Condutor`, `Vinculo Monitor`, `Veiculo` e `OrdemServico`; `CEP` entra como etapa opcional e so roda quando `importXML/Ceps.xml` existir.
@@ -101,6 +104,35 @@ Para `Veiculo` e `Marca/Modelo`, a execucao pode ser feita pelos scripts `npm ru
 - Pela rede, use o mesmo host/IP da maquina que iniciou o Vite com a porta `5173`.
 - As telas HTML legadas ficam acessiveis por caminhos diretos em `src`, por exemplo: `http://HOST:5173/src/termoDataAssinatura.html`.
 - Se a porta `5173` estiver ocupada, o Vite agora falha na subida em vez de trocar silenciosamente para outra porta.
+
+## Homologacao
+
+Fluxo validado para atualizar e testar a homologacao publicada:
+
+```bash
+npm run homol:publish
+npm run homol:smoke
+```
+
+Se precisar apenas regerar o pacote sem reiniciar a homologacao publicada, use `npm run homol:build`.
+
+O preparo operacional usa por padrao:
+
+- `API_BASE_URL=http://127.0.0.1:3002`
+- `mesAno=04/2026`
+- `dreCodigo=11`
+- `tipoPessoa=PF`
+- planilha `planilha pgto old/old/04 ATESTE BT PF ABR 26.xlsx`
+- XML `importXML/Veiculo.xml`
+
+Opcoes uteis:
+
+```bash
+node scripts/homologation-control/prepare-homologation-smoke-data.mjs --help
+node scripts/homologation-control/prepare-homologation-smoke-data.mjs --base-url http://127.0.0.1:3002
+node scripts/homologation-control/prepare-homologation-smoke-data.mjs --skip-veiculo
+node scripts/homologation-control/prepare-homologation-smoke-data.mjs --run-smoke
+```
 
 ## Importacao XML Consolidada
 

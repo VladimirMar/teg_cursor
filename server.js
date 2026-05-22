@@ -13458,6 +13458,16 @@ const buildCredenciamentoTermoCreatePayload = (payload, latestTermoItem) => {
   }
 }
 
+const getNextCredenciamentoTermoCodigoXml = async (executor = pool) => {
+  const result = await executor.query(
+    `SELECT COALESCE(MAX(codigo_xml), 0) + 1 AS next_codigo_xml
+       FROM ${credenciamentoTermoTableName}`,
+  )
+
+  const nextCodigoXml = Number(result.rows[0]?.next_codigo_xml ?? 1)
+  return Number.isInteger(nextCodigoXml) && nextCodigoXml > 0 ? nextCodigoXml : 1
+}
+
 const getCredenciamentoTermoPersistenceError = (error, fallbackMessage) => {
   if (error && typeof error === 'object') {
     const databaseError = error
@@ -13571,8 +13581,11 @@ const buildCredenciamentoTermoSyncScope = (termos, { syncAll = false } = {}) => 
   const normalizedTermos = Array.from(new Set((Array.isArray(termos) ? termos : [termos])
     .map((termo) => normalizeOrdemServicoTermoAdesao(termo))
     .filter(Boolean)))
+  const normalizedTermoDigits = normalizedTermos
+    .map((termo) => termo.replace(/\D/g, ''))
+    .filter(Boolean)
 
-  if (!syncAll && !normalizedTermos.length) {
+  if (!syncAll && !normalizedTermoDigits.length) {
     return {
       normalizedTermos,
       filterClause: 'WHERE FALSE',
@@ -13580,7 +13593,7 @@ const buildCredenciamentoTermoSyncScope = (termos, { syncAll = false } = {}) => 
     }
   }
 
-  if (!normalizedTermos.length) {
+  if (!normalizedTermoDigits.length) {
     return {
       normalizedTermos,
       filterClause: '',
@@ -13591,7 +13604,7 @@ const buildCredenciamentoTermoSyncScope = (termos, { syncAll = false } = {}) => 
   return {
     normalizedTermos,
     filterClause: `WHERE ${credenciamentoTermoNormalizedTermoExpression} = ANY($1::text[])`,
-    values: [normalizedTermos],
+    values: [normalizedTermoDigits],
   }
 }
 
@@ -19443,7 +19456,10 @@ const server = createServer(async (request, response) => {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
       const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
-      const dataReferencia = resolveApuracaoServicosDataReferencia(mesAno, requestUrl.searchParams.get('dataReferencia') ?? '')
+      const requestedDataReferencia = normalizeRequestValue(requestUrl.searchParams.get('dataReferencia') ?? '')
+      const dataReferencia = mesAno
+        ? resolveApuracaoServicosDataReferencia(mesAno, requestedDataReferencia)
+        : (isDateInputValid(requestedDataReferencia) ? requestedDataReferencia : '')
       const dreCodigo = normalizeDreOperationalCode(requestUrl.searchParams.get('dreCodigo') ?? '')
       const revisaoFilter = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
       const tipoEscolaCodigo = normalizeIntegerValue(requestUrl.searchParams.get('tipoEscolaCodigo') ?? '')
@@ -27014,7 +27030,17 @@ const server = createServer(async (request, response) => {
           return
         }
 
-        const createPayload = buildCredenciamentoTermoCreatePayload(validationResult.payload, latestTermoItem)
+        let resolvedCodigoXml = validationResult.payload.codigoXml
+
+        if (!latestTermoItem && !Number.isInteger(resolvedCodigoXml)) {
+          await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['credenciamento-termo-codigo-xml'])
+          resolvedCodigoXml = await getNextCredenciamentoTermoCodigoXml(client)
+        }
+
+        const createPayload = buildCredenciamentoTermoCreatePayload({
+          ...validationResult.payload,
+          codigoXml: resolvedCodigoXml,
+        }, latestTermoItem)
         await syncCredenciadaTpOptante(createPayload.credenciadaCodigo, createPayload.tpOptante, client)
         let nextAditivo = 0
 

@@ -44,6 +44,15 @@ const isValidMonthYear = (value: string) => /^(0[1-9]|1[0-2])\/\d{4}$/.test(valu
 
 const isValidDateInput = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
 
+const formatIsoDateToDisplay = (value: string) => {
+  if (!isValidDateInput(value)) {
+    return value
+  }
+
+  const [year, month, day] = value.split('-')
+  return `${day}/${month}/${year}`
+}
+
 const normalizeIntegerInput = (value: string) => value.replace(/[^\d]/g, '')
 
 const parseNonNegativeInteger = (value: string) => {
@@ -993,9 +1002,17 @@ export default function ApuracaoServicosView() {
                     </button>
                   </th>
                   <th>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('revisao')}>
+                      Revisao <span>{getSortIndicator('revisao', sortBy, sortDirection)}</span>
+                    </button>
+                  </th>
+                  <th>
                     <button type="button" className="dre-sort-button" onClick={() => handleSort('dreDescricao')}>
                       DRE <span>{getSortIndicator('dreDescricao', sortBy, sortDirection)}</span>
                     </button>
+                  </th>
+                  <th>
+                    Tipo Pessoa
                   </th>
                   <th>
                     <button type="button" className="dre-sort-button" onClick={() => handleSort('ordemServicoCodigo')}>
@@ -1003,12 +1020,9 @@ export default function ApuracaoServicosView() {
                     </button>
                   </th>
                   <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('revisao')}>
-                      Revisao <span>{getSortIndicator('revisao', sortBy, sortDirection)}</span>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('dataReferencia')}>
+                      Data Referencia <span>{getSortIndicator('dataReferencia', sortBy, sortDirection)}</span>
                     </button>
-                  </th>
-                  <th>
-                    Tipo Pessoa
                   </th>
                   <th>
                     <button type="button" className="dre-sort-button" onClick={() => handleSort('tipoEscolaDescricao')}>
@@ -1022,10 +1036,11 @@ export default function ApuracaoServicosView() {
                 {items.map((item) => (
                   <tr key={formatApuracaoServicosKey(item)}>
                     <td>{item.mesAno}</td>
-                    <td>{formatDreGridLabel(item)}</td>
-                    <td>{formatOrdemServicoGridLabel(item)}</td>
                     <td>{item.revisao}</td>
+                    <td>{formatDreGridLabel(item)}</td>
                     <td>{formatApuracaoTipoPessoaLabel(item.tipoPessoa)}</td>
+                    <td>{formatOrdemServicoGridLabel(item)}</td>
+                    <td>{formatIsoDateToDisplay(item.dataReferencia)}</td>
                     <td>{formatTipoEscolaGridLabel(item)}</td>
                     <td>
                       <div className="dre-row-actions">
