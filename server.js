@@ -267,6 +267,7 @@ const runXmlImportAllCommand = async () => {
 const resetXmlImportBatchTables = async () => {
   const client = await pool.connect()
   const tablesToTruncate = [
+    'remuneracao_servicos',
     'apuracao_servicos',
     ordemServicoHistoricoTableName,
     termoHistoricoTableName,
@@ -1941,6 +1942,33 @@ const ordemServicoActiveEndDateExpression = `COALESCE(
   END
 )`
 
+const normalizeApontamentoTipoVeiculo = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return 'NORMAL'
+  }
+
+  const normalizedKey = normalizedValue
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  if (normalizedKey === 'convencional' || normalizedKey === 'normal') {
+    return 'NORMAL'
+  }
+
+  if (normalizedKey === 'adaptado' || normalizedKey === 'acessivel') {
+    return 'ACESSIVEL'
+  }
+
+  if (normalizedKey === 'creche') {
+    return 'CRECHE'
+  }
+
+  return normalizedValue
+}
+
 const mapApontamentoServicosRow = (row) => ({
   mesAno: normalizeRequestValue(row?.mes_ano),
   dreCodigo: normalizeRequestValue(row?.dre_codigo),
@@ -1962,7 +1990,7 @@ const mapApontamentoServicosRow = (row) => ({
   placa: normalizeRequestValue(row?.placa),
   empresa: normalizeRequestValue(row?.empresa),
   nomeCondutor: normalizeRequestValue(row?.nome_condutor),
-  tipoVeiculo: normalizeRequestValue(row?.tipo_veiculo),
+  tipoVeiculo: normalizeApontamentoTipoVeiculo(row?.tipo_veiculo),
   apuracaoFinanceiraSituacao: normalizeApuracaoFinanceiraStatus(row?.apuracao_financeira_situacao) || 'A processar',
   dataReferencia: normalizeRequestValue(row?.data_referencia),
   isAtivoNaData: Boolean(row?.ativo_na_data),
@@ -1980,6 +2008,51 @@ const mapApontamentoServicosRow = (row) => ({
   continuaCadeiranteAcm: Number(row?.cont_cad_acm) || 0,
   kilometragem: normalizeRequestValue(row?.km) || '0.0000',
 })
+
+const mapRemuneracaoServicosRow = (baseItem, remuneracaoItem) => ({
+  mesAno: baseItem.mesAno,
+  dreCodigo: baseItem.dreCodigo,
+  dreSigla: baseItem.dreSigla,
+  dreDescricao: baseItem.dreDescricao,
+  ordemServicoCodigo: baseItem.ordemServicoCodigo,
+  ordemServicoOsConcat: baseItem.ordemServicoOsConcat,
+  ordemServicoTermoAdesao: baseItem.ordemServicoTermoAdesao,
+  ordemServicoNumOs: baseItem.ordemServicoNumOs,
+  revisao: baseItem.revisao,
+  tipoPessoa: baseItem.tipoPessoa,
+  periodoInicio: baseItem.periodoInicio,
+  periodoFim: baseItem.periodoFim,
+  crmcCondutor: baseItem.crmcCondutor,
+  contrato: baseItem.contrato,
+  placa: baseItem.placa,
+  empresa: baseItem.empresa,
+  nomeCondutor: baseItem.nomeCondutor,
+  tipoVeiculo: baseItem.tipoVeiculo,
+  apuracaoFinanceiraSituacao: baseItem.apuracaoFinanceiraSituacao,
+  dataReferencia: baseItem.dataReferencia,
+  isAtivoNaData: baseItem.isAtivoNaData,
+  tegRegularFixo: Number(remuneracaoItem?.teg_regular_fixo) || 0,
+  tegRegularPercapita: Number(remuneracaoItem?.teg_regular_percapita) || 0,
+  tegAcessivelFixo: Number(remuneracaoItem?.teg_acessivel_fixo) || 0,
+  tegAcessivelPercapita: Number(remuneracaoItem?.teg_acessivel_percapita) || 0,
+  tegEspecialRegularFixo: Number(remuneracaoItem?.teg_especial_regular_fixo) || 0,
+  tegEspecialRegularPercapita: Number(remuneracaoItem?.teg_especial_regular_percapita) || 0,
+  tegEspecialAcessivelFixo: Number(remuneracaoItem?.teg_especial_acessivel_fixo) || 0,
+  tegEspecialAcessivelPercapita: Number(remuneracaoItem?.teg_especial_acessivel_percapita) || 0,
+  tegCrecheFixo: Number(remuneracaoItem?.teg_creche_fixo) || 0,
+  tegCrechePercapita: Number(remuneracaoItem?.teg_creche_percapita) || 0,
+  kmValor: Number(remuneracaoItem?.km_valor) || 0,
+  continuaRegular: Number(remuneracaoItem?.continua_regular) || 0,
+  continuaCadeirante: Number(remuneracaoItem?.continua_cadeirante) || 0,
+})
+
+const buildRemuneracaoServicosBaseGroupKey = (item) => [
+  normalizeRequestValue(item?.mesAno ?? item?.mes_ano),
+  normalizeRequestValue(item?.dreCodigo ?? item?.dre_codigo),
+  normalizeRequestValue(item?.ordemServicoCodigo ?? item?.ordem_servico_codigo),
+  String(Number.parseInt(String(item?.revisao ?? ''), 10) || 0),
+  normalizeApuracaoTipoPessoa(item?.tipoPessoa ?? item?.tipo_pessoa) || 'PF',
+].join('|')
 
 const normalizeApontamentoServicosDate = (value) => {
   const normalizedValue = normalizeRequestValue(value)
@@ -2024,6 +2097,35 @@ const hasApontamentoServicosMetricValues = (metrics) => {
     || metrics.continuaCadeirante !== 0
     || metrics.kilometragem !== 0
 }
+
+const normalizeRemuneracaoServicosAmount = (value) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : Number.NaN
+  }
+
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return 0
+  }
+
+  const parsedValue = /^\d+(?:\.\d+)?$/.test(normalizedValue)
+    ? Number(normalizedValue)
+    : Number(normalizedValue.replace(/\./g, '').replace(',', '.'))
+
+  return Number.isFinite(parsedValue) && parsedValue >= 0
+    ? Number(parsedValue.toFixed(2))
+    : Number.NaN
+}
+
+const buildRemuneracaoServicosCompositeKey = (item) => [
+  normalizeRequestValue(item?.mesAno ?? item?.mes_ano),
+  normalizeRequestValue(item?.dataReferencia ?? item?.data_referencia),
+  normalizeRequestValue(item?.dreCodigo ?? item?.dre_codigo),
+  normalizeRequestValue(item?.ordemServicoCodigo ?? item?.ordem_servico_codigo),
+  String(Number.parseInt(String(item?.revisao ?? ''), 10) || 0),
+  normalizeApuracaoTipoPessoa(item?.tipoPessoa ?? item?.tipo_pessoa) || 'PF',
+].join('|')
 
 const apontamentoServicosImportMainSheetName = 'APONTAMENTO CREDENCIAMENTO'
 const apontamentoServicosImportContinuaSheetName = 'CONTINUA'
@@ -2369,6 +2471,7 @@ const buildApontamentoServicosLocaleOrderExpression = (valueExpression) => {
 
 const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, preserveExistingKilometragem = false, createApuracaoFinanceiraIfMissing = false }, executor = pool) => {
   const touchedKeys = new Map()
+  const remunerationSeedItems = []
 
   for (const item of items) {
     const dreCodigo = normalizeRequestValue(item.dreCodigo)
@@ -2490,10 +2593,40 @@ const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, p
       tipoEscolaCodigo,
       tipoPessoa,
     })
+
+    remunerationSeedItems.push({
+      dreCodigo,
+      ordemServicoCodigo,
+      revisao,
+      tipoEscolaCodigo,
+      tipoPessoa,
+      tegRegularFixo: 0,
+      tegRegularPercapita: 0,
+      tegAcessivelFixo: 0,
+      tegAcessivelPercapita: 0,
+      tegEspecialRegularFixo: 0,
+      tegEspecialRegularPercapita: 0,
+      tegEspecialAcessivelFixo: 0,
+      tegEspecialAcessivelPercapita: 0,
+      tegCrecheFixo: 0,
+      tegCrechePercapita: 0,
+      kmValor: 0,
+      continuaRegular: 0,
+      continuaCadeirante: 0,
+    })
   }
 
   for (const touchedKey of touchedKeys.values()) {
     await syncApuracaoServicosDailyTotals(touchedKey, executor)
+  }
+
+  if (remunerationSeedItems.length) {
+    await upsertRemuneracaoServicosItems({
+      mesAno,
+      dataReferencia,
+      items: remunerationSeedItems,
+      insertIfMissingOnly: true,
+    }, executor)
   }
 }
 
@@ -2774,11 +2907,13 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
         COALESCE(BTRIM((SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS empresa,
         COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
-        CASE UPPER(BTRIM(COALESCE(veiculo.tipo_de_bancada, '')))
+        CASE UPPER(BTRIM(COALESCE(veiculo_lookup.tipo_de_bancada, historico_lookup.veiculo_tipo_de_bancada, '')))
           WHEN 'CONVENCIONAL' THEN 'NORMAL'
+          WHEN 'NORMAL' THEN 'NORMAL'
           WHEN 'CRECHE' THEN 'CRECHE'
           WHEN 'ADAPTADO' THEN 'ACESSIVEL'
-          ELSE COALESCE(BTRIM(veiculo.tipo_de_bancada), '')
+          WHEN 'ACESSIVEL' THEN 'ACESSIVEL'
+          ELSE COALESCE(BTRIM(veiculo_lookup.tipo_de_bancada), BTRIM(historico_lookup.veiculo_tipo_de_bancada), '')
         END AS tipo_veiculo,
         COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
         TRUE AS ativo_na_data,
@@ -2795,7 +2930,38 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
       INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
       LEFT JOIN condutor condutor_lookup
         ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
-      LEFT JOIN veiculo ON BTRIM(veiculo.crm) = BTRIM(os.crm)
+      LEFT JOIN LATERAL (
+        SELECT BTRIM(COALESCE(v.tipo_de_bancada, '')) AS tipo_de_bancada
+        FROM veiculo v
+        WHERE (
+          BTRIM(COALESCE(v.crm, '')) <> ''
+          AND BTRIM(COALESCE(os.crm, '')) <> ''
+          AND BTRIM(v.crm) = BTRIM(os.crm)
+        ) OR (
+          regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') <> ''
+          AND regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g') <> ''
+          AND regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') = regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g')
+        )
+        ORDER BY
+          CASE
+            WHEN BTRIM(COALESCE(v.crm, '')) <> ''
+              AND BTRIM(COALESCE(os.crm, '')) <> ''
+              AND BTRIM(v.crm) = BTRIM(os.crm)
+            THEN 0
+            ELSE 1
+          END,
+          v.codigo DESC
+        LIMIT 1
+      ) veiculo_lookup ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) AS veiculo_tipo_de_bancada
+        FROM ${ordemServicoHistoricoTableName} osh
+        WHERE osh.ordem_servico_codigo = os.codigo
+          AND BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) <> ''
+          AND osh.data_evento <= ($1::date + INTERVAL '1 day')
+        ORDER BY osh.data_evento DESC, osh.id DESC
+        LIMIT 1
+      ) historico_lookup ON TRUE
       INNER JOIN apuracao_financeira
         ON apuracao_financeira.mes_ano = aps.mes_ano
        AND apuracao_financeira.dre_codigo = aps.dre_codigo
@@ -2931,6 +3097,212 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
     page: normalizedPage,
     pageSize: normalizedPageSize,
     totalPages,
+  }
+}
+
+const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, placa, revisao, tipoPessoa, dataReferencia, page = 1, pageSize = 20 }, executor = pool) => {
+  const apontamentoResult = await listApontamentoServicosItems({
+    mesAno,
+    dreCodigo,
+    crmcCondutor,
+    placa,
+    revisao,
+    tipoPessoa,
+    dataReferencia,
+    page,
+    pageSize,
+  }, executor)
+
+  if (!apontamentoResult.items.length) {
+    return {
+      ...apontamentoResult,
+      items: [],
+    }
+  }
+
+  const groupedApontamentoItems = Array.from(apontamentoResult.items.reduce((groupedItemsMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentItem = groupedItemsMap.get(groupKey)
+
+    if (!currentItem) {
+      groupedItemsMap.set(groupKey, item)
+      return groupedItemsMap
+    }
+
+    const currentTipoVeiculo = normalizeRequestValue(currentItem.tipoVeiculo)
+    const nextTipoVeiculo = normalizeRequestValue(item.tipoVeiculo)
+
+    if (!currentTipoVeiculo && nextTipoVeiculo) {
+      groupedItemsMap.set(groupKey, {
+        ...currentItem,
+        tipoVeiculo: nextTipoVeiculo,
+      })
+    }
+
+    return groupedItemsMap
+  }, new Map()).values())
+
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const compositeKeys = Array.from(new Set(groupedApontamentoItems.map((item) => buildRemuneracaoServicosCompositeKey(item))))
+
+  const remuneracaoResult = await executor.query(
+    `SELECT
+       mes_ano,
+       TO_CHAR(data_referencia, 'YYYY-MM-DD') AS data_referencia,
+       CAST(dre_codigo AS text) AS dre_codigo,
+       CAST(ordem_servico_codigo AS text) AS ordem_servico_codigo,
+       revisao,
+       COALESCE(BTRIM(tipo_pessoa), '') AS tipo_pessoa,
+       COALESCE(teg_regular_fixo, 0) AS teg_regular_fixo,
+       COALESCE(teg_regular_percapita, 0) AS teg_regular_percapita,
+       COALESCE(teg_acessivel_fixo, 0) AS teg_acessivel_fixo,
+       COALESCE(teg_acessivel_percapita, 0) AS teg_acessivel_percapita,
+       COALESCE(teg_especial_regular_fixo, 0) AS teg_especial_regular_fixo,
+       COALESCE(teg_especial_regular_percapita, 0) AS teg_especial_regular_percapita,
+       COALESCE(teg_especial_acessivel_fixo, 0) AS teg_especial_acessivel_fixo,
+       COALESCE(teg_especial_acessivel_percapita, 0) AS teg_especial_acessivel_percapita,
+       COALESCE(teg_creche_fixo, 0) AS teg_creche_fixo,
+       COALESCE(teg_creche_percapita, 0) AS teg_creche_percapita,
+       COALESCE(km_valor, 0) AS km_valor,
+       COALESCE(continua_regular, 0) AS continua_regular,
+       COALESCE(continua_cadeirante, 0) AS continua_cadeirante
+     FROM remuneracao_servicos
+     WHERE mes_ano = $1
+       AND data_referencia = $2::date
+       AND CONCAT_WS('|', mes_ano, TO_CHAR(data_referencia, 'YYYY-MM-DD'), CAST(dre_codigo AS text), CAST(ordem_servico_codigo AS text), CAST(revisao AS text), COALESCE(BTRIM(tipo_pessoa), '')) = ANY($3::text[])`,
+    [normalizedMesAno, normalizedDate, compositeKeys],
+  )
+
+  const remuneracaoByKey = new Map(remuneracaoResult.rows.map((row) => [buildRemuneracaoServicosCompositeKey(row), row]))
+
+  return {
+    ...apontamentoResult,
+    items: groupedApontamentoItems.map((item) => mapRemuneracaoServicosRow(item, remuneracaoByKey.get(buildRemuneracaoServicosCompositeKey(item)))),
+  }
+}
+
+const upsertRemuneracaoServicosItems = async ({ mesAno, dataReferencia, items, insertIfMissingOnly = false }, executor = pool) => {
+  for (const item of items) {
+    const dreCodigo = normalizeRequestValue(item.dreCodigo)
+    const ordemServicoCodigo = normalizeRequestValue(item.ordemServicoCodigo)
+    const tipoPessoa = normalizeApuracaoTipoPessoa(item.tipoPessoa)
+    const revisao = Number.parseInt(String(item.revisao ?? ''), 10)
+    const metrics = {
+      tegRegularFixo: normalizeRemuneracaoServicosAmount(item.tegRegularFixo),
+      tegRegularPercapita: normalizeRemuneracaoServicosAmount(item.tegRegularPercapita),
+      tegAcessivelFixo: normalizeRemuneracaoServicosAmount(item.tegAcessivelFixo),
+      tegAcessivelPercapita: normalizeRemuneracaoServicosAmount(item.tegAcessivelPercapita),
+      tegEspecialRegularFixo: normalizeRemuneracaoServicosAmount(item.tegEspecialRegularFixo),
+      tegEspecialRegularPercapita: normalizeRemuneracaoServicosAmount(item.tegEspecialRegularPercapita),
+      tegEspecialAcessivelFixo: normalizeRemuneracaoServicosAmount(item.tegEspecialAcessivelFixo),
+      tegEspecialAcessivelPercapita: normalizeRemuneracaoServicosAmount(item.tegEspecialAcessivelPercapita),
+      tegCrecheFixo: normalizeRemuneracaoServicosAmount(item.tegCrecheFixo),
+      tegCrechePercapita: normalizeRemuneracaoServicosAmount(item.tegCrechePercapita),
+      kmValor: normalizeRemuneracaoServicosAmount(item.kmValor),
+      continuaRegular: normalizeRemuneracaoServicosAmount(item.continuaRegular),
+      continuaCadeirante: normalizeRemuneracaoServicosAmount(item.continuaCadeirante),
+    }
+
+    if (!dreCodigo || !ordemServicoCodigo || !tipoPessoa || !Number.isInteger(revisao) || revisao < 0) {
+      throw createHttpError(400, 'Chave da remuneracao invalida.')
+    }
+
+    for (const [label, value] of Object.entries(metrics)) {
+      if (!Number.isFinite(value) || value < 0) {
+        throw createHttpError(400, `Valor invalido para ${label}.`)
+      }
+    }
+
+    await ensureApuracaoServicosEditable({
+      mesAno,
+      dreCodigo,
+      revisao,
+      tipoPessoa,
+      createIfMissing: false,
+    }, executor)
+
+    const parentResult = await executor.query(
+      `SELECT 1
+       FROM apuracao_servicos
+       WHERE mes_ano = $1
+         AND data_referencia = $2::date
+         AND CAST(dre_codigo AS text) = $3
+         AND CAST(ordem_servico_codigo AS text) = $4
+         AND revisao = $5
+         AND COALESCE(BTRIM(tipo_pessoa), '') = $6
+       LIMIT 1`,
+      [mesAno, dataReferencia, dreCodigo, ordemServicoCodigo, revisao, tipoPessoa],
+    )
+
+    if (parentResult.rowCount === 0) {
+      throw createHttpError(409, 'Apontamento/total de servicos nao encontrado para a chave informada na data de referencia.')
+    }
+
+    await executor.query(
+      `INSERT INTO remuneracao_servicos (
+         mes_ano,
+         data_referencia,
+         dre_codigo,
+         ordem_servico_codigo,
+         revisao,
+         tipo_pessoa,
+         teg_regular_fixo,
+         teg_regular_percapita,
+         teg_acessivel_fixo,
+         teg_acessivel_percapita,
+         teg_especial_regular_fixo,
+         teg_especial_regular_percapita,
+         teg_especial_acessivel_fixo,
+         teg_especial_acessivel_percapita,
+         teg_creche_fixo,
+         teg_creche_percapita,
+         km_valor,
+         continua_regular,
+         continua_cadeirante,
+         data_alteracao
+       )
+       VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())
+       ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
+       ${insertIfMissingOnly
+    ? 'DO NOTHING'
+    : `DO UPDATE SET
+         teg_regular_fixo = EXCLUDED.teg_regular_fixo,
+         teg_regular_percapita = EXCLUDED.teg_regular_percapita,
+         teg_acessivel_fixo = EXCLUDED.teg_acessivel_fixo,
+         teg_acessivel_percapita = EXCLUDED.teg_acessivel_percapita,
+         teg_especial_regular_fixo = EXCLUDED.teg_especial_regular_fixo,
+         teg_especial_regular_percapita = EXCLUDED.teg_especial_regular_percapita,
+         teg_especial_acessivel_fixo = EXCLUDED.teg_especial_acessivel_fixo,
+         teg_especial_acessivel_percapita = EXCLUDED.teg_especial_acessivel_percapita,
+         teg_creche_fixo = EXCLUDED.teg_creche_fixo,
+         teg_creche_percapita = EXCLUDED.teg_creche_percapita,
+         km_valor = EXCLUDED.km_valor,
+         continua_regular = EXCLUDED.continua_regular,
+         continua_cadeirante = EXCLUDED.continua_cadeirante,
+         data_alteracao = NOW()`}`,
+      [
+        mesAno,
+        dataReferencia,
+        Number.parseInt(dreCodigo, 10),
+        Number.parseInt(ordemServicoCodigo, 10),
+        revisao,
+        tipoPessoa,
+        metrics.tegRegularFixo,
+        metrics.tegRegularPercapita,
+        metrics.tegAcessivelFixo,
+        metrics.tegAcessivelPercapita,
+        metrics.tegEspecialRegularFixo,
+        metrics.tegEspecialRegularPercapita,
+        metrics.tegEspecialAcessivelFixo,
+        metrics.tegEspecialAcessivelPercapita,
+        metrics.tegCrecheFixo,
+        metrics.tegCrechePercapita,
+        metrics.kmValor,
+        metrics.continuaRegular,
+        metrics.continuaCadeirante,
+      ],
+    )
   }
 }
 
@@ -18019,6 +18391,19 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN tipo_pessoa TYPE varchar(2)')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN km TYPE numeric(14, 4) USING COALESCE(km, 0)::numeric(14, 4)')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = CURRENT_SCHEMA()
+          AND table_name = 'remuneracao_servicos'
+      ) THEN
+        ALTER TABLE remuneracao_servicos DROP CONSTRAINT IF EXISTS remuneracao_servicos_apuracao_servicos_fk;
+      END IF;
+    END $$;
+  `)
   await pool.query('DROP TABLE IF EXISTS apuracao_servicos_apontamento')
   await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_pk')
   await pool.query('DROP INDEX IF EXISTS apuracao_servicos_chave_uk')
@@ -18190,6 +18575,142 @@ const ensureDatabaseSchema = async () => {
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_tipo_escola_idx ON apuracao_servicos (tipo_escola_codigo)')
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_mes_ano_idx ON apuracao_servicos (mes_ano)')
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_data_referencia_idx ON apuracao_servicos (data_referencia)')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS remuneracao_servicos (
+      mes_ano varchar(7) NOT NULL,
+      data_referencia date NOT NULL,
+      dre_codigo integer NOT NULL REFERENCES dre(codigo) ON DELETE RESTRICT,
+      ordem_servico_codigo integer NOT NULL REFERENCES ${ordemServicoTableName}(codigo) ON DELETE RESTRICT,
+      revisao integer NOT NULL DEFAULT 0,
+      tipo_pessoa varchar(2) NOT NULL DEFAULT 'PF',
+      teg_regular_fixo numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_regular_percapita numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_acessivel_fixo numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_acessivel_percapita numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_especial_regular_fixo numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_especial_regular_percapita numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_especial_acessivel_fixo numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_especial_acessivel_percapita numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_creche_fixo numeric(14, 2) NOT NULL DEFAULT 0,
+      teg_creche_percapita numeric(14, 2) NOT NULL DEFAULT 0,
+      km_valor numeric(14, 2) NOT NULL DEFAULT 0,
+      continua_regular numeric(14, 2) NOT NULL DEFAULT 0,
+      continua_cadeirante numeric(14, 2) NOT NULL DEFAULT 0,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_alteracao timestamp without time zone,
+      CONSTRAINT remuneracao_servicos_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
+    )
+  `)
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS mes_ano varchar(7)')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS data_referencia date')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS dre_codigo integer')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS ordem_servico_codigo integer')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS revisao integer')
+  await pool.query("ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS tipo_pessoa varchar(2) DEFAULT 'PF'")
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_regular_fixo numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_regular_percapita numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_acessivel_fixo numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_acessivel_percapita numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_especial_regular_fixo numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_especial_regular_percapita numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_especial_acessivel_fixo numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_especial_acessivel_percapita numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_creche_fixo numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS teg_creche_percapita numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS km_valor numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS continua_regular numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS continua_cadeirante numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS data_alteracao timestamp without time zone')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN mes_ano TYPE varchar(7)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN revisao SET DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN tipo_pessoa TYPE varchar(2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_regular_fixo TYPE numeric(14, 2) USING COALESCE(teg_regular_fixo, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_regular_percapita TYPE numeric(14, 2) USING COALESCE(teg_regular_percapita, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_acessivel_fixo TYPE numeric(14, 2) USING COALESCE(teg_acessivel_fixo, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_acessivel_percapita TYPE numeric(14, 2) USING COALESCE(teg_acessivel_percapita, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_especial_regular_fixo TYPE numeric(14, 2) USING COALESCE(teg_especial_regular_fixo, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_especial_regular_percapita TYPE numeric(14, 2) USING COALESCE(teg_especial_regular_percapita, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_especial_acessivel_fixo TYPE numeric(14, 2) USING COALESCE(teg_especial_acessivel_fixo, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_especial_acessivel_percapita TYPE numeric(14, 2) USING COALESCE(teg_especial_acessivel_percapita, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_creche_fixo TYPE numeric(14, 2) USING COALESCE(teg_creche_fixo, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_creche_percapita TYPE numeric(14, 2) USING COALESCE(teg_creche_percapita, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN km_valor TYPE numeric(14, 2) USING COALESCE(km_valor, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN continua_regular TYPE numeric(14, 2) USING COALESCE(continua_regular, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN continua_cadeirante TYPE numeric(14, 2) USING COALESCE(continua_cadeirante, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN data_inclusao SET DEFAULT NOW()')
+  await pool.query('UPDATE remuneracao_servicos SET mes_ano = BTRIM(mes_ano) WHERE mes_ano IS NOT NULL')
+  await pool.query("UPDATE remuneracao_servicos SET tipo_pessoa = 'PF' WHERE COALESCE(BTRIM(tipo_pessoa), '') = ''")
+  await pool.query('UPDATE remuneracao_servicos SET revisao = 0 WHERE revisao IS NULL OR revisao < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_regular_fixo = 0 WHERE teg_regular_fixo IS NULL OR teg_regular_fixo < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_regular_percapita = 0 WHERE teg_regular_percapita IS NULL OR teg_regular_percapita < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_acessivel_fixo = 0 WHERE teg_acessivel_fixo IS NULL OR teg_acessivel_fixo < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_acessivel_percapita = 0 WHERE teg_acessivel_percapita IS NULL OR teg_acessivel_percapita < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_especial_regular_fixo = 0 WHERE teg_especial_regular_fixo IS NULL OR teg_especial_regular_fixo < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_especial_regular_percapita = 0 WHERE teg_especial_regular_percapita IS NULL OR teg_especial_regular_percapita < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_especial_acessivel_fixo = 0 WHERE teg_especial_acessivel_fixo IS NULL OR teg_especial_acessivel_fixo < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_especial_acessivel_percapita = 0 WHERE teg_especial_acessivel_percapita IS NULL OR teg_especial_acessivel_percapita < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_creche_fixo = 0 WHERE teg_creche_fixo IS NULL OR teg_creche_fixo < 0')
+  await pool.query('UPDATE remuneracao_servicos SET teg_creche_percapita = 0 WHERE teg_creche_percapita IS NULL OR teg_creche_percapita < 0')
+  await pool.query('UPDATE remuneracao_servicos SET km_valor = 0 WHERE km_valor IS NULL OR km_valor < 0')
+  await pool.query('UPDATE remuneracao_servicos SET continua_regular = 0 WHERE continua_regular IS NULL OR continua_regular < 0')
+  await pool.query('UPDATE remuneracao_servicos SET continua_cadeirante = 0 WHERE continua_cadeirante IS NULL OR continua_cadeirante < 0')
+  await pool.query('ALTER TABLE remuneracao_servicos DROP CONSTRAINT IF EXISTS remuneracao_servicos_apuracao_servicos_fk')
+  await pool.query('ALTER TABLE remuneracao_servicos DROP CONSTRAINT IF EXISTS remuneracao_servicos_pk')
+  await pool.query('DROP INDEX IF EXISTS remuneracao_servicos_chave_uk')
+  await pool.query('DROP INDEX IF EXISTS remuneracao_servicos_tipo_escola_idx')
+  await pool.query('ALTER TABLE remuneracao_servicos DROP COLUMN IF EXISTS tipo_escola_codigo')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN mes_ano SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN data_referencia SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN dre_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN ordem_servico_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN revisao SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN tipo_pessoa SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_regular_fixo SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_regular_percapita SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_acessivel_fixo SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_acessivel_percapita SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_especial_regular_fixo SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_especial_regular_percapita SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_especial_acessivel_fixo SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_especial_acessivel_percapita SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_creche_fixo SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN teg_creche_percapita SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN km_valor SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN continua_regular SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN continua_cadeirante SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN data_inclusao SET NOT NULL')
+  await pool.query(`
+    WITH ranked_rows AS (
+      SELECT
+        ctid,
+        ROW_NUMBER() OVER (
+          PARTITION BY
+            BTRIM(mes_ano),
+            data_referencia,
+            dre_codigo,
+            ordem_servico_codigo,
+            COALESCE(revisao, 0),
+            COALESCE(BTRIM(tipo_pessoa), 'PF')
+          ORDER BY data_alteracao DESC NULLS LAST, data_inclusao DESC NULLS LAST, ctid DESC
+        ) AS row_number
+      FROM remuneracao_servicos
+    )
+    DELETE FROM remuneracao_servicos target
+    USING ranked_rows
+    WHERE target.ctid = ranked_rows.ctid
+      AND ranked_rows.row_number > 1
+  `)
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS remuneracao_servicos_chave_uk
+    ON remuneracao_servicos (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
+  `)
+  await pool.query('ALTER TABLE remuneracao_servicos ADD CONSTRAINT remuneracao_servicos_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)')
+  await pool.query('CREATE INDEX IF NOT EXISTS remuneracao_servicos_dre_idx ON remuneracao_servicos (dre_codigo)')
+  await pool.query('CREATE INDEX IF NOT EXISTS remuneracao_servicos_os_idx ON remuneracao_servicos (ordem_servico_codigo)')
+  await pool.query('CREATE INDEX IF NOT EXISTS remuneracao_servicos_tipo_pessoa_idx ON remuneracao_servicos (tipo_pessoa)')
+  await pool.query('CREATE INDEX IF NOT EXISTS remuneracao_servicos_mes_ano_idx ON remuneracao_servicos (mes_ano)')
+  await pool.query('CREATE INDEX IF NOT EXISTS remuneracao_servicos_data_referencia_idx ON remuneracao_servicos (data_referencia)')
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ${ordemServicoImportRecusaTableName} (
       id bigserial PRIMARY KEY,
@@ -19240,6 +19761,61 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === '/api/remuneracao-servicos') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const crmcCondutor = normalizeRequestValue(requestUrl.searchParams.get('crmcCondutor') ?? '')
+      const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
+      const revisao = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+      const dataReferencia = normalizeApontamentoServicosDate(requestUrl.searchParams.get('dataReferencia') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida.' })
+        return
+      }
+
+      const result = await listRemuneracaoServicosItems({
+        mesAno,
+        dreCodigo,
+        crmcCondutor,
+        placa,
+        revisao: Number.isInteger(revisao) ? revisao : undefined,
+        tipoPessoa,
+        dataReferencia,
+        page,
+        pageSize,
+      })
+
+      sendJson(response, 200, {
+        items: result.items,
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize,
+        totalPages: result.totalPages,
+        mesAno,
+        dataReferencia,
+      })
+    } catch (error) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar a remuneracao de servicos.'
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'POST' && pathname === '/api/apontamento-servicos/import-excel') {
     const client = await pool.connect()
     let importId = ''
@@ -20200,6 +20776,7 @@ const server = createServer(async (request, response) => {
       const values = []
       const filters = []
       const ordemServicoCredenciadoExpression = `COALESCE(BTRIM((SELECT cr.credenciado FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = ${ordemServicoTableName}.termo_codigo))), '')`
+      const ordemServicoCredenciadoCnpjCpfExpression = `COALESCE(BTRIM((SELECT cr.cnpj_cpf FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = ${ordemServicoTableName}.termo_codigo))), '')`
       let orderByClause = ordemServicoCompositeKeyOrderClause
 
       if (sortBy === 'num_os') {
@@ -20210,18 +20787,41 @@ const server = createServer(async (request, response) => {
 
       if (search) {
         values.push(`%${search}%`)
+        const searchValueIndex = values.length
+        const normalizedSearchDigits = extractDocumentDigits(search)
+        const normalizedSearchCrm = normalizeVehicleCrm(search).replace(/[^0-9A-Z]/g, '')
+
+        let normalizedDocumentFilter = ''
+        if (normalizedSearchDigits) {
+          values.push(`%${normalizedSearchDigits}%`)
+          normalizedDocumentFilter = `
+          OR regexp_replace(COALESCE(${ordemServicoCredenciadoCnpjCpfExpression}, ''), '[^0-9]', '', 'g') ILIKE $${values.length}
+          OR regexp_replace(COALESCE(cpf_condutor, ''), '[^0-9]', '', 'g') ILIKE $${values.length}
+          OR regexp_replace(COALESCE(cpf_monitor, ''), '[^0-9]', '', 'g') ILIKE $${values.length}`
+        }
+
+        let normalizedCrmFilter = ''
+        if (normalizedSearchCrm) {
+          values.push(`%${normalizedSearchCrm}%`)
+          normalizedCrmFilter = `
+          OR regexp_replace(UPPER(COALESCE(crm, '')), '[^0-9A-Z]', '', 'g') ILIKE UPPER($${values.length})`
+        }
+
         filters.push(`(
-          CAST(codigo AS text) ILIKE $${values.length}
-          OR COALESCE(BTRIM(termo_adesao), '') ILIKE UPPER($${values.length})
-          OR COALESCE(BTRIM(num_os), '') ILIKE UPPER($${values.length})
-          OR COALESCE(BTRIM(revisao), '') ILIKE UPPER($${values.length})
-          OR COALESCE(BTRIM(os_concat), '') ILIKE UPPER($${values.length})
-          OR ${ordemServicoCredenciadoExpression} ILIKE UPPER($${values.length})
-          OR COALESCE(BTRIM(dre_codigo), '') ILIKE UPPER($${values.length})
-          OR COALESCE(BTRIM(condutor), '') ILIKE UPPER($${values.length})
-          OR COALESCE(BTRIM(monitor), '') ILIKE UPPER($${values.length})
-          OR COALESCE(BTRIM(veiculo_placas), '') ILIKE UPPER($${values.length})
-          OR COALESCE(BTRIM(crm), '') ILIKE UPPER($${values.length})
+          CAST(codigo AS text) ILIKE $${searchValueIndex}
+          OR COALESCE(BTRIM(termo_adesao), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(num_os), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(revisao), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(os_concat), '') ILIKE UPPER($${searchValueIndex})
+          OR ${ordemServicoCredenciadoExpression} ILIKE UPPER($${searchValueIndex})
+          OR ${ordemServicoCredenciadoCnpjCpfExpression} ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(dre_codigo), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(condutor), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(cpf_condutor), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(monitor), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(cpf_monitor), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(veiculo_placas), '') ILIKE UPPER($${searchValueIndex})
+          OR COALESCE(BTRIM(crm), '') ILIKE UPPER($${searchValueIndex})${normalizedDocumentFilter}${normalizedCrmFilter}
         )`)
       }
 
@@ -25416,6 +26016,63 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao gravar o apontamento de servicos.'
+
+      sendJson(response, statusCode, { message })
+    } finally {
+      client.release()
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/remuneracao-servicos') {
+    const client = await pool.connect()
+
+    try {
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dataReferencia = normalizeApontamentoServicosDate(body.dataReferencia)
+      const items = Array.isArray(body.items) ? body.items : []
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (!dataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida.' })
+        return
+      }
+
+      if (!items.length) {
+        sendJson(response, 400, { message: 'Nenhum item informado para gravacao.' })
+        return
+      }
+
+      const monthRange = buildApuracaoFinanceiraMonthRange(mesAno)
+
+      if (!monthRange || dataReferencia < monthRange.monthStart || dataReferencia > monthRange.monthEnd) {
+        sendJson(response, 400, { message: 'A data de referencia deve pertencer ao mes/ano informado.' })
+        return
+      }
+
+      await client.query('BEGIN')
+
+      await upsertRemuneracaoServicosItems({
+        mesAno,
+        dataReferencia,
+        items,
+      }, client)
+
+      await client.query('COMMIT')
+      sendJson(response, 200, { message: 'Remuneracao de servicos gravada com sucesso.' })
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {})
+
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar a remuneracao de servicos.'
 
       sendJson(response, statusCode, { message })
     } finally {

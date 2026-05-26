@@ -406,6 +406,27 @@
   min-width: 980px;
 }
 
+.remuneracao-servicos-table-wrapper {
+  overflow-x: scroll;
+  overflow-y: hidden;
+}
+
+.remuneracao-servicos-table {
+  min-width: 1520px;
+}
+
+.remuneracao-servicos-table th:first-child,
+.remuneracao-servicos-table td:first-child {
+  width: 300px;
+  min-width: 300px;
+}
+
+.remuneracao-servicos-table th:nth-child(2),
+.remuneracao-servicos-table td:nth-child(2) {
+  width: 120px;
+  min-width: 120px;
+}
+
 .apontamento-servicos-table td {
   vertical-align: top;
 }
@@ -427,6 +448,13 @@
   font-size: 0.72rem;
   width: 54px;
   min-width: 54px;
+}
+
+.remuneracao-servicos-table.apontamento-servicos-table-sem-acumulados th.apontamento-servicos-header-compact:first-child {
+  width: 300px;
+  min-width: 300px;
+  text-align: left;
+  padding-left: 10px;
 }
 
 .apontamento-servicos-table th:nth-child(n + 3),
@@ -550,6 +578,42 @@
 
 .apontamento-servicos-subtitle-inline-detail strong {
   font-weight: 700;
+}
+
+.remuneracao-servicos-subtitle-band-main {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.remuneracao-servicos-subtitle-line-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.remuneracao-servicos-primary-cell {
+  display: grid;
+  align-items: start;
+  justify-items: start;
+  gap: 2px;
+  text-align: left;
+}
+
+.remuneracao-servicos-crmc-detail {
+  display: block;
+  width: auto;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.remuneracao-servicos-crmc-detail strong {
+  margin-right: 4px;
 }
 
 .apontamento-servicos-cell-compact {
