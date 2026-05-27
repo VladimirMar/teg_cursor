@@ -69,13 +69,13 @@ Aplicacao React + Vite com API Node para operacoes administrativas, CRUD e impor
 
 - `npm run api`: sobe a API em `http://localhost:3001`.
 - `npm run dev -- --host 0.0.0.0`: sobe o frontend Vite.
-- `npm run homol:publish`: executa o fluxo completo da homologacao publicada: para a instancia atual, gera o pacote, sobe a publicacao e prepara a massa operacional usada pelo smoke.
-- `npm run homol:prepare-smoke`: libera a apuracao financeira operacional da homologacao, reimporta a planilha oficial de `Apontamento Servicos` e restaura a massa de `Veiculo` para o smoke.
+- `npm run homol:publish`: executa o fluxo completo da homologacao publicada: para a instancia atual, gera o pacote, sobe a publicacao e prepara a massa operacional usada pelo smoke sem reimportar `Veiculo` por padrao.
+- `npm run homol:prepare-smoke`: libera a apuracao financeira operacional da homologacao e reimporta a planilha oficial de `Apontamento Servicos`; a restauracao de `Veiculo` agora e opt-in.
 - `npm run homol:smoke`: executa o preparo operacional da homologacao e, na sequencia, roda `smoke:api` contra `http://127.0.0.1:3002`.
 - `npm run build`: gera o build de producao.
 - `npm run lint`: executa o lint.
 - `npm run import:xml:all`: executa a sequencia consolidada de importacao XML para `Marca/Modelo`, `Credenciada`, `Credenciamento Termo`, `Condutor`, `Monitor`, `Vinculo Condutor`, `Vinculo Monitor`, `Veiculo` e `OrdemServico`; `CEP` entra como etapa opcional e so roda quando `importXML/Ceps.xml` existir.
-- `npm run smoke:api`: executa o smoke automatizado completo da API para `Condutor`, `Credenciada`, `Veiculo` e `Marca/Modelo`.
+- `npm run smoke:api`: executa o smoke automatizado da API para `Condutor`, `Credenciada`, `OrdemServico`, `Apontamento Servicos` e `Marca/Modelo`; a suite de `Veiculo` fica desativada por padrao para evitar alteracoes automaticas na massa de desenvolvimento.
 - `npm run smoke:api:condutor`: executa apenas a suite de `Condutor`.
 - `npm run smoke:api:credenciada`: executa apenas a suite de `Credenciada`.
 - `npm run smoke:api:veiculo`: executa apenas a suite de `Veiculo`.
@@ -83,7 +83,15 @@ Aplicacao React + Vite com API Node para operacoes administrativas, CRUD e impor
 
 ## Smoke Test
 
-O smoke valida os fluxos principais das APIs de `Condutor`, `Credenciada`, `Veiculo` e `Marca/Modelo`:
+O smoke valida os fluxos principais das APIs de `Condutor`, `Credenciada`, `OrdemServico`, `Apontamento Servicos` e `Marca/Modelo` por padrao.
+
+Para incluir `Veiculo` no smoke `all`, rode com:
+
+```powershell
+$env:SMOKE_API_INCLUDE_VEICULO='true'; npm run smoke:api
+```
+
+Quando a suite de `Veiculo` estiver habilitada, ela valida:
 
 - listagem e ordenacao
 - edicao e exclusao de registro importado
@@ -123,14 +131,15 @@ O preparo operacional usa por padrao:
 - `dreCodigo=11`
 - `tipoPessoa=PF`
 - planilha `planilha pgto old/old/04 ATESTE BT PF ABR 26.xlsx`
-- XML `importXML/Veiculo.xml`
+
+Por padrao, `Veiculo.xml` nao e reimportado. Para restaurar a massa de `Veiculo`, use `--restore-veiculo` ou `HOMOLOG_SMOKE_REIMPORT_VEICULO=true`.
 
 Opcoes uteis:
 
 ```bash
 node scripts/homologation-control/prepare-homologation-smoke-data.mjs --help
 node scripts/homologation-control/prepare-homologation-smoke-data.mjs --base-url http://127.0.0.1:3002
-node scripts/homologation-control/prepare-homologation-smoke-data.mjs --skip-veiculo
+node scripts/homologation-control/prepare-homologation-smoke-data.mjs --restore-veiculo
 node scripts/homologation-control/prepare-homologation-smoke-data.mjs --run-smoke
 ```
 

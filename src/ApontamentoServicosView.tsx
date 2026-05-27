@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { listDreItemsPaginated } from './services/dre'
 import type { DreItem } from './services/dre'
@@ -224,21 +224,6 @@ const areSavePayloadItemsEqual = (left: ApontamentoServicosSaveItem, right: Apon
     && normalizeComparableKm(left.kilometragem) === normalizeComparableKm(right.kilometragem)
 }
 
-const getOrdemServicoGroupRowIndex = (items: ApontamentoServicosItem[], itemIndex: number) => {
-  const currentGroupKey = buildOrdemServicoGroupKey(items[itemIndex])
-  let groupRowIndex = 0
-
-  for (let index = itemIndex - 1; index >= 0; index -= 1) {
-    if (buildOrdemServicoGroupKey(items[index]) !== currentGroupKey) {
-      break
-    }
-
-    groupRowIndex += 1
-  }
-
-  return groupRowIndex
-}
-
 export default function ApontamentoServicosView() {
   const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY) || hasEditableFormPermission(LEGACY_FORM_ACCESS_KEY)
   const initialMesAno = getCurrentMonthYear()
@@ -293,6 +278,32 @@ export default function ApontamentoServicosView() {
   const monthYearMismatchMessage = 'A data de operacao deve pertencer ao mes/ano informado.'
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
+  const rowGroupInfoByIndex = useMemo(() => {
+    const groupInfoByIndex = new Map<number, { groupRowIndex: number; isGroupStart: boolean }>()
+    let previousGroupKey = ''
+    let currentGroupRowIndex = 0
+
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+      const currentGroupKey = buildOrdemServicoGroupKey(items[itemIndex])
+      const isFirstRow = itemIndex === 0
+      const isGroupStart = !isFirstRow && currentGroupKey !== previousGroupKey
+
+      if (isFirstRow || isGroupStart) {
+        currentGroupRowIndex = 0
+      } else {
+        currentGroupRowIndex += 1
+      }
+
+      groupInfoByIndex.set(itemIndex, {
+        groupRowIndex: currentGroupRowIndex,
+        isGroupStart,
+      })
+
+      previousGroupKey = currentGroupKey
+    }
+
+    return groupInfoByIndex
+  }, [items])
 
   const openValidationDialog = useCallback((message: string) => {
     setValidationDialogMessage(message)
@@ -1157,10 +1168,14 @@ export default function ApontamentoServicosView() {
               />
               <span>Mostrar acumulados</span>
             </label>
-            <label className="apontamento-servicos-page-size-control">
+          </div>
+
+          <div className="apontamento-servicos-grid-top-actions">
+            <label className="apontamento-servicos-page-size-control" htmlFor="apontamento-servicos-page-size">
               <span>OS por pagina</span>
               <select
-                className="management-filter-input apontamento-servicos-page-size-select"
+                id="apontamento-servicos-page-size"
+                className="apontamento-servicos-page-size-select"
                 value={pageSize}
                 onChange={(event) => handlePageSizeChange(event.target.value)}
                 disabled={isLoading || isSaving || isImporting}
@@ -1208,11 +1223,9 @@ export default function ApontamentoServicosView() {
                 {items.map((item, itemIndex) => {
                   const rowKey = buildRowKey(item)
                   const uiRowKey = `${rowKey}|${itemIndex}`
-                  const currentGroupKey = buildOrdemServicoGroupKey(item)
-                  const previousGroupKey = itemIndex > 0 ? buildOrdemServicoGroupKey(items[itemIndex - 1]) : null
-                  const isSameOrdemServicoGroup = previousGroupKey === currentGroupKey
-                  const groupRowIndex = getOrdemServicoGroupRowIndex(items, itemIndex)
-                  const isGroupStart = itemIndex > 0 && !isSameOrdemServicoGroup
+                  const groupInfo = rowGroupInfoByIndex.get(itemIndex) ?? { groupRowIndex: 0, isGroupStart: false }
+                  const groupRowIndex = groupInfo.groupRowIndex
+                  const isGroupStart = groupInfo.isGroupStart
                   const isEditableRow = hasEditPermission && item.isAtivoNaData && item.apuracaoFinanceiraSituacao === APURACAO_SERVICOS_EDITABLE_STATUS
                   const rowClassName = [
                     !item.isAtivoNaData ? 'apontamento-servicos-row-inactive' : '',

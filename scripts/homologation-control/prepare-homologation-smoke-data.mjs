@@ -15,6 +15,7 @@ const defaults = {
   situacao: String(process.env.HOMOLOG_SMOKE_SITUACAO ?? 'Em digitacao').trim() || 'Em digitacao',
   apontamentoWorkbookPath: String(process.env.HOMOLOG_SMOKE_APONTAMENTO_FILE ?? path.join(workspaceRoot, 'planilha pgto old', 'old', '04 ATESTE BT PF ABR 26.xlsx')).trim(),
   veiculoXmlFileName: String(process.env.HOMOLOG_SMOKE_VEICULO_XML ?? 'Veiculo.xml').trim() || 'Veiculo.xml',
+  restoreVeiculo: String(process.env.HOMOLOG_SMOKE_REIMPORT_VEICULO ?? '').trim().toLowerCase() === 'true',
 }
 
 const rawArgs = process.argv.slice(2)
@@ -27,7 +28,7 @@ let apontamentoWorkbookPath = defaults.apontamentoWorkbookPath
 let veiculoXmlFileName = defaults.veiculoXmlFileName
 let runSmoke = false
 let shouldSkipApontamento = false
-let shouldSkipVeiculo = false
+let shouldSkipVeiculo = !defaults.restoreVeiculo
 let shouldPrintHelp = false
 
 for (let index = 0; index < rawArgs.length; index += 1) {
@@ -133,6 +134,11 @@ for (let index = 0; index < rawArgs.length; index += 1) {
 
   if (currentArg === '--skip-veiculo') {
     shouldSkipVeiculo = true
+    continue
+  }
+
+  if (currentArg === '--restore-veiculo') {
+    shouldSkipVeiculo = false
   }
 }
 
@@ -149,8 +155,12 @@ Opcoes:
   --veiculo-xml <arquivo>    Nome do XML de veiculo a reimportar. Padrao: ${defaults.veiculoXmlFileName}
   --skip-apontamento         Nao reimporta a planilha operacional de apontamento.
   --skip-veiculo             Nao reimporta o XML de veiculo.
+  --restore-veiculo          Reimporta o XML de veiculo durante o preparo.
   --run-smoke                Executa o smoke completo apos o preparo.
-  --help                     Exibe esta ajuda.`)
+  --help                     Exibe esta ajuda.
+
+Variaveis de ambiente:
+  HOMOLOG_SMOKE_REIMPORT_VEICULO=true  Reimporta veiculo por padrao.`)
   process.exit(0)
 }
 
@@ -278,13 +288,13 @@ const verifyVeiculoDataset = async () => {
   return payload
 }
 
-const runSmokeSuite = async () => {
+const runNpmScript = async (scriptName, failureLabel) => {
   const command = process.platform === 'win32'
     ? (process.env.ComSpec ?? 'cmd.exe')
     : 'npm'
   const commandArgs = process.platform === 'win32'
-    ? ['/d', '/s', '/c', 'npm run smoke:api']
-    : ['run', 'smoke:api']
+    ? ['/d', '/s', '/c', `npm run ${scriptName}`]
+    : ['run', scriptName]
 
   await new Promise((resolve, reject) => {
     const child = spawn(command, commandArgs, {
@@ -303,9 +313,14 @@ const runSmokeSuite = async () => {
         return
       }
 
-      reject(new Error(`Smoke da homologacao falhou com codigo ${exitCode ?? 1}.`))
+      reject(new Error(`${failureLabel} falhou com codigo ${exitCode ?? 1}.`))
     })
   })
+}
+
+const runSmokeSuite = async () => {
+  await runNpmScript('smoke:api', 'Smoke principal da homologacao')
+  await runNpmScript('smoke:api:documental', 'Smoke documental da homologacao')
 }
 
 const main = async () => {
@@ -331,7 +346,7 @@ const main = async () => {
   }
 
   if (runSmoke) {
-    console.log('- Executando smoke completo apos o preparo...')
+    console.log('- Executando smoke principal e smoke documental apos o preparo...')
     await runSmokeSuite()
   }
 

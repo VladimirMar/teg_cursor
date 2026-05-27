@@ -5,8 +5,9 @@ import { fileURLToPath } from 'node:url'
 
 const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:3001'
 const reportPath = process.env.SMOKE_REPORT_PATH ?? ''
-const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo', 'apontamento-servicos'])
+const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo', 'apontamento-servicos', 'documental'])
 const suite = (process.argv[2] ?? process.env.SMOKE_SUITE ?? 'all').trim().toLowerCase()
+const shouldRunVeiculoInAll = String(process.env.SMOKE_API_INCLUDE_VEICULO ?? '').trim().toLowerCase() === 'true'
 
 const report = {
   requestedSuite: suite,
@@ -166,6 +167,237 @@ const findExactItemByCode = async (resourcePath, codigo) => {
   const normalizedCode = String(codigo ?? '').trim()
   const response = await requestJson(`${resourcePath}?page=1&pageSize=50&search=${encodeURIComponent(normalizedCode)}`)
   return (response.items ?? []).find((item) => String(item.codigo ?? '').trim() === normalizedCode) ?? null
+}
+
+const requestJsonWithStatus = async (path, options = {}) => {
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers ?? {}),
+    },
+  })
+
+  const payload = await response.json().catch(() => null)
+
+  if (!response.ok && response.status !== 404) {
+    const message = payload && typeof payload.message === 'string'
+      ? payload.message
+      : `HTTP ${response.status} em ${path}`
+
+    throw new Error(message)
+  }
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    payload,
+  }
+}
+
+const fetchLookupItem = async (path) => {
+  const { status, payload } = await requestJsonWithStatus(path)
+
+  if (status === 404) {
+    return null
+  }
+
+  return payload?.item ?? null
+}
+
+const getDocumentDigits = (value) => String(value ?? '').replace(/\D/g, '')
+
+const formatDateInputValue = (value) => {
+  const date = value instanceof Date ? new Date(value) : new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const addDaysToDateInputValue = (days, referenceDate = new Date()) => {
+  const date = new Date(referenceDate)
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() + days)
+  return formatDateInputValue(date)
+}
+
+const buildUniqueDigits = (length) => {
+  const seed = `${Date.now()}${Math.floor(Math.random() * 1_000_000).toString().padStart(6, '0')}`
+  return seed.slice(-length).padStart(length, '0')
+}
+
+const buildUniqueEmail = () => `smoke.${buildUniqueDigits(8)}@example.com`
+
+const buildUniquePlate = () => {
+  const digits = buildUniqueDigits(4)
+  const middleLetter = String.fromCharCode(65 + (Number(digits[1]) % 26))
+  return `SMK${digits[0]}${middleLetter}${digits.slice(2)}`
+}
+
+const buildUniqueCrm = () => `SMOKE-${buildUniqueDigits(6)}`
+
+const parseDecimalText = (value) => {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!normalizedValue) {
+    return Number.NaN
+  }
+
+  const sanitizedValue = normalizedValue
+    .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+    .replace(',', '.')
+    .replace(/[^\d.-]/g, '')
+
+  return Number.parseFloat(sanitizedValue)
+}
+
+const buildVeiculoLookupUrl = ({ crm, modalidadeCodigo }) => {
+  const params = new URLSearchParams({ crm: String(crm ?? '').trim() })
+
+  if (String(modalidadeCodigo ?? '').trim()) {
+    params.set('modalidadeCodigo', String(modalidadeCodigo).trim())
+  }
+
+  return `/api/veiculo/lookup?${params.toString()}`
+}
+
+const buildContratoRequestPayload = (termoItem) => ({
+  preview: true,
+  requestedDate: String(termoItem?.inicio_vigencia || termoItem?.data_publicacao || '').trim(),
+  codigoXml: String(termoItem?.codigo_xml || '').trim(),
+  termoAdesao: String(termoItem?.termo_adesao || termoItem?.termoAdesao || '').trim(),
+  sei: String(termoItem?.sei || '').trim(),
+  credenciado: String(termoItem?.credenciado || termoItem?.empresa || '').trim(),
+  cnpjCpf: String(termoItem?.cnpj_cpf || termoItem?.cnpjCpf || '').trim(),
+  tipoTermo: String(termoItem?.tipo_termo || termoItem?.tipoTermo || '').trim(),
+  representante: String(termoItem?.representante || '').trim(),
+  cpfRepresentante: String(termoItem?.cpf_representante || '').trim(),
+  cep: String(termoItem?.credenciada_cep || termoItem?.cep || '').trim(),
+  logradouro: String(termoItem?.logradouro || '').trim(),
+  bairro: String(termoItem?.bairro || '').trim(),
+  municipio: String(termoItem?.municipio || '').trim(),
+  inicioVigencia: String(termoItem?.inicio_vigencia || '').trim(),
+  terminoVigencia: String(termoItem?.termino_vigencia || '').trim(),
+  compDataAditivo: String(termoItem?.comp_data_aditivo || '').trim(),
+  dataPublicacao: String(termoItem?.data_publicacao || '').trim(),
+  vencimentoGeral: String(termoItem?.vencimento_geral || '').trim(),
+  mesRenovacao: String(termoItem?.mes_renovacao || '').trim(),
+  tpOptante: String(termoItem?.tp_optante || '').trim(),
+  valorContrato: String(termoItem?.valor_contrato || '').trim(),
+  valorContratoAtualizado: String(termoItem?.valor_contrato_atualizado || '').trim(),
+})
+
+const runDocumentalEmissionChecks = async () => {
+  const termoFixture = await findPaginatedFixture({
+    resourcePath: '/api/termo',
+    sortBy: 'codigo',
+    sortDirection: 'desc',
+    predicate: (item) => {
+      return Boolean(String(item.termo_adesao ?? '').trim())
+        && Boolean(String(item.credenciado ?? '').trim())
+        && Boolean(String(item.cnpj_cpf ?? '').trim())
+        && Boolean(String(item.tipo_termo ?? '').trim())
+        && Boolean(String(item.inicio_vigencia ?? '').trim())
+        && Boolean(String(item.data_publicacao ?? '').trim())
+        && Number.isFinite(parseDecimalText(item.valor_contrato))
+        && parseDecimalText(item.valor_contrato) > 0
+    },
+    description: 'termo com dados completos para emissao',
+  })
+
+  const latestTermoItem = await fetchLookupItem(`/api/termo/lookup?termoAdesao=${encodeURIComponent(String(termoFixture.termo_adesao))}`)
+  assert(Boolean(latestTermoItem), `Lookup do termo ${termoFixture.termo_adesao} nao retornou item.`)
+
+  const termoRequestedDate = String(latestTermoItem.data_publicacao || latestTermoItem.inicio_vigencia || '').trim()
+  assert(termoRequestedDate, 'Termo de emissao nao retornou data de referencia para despacho/aditivo.')
+
+  const termoParametroResponse = await requestJson(`/api/emissao-documento-parametro/resolve?dataReferencia=${encodeURIComponent(termoRequestedDate)}`)
+  const termoParametroItem = termoParametroResponse.item
+  assert(Boolean(termoParametroItem), 'Parametro de emissao do termo nao foi encontrado.')
+  assert(Boolean(String(termoParametroItem.titulo_aditivo ?? '').trim()), 'Parametro de emissao do termo nao retornou titulo do aditivo.')
+  assert(Boolean(String(termoParametroItem.corpo_aditivo ?? '').trim()), 'Parametro de emissao do termo nao retornou corpo do aditivo.')
+  assert(Boolean(String(termoParametroItem.texto_despacho ?? '').trim()), 'Parametro de emissao do termo nao retornou texto do despacho.')
+  logStep(`fontes de termo aditivo e despacho validadas para ${latestTermoItem.termo_adesao}`)
+
+  const contratoPreview = await requestJson('/api/termo/emitir-contrato', {
+    method: 'POST',
+    body: JSON.stringify(buildContratoRequestPayload(latestTermoItem)),
+  })
+
+  assert(Boolean(String(contratoPreview.fileName ?? '').trim()), 'Emissao do contrato nao retornou nome de arquivo.')
+  assert(String(contratoPreview.fileName).toLowerCase().includes('contrato'), 'Emissao do contrato retornou nome de arquivo inesperado.')
+  assert(Boolean(String(contratoPreview.previewMarkup ?? '').trim()), 'Emissao do contrato nao retornou previewMarkup.')
+  assert(String(contratoPreview.previewMarkup).includes(String(latestTermoItem.termo_adesao)), 'Preview do contrato nao contem o termo de adesao esperado.')
+  assert(
+    String(contratoPreview.previewMarkup).toUpperCase().includes(String(latestTermoItem.credenciado ?? '').trim().toUpperCase()),
+    'Preview do contrato nao contem o credenciado esperado.',
+  )
+  logStep(`emissao do contrato validada para o termo ${latestTermoItem.termo_adesao}`)
+
+  const emissaoOsItem = await findPaginatedFixture({
+    resourcePath: '/api/ordem-servico',
+    sortBy: 'codigo',
+    sortDirection: 'desc',
+    predicate: (item) => {
+      return String(item.situacao ?? '').trim().toUpperCase() !== 'RASCUNHO'
+        && Boolean(String(item.termo_adesao ?? '').trim())
+        && Boolean(String(item.num_os ?? '').trim())
+        && Boolean(String(item.modalidade_codigo ?? '').trim())
+        && (
+          Boolean(getDocumentDigits(item.cpf_condutor))
+          || Boolean(getDocumentDigits(item.cpf_monitor))
+          || Boolean(String(item.crm ?? '').trim())
+        )
+    },
+    description: 'ordem de servico com referencias para emissao',
+  })
+
+  const ordemServicoTermoItem = await fetchLookupItem(`/api/termo/lookup?termoAdesao=${encodeURIComponent(String(emissaoOsItem.termo_adesao))}`)
+  assert(Boolean(ordemServicoTermoItem), 'Lookup do termo da OrdemServico nao retornou item.')
+
+  const ordemServicoCondutorItem = getDocumentDigits(emissaoOsItem.cpf_condutor)
+    ? await fetchLookupItem(`/api/condutor/lookup?cpf=${encodeURIComponent(String(emissaoOsItem.cpf_condutor))}`)
+    : null
+  const ordemServicoMonitorItem = getDocumentDigits(emissaoOsItem.cpf_monitor)
+    ? await fetchLookupItem(`/api/monitor/lookup?cpf=${encodeURIComponent(String(emissaoOsItem.cpf_monitor))}`)
+    : null
+  const ordemServicoVeiculoItem = String(emissaoOsItem.crm ?? '').trim()
+    ? await fetchLookupItem(buildVeiculoLookupUrl({ crm: emissaoOsItem.crm, modalidadeCodigo: emissaoOsItem.modalidade_codigo }))
+    : null
+
+  if (getDocumentDigits(emissaoOsItem.cpf_condutor)) {
+    assert(Boolean(ordemServicoCondutorItem), 'Lookup do condutor da OrdemServico nao retornou item.')
+  }
+
+  if (getDocumentDigits(emissaoOsItem.cpf_monitor)) {
+    assert(Boolean(ordemServicoMonitorItem), 'Lookup do monitor da OrdemServico nao retornou item.')
+  }
+
+  if (String(emissaoOsItem.crm ?? '').trim()) {
+    assert(Boolean(ordemServicoVeiculoItem), 'Lookup do veiculo da OrdemServico nao retornou item.')
+  }
+
+  assert(
+    Boolean(ordemServicoCondutorItem || ordemServicoMonitorItem || ordemServicoVeiculoItem),
+    'Nenhuma referencia secundaria da OrdemServico foi resolvida para dados OS.',
+  )
+  logStep(`consulta de dados OS validada para ${emissaoOsItem.termo_adesao}/${emissaoOsItem.num_os}${emissaoOsItem.revisao || ''}`)
+
+  const ordemServicoRequestedDate = String(emissaoOsItem.data_emissao || formatDateInputValue(new Date())).trim()
+  const ordemServicoParametroResponse = await requestJson(`/api/emissao-documento-parametro/resolve?dataReferencia=${encodeURIComponent(ordemServicoRequestedDate)}`)
+  const ordemServicoParametroItem = ordemServicoParametroResponse.item
+  assert(Boolean(ordemServicoParametroItem), 'Parametro da emissao de documento da OrdemServico nao foi encontrado.')
+  assert(Boolean(String(ordemServicoParametroItem.obs_01_emissao ?? '').trim()), 'Parametro da emissao de documento da OrdemServico nao retornou observacao 1.')
+  assert(Boolean(String(ordemServicoParametroItem.obs_02_emissao ?? '').trim()), 'Parametro da emissao de documento da OrdemServico nao retornou observacao 2.')
+  assert(Boolean(String(ordemServicoParametroItem.rodape_emissao ?? '').trim()), 'Parametro da emissao de documento da OrdemServico nao retornou rodape.')
+  logStep(`fontes da emissao de documento da OS validadas para ${emissaoOsItem.termo_adesao}/${emissaoOsItem.num_os}${emissaoOsItem.revisao || ''}`)
 }
 
 const logStep = (message) => {
@@ -468,6 +700,51 @@ const runCredenciadaSmoke = async () => {
     )
     logStep('ordenacao asc/desc por credenciado ok')
 
+    const existingCep = listResponse.items
+      .map((item) => String(item.cep ?? '').trim())
+      .find((value) => value.length > 0)
+
+    assert(Boolean(existingCep), 'Nao foi encontrado CEP existente para validar a inclusao da credenciada.')
+
+    const createdCredenciadaPayload = {
+      credenciado: `SMOKE TEST CREDENCIADA ${buildUniqueDigits(6)}`,
+      cnpjCpf: buildUniqueDigits(11),
+      tipoPessoa: 'PESSOA FISICA',
+      tpOptante: '',
+      termoPermissao: '',
+      cep: existingCep,
+      numero: '100',
+      complemento: 'SALA 1',
+      email: buildUniqueEmail(),
+      telefone1: '99999-9999',
+      telefone2: '98888-8888',
+      representante: '',
+      cpfRepresentante: '',
+      status: 'ATIVO',
+    }
+
+    const createdCredenciadaResponse = await requestJson('/api/credenciada', {
+      method: 'POST',
+      body: JSON.stringify(createdCredenciadaPayload),
+    })
+
+    const createdCredenciadaCode = String(createdCredenciadaResponse.item?.codigo ?? '').trim()
+    assert(createdCredenciadaCode, 'Inclusao de credenciada nao retornou codigo.')
+
+    const createdCredenciadaItem = await findExactItemByCode('/api/credenciada', createdCredenciadaCode)
+    assert(Boolean(createdCredenciadaItem), `Credenciada ${createdCredenciadaCode} nao foi localizada apos inclusao.`)
+    assert(createdCredenciadaItem.credenciado === createdCredenciadaPayload.credenciado, 'Inclusao de credenciada nao persistiu o nome informado.')
+    assert(getDocumentDigits(createdCredenciadaItem.cnpj_cpf) === getDocumentDigits(createdCredenciadaPayload.cnpjCpf), 'Inclusao de credenciada nao persistiu o CNPJ/CPF informado.')
+    logStep(`inclusao da credenciada ${createdCredenciadaCode} ok`)
+
+    const createdCredenciadaDeleteResponse = await requestJson(`/api/credenciada/${encodeURIComponent(createdCredenciadaCode)}`, {
+      method: 'DELETE',
+    })
+    assert(createdCredenciadaDeleteResponse.deletedCodigo === createdCredenciadaCode, 'Exclusao da credenciada criada nao retornou o codigo esperado.')
+    const deletedCreatedCredenciada = await findExactItemByCode('/api/credenciada', createdCredenciadaCode)
+    assert(!deletedCreatedCredenciada, `Credenciada ${createdCredenciadaCode} ainda foi encontrada apos exclusao.`)
+    logStep(`exclusao da credenciada criada ${createdCredenciadaCode} ok`)
+
     const validImport = await requestJson('/api/credenciada/import-xml', {
       method: 'POST',
       body: JSON.stringify({ fileName: 'Credenciados.xml' }),
@@ -600,6 +877,36 @@ const runOrdemServicoSmoke = async () => {
   }
 }
 
+const runDocumentalSmoke = async () => {
+  console.log('Smoke test documental da homologacao')
+  const suiteReport = recordSuite('documental')
+
+  try {
+    await runDocumentalEmissionChecks()
+
+    const emissaoOsItem = await findPaginatedFixture({
+      resourcePath: '/api/ordem-servico',
+      sortBy: 'codigo',
+      sortDirection: 'desc',
+      predicate: (item) => {
+        return String(item.situacao ?? '').trim().toUpperCase() !== 'RASCUNHO'
+          && Boolean(String(item.termo_adesao ?? '').trim())
+          && Boolean(String(item.num_os ?? '').trim())
+      },
+      description: 'ordem de servico apta a validacao documental',
+    })
+
+    const nextNumOsResponse = await requestJson(`/api/ordem-servico/next-num-os?termoAdesao=${encodeURIComponent(String(emissaoOsItem.termo_adesao))}`)
+    assert(typeof nextNumOsResponse.nextNumOs === 'string' && nextNumOsResponse.nextNumOs.trim().length > 0, 'next-num-os nao retornou o proximo numero de OS.')
+    logStep(`next-num-os ok para ${emissaoOsItem.termo_adesao}: proxima ${nextNumOsResponse.nextNumOs}`)
+
+    finalizeSuite(suiteReport, 'passed')
+  } catch (error) {
+    finalizeSuite(suiteReport, 'failed')
+    throw error
+  }
+}
+
 const runVeiculoSmoke = async () => {
   console.log('Smoke test da API Veiculo')
   const suiteReport = recordSuite('veiculo')
@@ -636,10 +943,60 @@ const runVeiculoSmoke = async () => {
         return Boolean(String(item.codigo ?? '').trim())
           && Boolean(String(item.crm ?? '').trim())
           && Boolean(String(item.placas ?? '').trim())
+          && Boolean(String(item.tipo_de_bancada ?? '').trim())
+          && Boolean(String(item.tipo_de_veiculo ?? '').trim())
+          && Boolean(String(item.marca_modelo ?? '').trim())
+          && Boolean(String(item.titular ?? '').trim())
+          && Boolean(String(item.cnpj_cpf ?? '').trim())
           && isStrictlyFutureDate(item.val_crm)
       },
       description: 'veiculo com CRM e validade futura',
     })
+
+    const createdVeiculoPayload = {
+      codigo: '',
+      crm: buildUniqueCrm(),
+      placas: buildUniquePlate(),
+      ano: String(new Date().getFullYear()),
+      capDetran: String(originalItem.cap_detran ?? '16'),
+      capTeg: String(originalItem.cap_teg ?? '16'),
+      capTegCreche: String(originalItem.cap_teg_creche ?? '0'),
+      capAcessivel: String(originalItem.cap_acessivel ?? '0'),
+      valCrm: addDaysToDateInputValue(365),
+      seguradora: String(originalItem.seguradora ?? '').trim(),
+      seguroInicio: '',
+      seguroTermino: String(originalItem.seguro_termino ?? '').trim(),
+      tipoDeBancada: String(originalItem.tipo_de_bancada ?? '').trim(),
+      tipoDeVeiculo: String(originalItem.tipo_de_veiculo ?? '').trim(),
+      marcaModelo: String(originalItem.marca_modelo ?? '').trim(),
+      titular: String(originalItem.titular ?? '').trim(),
+      cnpjCpf: String(originalItem.cnpj_cpf ?? '').trim(),
+      valorVeiculo: String(originalItem.valor_veiculo ?? '100000.00').trim(),
+      osEspecial: String(originalItem.os_especial ?? 'Nao').trim() || 'Nao',
+    }
+
+    const createdVeiculoResponse = await requestJson('/api/veiculo', {
+      method: 'POST',
+      body: JSON.stringify(createdVeiculoPayload),
+    })
+
+    const createdVeiculoCode = String(createdVeiculoResponse.item?.codigo ?? '').trim()
+    assert(createdVeiculoCode, 'Inclusao de veiculo nao retornou codigo.')
+
+    const createdVeiculoItem = await findExactItemByCode('/api/veiculo', createdVeiculoCode)
+    assert(Boolean(createdVeiculoItem), `Veiculo ${createdVeiculoCode} nao foi localizado apos inclusao.`)
+    assert(createdVeiculoItem.crm === createdVeiculoPayload.crm, 'Inclusao de veiculo nao persistiu o CRM informado.')
+    assert(createdVeiculoItem.placas === createdVeiculoPayload.placas, 'Inclusao de veiculo nao persistiu a placa informada.')
+    logStep(`inclusao do veiculo ${createdVeiculoCode} ok`)
+
+    const createdVeiculoDeleteResponse = await requestJson(`/api/veiculo/${encodeURIComponent(createdVeiculoCode)}`, {
+      method: 'DELETE',
+    })
+    assert(createdVeiculoDeleteResponse.deletedCodigo === createdVeiculoCode, 'Exclusao do veiculo criado nao retornou o codigo esperado.')
+    const deletedCreatedVeiculo = await findExactItemByCode('/api/veiculo', createdVeiculoCode)
+    assert(!deletedCreatedVeiculo, `Veiculo ${createdVeiculoCode} ainda foi encontrado apos exclusao.`)
+    logStep(`exclusao do veiculo criado ${createdVeiculoCode} ok`)
+
     const targetCode = String(originalItem.codigo)
     const updatedTipoDeBancada = 'Creche'
     const updatedOsEspecial = 'Sim'
@@ -852,8 +1209,10 @@ try {
     console.log('')
   }
 
-  if (suite === 'all' || suite === 'veiculo') {
+  if (suite === 'veiculo' || (suite === 'all' && shouldRunVeiculoInAll)) {
     await runVeiculoSmoke()
+  } else if (suite === 'all') {
+    console.log('Suite de veiculo ignorada no smoke all (SMOKE_API_INCLUDE_VEICULO != true).')
   }
 
   if (suite === 'all') {
@@ -870,6 +1229,10 @@ try {
 
   if (suite === 'all' || suite === 'apontamento-servicos') {
     await runApontamentoServicosSmoke()
+  }
+
+  if (suite === 'documental') {
+    await runDocumentalSmoke()
   }
 
   report.status = 'passed'

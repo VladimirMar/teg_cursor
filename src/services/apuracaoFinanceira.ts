@@ -26,6 +26,7 @@ export type ApuracaoFinanceiraKey = {
 export type ApuracaoFinanceiraItem = ApuracaoFinanceiraKey & {
   dreSigla: string
   dreDescricao: string
+  dataReferencia: string
   situacao: ApuracaoFinanceiraStatus
   dataInclusao: string
   dataAlteracao: string
@@ -51,7 +52,7 @@ export type ApuracaoFinanceiraSaveItem = ApuracaoFinanceiraKey & {
   situacao: ApuracaoFinanceiraStatus
 }
 
-export type ApuracaoFinanceiraSortField = 'mesAno' | 'dreCodigo' | 'dreDescricao' | 'revisao' | 'tipoPessoa' | 'situacao' | 'dataInclusao' | 'dataAlteracao'
+export type ApuracaoFinanceiraSortField = 'mesAno' | 'dreCodigo' | 'dreDescricao' | 'revisao' | 'tipoPessoa' | 'dataReferencia' | 'situacao' | 'dataInclusao' | 'dataAlteracao'
 
 type ApuracaoFinanceiraListResponse = {
   items: ApuracaoFinanceiraItem[]

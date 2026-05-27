@@ -25,9 +25,234 @@ const xmlImportAllRunPath = '/api/xml-import-all/run'
 const xmlImportAllStatusPath = '/api/xml-import-all/status'
 const xmlImportAllResetPath = '/api/xml-import-all/reset'
 const apontamentoServicosImportStatusPath = '/api/apontamento-servicos/import-excel/status'
+const apuracaoFinanceiraProcessarPath = '/api/apuracao-financeira/processar'
+const apuracaoFinanceiraAlterarSituacaoLotePath = '/api/apuracao-financeira/alterar-situacao-lote'
 const allowedSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo', 'marca-modelo'])
 const invalidFixtureSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo'])
 const apontamentoServicosImportRuns = new Map()
+const batchProcessRuns = new Map()
+const batchProcessHistoryLimit = 200
+const batchProcessCollectionPath = '/api/batch-processes'
+const batchProcessActivePath = '/api/batch-processes/active'
+const batchProcessDetailPathPrefix = '/api/batch-processes/'
+
+const normalizeBatchProcessId = (value) => {
+  return String(value ?? '').trim().replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 120)
+}
+
+const normalizeBatchProcessStatus = (value) => {
+  const normalizedValue = String(value ?? '').trim().toLowerCase()
+
+  if (normalizedValue === 'running') {
+    return 'running'
+  }
+
+  if (normalizedValue === 'failed' || normalizedValue === 'error') {
+    return 'failed'
+  }
+
+  if (normalizedValue === 'completed' || normalizedValue === 'passed' || normalizedValue === 'done') {
+    return 'completed'
+  }
+
+  return 'running'
+}
+
+const calculateBatchProcessEtaSeconds = (startedAt, currentRecord, totalRecords) => {
+  if (!startedAt || !Number.isFinite(currentRecord) || !Number.isFinite(totalRecords) || currentRecord <= 0 || totalRecords <= 0 || currentRecord >= totalRecords) {
+    return null
+  }
+
+  const startedAtDate = new Date(startedAt)
+
+  if (Number.isNaN(startedAtDate.getTime())) {
+    return null
+  }
+
+  const elapsedMilliseconds = Date.now() - startedAtDate.getTime()
+
+  if (!Number.isFinite(elapsedMilliseconds) || elapsedMilliseconds <= 0) {
+    return null
+  }
+
+  const progressRatio = currentRecord / totalRecords
+
+  if (!Number.isFinite(progressRatio) || progressRatio <= 0 || progressRatio >= 1) {
+    return null
+  }
+
+  const estimatedTotalMilliseconds = elapsedMilliseconds / progressRatio
+  const remainingMilliseconds = Math.max(0, estimatedTotalMilliseconds - elapsedMilliseconds)
+
+  return Math.ceil(remainingMilliseconds / 1000)
+}
+
+const pruneBatchProcessHistory = () => {
+  if (batchProcessRuns.size <= batchProcessHistoryLimit) {
+    return
+  }
+
+  const removableItems = [...batchProcessRuns.values()]
+    .filter((item) => item.status !== 'running')
+    .sort((left, right) => {
+      const leftTimestamp = new Date(left.updatedAt || left.finishedAt || left.startedAt || 0).getTime()
+      const rightTimestamp = new Date(right.updatedAt || right.finishedAt || right.startedAt || 0).getTime()
+      return leftTimestamp - rightTimestamp
+    })
+
+  const removableCount = Math.max(batchProcessRuns.size - batchProcessHistoryLimit, 0)
+
+  for (const removableItem of removableItems.slice(0, removableCount)) {
+    batchProcessRuns.delete(removableItem.processId)
+  }
+}
+
+const upsertBatchProcessRun = (processId, nextValues = {}) => {
+  const normalizedProcessId = normalizeBatchProcessId(processId)
+
+  if (!normalizedProcessId) {
+    return null
+  }
+
+  const currentTimestamp = new Date().toISOString()
+  const currentItem = batchProcessRuns.get(normalizedProcessId) ?? {
+    processId: normalizedProcessId,
+    processType: '',
+    processName: '',
+    source: '',
+    status: 'running',
+    isRunning: true,
+    startedAt: currentTimestamp,
+    finishedAt: '',
+    updatedAt: currentTimestamp,
+    message: '',
+    errorMessage: '',
+    currentStepLabel: '',
+    currentFileName: '',
+    currentRecord: null,
+    totalRecords: null,
+    progressPercent: null,
+    etaSeconds: null,
+    requestedFilters: null,
+    summary: null,
+    metadata: null,
+  }
+
+  const mergedStatus = normalizeBatchProcessStatus(nextValues.status ?? currentItem.status)
+  const isRunning = mergedStatus === 'running'
+  const mergedItem = {
+    ...currentItem,
+    ...nextValues,
+    processId: normalizedProcessId,
+    status: mergedStatus,
+    isRunning,
+    updatedAt: currentTimestamp,
+  }
+
+  if (!mergedItem.startedAt) {
+    mergedItem.startedAt = currentTimestamp
+  }
+
+  if (!isRunning) {
+    mergedItem.finishedAt = mergedItem.finishedAt || currentTimestamp
+  } else {
+    mergedItem.finishedAt = ''
+  }
+
+  batchProcessRuns.set(normalizedProcessId, mergedItem)
+  pruneBatchProcessHistory()
+  return mergedItem
+}
+
+const listBatchProcessItems = ({ onlyActive = false } = {}) => {
+  const items = [...batchProcessRuns.values()]
+    .filter((item) => !onlyActive || item.status === 'running')
+    .sort((left, right) => {
+      const leftTimestamp = new Date(left.updatedAt || left.finishedAt || left.startedAt || 0).getTime()
+      const rightTimestamp = new Date(right.updatedAt || right.finishedAt || right.startedAt || 0).getTime()
+      return rightTimestamp - leftTimestamp
+    })
+
+  const totals = {
+    total: items.length,
+    running: items.filter((item) => item.status === 'running').length,
+    completed: items.filter((item) => item.status === 'completed').length,
+    failed: items.filter((item) => item.status === 'failed').length,
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    ...totals,
+    items,
+  }
+}
+
+const getBatchProcessItem = (processId) => {
+  const normalizedProcessId = normalizeBatchProcessId(processId)
+
+  if (!normalizedProcessId) {
+    return null
+  }
+
+  return batchProcessRuns.get(normalizedProcessId) ?? null
+}
+
+const syncApontamentoImportBatchProcess = (importId, statusPayload) => {
+  const normalizedImportId = normalizeApontamentoServicosImportId(importId)
+
+  if (!normalizedImportId || !statusPayload) {
+    return
+  }
+
+  const processId = `apontamento-servicos-import:${normalizedImportId}`
+  const totalRecords = Number(statusPayload.totalRecords)
+  const currentRecord = Number(statusPayload.currentRecord)
+  const progressPercent = Number.isFinite(totalRecords) && totalRecords > 0 && Number.isFinite(currentRecord)
+    ? Math.max(0, Math.min(100, Math.round((currentRecord / totalRecords) * 100)))
+    : null
+  const status = statusPayload.status === 'error'
+    ? 'failed'
+    : (statusPayload.status === 'completed' ? 'completed' : 'running')
+  const message = normalizeRequestValue(statusPayload.message)
+    || (status === 'running'
+      ? 'Importacao de apontamento em execucao.'
+      : (status === 'completed'
+        ? 'Importacao de apontamento concluida.'
+        : 'Importacao de apontamento finalizada com falhas.'))
+
+  upsertBatchProcessRun(processId, {
+    processType: 'apontamento-servicos-import',
+    processName: 'Importacao de Apontamento Servicos',
+    source: '/api/apontamento-servicos/import-excel',
+    status,
+    startedAt: normalizeRequestValue(statusPayload.startedAt) || undefined,
+    finishedAt: normalizeRequestValue(statusPayload.finishedAt) || undefined,
+    message,
+    errorMessage: normalizeRequestValue(statusPayload.errorMessage),
+    currentStepLabel: 'Processamento de planilha',
+    currentFileName: normalizeRequestValue(statusPayload.currentFileName),
+    currentRecord: Number.isFinite(currentRecord) ? currentRecord : null,
+    totalRecords: Number.isFinite(totalRecords) && totalRecords > 0 ? totalRecords : null,
+    progressPercent,
+    etaSeconds: status === 'running'
+      ? calculateBatchProcessEtaSeconds(
+        normalizeRequestValue(statusPayload.startedAt),
+        Number.isFinite(currentRecord) ? currentRecord : null,
+        Number.isFinite(totalRecords) ? totalRecords : null,
+      )
+      : null,
+    metadata: {
+      importId: normalizedImportId,
+      processedFiles: Number(statusPayload.processedFiles) || 0,
+      processedItems: Number(statusPayload.processedItems) || 0,
+      processedDates: Number(statusPayload.processedDates) || 0,
+      skippedRecords: Number(statusPayload.skippedRecords) || 0,
+      currentFilePath: normalizeRequestValue(statusPayload.currentFilePath),
+      oldDirectoryPath: normalizeRequestValue(statusPayload.oldDirectoryPath),
+      movedFileName: normalizeRequestValue(statusPayload.movedFileName),
+    },
+  })
+}
 
 const normalizeApontamentoServicosImportId = (value) => {
   return String(value ?? '').trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80)
@@ -67,6 +292,8 @@ const setApontamentoServicosImportStatus = (importId, nextStatus) => {
     skippedRecords: 0,
     oldDirectoryPath: '',
     movedFileName: '',
+    startedAt: new Date().toISOString(),
+    finishedAt: '',
     message: '',
     errorMessage: '',
     updatedAt: new Date().toISOString(),
@@ -79,7 +306,18 @@ const setApontamentoServicosImportStatus = (importId, nextStatus) => {
     updatedAt: new Date().toISOString(),
   }
 
+  if (!mergedStatus.startedAt) {
+    mergedStatus.startedAt = new Date().toISOString()
+  }
+
+  if (mergedStatus.status === 'completed' || mergedStatus.status === 'error') {
+    mergedStatus.finishedAt = mergedStatus.finishedAt || new Date().toISOString()
+  } else {
+    mergedStatus.finishedAt = ''
+  }
+
   apontamentoServicosImportRuns.set(normalizedImportId, mergedStatus)
+  syncApontamentoImportBatchProcess(normalizedImportId, mergedStatus)
   return mergedStatus
 }
 
@@ -311,6 +549,7 @@ const resetXmlImportBatchTables = async () => {
 }
 
 let xmlImportAllExecution = null
+let remuneracaoServicosBatchExecution = null
 
 const parseXmlImportAllProgressLog = (logContent) => {
   const lines = String(logContent ?? '').split(/\r?\n/).filter(Boolean)
@@ -412,6 +651,48 @@ const buildXmlImportAllExecutionResponse = async () => {
     ? 'running'
     : (xmlImportAllExecution.exitCode === 0 ? 'passed' : 'failed')
 
+  if (xmlImportAllExecution.trackerId) {
+    const progressPercent = Number.isFinite(parsedProgress.currentRecord)
+      && Number.isFinite(parsedProgress.totalRecords)
+      && Number(parsedProgress.totalRecords) > 0
+      ? Math.max(0, Math.min(100, Math.round((Number(parsedProgress.currentRecord) / Number(parsedProgress.totalRecords)) * 100)))
+      : null
+
+    upsertBatchProcessRun(xmlImportAllExecution.trackerId, {
+      processType: 'xml-import-all',
+      processName: 'Importacao XML em Lote',
+      source: xmlImportAllRunPath,
+      status: status === 'passed' ? 'completed' : status,
+      startedAt: xmlImportAllExecution.startedAt,
+      finishedAt: xmlImportAllExecution.finishedAt,
+      message: xmlImportAllExecution.running
+        ? 'Importacao XML consolidada em execucao.'
+        : (xmlImportAllExecution.exitCode === 0
+          ? 'Importacao XML consolidada executada com sucesso.'
+          : 'Importacao XML consolidada finalizada com falhas.'),
+      errorMessage: xmlImportAllExecution.running || xmlImportAllExecution.exitCode === 0
+        ? ''
+        : truncateCommandOutput(xmlImportAllExecution.stderr),
+      currentStepLabel: parsedProgress.stepLabel,
+      currentFileName: parsedProgress.fileName,
+      currentRecord: Number.isFinite(parsedProgress.currentRecord) ? parsedProgress.currentRecord : null,
+      totalRecords: Number.isFinite(parsedProgress.totalRecords) ? parsedProgress.totalRecords : null,
+      progressPercent,
+      etaSeconds: xmlImportAllExecution.running
+        ? calculateBatchProcessEtaSeconds(
+          xmlImportAllExecution.startedAt,
+          Number.isFinite(parsedProgress.currentRecord) ? parsedProgress.currentRecord : null,
+          Number.isFinite(parsedProgress.totalRecords) ? parsedProgress.totalRecords : null,
+        )
+        : null,
+      metadata: {
+        jobId: normalizeRequestValue(xmlImportAllExecution.jobId),
+        reportPath: normalizeRequestValue(xmlImportAllExecution.reportPath),
+        logPath: normalizeRequestValue(xmlImportAllExecution.logPath),
+      },
+    })
+  }
+
   return {
     message: xmlImportAllExecution.running
       ? 'Importacao XML consolidada em execucao.'
@@ -453,6 +734,8 @@ const startXmlImportAllExecution = async () => {
     ? ['/d', '/s', '/c', 'npm run import:xml:all']
     : ['run', 'import:xml:all']
 
+  const jobId = `${Date.now()}-${randomBytes(4).toString('hex')}`
+  const trackerId = `xml-import-all:${jobId}`
   const child = spawn(command, commandArgs, {
     cwd: workspaceRoot,
     env: {
@@ -466,6 +749,8 @@ const startXmlImportAllExecution = async () => {
   })
 
   xmlImportAllExecution = {
+    jobId,
+    trackerId,
     scriptName: 'import:xml:all',
     startedAt: new Date().toISOString(),
     finishedAt: '',
@@ -477,6 +762,20 @@ const startXmlImportAllExecution = async () => {
     stdout: '',
     stderr: '',
   }
+
+  upsertBatchProcessRun(trackerId, {
+    processType: 'xml-import-all',
+    processName: 'Importacao XML em Lote',
+    source: xmlImportAllRunPath,
+    status: 'running',
+    startedAt: xmlImportAllExecution.startedAt,
+    message: 'Importacao XML consolidada em execucao.',
+    metadata: {
+      jobId,
+      reportPath: reportFilePath,
+      logPath: logFilePath,
+    },
+  })
 
   child.stdout.on('data', (chunk) => {
     if (!xmlImportAllExecution) {
@@ -503,6 +802,13 @@ const startXmlImportAllExecution = async () => {
     xmlImportAllExecution.exitCode = 1
     xmlImportAllExecution.finishedAt = new Date().toISOString()
     xmlImportAllExecution.stderr += `\n${error instanceof Error ? error.message : String(error)}`
+
+    upsertBatchProcessRun(trackerId, {
+      status: 'failed',
+      finishedAt: xmlImportAllExecution.finishedAt,
+      message: 'Importacao XML consolidada finalizada com falhas.',
+      errorMessage: error instanceof Error ? error.message : String(error),
+    })
   })
 
   child.on('close', async (exitCode) => {
@@ -520,9 +826,218 @@ const startXmlImportAllExecution = async () => {
     } catch {
       xmlImportAllExecution.report = null
     }
+
+    upsertBatchProcessRun(trackerId, {
+      status: (exitCode ?? 1) === 0 ? 'completed' : 'failed',
+      finishedAt: xmlImportAllExecution.finishedAt,
+      message: (exitCode ?? 1) === 0
+        ? 'Importacao XML consolidada executada com sucesso.'
+        : 'Importacao XML consolidada finalizada com falhas.',
+      errorMessage: (exitCode ?? 1) === 0 ? '' : truncateCommandOutput(xmlImportAllExecution.stderr),
+      metadata: {
+        jobId,
+        reportPath: reportFilePath,
+        logPath: logFilePath,
+      },
+    })
   })
 
   return buildXmlImportAllExecutionResponse()
+}
+
+const normalizeRemuneracaoServicosBatchRequest = (body = {}) => {
+  const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+  const dataReferencia = normalizeApontamentoServicosDate(body.dataReferencia)
+  const dreCodigo = normalizeRequestValue(body.dreCodigo)
+  const crmcCondutor = normalizeRequestValue(body.crmcCondutor)
+  const placa = normalizeRequestValue(body.placa)
+  const revisao = normalizeIntegerValue(body.revisao)
+  const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa)
+
+  if (!mesAno) {
+    throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  if (!dataReferencia) {
+    throw createHttpError(400, 'Data de referencia invalida.')
+  }
+
+  const monthRange = buildApuracaoFinanceiraMonthRange(mesAno)
+
+  if (!monthRange || dataReferencia < monthRange.monthStart || dataReferencia > monthRange.monthEnd) {
+    throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
+  }
+
+  return {
+    mesAno,
+    dataReferencia,
+    dreCodigo,
+    crmcCondutor,
+    placa,
+    revisao: Number.isInteger(revisao) ? revisao : undefined,
+    tipoPessoa,
+  }
+}
+
+const buildRemuneracaoServicosBatchExecutionResponse = () => {
+  if (!remuneracaoServicosBatchExecution) {
+    return {
+      jobId: '',
+      message: 'Nenhum processamento em lote de remuneracao em execucao.',
+      status: 'idle',
+      exitCode: null,
+      isRunning: false,
+      startedAt: '',
+      finishedAt: '',
+      requestedFilters: null,
+      summary: null,
+      errorMessage: '',
+      totalRegistros: 0,
+      totalCalculados: 0,
+      totalAtualizados: 0,
+      totalIgnorados: 0,
+    }
+  }
+
+  const status = remuneracaoServicosBatchExecution.running
+    ? 'running'
+    : (remuneracaoServicosBatchExecution.errorMessage ? 'failed' : 'passed')
+
+  return {
+    jobId: remuneracaoServicosBatchExecution.jobId,
+    message: remuneracaoServicosBatchExecution.running
+      ? 'Processamento em lote de remuneracao em execucao.'
+      : (remuneracaoServicosBatchExecution.errorMessage
+        ? 'Processamento em lote de remuneracao finalizado com falhas.'
+        : 'Processamento em lote de remuneracao concluido com sucesso.'),
+    status,
+    exitCode: remuneracaoServicosBatchExecution.running
+      ? null
+      : (remuneracaoServicosBatchExecution.errorMessage ? 1 : 0),
+    isRunning: remuneracaoServicosBatchExecution.running,
+    startedAt: remuneracaoServicosBatchExecution.startedAt,
+    finishedAt: remuneracaoServicosBatchExecution.finishedAt,
+    requestedFilters: remuneracaoServicosBatchExecution.requestedFilters,
+    summary: remuneracaoServicosBatchExecution.summary,
+    errorMessage: remuneracaoServicosBatchExecution.errorMessage,
+    totalRegistros: remuneracaoServicosBatchExecution.summary?.totalRegistros ?? 0,
+    totalCalculados: remuneracaoServicosBatchExecution.summary?.totalCalculados ?? 0,
+    totalAtualizados: remuneracaoServicosBatchExecution.summary?.totalAtualizados ?? 0,
+    totalIgnorados: remuneracaoServicosBatchExecution.summary?.totalIgnorados ?? 0,
+  }
+}
+
+const startRemuneracaoServicosBatchExecution = async (body = {}) => {
+  const requestedFilters = normalizeRemuneracaoServicosBatchRequest(body)
+
+  if (remuneracaoServicosBatchExecution?.running) {
+    return buildRemuneracaoServicosBatchExecutionResponse()
+  }
+
+  const jobId = `${Date.now()}-${randomBytes(4).toString('hex')}`
+  const trackerId = `remuneracao-servicos:${jobId}`
+  remuneracaoServicosBatchExecution = {
+    jobId,
+    trackerId,
+    requestedFilters,
+    startedAt: new Date().toISOString(),
+    finishedAt: '',
+    running: true,
+    exitCode: null,
+    summary: null,
+    errorMessage: '',
+  }
+
+  upsertBatchProcessRun(trackerId, {
+    processType: 'remuneracao-servicos',
+    processName: 'Calculo de Remuneracao de Servicos',
+    source: '/api/remuneracao-servicos/calcular',
+    status: 'running',
+    startedAt: remuneracaoServicosBatchExecution.startedAt,
+    message: 'Processamento em lote de remuneracao em execucao.',
+    requestedFilters,
+  })
+
+  const client = await pool.connect()
+
+  void (async () => {
+    try {
+      await client.query('BEGIN')
+
+      const summary = await calculateRemuneracaoServicosItems(requestedFilters, client)
+
+      await client.query('COMMIT')
+
+      if (!remuneracaoServicosBatchExecution || remuneracaoServicosBatchExecution.jobId !== jobId) {
+        return
+      }
+
+      remuneracaoServicosBatchExecution.summary = summary
+
+      upsertBatchProcessRun(trackerId, {
+        summary,
+        metadata: {
+          totalRegistros: Number(summary?.totalRegistros) || 0,
+          totalCalculados: Number(summary?.totalCalculados) || 0,
+          totalAtualizados: Number(summary?.totalAtualizados) || 0,
+          totalIgnorados: Number(summary?.totalIgnorados) || 0,
+        },
+      })
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {})
+
+      if (!remuneracaoServicosBatchExecution || remuneracaoServicosBatchExecution.jobId !== jobId) {
+        return
+      }
+
+      remuneracaoServicosBatchExecution.errorMessage = error instanceof Error
+        ? error.message
+        : 'Erro ao calcular a remuneracao de servicos.'
+
+      upsertBatchProcessRun(trackerId, {
+        status: 'failed',
+        message: 'Processamento em lote de remuneracao finalizado com falhas.',
+        errorMessage: remuneracaoServicosBatchExecution.errorMessage,
+      })
+    } finally {
+      if (!remuneracaoServicosBatchExecution || remuneracaoServicosBatchExecution.jobId !== jobId) {
+        client.release()
+        return
+      }
+
+      remuneracaoServicosBatchExecution.running = false
+      remuneracaoServicosBatchExecution.exitCode = remuneracaoServicosBatchExecution.errorMessage ? 1 : 0
+      remuneracaoServicosBatchExecution.finishedAt = new Date().toISOString()
+      upsertBatchProcessRun(trackerId, {
+        status: remuneracaoServicosBatchExecution.errorMessage ? 'failed' : 'completed',
+        finishedAt: remuneracaoServicosBatchExecution.finishedAt,
+        message: remuneracaoServicosBatchExecution.errorMessage
+          ? 'Processamento em lote de remuneracao finalizado com falhas.'
+          : 'Processamento em lote de remuneracao concluido com sucesso.',
+        errorMessage: remuneracaoServicosBatchExecution.errorMessage,
+        summary: remuneracaoServicosBatchExecution.summary,
+      })
+      client.release()
+    }
+  })().catch((error) => {
+    if (!remuneracaoServicosBatchExecution || remuneracaoServicosBatchExecution.jobId !== jobId) {
+      return
+    }
+
+    remuneracaoServicosBatchExecution.running = false
+    remuneracaoServicosBatchExecution.exitCode = 1
+    remuneracaoServicosBatchExecution.finishedAt = new Date().toISOString()
+    remuneracaoServicosBatchExecution.errorMessage = error instanceof Error ? error.message : 'Erro ao calcular a remuneracao de servicos.'
+    upsertBatchProcessRun(trackerId, {
+      status: 'failed',
+      finishedAt: remuneracaoServicosBatchExecution.finishedAt,
+      message: 'Processamento em lote de remuneracao finalizado com falhas.',
+      errorMessage: remuneracaoServicosBatchExecution.errorMessage,
+    })
+    client.release()
+  })
+
+  return buildRemuneracaoServicosBatchExecutionResponse()
 }
 
 const pool = new Pool({
@@ -759,7 +1274,7 @@ const getApuracaoFinanceiraKeyFromUrl = (url) => {
 }
 
 const getApuracaoServicosKeyFromUrl = (url) => {
-  const match = url.match(/^\/api\/apuracao-servicos\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)$/)
+  const match = url.match(/^\/api\/apuracao-servicos\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)$/)
 
   if (!match) {
     return null
@@ -770,9 +1285,8 @@ const getApuracaoServicosKeyFromUrl = (url) => {
     dreCodigo: decodeURIComponent(match[2]),
     ordemServicoCodigo: decodeURIComponent(match[3]),
     revisao: decodeURIComponent(match[4]),
-    tipoEscolaCodigo: decodeURIComponent(match[5]),
-    tipoPessoa: decodeURIComponent(match[6]),
-    dataReferencia: decodeURIComponent(match[7]),
+    tipoPessoa: decodeURIComponent(match[5]),
+    dataReferencia: decodeURIComponent(match[6]),
   }
 }
 
@@ -1864,8 +2378,6 @@ const normalizeApuracaoFinanceiraStatus = (value) => {
   return apuracaoFinanceiraStatusOptions.find((item) => item.toUpperCase() === normalizedValue) ?? ''
 }
 
-const apuracaoFinanceiraMesAnoOrderClause = "SUBSTRING(apuracao_financeira.mes_ano FROM 4 FOR 4) || SUBSTRING(apuracao_financeira.mes_ano FROM 1 FOR 2)"
-
 const apuracaoFinanceiraSelectClause = `
   BTRIM(apuracao_financeira.mes_ano) AS mes_ano,
   CAST(apuracao_financeira.dre_codigo AS text) AS dre_codigo,
@@ -2905,7 +3417,7 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         COALESCE(BTRIM(condutor_lookup.crmc), '') AS crmc_condutor,
         COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
         COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
-        COALESCE(BTRIM((SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))), '') AS empresa,
+        COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
         COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
         CASE UPPER(BTRIM(COALESCE(veiculo_lookup.tipo_de_bancada, historico_lookup.veiculo_tipo_de_bancada, '')))
           WHEN 'CONVENCIONAL' THEN 'NORMAL'
@@ -2918,7 +3430,7 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
         TRUE AS ativo_na_data,
         ${buildApontamentoServicosLocaleOrderExpression('CAST(dre.descricao AS text)')} AS dre_descricao_order,
-        ${buildApontamentoServicosLocaleOrderExpression(`(SELECT cr.empresa FROM credenciada cr WHERE cr.codigo = (SELECT credenciada_codigo FROM ${credenciamentoTermoTableName} WHERE codigo = os.termo_codigo))`)} AS empresa_order,
+        ${buildApontamentoServicosLocaleOrderExpression('credenciada_lookup.empresa')} AS empresa_order,
         ${buildApontamentoServicosLocaleOrderExpression('os.condutor')} AS nome_condutor_order,
         ${buildApontamentoServicosLocaleOrderExpression('os.termo_adesao')} AS termo_adesao_order,
         ${buildApontamentoServicosLocaleOrderExpression('os.num_os')} AS num_os_order,
@@ -2928,6 +3440,8 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
       INNER JOIN dre ON dre.codigo = aps.dre_codigo
       INNER JOIN tipo_escola ON tipo_escola.codigo = aps.tipo_escola_codigo
       INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+      LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+      LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
       LEFT JOIN condutor condutor_lookup
         ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
       LEFT JOIN LATERAL (
@@ -3101,49 +3615,230 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
 }
 
 const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, placa, revisao, tipoPessoa, dataReferencia, page = 1, pageSize = 20 }, executor = pool) => {
-  const apontamentoResult = await listApontamentoServicosItems({
-    mesAno,
-    dreCodigo,
-    crmcCondutor,
-    placa,
-    revisao,
-    tipoPessoa,
-    dataReferencia,
-    page,
-    pageSize,
-  }, executor)
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
+  const normalizedPlaca = normalizeRequestValue(placa)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const parsedRevisao = revisao === undefined || revisao === null || revisao === ''
+    ? Number.NaN
+    : Number.parseInt(String(revisao), 10)
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
 
-  if (!apontamentoResult.items.length) {
+  if (!monthRange) {
+    throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  if (!normalizedDate) {
+    throw createHttpError(400, 'Data de referencia invalida.')
+  }
+
+  if (normalizedDate < monthRange.monthStart || normalizedDate > monthRange.monthEnd) {
+    throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
+  }
+
+  const values = [normalizedDate, normalizedMesAno, monthRange.monthStart, monthRange.monthEnd]
+  const filters = ['aps.data_referencia = $1::date', 'aps.mes_ano = $2']
+
+  if (normalizedDreCodigo) {
+    values.push(normalizedDreCodigo)
+    filters.push(`CAST(aps.dre_codigo AS text) = $${values.length}`)
+  }
+
+  if (normalizedCrmcCondutor) {
+    values.push(`%${normalizedCrmcCondutor}%`)
+    filters.push(`COALESCE(BTRIM(condutor_lookup.crmc), '') ILIKE $${values.length}`)
+  }
+
+  if (normalizedPlaca) {
+    values.push(`%${normalizedPlaca}%`)
+    filters.push(`COALESCE(BTRIM(os.veiculo_placas), '') ILIKE $${values.length}`)
+  }
+
+  if (Number.isInteger(parsedRevisao) && parsedRevisao >= 0) {
+    values.push(parsedRevisao)
+    filters.push(`aps.revisao = $${values.length}`)
+  }
+
+  if (normalizedTipoPessoa) {
+    values.push(normalizedTipoPessoa)
+    filters.push(`BTRIM(aps.tipo_pessoa) = $${values.length}`)
+  }
+
+  const normalizedPageSize = Math.min(Math.max(Number(pageSize) || 20, 1), 50)
+
+  const groupedOrdensCte = `
+    WITH grouped_ordens AS (
+      SELECT
+        BTRIM(aps.mes_ano) AS mes_ano,
+        CAST(aps.dre_codigo AS text) AS dre_codigo,
+        aps.ordem_servico_codigo::text AS ordem_servico_codigo,
+        aps.revisao AS revisao,
+        COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa
+      FROM apuracao_servicos aps
+      INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+      LEFT JOIN condutor condutor_lookup
+        ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
+      INNER JOIN apuracao_financeira
+        ON apuracao_financeira.mes_ano = aps.mes_ano
+       AND apuracao_financeira.dre_codigo = aps.dre_codigo
+       AND apuracao_financeira.revisao = aps.revisao
+       AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(aps.tipo_pessoa)
+      WHERE ${filters.join('\n       AND ')}
+        AND ${ordemServicoActiveStartDateExpression} <= $1::date
+        AND ${ordemServicoActiveEndDateExpression} >= $1::date
+      GROUP BY
+        BTRIM(aps.mes_ano),
+        CAST(aps.dre_codigo AS text),
+        aps.ordem_servico_codigo::text,
+        aps.revisao,
+        COALESCE(BTRIM(aps.tipo_pessoa), '')
+    )`
+
+  const countResult = await executor.query(
+    `${groupedOrdensCte}
+     SELECT COUNT(*)::int AS total
+     FROM grouped_ordens`,
+    values,
+  )
+
+  const total = countResult.rows[0]?.total ?? 0
+  const totalPages = Math.max(Math.ceil(total / normalizedPageSize), 1)
+  const normalizedPage = Math.min(Math.max(Number(page) || 1, 1), totalPages)
+  const offset = (normalizedPage - 1) * normalizedPageSize
+  const pagedValues = [...values, normalizedPageSize, offset]
+
+  const groupedResult = await executor.query(
+    `${groupedOrdensCte},
+     paged_ordens AS (
+       SELECT
+         mes_ano,
+         dre_codigo,
+         ordem_servico_codigo,
+         revisao,
+         tipo_pessoa
+       FROM grouped_ordens
+       ORDER BY mes_ano ASC,
+                CAST(dre_codigo AS integer) ASC,
+                revisao ASC,
+                ordem_servico_codigo ASC
+       LIMIT $${pagedValues.length - 1}
+       OFFSET $${pagedValues.length}
+     )
+     SELECT
+       paged_ordens.mes_ano,
+       paged_ordens.dre_codigo,
+       COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+       BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+       paged_ordens.ordem_servico_codigo,
+       COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
+       COALESCE(BTRIM(os.termo_adesao), '') AS ordem_servico_termo_adesao,
+       COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+       paged_ordens.revisao,
+       paged_ordens.tipo_pessoa,
+       TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $3::date), 'YYYY-MM-DD') AS periodo_inicio,
+       TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $4::date), 'YYYY-MM-DD') AS periodo_fim,
+       COALESCE(BTRIM(condutor_lookup.crmc), '') AS crmc_condutor,
+       COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
+       COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
+       COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
+       CASE UPPER(BTRIM(COALESCE(veiculo_lookup.tipo_de_bancada, historico_lookup.veiculo_tipo_de_bancada, '')))
+         WHEN 'CONVENCIONAL' THEN 'NORMAL'
+         WHEN 'NORMAL' THEN 'NORMAL'
+         WHEN 'CRECHE' THEN 'CRECHE'
+         WHEN 'ADAPTADO' THEN 'ACESSIVEL'
+         WHEN 'ACESSIVEL' THEN 'ACESSIVEL'
+         ELSE COALESCE(BTRIM(veiculo_lookup.tipo_de_bancada), BTRIM(historico_lookup.veiculo_tipo_de_bancada), '')
+       END AS tipo_veiculo,
+       $1::date::text AS data_referencia,
+       TRUE AS ativo_na_data
+     FROM paged_ordens
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo::text = paged_ordens.ordem_servico_codigo
+     INNER JOIN dre ON dre.codigo::text = paged_ordens.dre_codigo
+     INNER JOIN apuracao_financeira
+       ON apuracao_financeira.mes_ano = paged_ordens.mes_ano
+      AND CAST(apuracao_financeira.dre_codigo AS text) = paged_ordens.dre_codigo
+      AND apuracao_financeira.revisao = paged_ordens.revisao
+      AND COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') = paged_ordens.tipo_pessoa
+     LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+     LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+     LEFT JOIN condutor condutor_lookup
+       ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
+     LEFT JOIN LATERAL (
+       SELECT BTRIM(COALESCE(v.tipo_de_bancada, '')) AS tipo_de_bancada
+       FROM veiculo v
+       WHERE (
+         BTRIM(COALESCE(v.crm, '')) <> ''
+         AND BTRIM(COALESCE(os.crm, '')) <> ''
+         AND BTRIM(v.crm) = BTRIM(os.crm)
+       ) OR (
+         regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') <> ''
+         AND regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g') <> ''
+         AND regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') = regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g')
+       )
+       ORDER BY
+         CASE
+           WHEN BTRIM(COALESCE(v.crm, '')) <> ''
+             AND BTRIM(COALESCE(os.crm, '')) <> ''
+             AND BTRIM(v.crm) = BTRIM(os.crm)
+           THEN 0
+           ELSE 1
+         END,
+         v.codigo DESC
+       LIMIT 1
+     ) veiculo_lookup ON TRUE
+     LEFT JOIN LATERAL (
+       SELECT BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) AS veiculo_tipo_de_bancada
+       FROM ${ordemServicoHistoricoTableName} osh
+       WHERE osh.ordem_servico_codigo = os.codigo
+         AND BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) <> ''
+         AND osh.data_evento <= ($1::date + INTERVAL '1 day')
+       ORDER BY osh.data_evento DESC, osh.id DESC
+       LIMIT 1
+     ) historico_lookup ON TRUE
+     ORDER BY CAST(paged_ordens.dre_codigo AS integer) ASC,
+              paged_ordens.revisao ASC,
+              CAST(paged_ordens.ordem_servico_codigo AS integer) ASC`,
+    pagedValues,
+  )
+
+  const groupedApontamentoItems = groupedResult.rows.map((row) => ({
+    mesAno: normalizeRequestValue(row?.mes_ano),
+    dreCodigo: normalizeRequestValue(row?.dre_codigo),
+    dreSigla: normalizeRequestValue(row?.dre_sigla),
+    dreDescricao: normalizeRequestValue(row?.dre_descricao),
+    ordemServicoCodigo: normalizeRequestValue(row?.ordem_servico_codigo),
+    ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
+    ordemServicoTermoAdesao: normalizeRequestValue(row?.ordem_servico_termo_adesao),
+    ordemServicoNumOs: normalizeRequestValue(row?.ordem_servico_num_os),
+    revisao: Number(row?.revisao) || 0,
+    tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa) || 'PF',
+    periodoInicio: normalizeRequestValue(row?.periodo_inicio),
+    periodoFim: normalizeRequestValue(row?.periodo_fim),
+    crmcCondutor: normalizeRequestValue(row?.crmc_condutor),
+    contrato: normalizeRequestValue(row?.contrato),
+    placa: normalizeRequestValue(row?.placa),
+    empresa: normalizeRequestValue(row?.empresa),
+    nomeCondutor: normalizeRequestValue(row?.nome_condutor),
+    tipoVeiculo: normalizeApontamentoTipoVeiculo(row?.tipo_veiculo),
+    apuracaoFinanceiraSituacao: normalizeApuracaoFinanceiraStatus(row?.apuracao_financeira_situacao) || 'A processar',
+    dataReferencia: normalizeRequestValue(row?.data_referencia),
+    isAtivoNaData: Boolean(row?.ativo_na_data),
+  }))
+
+  if (!groupedApontamentoItems.length) {
     return {
-      ...apontamentoResult,
       items: [],
+      total,
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      totalPages,
     }
   }
 
-  const groupedApontamentoItems = Array.from(apontamentoResult.items.reduce((groupedItemsMap, item) => {
-    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
-    const currentItem = groupedItemsMap.get(groupKey)
-
-    if (!currentItem) {
-      groupedItemsMap.set(groupKey, item)
-      return groupedItemsMap
-    }
-
-    const currentTipoVeiculo = normalizeRequestValue(currentItem.tipoVeiculo)
-    const nextTipoVeiculo = normalizeRequestValue(item.tipoVeiculo)
-
-    if (!currentTipoVeiculo && nextTipoVeiculo) {
-      groupedItemsMap.set(groupKey, {
-        ...currentItem,
-        tipoVeiculo: nextTipoVeiculo,
-      })
-    }
-
-    return groupedItemsMap
-  }, new Map()).values())
-
-  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
-  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
   const compositeKeys = Array.from(new Set(groupedApontamentoItems.map((item) => buildRemuneracaoServicosCompositeKey(item))))
 
   const remuneracaoResult = await executor.query(
@@ -3177,12 +3872,281 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   const remuneracaoByKey = new Map(remuneracaoResult.rows.map((row) => [buildRemuneracaoServicosCompositeKey(row), row]))
 
   return {
-    ...apontamentoResult,
     items: groupedApontamentoItems.map((item) => mapRemuneracaoServicosRow(item, remuneracaoByKey.get(buildRemuneracaoServicosCompositeKey(item)))),
+    total,
+    page: normalizedPage,
+    pageSize: normalizedPageSize,
+    totalPages,
+  }
+}
+
+const resolveTipoBancadaFromRemuneracaoItem = (item) => {
+  const normalizedTipoVeiculo = normalizeApontamentoTipoVeiculo(item?.tipoVeiculo ?? item?.tipo_veiculo)
+
+  if (normalizedTipoVeiculo === 'NORMAL') {
+    return 'CONVENCIONAL'
+  }
+
+  if (normalizedTipoVeiculo === 'ACESSIVEL') {
+    return 'ACESSIVEL'
+  }
+
+  if (normalizedTipoVeiculo === 'CRECHE') {
+    return 'CRECHE'
+  }
+
+  return ''
+}
+
+const getRegularAccumulatedQuantity = (item) => {
+  const ncPresAcm = Number(item?.naoCadeirantePresencialAcm) || 0
+  const atCompNcAcm = Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0
+  return Math.max(0, ncPresAcm + atCompNcAcm)
+}
+
+const findLatestRemuneracaoCondicaoValor = async ({ dataReferencia, tipoBancada, tipoPgtoDescricao, quantidade }, executor = pool) => {
+  const result = await executor.query(
+    `SELECT mbv.valor::numeric(14,2) AS valor
+     FROM modal_bancada_condicao_tipo_pgto_valor mbv
+     INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+     INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+     INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+     INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+     INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+     INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+     WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
+       AND ${normalizedSqlTextExpression('tb.descricao')} = ${normalizedSqlTextExpression('$1')}
+       AND ${normalizedSqlTextExpression('tp.descricao')} = ${normalizedSqlTextExpression('$2')}
+       AND c.qtde_ini <= $3
+       AND c.qtde_fim >= $3
+       AND mbv.data <= $4::date
+     ORDER BY mbv.data DESC, mbv.codigo DESC
+     LIMIT 1`,
+    [tipoBancada, tipoPgtoDescricao, quantidade, dataReferencia],
+  )
+
+  if (result.rowCount === 0) {
+    throw createHttpError(409, `Nao foi encontrado valor para TEG REGULAR (${tipoBancada}, ${tipoPgtoDescricao}) com quantidade ${quantidade} na data de operacao.`)
+  }
+
+  return Number(result.rows[0].valor) || 0
+}
+
+const listAllApontamentoServicosItems = async ({
+  mesAno,
+  dreCodigo,
+  crmcCondutor,
+  placa,
+  revisao,
+  tipoPessoa,
+  dataReferencia,
+}, executor = pool) => {
+  const pageSize = 1000
+  const allItems = []
+  let page = 1
+  let totalPages = 1
+
+  do {
+    const currentPageResult = await listApontamentoServicosItems({
+      mesAno,
+      dreCodigo,
+      crmcCondutor,
+      placa,
+      revisao,
+      tipoPessoa,
+      dataReferencia,
+      page,
+      pageSize,
+    }, executor)
+
+    allItems.push(...currentPageResult.items)
+    totalPages = currentPageResult.totalPages
+    page += 1
+  } while (page <= totalPages)
+
+  return allItems
+}
+
+const calculateRemuneracaoServicosItems = async ({
+  mesAno,
+  dreCodigo,
+  crmcCondutor,
+  placa,
+  revisao,
+  tipoPessoa,
+  dataReferencia,
+}, executor = pool) => {
+  const allApontamentoItems = await listAllApontamentoServicosItems({
+    mesAno,
+    dreCodigo,
+    crmcCondutor,
+    placa,
+    revisao,
+    tipoPessoa,
+    dataReferencia,
+  }, executor)
+
+  if (!allApontamentoItems.length) {
+    return {
+      totalRegistros: 0,
+      totalCalculados: 0,
+      totalAtualizados: 0,
+      totalIgnorados: 0,
+    }
+  }
+
+  const groupedApontamentoItems = Array.from(allApontamentoItems.reduce((groupedItemsMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentItem = groupedItemsMap.get(groupKey)
+
+    if (!currentItem) {
+      groupedItemsMap.set(groupKey, item)
+      return groupedItemsMap
+    }
+
+    const currentTipoVeiculo = normalizeRequestValue(currentItem.tipoVeiculo)
+    const nextTipoVeiculo = normalizeRequestValue(item.tipoVeiculo)
+
+    if (!currentTipoVeiculo && nextTipoVeiculo) {
+      groupedItemsMap.set(groupKey, {
+        ...currentItem,
+        tipoVeiculo: nextTipoVeiculo,
+      })
+    }
+
+    return groupedItemsMap
+  }, new Map()).values())
+
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const compositeKeys = Array.from(new Set(groupedApontamentoItems.map((item) => buildRemuneracaoServicosCompositeKey(item))))
+  const remuneracaoResult = await executor.query(
+    `SELECT
+       mes_ano,
+       TO_CHAR(data_referencia, 'YYYY-MM-DD') AS data_referencia,
+       CAST(dre_codigo AS text) AS dre_codigo,
+       CAST(ordem_servico_codigo AS text) AS ordem_servico_codigo,
+       revisao,
+       COALESCE(BTRIM(tipo_pessoa), '') AS tipo_pessoa,
+       COALESCE(teg_regular_fixo, 0) AS teg_regular_fixo,
+       COALESCE(teg_regular_percapita, 0) AS teg_regular_percapita,
+       COALESCE(teg_acessivel_fixo, 0) AS teg_acessivel_fixo,
+       COALESCE(teg_acessivel_percapita, 0) AS teg_acessivel_percapita,
+       COALESCE(teg_especial_regular_fixo, 0) AS teg_especial_regular_fixo,
+       COALESCE(teg_especial_regular_percapita, 0) AS teg_especial_regular_percapita,
+       COALESCE(teg_especial_acessivel_fixo, 0) AS teg_especial_acessivel_fixo,
+       COALESCE(teg_especial_acessivel_percapita, 0) AS teg_especial_acessivel_percapita,
+       COALESCE(teg_creche_fixo, 0) AS teg_creche_fixo,
+       COALESCE(teg_creche_percapita, 0) AS teg_creche_percapita,
+       COALESCE(km_valor, 0) AS km_valor,
+       COALESCE(continua_regular, 0) AS continua_regular,
+       COALESCE(continua_cadeirante, 0) AS continua_cadeirante
+     FROM remuneracao_servicos
+     WHERE mes_ano = $1
+       AND data_referencia = $2::date
+       AND CONCAT_WS('|', mes_ano, TO_CHAR(data_referencia, 'YYYY-MM-DD'), CAST(dre_codigo AS text), CAST(ordem_servico_codigo AS text), CAST(revisao AS text), COALESCE(BTRIM(tipo_pessoa), '')) = ANY($3::text[])`,
+    [normalizedMesAno, normalizedDate, compositeKeys],
+  )
+  const remuneracaoByKey = new Map(remuneracaoResult.rows.map((row) => [buildRemuneracaoServicosCompositeKey(row), row]))
+  const remuneracaoItems = groupedApontamentoItems.map((item) => mapRemuneracaoServicosRow(item, remuneracaoByKey.get(buildRemuneracaoServicosCompositeKey(item))))
+
+  const accumulatedByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getRegularAccumulatedQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const valorByLookupKey = new Map()
+  const itemsToUpsert = []
+  let totalCalculados = 0
+  let totalAtualizados = 0
+  let totalIgnorados = 0
+
+  for (const item of remuneracaoItems) {
+    const tipoBancada = resolveTipoBancadaFromRemuneracaoItem(item)
+
+    if (tipoBancada !== 'CONVENCIONAL') {
+      totalIgnorados += 1
+      continue
+    }
+
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const quantidade = Math.max(0, Number(accumulatedByGroupKey.get(groupKey) ?? 0))
+    const fixoLookupKey = `${tipoBancada}|FIXO|${quantidade}`
+    const percapitaLookupKey = `${tipoBancada}|PER CAPITA|${quantidade}`
+
+    let tegRegularFixo = valorByLookupKey.get(fixoLookupKey)
+    if (!Number.isFinite(tegRegularFixo)) {
+      tegRegularFixo = await findLatestRemuneracaoCondicaoValor({
+        dataReferencia,
+        tipoBancada,
+        tipoPgtoDescricao: 'FIXO',
+        quantidade,
+      }, executor)
+      valorByLookupKey.set(fixoLookupKey, tegRegularFixo)
+    }
+
+    let tegRegularPercapita = valorByLookupKey.get(percapitaLookupKey)
+    if (!Number.isFinite(tegRegularPercapita)) {
+      tegRegularPercapita = await findLatestRemuneracaoCondicaoValor({
+        dataReferencia,
+        tipoBancada,
+        tipoPgtoDescricao: 'PER CAPITA',
+        quantidade,
+      }, executor)
+      valorByLookupKey.set(percapitaLookupKey, tegRegularPercapita)
+    }
+
+    const normalizedTegRegularFixo = Number(Number(tegRegularFixo).toFixed(2))
+    const normalizedTegRegularPercapita = Number(Number(tegRegularPercapita).toFixed(2))
+
+    totalCalculados += 1
+
+    if (Number(item.tegRegularFixo) !== normalizedTegRegularFixo || Number(item.tegRegularPercapita) !== normalizedTegRegularPercapita) {
+      totalAtualizados += 1
+    }
+
+    itemsToUpsert.push({
+      dreCodigo: item.dreCodigo,
+      ordemServicoCodigo: item.ordemServicoCodigo,
+      revisao: item.revisao,
+      tipoPessoa: item.tipoPessoa,
+      tegRegularFixo: normalizedTegRegularFixo,
+      tegRegularPercapita: normalizedTegRegularPercapita,
+      tegAcessivelFixo: Number(item.tegAcessivelFixo) || 0,
+      tegAcessivelPercapita: Number(item.tegAcessivelPercapita) || 0,
+      tegEspecialRegularFixo: Number(item.tegEspecialRegularFixo) || 0,
+      tegEspecialRegularPercapita: Number(item.tegEspecialRegularPercapita) || 0,
+      tegEspecialAcessivelFixo: Number(item.tegEspecialAcessivelFixo) || 0,
+      tegEspecialAcessivelPercapita: Number(item.tegEspecialAcessivelPercapita) || 0,
+      tegCrecheFixo: Number(item.tegCrecheFixo) || 0,
+      tegCrechePercapita: Number(item.tegCrechePercapita) || 0,
+      kmValor: Number(item.kmValor) || 0,
+      continuaRegular: Number(item.continuaRegular) || 0,
+      continuaCadeirante: Number(item.continuaCadeirante) || 0,
+    })
+  }
+
+  if (itemsToUpsert.length > 0) {
+    await upsertRemuneracaoServicosItems({
+      mesAno,
+      dataReferencia,
+      items: itemsToUpsert,
+    }, executor)
+  }
+
+  return {
+    totalRegistros: remuneracaoItems.length,
+    totalCalculados,
+    totalAtualizados,
+    totalIgnorados,
   }
 }
 
 const upsertRemuneracaoServicosItems = async ({ mesAno, dataReferencia, items, insertIfMissingOnly = false }, executor = pool) => {
+  const normalizedItems = []
+
   for (const item of items) {
     const dreCodigo = normalizeRequestValue(item.dreCodigo)
     const ordemServicoCodigo = normalizeRequestValue(item.ordemServicoCodigo)
@@ -3214,57 +4178,156 @@ const upsertRemuneracaoServicosItems = async ({ mesAno, dataReferencia, items, i
       }
     }
 
+    normalizedItems.push({
+      dre_codigo: dreCodigo,
+      ordem_servico_codigo: ordemServicoCodigo,
+      revisao,
+      tipo_pessoa: tipoPessoa,
+      teg_regular_fixo: metrics.tegRegularFixo,
+      teg_regular_percapita: metrics.tegRegularPercapita,
+      teg_acessivel_fixo: metrics.tegAcessivelFixo,
+      teg_acessivel_percapita: metrics.tegAcessivelPercapita,
+      teg_especial_regular_fixo: metrics.tegEspecialRegularFixo,
+      teg_especial_regular_percapita: metrics.tegEspecialRegularPercapita,
+      teg_especial_acessivel_fixo: metrics.tegEspecialAcessivelFixo,
+      teg_especial_acessivel_percapita: metrics.tegEspecialAcessivelPercapita,
+      teg_creche_fixo: metrics.tegCrecheFixo,
+      teg_creche_percapita: metrics.tegCrechePercapita,
+      km_valor: metrics.kmValor,
+      continua_regular: metrics.continuaRegular,
+      continua_cadeirante: metrics.continuaCadeirante,
+    })
+  }
+
+  if (!normalizedItems.length) {
+    return
+  }
+
+  const editableKeys = [...new Set(normalizedItems.map((item) => `${item.dre_codigo}|${item.revisao}|${item.tipo_pessoa}`))]
+
+  for (const editableKey of editableKeys) {
+    const [dreCodigo, revisaoText, tipoPessoa] = editableKey.split('|')
+
     await ensureApuracaoServicosEditable({
       mesAno,
       dreCodigo,
-      revisao,
+      revisao: Number.parseInt(revisaoText, 10),
       tipoPessoa,
       createIfMissing: false,
     }, executor)
+  }
 
-    const parentResult = await executor.query(
-      `SELECT 1
-       FROM apuracao_servicos
-       WHERE mes_ano = $1
-         AND data_referencia = $2::date
-         AND CAST(dre_codigo AS text) = $3
-         AND CAST(ordem_servico_codigo AS text) = $4
-         AND revisao = $5
-         AND COALESCE(BTRIM(tipo_pessoa), '') = $6
-       LIMIT 1`,
-      [mesAno, dataReferencia, dreCodigo, ordemServicoCodigo, revisao, tipoPessoa],
-    )
-
-    if (parentResult.rowCount === 0) {
-      throw createHttpError(409, 'Apontamento/total de servicos nao encontrado para a chave informada na data de referencia.')
-    }
-
-    await executor.query(
-      `INSERT INTO remuneracao_servicos (
-         mes_ano,
-         data_referencia,
-         dre_codigo,
-         ordem_servico_codigo,
-         revisao,
-         tipo_pessoa,
-         teg_regular_fixo,
-         teg_regular_percapita,
-         teg_acessivel_fixo,
-         teg_acessivel_percapita,
-         teg_especial_regular_fixo,
-         teg_especial_regular_percapita,
-         teg_especial_acessivel_fixo,
-         teg_especial_acessivel_percapita,
-         teg_creche_fixo,
-         teg_creche_percapita,
-         km_valor,
-         continua_regular,
-         continua_cadeirante,
-         data_alteracao
+  const payloadJson = JSON.stringify(normalizedItems)
+  const parentMissingResult = await executor.query(
+    `WITH input_rows AS (
+       SELECT *
+       FROM jsonb_to_recordset($1::jsonb) AS input_item (
+         dre_codigo text,
+         ordem_servico_codigo text,
+         revisao integer,
+         tipo_pessoa text,
+         teg_regular_fixo numeric,
+         teg_regular_percapita numeric,
+         teg_acessivel_fixo numeric,
+         teg_acessivel_percapita numeric,
+         teg_especial_regular_fixo numeric,
+         teg_especial_regular_percapita numeric,
+         teg_especial_acessivel_fixo numeric,
+         teg_especial_acessivel_percapita numeric,
+         teg_creche_fixo numeric,
+         teg_creche_percapita numeric,
+         km_valor numeric,
+         continua_regular numeric,
+         continua_cadeirante numeric
        )
-       VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())
-       ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
-       ${insertIfMissingOnly
+     )
+     SELECT 1
+     FROM input_rows
+     LEFT JOIN apuracao_servicos aps
+       ON aps.mes_ano = $2
+      AND aps.data_referencia = $3::date
+      AND CAST(aps.dre_codigo AS text) = input_rows.dre_codigo
+      AND CAST(aps.ordem_servico_codigo AS text) = input_rows.ordem_servico_codigo
+      AND aps.revisao = input_rows.revisao
+      AND COALESCE(BTRIM(aps.tipo_pessoa), '') = input_rows.tipo_pessoa
+     WHERE aps.ordem_servico_codigo IS NULL
+     LIMIT 1`,
+    [payloadJson, mesAno, dataReferencia],
+  )
+
+  if (parentMissingResult.rowCount > 0) {
+    throw createHttpError(409, 'Apontamento/total de servicos nao encontrado para a chave informada na data de referencia.')
+  }
+
+  await executor.query(
+    `WITH input_rows AS (
+       SELECT *
+       FROM jsonb_to_recordset($1::jsonb) AS input_item (
+         dre_codigo text,
+         ordem_servico_codigo text,
+         revisao integer,
+         tipo_pessoa text,
+         teg_regular_fixo numeric,
+         teg_regular_percapita numeric,
+         teg_acessivel_fixo numeric,
+         teg_acessivel_percapita numeric,
+         teg_especial_regular_fixo numeric,
+         teg_especial_regular_percapita numeric,
+         teg_especial_acessivel_fixo numeric,
+         teg_especial_acessivel_percapita numeric,
+         teg_creche_fixo numeric,
+         teg_creche_percapita numeric,
+         km_valor numeric,
+         continua_regular numeric,
+         continua_cadeirante numeric
+       )
+     )
+     INSERT INTO remuneracao_servicos (
+       mes_ano,
+       data_referencia,
+       dre_codigo,
+       ordem_servico_codigo,
+       revisao,
+       tipo_pessoa,
+       teg_regular_fixo,
+       teg_regular_percapita,
+       teg_acessivel_fixo,
+       teg_acessivel_percapita,
+       teg_especial_regular_fixo,
+       teg_especial_regular_percapita,
+       teg_especial_acessivel_fixo,
+       teg_especial_acessivel_percapita,
+       teg_creche_fixo,
+       teg_creche_percapita,
+       km_valor,
+       continua_regular,
+       continua_cadeirante,
+       data_alteracao
+     )
+     SELECT
+       $2,
+       $3::date,
+       input_rows.dre_codigo::int,
+       input_rows.ordem_servico_codigo::int,
+       input_rows.revisao,
+       input_rows.tipo_pessoa,
+       input_rows.teg_regular_fixo,
+       input_rows.teg_regular_percapita,
+       input_rows.teg_acessivel_fixo,
+       input_rows.teg_acessivel_percapita,
+       input_rows.teg_especial_regular_fixo,
+       input_rows.teg_especial_regular_percapita,
+       input_rows.teg_especial_acessivel_fixo,
+       input_rows.teg_especial_acessivel_percapita,
+       input_rows.teg_creche_fixo,
+       input_rows.teg_creche_percapita,
+       input_rows.km_valor,
+       input_rows.continua_regular,
+       input_rows.continua_cadeirante,
+       NOW()
+     FROM input_rows
+     ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
+     ${insertIfMissingOnly
     ? 'DO NOTHING'
     : `DO UPDATE SET
          teg_regular_fixo = EXCLUDED.teg_regular_fixo,
@@ -3281,29 +4344,8 @@ const upsertRemuneracaoServicosItems = async ({ mesAno, dataReferencia, items, i
          continua_regular = EXCLUDED.continua_regular,
          continua_cadeirante = EXCLUDED.continua_cadeirante,
          data_alteracao = NOW()`}`,
-      [
-        mesAno,
-        dataReferencia,
-        Number.parseInt(dreCodigo, 10),
-        Number.parseInt(ordemServicoCodigo, 10),
-        revisao,
-        tipoPessoa,
-        metrics.tegRegularFixo,
-        metrics.tegRegularPercapita,
-        metrics.tegAcessivelFixo,
-        metrics.tegAcessivelPercapita,
-        metrics.tegEspecialRegularFixo,
-        metrics.tegEspecialRegularPercapita,
-        metrics.tegEspecialAcessivelFixo,
-        metrics.tegEspecialAcessivelPercapita,
-        metrics.tegCrecheFixo,
-        metrics.tegCrechePercapita,
-        metrics.kmValor,
-        metrics.continuaRegular,
-        metrics.continuaCadeirante,
-      ],
-    )
-  }
+    [payloadJson, mesAno, dataReferencia],
+  )
 }
 
 const syncApuracaoServicosDailyTotals = async (key, executor = pool) => {
@@ -18562,6 +19604,7 @@ const ensureDatabaseSchema = async () => {
     ON apuracao_servicos (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
   `)
   await pool.query('ALTER TABLE apuracao_servicos ADD CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)')
+  await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_apuracao_financeira_fk')
   await pool.query(`
     ALTER TABLE apuracao_servicos
     ADD CONSTRAINT apuracao_servicos_apuracao_financeira_fk
@@ -18757,6 +19800,30 @@ const server = createServer(async (request, response) => {
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     })
     response.end()
+    return
+  }
+
+  if (request.method === 'GET' && pathname === batchProcessCollectionPath) {
+    const activeOnly = normalizeRequestValue(requestUrl.searchParams.get('activeOnly')).toLowerCase() === 'true'
+    sendJson(response, 200, listBatchProcessItems({ onlyActive: activeOnly }))
+    return
+  }
+
+  if (request.method === 'GET' && pathname === batchProcessActivePath) {
+    sendJson(response, 200, listBatchProcessItems({ onlyActive: true }))
+    return
+  }
+
+  if (request.method === 'GET' && pathname.startsWith(batchProcessDetailPathPrefix)) {
+    const processId = decodeURIComponent(pathname.slice(batchProcessDetailPathPrefix.length))
+    const item = getBatchProcessItem(processId)
+
+    if (!item) {
+      sendJson(response, 404, { message: 'Processamento em lote nao encontrado.' })
+      return
+    }
+
+    sendJson(response, 200, item)
     return
   }
 
@@ -19317,64 +20384,92 @@ const server = createServer(async (request, response) => {
       const offset = (page - 1) * pageSize
       const filters = []
       const values = []
+      const apuracaoFinanceiraExpandedMesAnoOrderClause = "SUBSTRING(apuracao_financeira_expanded.mes_ano FROM 4 FOR 4) || SUBSTRING(apuracao_financeira_expanded.mes_ano FROM 1 FOR 2)"
+      const apuracaoFinanceiraExpandedCte = `
+        WITH apuracao_financeira_expanded AS (
+          SELECT
+            BTRIM(apuracao_financeira.mes_ano) AS mes_ano,
+            CAST(apuracao_financeira.dre_codigo AS text) AS dre_codigo,
+            COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+            BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+            apuracao_financeira.revisao AS revisao,
+            COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') AS tipo_pessoa,
+            BTRIM(apuracao_financeira.situacao) AS situacao,
+            COALESCE(CAST(apuracao_financeira.data_inclusao AS text), '') AS data_inclusao,
+            COALESCE(CAST(apuracao_financeira.data_alteracao AS text), '') AS data_alteracao,
+            COALESCE(TO_CHAR(apuracao_servicos_datas.data_referencia, 'YYYY-MM-DD'), '') AS data_referencia
+          FROM apuracao_financeira
+          INNER JOIN dre ON dre.codigo = apuracao_financeira.dre_codigo
+          LEFT JOIN LATERAL (
+            SELECT DISTINCT apuracao_servicos.data_referencia
+            FROM apuracao_servicos
+            WHERE apuracao_servicos.mes_ano = apuracao_financeira.mes_ano
+              AND apuracao_servicos.dre_codigo = apuracao_financeira.dre_codigo
+              AND apuracao_servicos.revisao = apuracao_financeira.revisao
+              AND BTRIM(apuracao_servicos.tipo_pessoa) = BTRIM(apuracao_financeira.tipo_pessoa)
+          ) AS apuracao_servicos_datas ON TRUE
+        )`
       const orderByClause = sortBy === 'dreCodigo'
-        ? `apuracao_financeira.dre_codigo ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.revisao DESC`
+        ? `CAST(apuracao_financeira_expanded.dre_codigo AS integer) ${sortDirection}, ${apuracaoFinanceiraExpandedMesAnoOrderClause} DESC, BTRIM(apuracao_financeira_expanded.tipo_pessoa) ASC, apuracao_financeira_expanded.revisao ASC, NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ASC NULLS LAST`
         : sortBy === 'dreDescricao'
-          ? `BTRIM(CAST(dre.descricao AS text)) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.revisao DESC`
+          ? `BTRIM(apuracao_financeira_expanded.dre_descricao) ${sortDirection}, ${apuracaoFinanceiraExpandedMesAnoOrderClause} DESC, CAST(apuracao_financeira_expanded.dre_codigo AS integer) ASC, BTRIM(apuracao_financeira_expanded.tipo_pessoa) ASC, apuracao_financeira_expanded.revisao ASC, NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ASC NULLS LAST`
           : sortBy === 'tipoPessoa'
-            ? `BTRIM(apuracao_financeira.tipo_pessoa) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
+            ? `BTRIM(apuracao_financeira_expanded.tipo_pessoa) ${sortDirection}, ${apuracaoFinanceiraExpandedMesAnoOrderClause} DESC, CAST(apuracao_financeira_expanded.dre_codigo AS integer) ASC, apuracao_financeira_expanded.revisao ASC, NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ASC NULLS LAST`
             : sortBy === 'revisao'
-              ? `apuracao_financeira.revisao ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-              : sortBy === 'situacao'
-                ? `BTRIM(apuracao_financeira.situacao) ${sortDirection}, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-                : sortBy === 'dataInclusao'
-                  ? `apuracao_financeira.data_inclusao ${sortDirection} NULLS LAST, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-                  : sortBy === 'dataAlteracao'
-                    ? `apuracao_financeira.data_alteracao ${sortDirection} NULLS LAST, ${apuracaoFinanceiraMesAnoOrderClause} DESC, apuracao_financeira.dre_codigo ASC`
-                    : `${apuracaoFinanceiraMesAnoOrderClause} ${sortDirection}, apuracao_financeira.dre_codigo ASC, apuracao_financeira.revisao ASC`
+              ? `apuracao_financeira_expanded.revisao ${sortDirection}, ${apuracaoFinanceiraExpandedMesAnoOrderClause} DESC, CAST(apuracao_financeira_expanded.dre_codigo AS integer) ASC, BTRIM(apuracao_financeira_expanded.tipo_pessoa) ASC, NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ASC NULLS LAST`
+              : sortBy === 'dataReferencia'
+                ? `NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ${sortDirection} NULLS LAST, ${apuracaoFinanceiraExpandedMesAnoOrderClause} DESC, CAST(apuracao_financeira_expanded.dre_codigo AS integer) ASC, BTRIM(apuracao_financeira_expanded.tipo_pessoa) ASC, apuracao_financeira_expanded.revisao ASC`
+                : sortBy === 'situacao'
+                  ? `BTRIM(apuracao_financeira_expanded.situacao) ${sortDirection}, ${apuracaoFinanceiraExpandedMesAnoOrderClause} DESC, CAST(apuracao_financeira_expanded.dre_codigo AS integer) ASC, BTRIM(apuracao_financeira_expanded.tipo_pessoa) ASC, apuracao_financeira_expanded.revisao ASC, NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ASC NULLS LAST`
+                  : sortBy === 'dataInclusao'
+                    ? `NULLIF(apuracao_financeira_expanded.data_inclusao, '')::timestamp ${sortDirection} NULLS LAST, ${apuracaoFinanceiraExpandedMesAnoOrderClause} DESC, CAST(apuracao_financeira_expanded.dre_codigo AS integer) ASC, BTRIM(apuracao_financeira_expanded.tipo_pessoa) ASC, apuracao_financeira_expanded.revisao ASC, NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ASC NULLS LAST`
+                    : sortBy === 'dataAlteracao'
+                      ? `NULLIF(apuracao_financeira_expanded.data_alteracao, '')::timestamp ${sortDirection} NULLS LAST, ${apuracaoFinanceiraExpandedMesAnoOrderClause} DESC, CAST(apuracao_financeira_expanded.dre_codigo AS integer) ASC, BTRIM(apuracao_financeira_expanded.tipo_pessoa) ASC, apuracao_financeira_expanded.revisao ASC, NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ASC NULLS LAST`
+                      : `${apuracaoFinanceiraExpandedMesAnoOrderClause} ${sortDirection}, CAST(apuracao_financeira_expanded.dre_codigo AS integer) ASC, BTRIM(apuracao_financeira_expanded.tipo_pessoa) ASC, apuracao_financeira_expanded.revisao ASC, NULLIF(apuracao_financeira_expanded.data_referencia, '')::date ASC NULLS LAST`
 
       if (search) {
         values.push(`%${search}%`)
         filters.push(`(
-          BTRIM(apuracao_financeira.mes_ano) ILIKE $${values.length}
-          OR CAST(apuracao_financeira.dre_codigo AS text) ILIKE $${values.length}
-          OR COALESCE(BTRIM(dre.sigla), '') ILIKE UPPER($${values.length})
-          OR BTRIM(CAST(dre.descricao AS text)) ILIKE $${values.length}
-          OR BTRIM(apuracao_financeira.tipo_pessoa) ILIKE UPPER($${values.length})
-          OR BTRIM(apuracao_financeira.situacao) ILIKE $${values.length}
+          BTRIM(apuracao_financeira_expanded.mes_ano) ILIKE $${values.length}
+          OR CAST(apuracao_financeira_expanded.dre_codigo AS text) ILIKE $${values.length}
+          OR COALESCE(BTRIM(apuracao_financeira_expanded.dre_sigla), '') ILIKE UPPER($${values.length})
+          OR BTRIM(CAST(apuracao_financeira_expanded.dre_descricao AS text)) ILIKE $${values.length}
+          OR BTRIM(apuracao_financeira_expanded.tipo_pessoa) ILIKE UPPER($${values.length})
+          OR BTRIM(apuracao_financeira_expanded.situacao) ILIKE $${values.length}
+          OR COALESCE(apuracao_financeira_expanded.data_referencia, '') ILIKE $${values.length}
         )`)
       }
 
       if (mesAno) {
         values.push(mesAno)
-        filters.push(`BTRIM(apuracao_financeira.mes_ano) = $${values.length}`)
+        filters.push(`BTRIM(apuracao_financeira_expanded.mes_ano) = $${values.length}`)
       }
 
       if (dreCodigo) {
         values.push(dreCodigo)
-        filters.push(`CAST(apuracao_financeira.dre_codigo AS text) = $${values.length}`)
+        filters.push(`CAST(apuracao_financeira_expanded.dre_codigo AS text) = $${values.length}`)
       }
 
       if (Number.isInteger(revisaoFilter) && revisaoFilter >= 0) {
         values.push(revisaoFilter)
-        filters.push(`apuracao_financeira.revisao = $${values.length}`)
+        filters.push(`apuracao_financeira_expanded.revisao = $${values.length}`)
       }
 
       if (tipoPessoa) {
         values.push(tipoPessoa)
-        filters.push(`BTRIM(apuracao_financeira.tipo_pessoa) = $${values.length}`)
+        filters.push(`BTRIM(apuracao_financeira_expanded.tipo_pessoa) = $${values.length}`)
       }
 
       if (situacao) {
         values.push(situacao)
-        filters.push(`BTRIM(apuracao_financeira.situacao) = $${values.length}`)
+        filters.push(`BTRIM(apuracao_financeira_expanded.situacao) = $${values.length}`)
       }
 
       const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
       const countResult = await pool.query(
-        `SELECT COUNT(*)::int AS total
-         FROM apuracao_financeira
-         INNER JOIN dre ON dre.codigo = apuracao_financeira.dre_codigo
+        `${apuracaoFinanceiraExpandedCte}
+         SELECT COUNT(*)::int AS total
+         FROM apuracao_financeira_expanded
          ${whereClause}`,
         values,
       )
@@ -19382,9 +20477,19 @@ const server = createServer(async (request, response) => {
       values.push(pageSize)
       values.push(offset)
       const result = await pool.query(
-        `SELECT ${apuracaoFinanceiraSelectClause}
-         FROM apuracao_financeira
-         INNER JOIN dre ON dre.codigo = apuracao_financeira.dre_codigo
+        `${apuracaoFinanceiraExpandedCte}
+         SELECT
+           apuracao_financeira_expanded.mes_ano,
+           apuracao_financeira_expanded.dre_codigo,
+           apuracao_financeira_expanded.dre_sigla,
+           apuracao_financeira_expanded.dre_descricao,
+           apuracao_financeira_expanded.revisao,
+           apuracao_financeira_expanded.tipo_pessoa,
+           apuracao_financeira_expanded.situacao,
+           apuracao_financeira_expanded.data_referencia,
+           apuracao_financeira_expanded.data_inclusao,
+           apuracao_financeira_expanded.data_alteracao
+         FROM apuracao_financeira_expanded
          ${whereClause}
          ORDER BY ${orderByClause}
          LIMIT $${values.length - 1}
@@ -19401,6 +20506,7 @@ const server = createServer(async (request, response) => {
           dreDescricao: row.dre_descricao,
           revisao: Number(row.revisao) || 0,
           tipoPessoa: normalizeApuracaoTipoPessoa(row.tipo_pessoa) || 'PF',
+          dataReferencia: row.data_referencia,
           situacao: row.situacao,
           dataInclusao: row.data_inclusao,
           dataAlteracao: row.data_alteracao,
@@ -19409,7 +20515,7 @@ const server = createServer(async (request, response) => {
         page,
         pageSize,
         totalPages: Math.max(Math.ceil(total / pageSize), 1),
-        sortBy: ['mesAno', 'dreCodigo', 'dreDescricao', 'revisao', 'tipoPessoa', 'situacao', 'dataInclusao', 'dataAlteracao'].includes(sortBy) ? sortBy : 'mesAno',
+        sortBy: ['mesAno', 'dreCodigo', 'dreDescricao', 'revisao', 'tipoPessoa', 'dataReferencia', 'situacao', 'dataInclusao', 'dataAlteracao'].includes(sortBy) ? sortBy : 'mesAno',
         sortDirection: sortDirection.toLowerCase(),
       })
     } catch (error) {
@@ -20038,7 +21144,6 @@ const server = createServer(async (request, response) => {
         : (isDateInputValid(requestedDataReferencia) ? requestedDataReferencia : '')
       const dreCodigo = normalizeDreOperationalCode(requestUrl.searchParams.get('dreCodigo') ?? '')
       const revisaoFilter = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
-      const tipoEscolaCodigo = normalizeIntegerValue(requestUrl.searchParams.get('tipoEscolaCodigo') ?? '')
       const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
       const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
@@ -20050,24 +21155,22 @@ const server = createServer(async (request, response) => {
       const filters = []
       const values = []
       const orderByClause = sortBy === 'dataReferencia'
-        ? `apuracao_servicos.data_referencia ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC, apuracao_servicos.revisao ASC, apuracao_servicos.ordem_servico_codigo ASC`
+        ? `aggregated_items.data_referencia ${sortDirection}, SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) DESC, CAST(aggregated_items.dre_codigo AS integer) ASC, aggregated_items.revisao ASC, CAST(aggregated_items.ordem_servico_codigo AS integer) ASC`
         : sortBy === 'dreCodigo'
-        ? `apuracao_servicos.dre_codigo ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.revisao DESC`
+        ? `CAST(aggregated_items.dre_codigo AS integer) ${sortDirection}, SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) DESC, aggregated_items.revisao DESC`
         : sortBy === 'dreDescricao'
-          ? `BTRIM(CAST(dre.descricao AS text)) ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.revisao DESC`
+          ? `BTRIM(CAST(aggregated_items.dre_descricao AS text)) ${sortDirection}, SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) DESC, aggregated_items.revisao DESC`
           : sortBy === 'ordemServicoCodigo'
-            ? `apuracao_servicos.ordem_servico_codigo ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
-            : sortBy === 'tipoEscolaDescricao'
-              ? `BTRIM(CAST(tipo_escola.descricao AS text)) ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+            ? `CAST(aggregated_items.ordem_servico_codigo AS integer) ${sortDirection}, SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) DESC, CAST(aggregated_items.dre_codigo AS integer) ASC`
               : sortBy === 'tipoPessoa'
-                ? `BTRIM(apuracao_servicos.tipo_pessoa) ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+                ? `BTRIM(aggregated_items.tipo_pessoa) ${sortDirection}, SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) DESC, CAST(aggregated_items.dre_codigo AS integer) ASC`
               : sortBy === 'revisao'
-                ? `apuracao_servicos.revisao ${sortDirection}, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+                ? `aggregated_items.revisao ${sortDirection}, SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) DESC, CAST(aggregated_items.dre_codigo AS integer) ASC`
                 : sortBy === 'dataInclusao'
-                  ? `apuracao_servicos.data_inclusao ${sortDirection} NULLS LAST, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
+                  ? `aggregated_items.data_inclusao ${sortDirection} NULLS LAST, SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) DESC, CAST(aggregated_items.dre_codigo AS integer) ASC`
                   : sortBy === 'dataAlteracao'
-                    ? `apuracao_servicos.data_alteracao ${sortDirection} NULLS LAST, ${apuracaoServicosMesAnoOrderClause} DESC, apuracao_servicos.dre_codigo ASC`
-                    : `${apuracaoServicosMesAnoOrderClause} ${sortDirection}, apuracao_servicos.dre_codigo ASC, apuracao_servicos.revisao ASC, apuracao_servicos.ordem_servico_codigo ASC`
+                    ? `aggregated_items.data_alteracao ${sortDirection} NULLS LAST, SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) DESC, CAST(aggregated_items.dre_codigo AS integer) ASC`
+                    : `SUBSTRING(aggregated_items.mes_ano FROM 4 FOR 4) || SUBSTRING(aggregated_items.mes_ano FROM 1 FOR 2) ${sortDirection}, CAST(aggregated_items.dre_codigo AS integer) ASC, aggregated_items.revisao ASC, CAST(aggregated_items.ordem_servico_codigo AS integer) ASC`
 
       if (mesAno) {
         values.push(mesAno)
@@ -20099,16 +21202,6 @@ const server = createServer(async (request, response) => {
         filters.push(`apuracao_servicos.revisao = $${values.length}`)
       }
 
-      if (tipoEscolaCodigo !== null) {
-        if (!Number.isInteger(tipoEscolaCodigo) || tipoEscolaCodigo <= 0) {
-          sendJson(response, 400, { message: 'Tipo de escola invalido.' })
-          return
-        }
-
-        values.push(tipoEscolaCodigo)
-        filters.push(`apuracao_servicos.tipo_escola_codigo = $${values.length}`)
-      }
-
       if (tipoPessoa) {
         values.push(tipoPessoa)
         filters.push(`BTRIM(apuracao_servicos.tipo_pessoa) = $${values.length}`)
@@ -20126,8 +21219,6 @@ const server = createServer(async (request, response) => {
           OR COALESCE(BTRIM(ordem_servico_item.os_concat), '') ILIKE $${values.length}
           OR COALESCE(BTRIM(ordem_servico_item.termo_adesao), '') ILIKE $${values.length}
           OR COALESCE(BTRIM(ordem_servico_item.num_os), '') ILIKE $${values.length}
-          OR COALESCE(BTRIM(tipo_escola.sigla), '') ILIKE UPPER($${values.length})
-          OR BTRIM(CAST(tipo_escola.descricao AS text)) ILIKE $${values.length}
           OR BTRIM(apuracao_servicos.tipo_pessoa) ILIKE UPPER($${values.length})
         )`)
       }
@@ -20136,7 +21227,6 @@ const server = createServer(async (request, response) => {
       const fromClause = `
         FROM apuracao_servicos
         INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
-        INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
         INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo
         INNER JOIN apuracao_financeira
           ON apuracao_financeira.mes_ano = apuracao_servicos.mes_ano
@@ -20144,19 +21234,63 @@ const server = createServer(async (request, response) => {
          AND apuracao_financeira.revisao = apuracao_servicos.revisao
          AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apuracao_servicos.tipo_pessoa)`
 
+      const aggregatedItemsCte = `
+        WITH aggregated_items AS (
+          SELECT
+            BTRIM(apuracao_servicos.mes_ano) AS mes_ano,
+            COALESCE(TO_CHAR(apuracao_servicos.data_referencia, 'YYYY-MM-DD'), '') AS data_referencia,
+            CAST(apuracao_servicos.dre_codigo AS text) AS dre_codigo,
+            apuracao_servicos.ordem_servico_codigo::text AS ordem_servico_codigo,
+            apuracao_servicos.revisao AS revisao,
+            ''::text AS tipo_escola_codigo,
+            COALESCE(BTRIM(apuracao_servicos.tipo_pessoa), '') AS tipo_pessoa,
+            COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+            BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+            ''::text AS tipo_escola_sigla,
+            'AGLUTINADO'::text AS tipo_escola_descricao,
+            COALESCE(BTRIM(ordem_servico_item.os_concat), '') AS ordem_servico_os_concat,
+            COALESCE(BTRIM(ordem_servico_item.termo_adesao), '') AS ordem_servico_termo_adesao,
+            COALESCE(BTRIM(ordem_servico_item.num_os), '') AS ordem_servico_num_os,
+            COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
+            SUM(COALESCE(apuracao_servicos.nc_pres, 0))::integer AS nc_pres,
+            SUM(COALESCE(apuracao_servicos.cad, 0))::integer AS cad,
+            SUM(COALESCE(apuracao_servicos.ac_nc, 0))::integer AS ac_nc,
+            SUM(COALESCE(apuracao_servicos.ac_cad, 0))::integer AS ac_cad,
+            SUM(COALESCE(apuracao_servicos.cont_nc, 0))::integer AS cont_nc,
+            SUM(COALESCE(apuracao_servicos.cont_cad, 0))::integer AS cont_cad,
+            TO_CHAR(SUM(COALESCE(apuracao_servicos.km, 0))::numeric(14,4), 'FM9999999990.0000') AS km,
+            COALESCE(CAST(MAX(apuracao_servicos.data_inclusao) AS text), '') AS data_inclusao,
+            COALESCE(CAST(MAX(apuracao_servicos.data_alteracao) AS text), '') AS data_alteracao
+          ${fromClause}
+          ${whereClause}
+          GROUP BY
+            BTRIM(apuracao_servicos.mes_ano),
+            apuracao_servicos.data_referencia,
+            CAST(apuracao_servicos.dre_codigo AS text),
+            apuracao_servicos.ordem_servico_codigo::text,
+            apuracao_servicos.revisao,
+            COALESCE(BTRIM(apuracao_servicos.tipo_pessoa), ''),
+            COALESCE(BTRIM(dre.sigla), ''),
+            BTRIM(CAST(dre.descricao AS text)),
+            COALESCE(BTRIM(ordem_servico_item.os_concat), ''),
+            COALESCE(BTRIM(ordem_servico_item.termo_adesao), ''),
+            COALESCE(BTRIM(ordem_servico_item.num_os), ''),
+            COALESCE(BTRIM(apuracao_financeira.situacao), '')
+        )`
+
       const countResult = await pool.query(
-        `SELECT COUNT(*)::int AS total
-         ${fromClause}
-         ${whereClause}`,
+        `${aggregatedItemsCte}
+         SELECT COUNT(*)::int AS total
+         FROM aggregated_items`,
         values,
       )
 
       values.push(pageSize)
       values.push(offset)
       const result = await pool.query(
-        `SELECT ${apuracaoServicosSelectClause}
-         ${fromClause}
-         ${whereClause}
+        `${aggregatedItemsCte}
+         SELECT *
+         FROM aggregated_items
          ORDER BY ${orderByClause}
          LIMIT $${values.length - 1}
          OFFSET $${values.length}`,
@@ -20171,7 +21305,7 @@ const server = createServer(async (request, response) => {
         page,
         pageSize,
         totalPages: Math.max(Math.ceil(total / pageSize), 1),
-        sortBy: ['mesAno', 'dataReferencia', 'dreCodigo', 'dreDescricao', 'ordemServicoCodigo', 'tipoEscolaDescricao', 'revisao', 'tipoPessoa', 'dataInclusao', 'dataAlteracao'].includes(sortBy) ? sortBy : 'dataReferencia',
+        sortBy: ['mesAno', 'dataReferencia', 'dreCodigo', 'dreDescricao', 'ordemServicoCodigo', 'revisao', 'tipoPessoa', 'dataInclusao', 'dataAlteracao'].includes(sortBy) ? sortBy : 'dataReferencia',
         sortDirection: sortDirection.toLowerCase(),
       })
     } catch (error) {
@@ -25642,13 +26776,39 @@ const server = createServer(async (request, response) => {
     return
   }
 
-  if (request.method === 'POST' && pathname === '/api/apuracao-financeira/processar') {
+  if (request.method === 'POST' && pathname === apuracaoFinanceiraProcessarPath) {
     const performedBy = resolveRequestActor(request, 'USUARIO')
     let processingLock = null
     const client = await pool.connect()
+    let trackerId = ''
+    let processJobId = ''
 
     try {
       const body = await readJsonBody(request)
+      processJobId = `${Date.now()}-${randomBytes(4).toString('hex')}`
+      trackerId = `apuracao-financeira-processar:${processJobId}`
+
+      upsertBatchProcessRun(trackerId, {
+        processType: 'apuracao-financeira-processar',
+        processName: 'Processar Apuracao Financeira',
+        source: apuracaoFinanceiraProcessarPath,
+        status: 'running',
+        message: 'Processamento em lote da apuracao financeira em execucao.',
+        requestedFilters: {
+          mesAno: normalizeRequestValue(body.mesAno),
+          revisao: normalizeRequestValue(body.revisao),
+          situacao: normalizeRequestValue(body.situacao),
+          tipoPessoa: normalizeRequestValue(body.tipoPessoa),
+          dreCodigos: Array.isArray(body.dreCodigos) ? body.dreCodigos : [],
+          replaceExistingDreCodigos: Boolean(body.replaceExistingDreCodigos),
+          replaceExistingTipoPessoa: Boolean(body.replaceExistingTipoPessoa),
+          performedBy,
+        },
+        metadata: {
+          jobId: processJobId,
+        },
+      })
+
       processingLock = await acquireApuracaoFinanceiraProcessingLock({
         mesAno: body.mesAno,
         usuario: performedBy,
@@ -25666,6 +26826,13 @@ const server = createServer(async (request, response) => {
       }, client)
       await client.query('COMMIT')
 
+      upsertBatchProcessRun(trackerId, {
+        status: 'completed',
+        finishedAt: new Date().toISOString(),
+        message: 'Processamento em lote da apuracao financeira concluido com sucesso.',
+        summary,
+      })
+
       sendJson(response, 200, { summary })
     } catch (error) {
       await client.query('ROLLBACK')
@@ -25676,6 +26843,19 @@ const server = createServer(async (request, response) => {
       const statusCode = error instanceof Error && typeof error.statusCode === 'number'
         ? error.statusCode
         : 500
+
+      if (trackerId) {
+        upsertBatchProcessRun(trackerId, {
+          status: 'failed',
+          finishedAt: new Date().toISOString(),
+          message: 'Processamento em lote da apuracao financeira finalizado com falhas.',
+          errorMessage: message,
+          metadata: {
+            jobId: processJobId,
+            statusCode,
+          },
+        })
+      }
 
       sendJson(response, statusCode, { message })
     } finally {
@@ -25688,7 +26868,10 @@ const server = createServer(async (request, response) => {
     return
   }
 
-  if (request.method === 'POST' && pathname === '/api/apuracao-financeira/alterar-situacao-lote') {
+  if (request.method === 'POST' && pathname === apuracaoFinanceiraAlterarSituacaoLotePath) {
+    let trackerId = ''
+    let processJobId = ''
+
     try {
       const body = await readJsonBody(request)
       const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
@@ -25697,6 +26880,26 @@ const server = createServer(async (request, response) => {
       const dreCodigos = Array.isArray(body.dreCodigos)
         ? [...new Set(body.dreCodigos.map((item) => normalizeRequestValue(item)).filter(Boolean))]
         : []
+
+      processJobId = `${Date.now()}-${randomBytes(4).toString('hex')}`
+      trackerId = `apuracao-financeira-alterar-situacao-lote:${processJobId}`
+
+      upsertBatchProcessRun(trackerId, {
+        processType: 'apuracao-financeira-alterar-situacao-lote',
+        processName: 'Alterar Situacao da Apuracao Financeira em Lote',
+        source: apuracaoFinanceiraAlterarSituacaoLotePath,
+        status: 'running',
+        message: 'Alteracao em lote da situacao da apuracao financeira em execucao.',
+        requestedFilters: {
+          mesAno,
+          tipoPessoa,
+          situacao,
+          dreCodigos,
+        },
+        metadata: {
+          jobId: processJobId,
+        },
+      })
 
       if (!isValidApuracaoFinanceiraMesAno(mesAno)) {
         sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
@@ -25746,15 +26949,24 @@ const server = createServer(async (request, response) => {
         [situacao, mesAno, dreCodigos, tipoPessoa],
       )
 
+      const summary = {
+        mesAno,
+        tipoPessoa,
+        situacao,
+        totalMatched,
+        totalUpdated: updateResult.rowCount ?? 0,
+        totalSelectedDres: dreCodigos.length,
+      }
+
+      upsertBatchProcessRun(trackerId, {
+        status: 'completed',
+        finishedAt: new Date().toISOString(),
+        message: 'Alteracao em lote da situacao da apuracao financeira concluida com sucesso.',
+        summary,
+      })
+
       sendJson(response, 200, {
-        summary: {
-          mesAno,
-          tipoPessoa,
-          situacao,
-          totalMatched,
-          totalUpdated: updateResult.rowCount ?? 0,
-          totalSelectedDres: dreCodigos.length,
-        },
+        summary,
       })
     } catch (error) {
       const message = error instanceof Error
@@ -25764,6 +26976,19 @@ const server = createServer(async (request, response) => {
         ? error.statusCode
         : 500
 
+      if (trackerId) {
+        upsertBatchProcessRun(trackerId, {
+          status: 'failed',
+          finishedAt: new Date().toISOString(),
+          message: 'Alteracao em lote da situacao da apuracao financeira finalizada com falhas.',
+          errorMessage: message,
+          metadata: {
+            jobId: processJobId,
+            statusCode,
+          },
+        })
+      }
+
       sendJson(response, statusCode, { message })
     }
 
@@ -25771,199 +26996,9 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'POST' && pathname === '/api/apuracao-servicos') {
-    try {
-      const body = await readJsonBody(request)
-      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
-      const dataReferencia = resolveApuracaoServicosDataReferencia(mesAno, body.dataReferencia)
-      const dreCodigo = normalizeDreOperationalCode(body.dreCodigo)
-      const ordemServicoCodigo = normalizeIntegerValue(body.ordemServicoCodigo)
-      const revisao = normalizeIntegerValue(body.revisao)
-      const tipoEscolaCodigo = normalizeIntegerValue(body.tipoEscolaCodigo)
-      const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa)
-      const naoCadeirantePresencial = normalizeIntegerValue(body.naoCadeirantePresencial)
-      const cadeirante = normalizeIntegerValue(body.cadeirante)
-      const atendimentoComplementarNaoCadeirante = normalizeIntegerValue(body.atendimentoComplementarNaoCadeirante)
-      const atendimentoComplementarCadeirante = normalizeIntegerValue(body.atendimentoComplementarCadeirante)
-      const continuaNaoCadeirante = normalizeIntegerValue(body.continuaNaoCadeirante)
-      const continuaCadeirante = normalizeIntegerValue(body.continuaCadeirante)
-      const kilometragem = normalizeFourDecimalValue(body.kilometragem)
-
-      if (!mesAno) {
-        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
-        return
-      }
-
-      if (!dataReferencia) {
-        sendJson(response, 400, { message: 'Data de referencia invalida.' })
-        return
-      }
-
-      if (!dreCodigo) {
-        sendJson(response, 400, { message: 'DRE obrigatoria.' })
-        return
-      }
-
-      if (!Number.isInteger(ordemServicoCodigo) || ordemServicoCodigo <= 0) {
-        sendJson(response, 400, { message: 'Ordem de servico invalida.' })
-        return
-      }
-
-      if (!Number.isInteger(revisao) || revisao < 0) {
-        sendJson(response, 400, { message: 'Revisao invalida.' })
-        return
-      }
-
-      if (!Number.isInteger(tipoEscolaCodigo) || tipoEscolaCodigo <= 0) {
-        sendJson(response, 400, { message: 'Tipo de escola invalido.' })
-        return
-      }
-
-      if (!tipoPessoa) {
-        sendJson(response, 400, { message: 'Tipo pessoa invalido.' })
-        return
-      }
-
-      const integerFields = [
-        ['Nao cadeirante presencial', naoCadeirantePresencial],
-        ['Cadeirante', cadeirante],
-        ['Atendimento complementar nao cadeirante', atendimentoComplementarNaoCadeirante],
-        ['Atendimento complementar cadeirante', atendimentoComplementarCadeirante],
-        ['Continua nao cadeirante', continuaNaoCadeirante],
-        ['Continua cadeirante', continuaCadeirante],
-      ]
-
-      for (const [label, value] of integerFields) {
-        if (!Number.isInteger(value) || value < 0) {
-          sendJson(response, 400, { message: `${label} invalido.` })
-          return
-        }
-      }
-
-      if (!Number.isFinite(kilometragem) || kilometragem < 0) {
-        sendJson(response, 400, { message: 'Kilometragem invalida.' })
-        return
-      }
-
-      const dreResult = await pool.query(
-        'SELECT 1 FROM dre WHERE CAST(codigo AS text) = $1 LIMIT 1',
-        [dreCodigo],
-      )
-
-      if (dreResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'DRE nao encontrada.' })
-        return
-      }
-
-      await ensureApuracaoServicosEditable({ mesAno, dreCodigo, revisao, tipoPessoa })
-
-      const tipoEscolaResult = await pool.query(
-        'SELECT 1 FROM tipo_escola WHERE codigo = $1 LIMIT 1',
-        [tipoEscolaCodigo],
-      )
-
-      if (tipoEscolaResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Tipo de escola nao encontrado.' })
-        return
-      }
-
-      const activeOrdemServico = await findActiveOrdemServicoByDate({
-        ordemServicoCodigo,
-        dataReferencia,
-      })
-
-      if (!activeOrdemServico) {
-        sendJson(response, 400, { message: 'A ordem de servico informada nao esta ativa na data de referencia selecionada.' })
-        return
-      }
-
-      const duplicateResult = await pool.query(
-        `SELECT 1
-         FROM apuracao_servicos
-         WHERE mes_ano = $1
-           AND data_referencia = $2::date
-           AND CAST(dre_codigo AS text) = $3
-           AND ordem_servico_codigo = $4
-           AND revisao = $5
-           AND tipo_escola_codigo = $6
-           AND BTRIM(tipo_pessoa) = $7
-         LIMIT 1`,
-        [mesAno, dataReferencia, dreCodigo, ordemServicoCodigo, revisao, tipoEscolaCodigo, tipoPessoa],
-      )
-
-      if (duplicateResult.rowCount > 0) {
-        sendJson(response, 409, { message: 'Ja existe uma apuracao de servicos com esta chave.' })
-        return
-      }
-
-      const insertResult = await pool.query(
-        `INSERT INTO apuracao_servicos (
-          mes_ano,
-          data_referencia,
-          dre_codigo,
-          ordem_servico_codigo,
-          revisao,
-          tipo_escola_codigo,
-          tipo_pessoa,
-          nc_pres,
-          cad,
-          ac_nc,
-          ac_cad,
-          cont_nc,
-          cont_cad,
-          km
-        )
-         VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-         RETURNING mes_ano, TO_CHAR(data_referencia, 'YYYY-MM-DD') AS data_referencia, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
-        [
-          mesAno,
-          dataReferencia,
-          dreCodigo,
-          ordemServicoCodigo,
-          revisao,
-          tipoEscolaCodigo,
-          tipoPessoa,
-          naoCadeirantePresencial,
-          cadeirante,
-          atendimentoComplementarNaoCadeirante,
-          atendimentoComplementarCadeirante,
-          continuaNaoCadeirante,
-          continuaCadeirante,
-          kilometragem,
-        ],
-      )
-
-      const insertedKey = insertResult.rows[0]
-      const itemResult = await pool.query(
-        `SELECT ${apuracaoServicosSelectClause}
-         FROM apuracao_servicos
-         INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
-         INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
-         INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo
-         INNER JOIN apuracao_financeira
-           ON apuracao_financeira.mes_ano = apuracao_servicos.mes_ano
-          AND apuracao_financeira.dre_codigo = apuracao_servicos.dre_codigo
-          AND apuracao_financeira.revisao = apuracao_servicos.revisao
-          AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apuracao_servicos.tipo_pessoa)
-         WHERE apuracao_servicos.mes_ano = $1
-           AND apuracao_servicos.data_referencia = $2::date
-           AND CAST(apuracao_servicos.dre_codigo AS text) = $3
-           AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $4
-           AND apuracao_servicos.revisao = $5
-           AND CAST(apuracao_servicos.tipo_escola_codigo AS text) = $6
-           AND BTRIM(apuracao_servicos.tipo_pessoa) = $7`,
-        [insertedKey.mes_ano, insertedKey.data_referencia, insertedKey.dre_codigo, insertedKey.ordem_servico_codigo, insertedKey.revisao, insertedKey.tipo_escola_codigo, insertedKey.tipo_pessoa],
-      )
-
-      sendJson(response, 201, {
-        item: mapApuracaoServicosRow(itemResult.rows[0]),
-      })
-    } catch (error) {
-      const message = error instanceof Error
-        ? error.message
-        : 'Erro ao gravar a apuracao de servicos.'
-
-      sendJson(response, 500, { message })
-    }
+    sendJson(response, 405, {
+      message: 'A tabela Total Servicos e derivada dos apontamentos e nao aceita inclusao manual no nivel aglutinado.',
+    })
 
     return
   }
@@ -26020,6 +27055,29 @@ const server = createServer(async (request, response) => {
       sendJson(response, statusCode, { message })
     } finally {
       client.release()
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/remuneracao-servicos/calcular') {
+    sendJson(response, 200, buildRemuneracaoServicosBatchExecutionResponse())
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/remuneracao-servicos/calcular') {
+    try {
+      const body = await readJsonBody(request)
+      const batchResponse = await startRemuneracaoServicosBatchExecution(body)
+
+      sendJson(response, batchResponse.isRunning ? 202 : 200, batchResponse)
+    } catch (error) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao iniciar o processamento em lote da remuneracao de servicos.'
+
+      sendJson(response, statusCode, { message })
     }
 
     return
@@ -27346,10 +28404,41 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'POST' && pathname === smokeRunPath) {
+    const smokeJobId = `${Date.now()}-${randomBytes(4).toString('hex')}`
+    const smokeTrackerId = `smoke-api:${smokeJobId}`
+
+    upsertBatchProcessRun(smokeTrackerId, {
+      processType: 'smoke-api',
+      processName: 'Smoke API',
+      source: smokeRunPath,
+      status: 'running',
+      message: 'Execucao de smoke em andamento.',
+      metadata: {
+        jobId: smokeJobId,
+      },
+    })
+
     try {
       const body = await readJsonBody(request)
       const result = await runSmokeSuiteCommand(body.suite)
       const statusCode = result.status === 'passed' ? 200 : 500
+
+      upsertBatchProcessRun(smokeTrackerId, {
+        status: result.status === 'passed' ? 'completed' : 'failed',
+        finishedAt: new Date().toISOString(),
+        message: result.status === 'passed'
+          ? `Smoke ${result.suite === 'all' ? 'completo da aplicacao' : `da suite ${result.suite}`} executado com sucesso.`
+          : `Smoke ${result.suite === 'all' ? 'completo da aplicacao' : `da suite ${result.suite}`} finalizado com falhas.`,
+        errorMessage: result.status === 'passed' ? '' : (result.stderrTail || 'Falha na execucao de smoke.'),
+        summary: result.report,
+        metadata: {
+          jobId: smokeJobId,
+          suite: result.suite,
+          scriptName: result.scriptName,
+          exitCode: result.exitCode,
+          reportPath: result.reportPath,
+        },
+      })
 
       sendJson(response, statusCode, {
         message: result.status === 'passed'
@@ -27361,6 +28450,16 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao executar smoke da aplicacao.'
+
+      upsertBatchProcessRun(smokeTrackerId, {
+        status: 'failed',
+        finishedAt: new Date().toISOString(),
+        message: 'Execucao de smoke finalizada com falhas.',
+        errorMessage: message,
+        metadata: {
+          jobId: smokeJobId,
+        },
+      })
 
       sendJson(response, 500, { message, status: 'failed' })
     }
@@ -27388,8 +28487,37 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'POST' && pathname === xmlImportAllResetPath) {
+    const resetJobId = `${Date.now()}-${randomBytes(4).toString('hex')}`
+    const resetTrackerId = `xml-import-all-reset:${resetJobId}`
+
+    upsertBatchProcessRun(resetTrackerId, {
+      processType: 'xml-import-all-reset',
+      processName: 'Reset Importacao XML em Lote',
+      source: xmlImportAllResetPath,
+      status: 'running',
+      message: 'Reset das tabelas do lote XML em execucao.',
+      metadata: {
+        jobId: resetJobId,
+      },
+    })
+
     try {
       const result = await resetXmlImportBatchTables()
+
+      upsertBatchProcessRun(resetTrackerId, {
+        status: 'completed',
+        finishedAt: new Date().toISOString(),
+        message: 'Reset das tabelas do lote XML concluido com sucesso.',
+        summary: {
+          truncated: result.truncated,
+          tableCount: result.tableCount,
+        },
+        metadata: {
+          jobId: resetJobId,
+          tables: result.tables,
+        },
+      })
+
       sendJson(response, 200, {
         message: 'Tabelas da importacao XML em lote truncadas com sucesso.',
         ...result,
@@ -27398,6 +28526,16 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao truncar as tabelas da importacao XML em lote.'
+
+      upsertBatchProcessRun(resetTrackerId, {
+        status: 'failed',
+        finishedAt: new Date().toISOString(),
+        message: 'Reset das tabelas do lote XML finalizado com falhas.',
+        errorMessage: message,
+        metadata: {
+          jobId: resetJobId,
+        },
+      })
 
       sendJson(response, 500, { message, truncated: false })
     }
@@ -29421,258 +30559,9 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'PUT' && getApuracaoServicosKeyFromUrl(pathname)) {
-    try {
-      const originalKey = getApuracaoServicosKeyFromUrl(pathname)
-
-      if (!originalKey) {
-        sendJson(response, 400, { message: 'Chave original invalida.' })
-        return
-      }
-
-      const body = await readJsonBody(request)
-      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
-      const dataReferencia = resolveApuracaoServicosDataReferencia(mesAno, body.dataReferencia)
-      const originalDataReferencia = resolveApuracaoServicosDataReferencia(originalKey.mesAno, originalKey.dataReferencia)
-      const dreCodigo = normalizeDreOperationalCode(body.dreCodigo)
-      const ordemServicoCodigo = normalizeIntegerValue(body.ordemServicoCodigo)
-      const revisao = normalizeIntegerValue(body.revisao)
-      const tipoEscolaCodigo = normalizeIntegerValue(body.tipoEscolaCodigo)
-      const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa) || 'PF'
-      const naoCadeirantePresencial = normalizeIntegerValue(body.naoCadeirantePresencial)
-      const cadeirante = normalizeIntegerValue(body.cadeirante)
-      const atendimentoComplementarNaoCadeirante = normalizeIntegerValue(body.atendimentoComplementarNaoCadeirante)
-      const atendimentoComplementarCadeirante = normalizeIntegerValue(body.atendimentoComplementarCadeirante)
-      const continuaNaoCadeirante = normalizeIntegerValue(body.continuaNaoCadeirante)
-      const continuaCadeirante = normalizeIntegerValue(body.continuaCadeirante)
-      const kilometragem = normalizeFourDecimalValue(body.kilometragem)
-
-      if (!mesAno) {
-        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
-        return
-      }
-
-      if (!dataReferencia || !originalDataReferencia) {
-        sendJson(response, 400, { message: 'Data de referencia invalida.' })
-        return
-      }
-
-      if (!dreCodigo) {
-        sendJson(response, 400, { message: 'DRE obrigatoria.' })
-        return
-      }
-
-      if (!Number.isInteger(ordemServicoCodigo) || ordemServicoCodigo <= 0) {
-        sendJson(response, 400, { message: 'Ordem de servico invalida.' })
-        return
-      }
-
-      if (!Number.isInteger(revisao) || revisao < 0) {
-        sendJson(response, 400, { message: 'Revisao invalida.' })
-        return
-      }
-
-      if (!Number.isInteger(tipoEscolaCodigo) || tipoEscolaCodigo <= 0) {
-        sendJson(response, 400, { message: 'Tipo de escola invalido.' })
-        return
-      }
-
-      const integerFields = [
-        ['Nao cadeirante presencial', naoCadeirantePresencial],
-        ['Cadeirante', cadeirante],
-        ['Atendimento complementar nao cadeirante', atendimentoComplementarNaoCadeirante],
-        ['Atendimento complementar cadeirante', atendimentoComplementarCadeirante],
-        ['Continua nao cadeirante', continuaNaoCadeirante],
-        ['Continua cadeirante', continuaCadeirante],
-      ]
-
-      for (const [label, value] of integerFields) {
-        if (!Number.isInteger(value) || value < 0) {
-          sendJson(response, 400, { message: `${label} invalido.` })
-          return
-        }
-      }
-
-      if (!Number.isFinite(kilometragem) || kilometragem < 0) {
-        sendJson(response, 400, { message: 'Kilometragem invalida.' })
-        return
-      }
-
-      const existingResult = await pool.query(
-        `SELECT 1
-         FROM apuracao_servicos
-         WHERE mes_ano = $1
-           AND data_referencia = $2::date
-           AND CAST(dre_codigo AS text) = $3
-           AND CAST(ordem_servico_codigo AS text) = $4
-           AND revisao = $5
-           AND CAST(tipo_escola_codigo AS text) = $6
-           AND BTRIM(tipo_pessoa) = $7
-         LIMIT 1`,
-        [originalKey.mesAno, originalDataReferencia, originalKey.dreCodigo, originalKey.ordemServicoCodigo, Number.parseInt(originalKey.revisao, 10), originalKey.tipoEscolaCodigo, normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF'],
-      )
-
-      if (existingResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Apuracao de servicos nao encontrada.' })
-        return
-      }
-
-      const dreResult = await pool.query(
-        'SELECT 1 FROM dre WHERE CAST(codigo AS text) = $1 LIMIT 1',
-        [dreCodigo],
-      )
-
-      if (dreResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'DRE nao encontrada.' })
-        return
-      }
-
-      await ensureApuracaoServicosEditable({ mesAno, dreCodigo, revisao, tipoPessoa })
-
-      const tipoEscolaResult = await pool.query(
-        'SELECT 1 FROM tipo_escola WHERE codigo = $1 LIMIT 1',
-        [tipoEscolaCodigo],
-      )
-
-      if (tipoEscolaResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Tipo de escola nao encontrado.' })
-        return
-      }
-
-      const activeOrdemServico = await findActiveOrdemServicoByDate({
-        ordemServicoCodigo,
-        dataReferencia,
-      })
-
-      if (!activeOrdemServico) {
-        sendJson(response, 400, { message: 'A ordem de servico informada nao esta ativa na data de referencia selecionada.' })
-        return
-      }
-
-      const duplicateResult = await pool.query(
-        `SELECT 1
-         FROM apuracao_servicos
-         WHERE mes_ano = $1
-           AND data_referencia = $2::date
-           AND CAST(dre_codigo AS text) = $3
-           AND ordem_servico_codigo = $4
-           AND revisao = $5
-           AND tipo_escola_codigo = $6
-           AND BTRIM(tipo_pessoa) = $7
-           AND NOT (
-             mes_ano = $8
-             AND data_referencia = $9::date
-             AND CAST(dre_codigo AS text) = $10
-             AND CAST(ordem_servico_codigo AS text) = $11
-             AND revisao = $12
-             AND CAST(tipo_escola_codigo AS text) = $13
-             AND BTRIM(tipo_pessoa) = $14
-           )
-         LIMIT 1`,
-        [
-          mesAno,
-          dataReferencia,
-          dreCodigo,
-          ordemServicoCodigo,
-          revisao,
-          tipoEscolaCodigo,
-          tipoPessoa,
-          originalKey.mesAno,
-          originalDataReferencia,
-          originalKey.dreCodigo,
-          originalKey.ordemServicoCodigo,
-          Number.parseInt(originalKey.revisao, 10),
-          originalKey.tipoEscolaCodigo,
-          normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF',
-        ],
-      )
-
-      if (duplicateResult.rowCount > 0) {
-        sendJson(response, 409, { message: 'Ja existe uma apuracao de servicos com esta chave.' })
-        return
-      }
-
-      const updateResult = await pool.query(
-        `UPDATE apuracao_servicos
-         SET mes_ano = $1,
-             data_referencia = $2::date,
-             dre_codigo = $3,
-             ordem_servico_codigo = $4,
-             revisao = $5,
-             tipo_escola_codigo = $6,
-             tipo_pessoa = $7,
-             nc_pres = $8,
-             cad = $9,
-             ac_nc = $10,
-             ac_cad = $11,
-             cont_nc = $12,
-             cont_cad = $13,
-             km = $14,
-             data_alteracao = NOW()
-         WHERE mes_ano = $15
-           AND data_referencia = $16::date
-           AND CAST(dre_codigo AS text) = $17
-           AND CAST(ordem_servico_codigo AS text) = $18
-           AND revisao = $19
-           AND CAST(tipo_escola_codigo AS text) = $20
-           AND BTRIM(tipo_pessoa) = $21
-         RETURNING mes_ano, TO_CHAR(data_referencia, 'YYYY-MM-DD') AS data_referencia, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
-        [
-          mesAno,
-          dataReferencia,
-          dreCodigo,
-          ordemServicoCodigo,
-          revisao,
-          tipoEscolaCodigo,
-          tipoPessoa,
-          naoCadeirantePresencial,
-          cadeirante,
-          atendimentoComplementarNaoCadeirante,
-          atendimentoComplementarCadeirante,
-          continuaNaoCadeirante,
-          continuaCadeirante,
-          kilometragem,
-          originalKey.mesAno,
-          originalDataReferencia,
-          originalKey.dreCodigo,
-          originalKey.ordemServicoCodigo,
-          Number.parseInt(originalKey.revisao, 10),
-          originalKey.tipoEscolaCodigo,
-          normalizeApuracaoTipoPessoa(originalKey.tipoPessoa) || 'PF',
-        ],
-      )
-
-      const updatedKey = updateResult.rows[0]
-      const itemResult = await pool.query(
-        `SELECT ${apuracaoServicosSelectClause}
-         FROM apuracao_servicos
-         INNER JOIN dre ON dre.codigo = apuracao_servicos.dre_codigo
-         INNER JOIN tipo_escola ON tipo_escola.codigo = apuracao_servicos.tipo_escola_codigo
-         INNER JOIN ${ordemServicoTableName} ordem_servico_item ON ordem_servico_item.codigo = apuracao_servicos.ordem_servico_codigo
-         INNER JOIN apuracao_financeira
-           ON apuracao_financeira.mes_ano = apuracao_servicos.mes_ano
-          AND apuracao_financeira.dre_codigo = apuracao_servicos.dre_codigo
-          AND apuracao_financeira.revisao = apuracao_servicos.revisao
-          AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apuracao_servicos.tipo_pessoa)
-         WHERE apuracao_servicos.mes_ano = $1
-           AND apuracao_servicos.data_referencia = $2::date
-           AND CAST(apuracao_servicos.dre_codigo AS text) = $3
-           AND CAST(apuracao_servicos.ordem_servico_codigo AS text) = $4
-           AND apuracao_servicos.revisao = $5
-           AND CAST(apuracao_servicos.tipo_escola_codigo AS text) = $6
-           AND BTRIM(apuracao_servicos.tipo_pessoa) = $7`,
-        [updatedKey.mes_ano, updatedKey.data_referencia, updatedKey.dre_codigo, updatedKey.ordem_servico_codigo, updatedKey.revisao, updatedKey.tipo_escola_codigo, updatedKey.tipo_pessoa],
-      )
-
-      sendJson(response, 200, {
-        item: mapApuracaoServicosRow(itemResult.rows[0]),
-      })
-    } catch (error) {
-      const message = error instanceof Error
-        ? error.message
-        : 'Erro ao alterar a apuracao de servicos.'
-
-      sendJson(response, 500, { message })
-    }
+    sendJson(response, 405, {
+      message: 'A tabela Total Servicos e derivada dos apontamentos e nao aceita alteracao manual no nivel aglutinado.',
+    })
 
     return
   }
@@ -31971,57 +32860,9 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'DELETE' && getApuracaoServicosKeyFromUrl(pathname)) {
-    try {
-      const key = getApuracaoServicosKeyFromUrl(pathname)
-
-      if (!key) {
-        sendJson(response, 400, { message: 'Chave invalida para exclusao.' })
-        return
-      }
-
-      const dataReferencia = resolveApuracaoServicosDataReferencia(key.mesAno, key.dataReferencia)
-
-      if (!dataReferencia) {
-        sendJson(response, 400, { message: 'Data de referencia invalida para exclusao.' })
-        return
-      }
-
-      const deleteResult = await pool.query(
-        `DELETE FROM apuracao_servicos
-         WHERE mes_ano = $1
-           AND data_referencia = $2::date
-           AND CAST(dre_codigo AS text) = $3
-           AND CAST(ordem_servico_codigo AS text) = $4
-           AND revisao = $5
-           AND CAST(tipo_escola_codigo AS text) = $6
-           AND BTRIM(tipo_pessoa) = $7
-         RETURNING mes_ano, TO_CHAR(data_referencia, 'YYYY-MM-DD') AS data_referencia, CAST(dre_codigo AS text) AS dre_codigo, ordem_servico_codigo::text AS ordem_servico_codigo, revisao, tipo_escola_codigo::text AS tipo_escola_codigo, tipo_pessoa`,
-        [key.mesAno, dataReferencia, key.dreCodigo, key.ordemServicoCodigo, Number.parseInt(key.revisao, 10), key.tipoEscolaCodigo, normalizeApuracaoTipoPessoa(key.tipoPessoa) || 'PF'],
-      )
-
-      if (deleteResult.rowCount === 0) {
-        sendJson(response, 404, { message: 'Apuracao de servicos nao encontrada.' })
-        return
-      }
-
-      sendJson(response, 200, {
-        deletedKey: {
-          mesAno: deleteResult.rows[0].mes_ano,
-          dataReferencia: deleteResult.rows[0].data_referencia,
-          dreCodigo: deleteResult.rows[0].dre_codigo,
-          ordemServicoCodigo: deleteResult.rows[0].ordem_servico_codigo,
-          revisao: Number(deleteResult.rows[0].revisao) || 0,
-          tipoEscolaCodigo: deleteResult.rows[0].tipo_escola_codigo,
-          tipoPessoa: normalizeApuracaoTipoPessoa(deleteResult.rows[0].tipo_pessoa) || 'PF',
-        },
-      })
-    } catch (error) {
-      const message = error instanceof Error
-        ? error.message
-        : 'Erro ao excluir a apuracao de servicos.'
-
-      sendJson(response, 500, { message })
-    }
+    sendJson(response, 405, {
+      message: 'A tabela Total Servicos e derivada dos apontamentos e nao aceita exclusao manual no nivel aglutinado.',
+    })
 
     return
   }

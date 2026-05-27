@@ -7,7 +7,6 @@ export type ApuracaoServicosKey = {
   dreCodigo: string
   ordemServicoCodigo: string
   revisao: number
-  tipoEscolaCodigo: string
   tipoPessoa: ApuracaoTipoPessoa
 }
 
@@ -18,8 +17,6 @@ export type ApuracaoServicosItem = ApuracaoServicosKey & {
   ordemServicoTermoAdesao: string
   ordemServicoNumOs: string
   apuracaoFinanceiraSituacao: ApuracaoFinanceiraStatus
-  tipoEscolaSigla: string
-  tipoEscolaDescricao: string
   naoCadeirantePresencial: number
   cadeirante: number
   atendimentoComplementarNaoCadeirante: number
@@ -53,7 +50,7 @@ export type ApuracaoServicosOrdemServicoOption = {
   tipoPessoa: ApuracaoTipoPessoa
 }
 
-export type ApuracaoServicosSortField = 'mesAno' | 'dataReferencia' | 'dreCodigo' | 'dreDescricao' | 'ordemServicoCodigo' | 'tipoEscolaDescricao' | 'revisao' | 'tipoPessoa' | 'dataInclusao' | 'dataAlteracao'
+export type ApuracaoServicosSortField = 'mesAno' | 'dataReferencia' | 'dreCodigo' | 'dreDescricao' | 'ordemServicoCodigo' | 'revisao' | 'tipoPessoa' | 'dataInclusao' | 'dataAlteracao'
 
 type ApuracaoServicosListResponse = {
   items: ApuracaoServicosItem[]
@@ -83,7 +80,6 @@ export type ApuracaoServicosListParams = {
   dataReferencia?: string
   dreCodigo?: string
   revisao?: number
-  tipoEscolaCodigo?: string
   tipoPessoa?: ApuracaoTipoPessoa
   page?: number
   pageSize?: number
@@ -106,7 +102,7 @@ const getApuracaoServicosUrl = () => {
 }
 
 const getApuracaoServicosItemUrl = (key: ApuracaoServicosKey) => {
-  return `${getApuracaoServicosUrl()}/${encodeURIComponent(key.mesAno)}/${encodeURIComponent(key.dreCodigo)}/${encodeURIComponent(key.ordemServicoCodigo)}/${encodeURIComponent(String(key.revisao))}/${encodeURIComponent(key.tipoEscolaCodigo)}/${encodeURIComponent(key.tipoPessoa)}/${encodeURIComponent(key.dataReferencia)}`
+  return `${getApuracaoServicosUrl()}/${encodeURIComponent(key.mesAno)}/${encodeURIComponent(key.dreCodigo)}/${encodeURIComponent(key.ordemServicoCodigo)}/${encodeURIComponent(String(key.revisao))}/${encodeURIComponent(key.tipoPessoa)}/${encodeURIComponent(key.dataReferencia)}`
 }
 
 const parseJsonSafely = (value: string) => {
@@ -148,10 +144,6 @@ export async function listApuracaoServicosItemsPaginated(params: ApuracaoServico
 
   if (typeof params.revisao === 'number') {
     queryParams.set('revisao', String(params.revisao))
-  }
-
-  if (params.tipoEscolaCodigo?.trim()) {
-    queryParams.set('tipoEscolaCodigo', params.tipoEscolaCodigo.trim())
   }
 
   if (params.tipoPessoa?.trim()) {

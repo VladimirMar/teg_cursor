@@ -4,6 +4,8 @@ import './App.css'
 import AcessoPaginaView from './AcessoPaginaView'
 import ApontamentoServicosView from './ApontamentoServicosView'
 import ApuracaoServicosView from './ApuracaoServicosView'
+import BatchProcessMonitorView from './BatchProcessMonitorView'
+import RemuneracaoServicosView from './RemuneracaoServicosView'
 import PerfilAcessoView from './PerfilAcessoView'
 import PerfilView from './PerfilView'
 import ResumoFinanceiroView from './ResumoFinanceiroView'
@@ -188,7 +190,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'xmlImportLote' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'remuneracaoServicos' | 'batchProcessMonitor' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'xmlImportLote' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -243,6 +245,10 @@ const convertMonthYearToDashboardMonth = (value: string) => {
 
 const formatApuracaoFinanceiraKey = (item: Pick<ApuracaoFinanceiraKey, 'mesAno' | 'dreCodigo' | 'revisao' | 'tipoPessoa'>) => {
   return `${item.mesAno}|${item.dreCodigo}|${item.revisao}|${item.tipoPessoa}`
+}
+
+const formatApuracaoFinanceiraGridKey = (item: Pick<ApuracaoFinanceiraItem, 'mesAno' | 'dreCodigo' | 'revisao' | 'tipoPessoa' | 'dataReferencia'>) => {
+  return `${formatApuracaoFinanceiraKey(item)}|${item.dataReferencia}`
 }
 
 const formatApuracaoFinanceiraDreLabel = (item: Pick<ApuracaoFinanceiraItem, 'dreCodigo' | 'dreSigla' | 'dreDescricao'>) => {
@@ -378,6 +384,7 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
       return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira']
     case 'apuracaoServicos':
     case 'apontamentoServicos':
+    case 'remuneracaoServicos':
       return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira', 'apuracaoServicos']
     case 'financeiroReprocessamento':
       return ['operacional', 'operacionalAdministrativo']
@@ -642,6 +649,8 @@ const operationalFinanceiroViews: ActiveView[] = [
   'resumoFinanceiro',
   'apuracaoServicos',
   'apontamentoServicos',
+  'remuneracaoServicos',
+  'batchProcessMonitor',
 ]
 const cadastroOperationalViews: ActiveView[] = [
   'dre',
@@ -685,6 +694,8 @@ const menuAccessByView: Record<ActiveView, string> = {
   apuracaoFinanceira: 'menu_apuracao_financeira',
   apuracaoServicos: 'menu_apuracao_servicos',
   apontamentoServicos: 'menu_apuracao_servicos',
+  remuneracaoServicos: 'menu_apuracao_servicos',
+  batchProcessMonitor: 'menu_apuracao_servicos',
   modalBancadaTpPagtoCondicao: 'menu_modal_bancada_tp_pagto_condicao',
   modalBancadaTpPagtoCondicaoValor: 'menu_modal_bancada_tp_pagto_condicao_valor',
   kmValor: 'menu_km_valor',
@@ -6536,7 +6547,7 @@ function App() {
       return
     }
 
-    const confirmed = window.confirm(`Excluir ${row.items.length} registro(s) do grupo ${row.representativeItem.mesAno} / ${row.dreText} / ${row.representativeItem.revisao} / ${row.tipoPessoaLabel}?`)
+    const confirmed = window.confirm(`Excluir ${row.items.length} registro(s) do grupo ${row.representativeItem.mesAno} / ${row.dreText} / ${row.tipoPessoaLabel} / ${row.representativeItem.revisao} / ${row.representativeItem.dataReferencia || 'Sem data referencia'}?`)
 
     if (!confirmed) {
       return
@@ -7364,7 +7375,7 @@ function App() {
   const canGoToPreviousApuracaoFinanceiraPage = apuracaoFinanceiraPage > 1
   const canGoToNextApuracaoFinanceiraPage = apuracaoFinanceiraPage < apuracaoFinanceiraTotalPages
   const apuracaoFinanceiraGridRows = apuracaoFinanceiraItems.map<ApuracaoFinanceiraGridRow>((item) => ({
-    key: formatApuracaoFinanceiraKey(item),
+    key: formatApuracaoFinanceiraGridKey(item),
     representativeItem: item,
     items: [item],
     dreCodigos: [item.dreCodigo],
@@ -7859,7 +7870,7 @@ function App() {
                 </li> : null}
                 {hasOperationalFinanceiroAccess ? <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' || activeView === 'batchProcessMonitor' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalFinanceiro')}
                     role="button"
                     aria-expanded={!collapsedMenuGroups.operacionalFinanceiro}
@@ -7880,6 +7891,12 @@ function App() {
                       onClick={() => setActiveView('resumoFinanceiro')}
                     >
                       Resumo Financeiro
+                    </li> : null}
+                    {isViewAllowed('batchProcessMonitor', menuPermissionKeys) ? <li
+                      className={`menu-subitem menu-subitem-nested ${activeView === 'batchProcessMonitor' ? 'menu-subitem-active' : ''}`}
+                      onClick={() => setActiveView('batchProcessMonitor')}
+                    >
+                      Monitor de Lotes
                     </li> : null}
                     {isViewAllowed('apuracaoFinanceira', menuPermissionKeys) || isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                       <div
@@ -7909,7 +7926,7 @@ function App() {
                       <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.apuracaoFinanceira ? 'menu-sublist-hidden' : ''}`}>
                         {isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                           <div
-                            className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
+                            className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' ? 'menu-subitem-active' : ''}`}
                             onClick={() => {
                               setActiveView('apuracaoServicos')
                               toggleMenuGroup('apuracaoServicos')
@@ -7934,6 +7951,12 @@ function App() {
                               onClick={() => setActiveView('apontamentoServicos')}
                             >
                               Apontamento Servicos
+                            </li> : null}
+                            {isViewAllowed('remuneracaoServicos', menuPermissionKeys) ? <li
+                              className={`menu-subitem menu-subitem-nested ${activeView === 'remuneracaoServicos' ? 'menu-subitem-active' : ''}`}
+                              onClick={() => setActiveView('remuneracaoServicos')}
+                            >
+                              Remuneracao Servicos
                             </li> : null}
                           </ul>
                         </li> : null}
@@ -8592,7 +8615,7 @@ function App() {
                                 <th>OS</th>
                                 <th>Credenciada</th>
                                 <th>CRM / Placa</th>
-                                <th className="dashboard-drilldown-actions-column">Acoes</th>
+                                <th className="dashboard-drilldown-actions-column">Ações</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -8838,7 +8861,7 @@ function App() {
                             Descricao <span>{getSortIndicator('descricao')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -9054,7 +9077,7 @@ function App() {
                             Descricao <span>{getModalidadeSortIndicator('descricao')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -9311,7 +9334,7 @@ function App() {
                             Qtde Fim <span>{getCondicaoSortIndicator('qtdeFim')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -9528,7 +9551,7 @@ function App() {
                             Descricao <span>{getTipoPgtoSortIndicator('descricao')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -9762,7 +9785,7 @@ function App() {
                             Nome Tipo Escola <span>{getTipoEscolaSortIndicator('descricao')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -10011,7 +10034,7 @@ function App() {
                             Aliquota <span>{getAliquotaOptanteSortIndicator('aliquota')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -10101,6 +10124,10 @@ function App() {
           <ApuracaoServicosView />
         ) : activeView === 'apontamentoServicos' ? (
           <ApontamentoServicosView />
+        ) : activeView === 'remuneracaoServicos' ? (
+          <RemuneracaoServicosView />
+        ) : activeView === 'batchProcessMonitor' ? (
+          <BatchProcessMonitorView />
         ) : activeView === 'modalBancadaTpPagtoCondicao' ? (
           <>
             <div className="content-copy">
@@ -10306,7 +10333,7 @@ function App() {
                         <th>Tipo de Pagamento</th>
                         <th>Condicao</th>
                         <th>Faixa</th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -10584,7 +10611,7 @@ function App() {
                         <th>Condicao</th>
                         <th>Data</th>
                         <th>Valor</th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -10838,7 +10865,7 @@ function App() {
                             Dias Letivos <span>{getDiasLetivosSortIndicator('diasLetivos')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -11091,7 +11118,7 @@ function App() {
                         <th>Condicao</th>
                         <th>Data</th>
                         <th>Valor</th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -11363,7 +11390,7 @@ function App() {
                         <th>Tipo Continua</th>
                         <th>Data</th>
                         <th>Valor</th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -11597,7 +11624,7 @@ function App() {
                             Descricao <span>{getTipoBancadaSortIndicator('descricao')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -11926,7 +11953,7 @@ function App() {
                             Titular do CRM <span>{getTitularSortIndicator('titular')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -11936,15 +11963,15 @@ function App() {
                           <td>{item.cnpj_cpf}</td>
                           <td>{item.titular}</td>
                           <td>
-                            <div className="dre-row-actions">
-                              <button type="button" className="row-action-button" onClick={() => handleStartViewTitular(item)}>
-                                Consulta
+                            <div className="dre-row-actions dre-row-actions-icons">
+                              <button type="button" className="row-action-button row-action-view" onClick={() => handleStartViewTitular(item)} title="Consulta" aria-label="Consulta">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>
                               </button>
-                              {hasTitularEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTitular(item)}>
-                                Alterar
+                              {hasTitularEditFormAccess ? <button type="button" className="row-action-button row-action-edit" onClick={() => handleStartEditTitular(item)} title="Alterar" aria-label="Alterar">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5 20.5 7.5 7 21H3v-4L16.5 3.5Z"/></svg>
                               </button> : null}
-                              {hasDeleteFormPermission(appFormEditAccessKeys.titular) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTitular(item)}>
-                                Excluir
+                              {hasDeleteFormPermission(appFormEditAccessKeys.titular) ? <button type="button" className="row-action-button row-action-delete" onClick={() => handleDeleteTitular(item)} title="Excluir" aria-label="Excluir">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                               </button> : null}
                             </div>
                           </td>
@@ -12141,7 +12168,7 @@ function App() {
                             Descricao <span>{getMarcaModeloSortIndicator('descricao')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -12415,7 +12442,7 @@ function App() {
                         <th>Condicao</th>
                         <th>Qtde da Condicao</th>
                         <th>Data</th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -12669,7 +12696,7 @@ function App() {
                             Descricao <span>{getSeguradoraSortIndicator('descricao')}</span>
                           </button>
                         </th>
-                        <th className="dre-actions-column">Acoes</th>
+                        <th className="dre-actions-column">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -13006,7 +13033,7 @@ function App() {
                   onClick={handleStartInsertApuracaoFinanceira}
                   disabled={isSavingApuracaoFinanceira || isDeletingApuracaoFinanceira || isLoadingApuracaoFinanceiraOptions}
                 >
-                  Inserir registro
+                  Processamento do apontamento
                 </button>
                 <button
                   type="button"
@@ -13021,7 +13048,7 @@ function App() {
                   <input
                     className="management-filter-input"
                     type="text"
-                    placeholder="Filtrar por mes/ano, DRE ou situacao"
+                    placeholder="Filtrar por mes/ano, DRE, situacao ou data referencia"
                     value={apuracaoFinanceiraSearch}
                     onChange={(event) => setApuracaoFinanceiraSearch(event.target.value)}
                   />
@@ -13373,13 +13400,24 @@ function App() {
                           </button>
                         </th>
                         <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortApuracaoFinanceira('dreCodigo')}>
+                            DRE <span>{getApuracaoFinanceiraSortIndicator('dreCodigo')}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortApuracaoFinanceira('tipoPessoa')}>
+                            Tipo Pessoa <span>{getApuracaoFinanceiraSortIndicator('tipoPessoa')}</span>
+                          </button>
+                        </th>
+                        <th>
                           <button type="button" className="dre-sort-button" onClick={() => handleSortApuracaoFinanceira('revisao')}>
                             Revisao <span>{getApuracaoFinanceiraSortIndicator('revisao')}</span>
                           </button>
                         </th>
-                        <th>DRE</th>
                         <th>
-                          Tipo Pessoa
+                          <button type="button" className="dre-sort-button" onClick={() => handleSortApuracaoFinanceira('dataReferencia')}>
+                            Data referencia <span>{getApuracaoFinanceiraSortIndicator('dataReferencia')}</span>
+                          </button>
                         </th>
                         <th>
                           <button type="button" className="dre-sort-button" onClick={() => handleSortApuracaoFinanceira('situacao')}>
@@ -13393,9 +13431,10 @@ function App() {
                       {apuracaoFinanceiraGridRows.map((row) => (
                         <tr key={row.key}>
                           <td>{row.representativeItem.mesAno}</td>
-                          <td>{row.representativeItem.revisao}</td>
                           <td>{row.dreText}</td>
                           <td>{row.tipoPessoaLabel}</td>
+                          <td>{row.representativeItem.revisao}</td>
+                          <td>{row.representativeItem.dataReferencia || '-'}</td>
                           <td>{row.representativeItem.situacao}</td>
                           <td>
                             <div className="dre-row-actions">

@@ -275,6 +275,11 @@
   justify-content: flex-end;
 }
 
+.remuneracao-servicos-toolbar-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .apontamento-servicos-hero {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -342,6 +347,23 @@
   width: 16px;
   height: 16px;
   accent-color: #795b38;
+}
+
+.remuneracao-servicos-visibility-toggles {
+  display: grid;
+  gap: 4px;
+}
+
+.remuneracao-servicos-grid-top-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.apontamento-servicos-grid-top-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 
 .apontamento-servicos-page-size-control {
@@ -412,19 +434,19 @@
 }
 
 .remuneracao-servicos-table {
-  min-width: 1520px;
+  min-width: 1354px;
 }
 
 .remuneracao-servicos-table th:first-child,
 .remuneracao-servicos-table td:first-child {
-  width: 300px;
-  min-width: 300px;
+  width: 154px;
+  min-width: 154px;
 }
 
 .remuneracao-servicos-table th:nth-child(2),
 .remuneracao-servicos-table td:nth-child(2) {
-  width: 120px;
-  min-width: 120px;
+  width: 80px;
+  min-width: 80px;
 }
 
 .apontamento-servicos-table td {
@@ -451,10 +473,43 @@
 }
 
 .remuneracao-servicos-table.apontamento-servicos-table-sem-acumulados th.apontamento-servicos-header-compact:first-child {
-  width: 300px;
-  min-width: 300px;
+  width: 154px;
+  min-width: 154px;
   text-align: left;
   padding-left: 10px;
+}
+
+.remuneracao-servicos-table.apontamento-servicos-table-sem-acumulados th:first-child,
+.remuneracao-servicos-table.apontamento-servicos-table-sem-acumulados td:first-child {
+  width: 154px;
+  min-width: 154px;
+}
+
+.remuneracao-servicos-header-line {
+  display: block;
+}
+
+.remuneracao-servicos-table.remuneracao-servicos-table-only-continua {
+  width: 100%;
+  min-width: 300px;
+}
+
+.remuneracao-servicos-table.remuneracao-servicos-table-only-continua th:nth-child(n + 2),
+.remuneracao-servicos-table.remuneracao-servicos-table-only-continua td:nth-child(n + 2) {
+  width: 72px;
+  min-width: 72px;
+  text-align: left;
+}
+
+.remuneracao-servicos-table.remuneracao-servicos-table-only-continua .remuneracao-servicos-header-line {
+  text-align: left;
+}
+
+.remuneracao-servicos-table.remuneracao-servicos-table-only-continua .apontamento-servicos-grid-input {
+  width: 78px;
+  text-align: left;
+  padding-left: 6px;
+  padding-right: 4px;
 }
 
 .apontamento-servicos-table th:nth-child(n + 3),
@@ -625,7 +680,7 @@
 }
 
 .apontamento-servicos-grid-input {
-  width: 50px;
+  width: 64px;
   border: 1px solid rgba(121, 91, 56, 0.24);
   background: rgba(255, 255, 255, 0.92);
   min-height: 32px;
@@ -1364,6 +1419,132 @@
   color: #56746f;
 }
 
+.batch-summary-grid {
+  width: min(100%, 1120px);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.batch-summary-card {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.batch-summary-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.76rem;
+  color: var(--text-soft);
+}
+
+.batch-summary-card strong {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 1.8rem;
+  color: #213139;
+}
+
+.batch-monitor-card h3 {
+  margin: 0;
+}
+
+.batch-monitor-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.batch-monitor-table-wrapper {
+  width: 100%;
+  overflow: auto;
+}
+
+.batch-monitor-table-wrapper .management-table {
+  min-width: 980px;
+}
+
+.batch-monitor-row-selected {
+  background: rgba(255, 243, 215, 0.65);
+}
+
+.batch-process-main-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.batch-process-main-cell span {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.batch-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid transparent;
+}
+
+.batch-status-pill-running {
+  color: #854d0e;
+  background: rgba(254, 240, 138, 0.35);
+  border-color: rgba(202, 138, 4, 0.35);
+}
+
+.batch-status-pill-completed {
+  color: #166534;
+  background: rgba(187, 247, 208, 0.35);
+  border-color: rgba(22, 163, 74, 0.34);
+}
+
+.batch-status-pill-failed {
+  color: #991b1b;
+  background: rgba(254, 202, 202, 0.35);
+  border-color: rgba(220, 38, 38, 0.32);
+}
+
+.batch-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.batch-details-grid p {
+  margin: 0;
+}
+
+.batch-details-message {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(121, 91, 56, 0.2);
+}
+
+.batch-json-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(28, 46, 59, 0.92);
+  color: #d2f2ed;
+}
+
+.batch-json-box h4 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.batch-json-box pre {
+  margin: 0;
+  overflow: auto;
+  font-size: 0.8rem;
+}
+
 .dashboard-grid-header {
   margin-bottom: 14px;
 }
@@ -1842,6 +2023,9 @@
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .row-action-edit {
@@ -1852,6 +2036,24 @@
 .row-action-delete {
   background: rgba(154, 52, 18, 0.12);
   color: #9a3412;
+}
+
+.dre-row-actions-icons .row-action-button {
+  flex: 0 0 auto;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  font-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  gap: 0;
+}
+
+.dre-row-actions-icons .row-action-button svg {
+  width: 18px;
+  height: 18px;
 }
 
 .management-empty-state,

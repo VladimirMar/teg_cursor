@@ -21,6 +21,7 @@ const resolveRuntimeRoot = () => {
 const runtimeRoot = resolveRuntimeRoot()
 const port = Number(process.env.HOMOL_WEB_PORT ?? 4173)
 const host = process.env.HOMOL_WEB_HOST ?? '10.36.144.147'
+const fallbackHost = process.env.HOMOL_WEB_FALLBACK_HOST ?? '127.0.0.1'
 const apiTarget = process.env.HOMOL_API_TARGET ?? 'http://127.0.0.1:3002'
 
 const mimeTypes = {
@@ -175,7 +176,29 @@ const server = createServer(async (request, response) => {
   }
 })
 
-server.listen(port, host, () => {
-  console.log(`Homologacao web disponivel em http://${host}:${port}`)
-  console.log(`Proxy /api -> ${apiTarget}`)
+const startServer = (listenHost, onRetry) => {
+  const handleListening = () => {
+    console.log(`Homologacao web disponivel em http://${listenHost}:${port}`)
+    console.log(`Proxy /api -> ${apiTarget}`)
+  }
+
+  const handleError = (error) => {
+    if (error?.code === 'EADDRNOTAVAIL' && listenHost !== fallbackHost) {
+      server.off('error', handleError)
+      server.off('listening', handleListening)
+      onRetry(error)
+      return
+    }
+
+    throw error
+  }
+
+  server.once('error', handleError)
+  server.once('listening', handleListening)
+  server.listen(port, listenHost)
+}
+
+startServer(host, () => {
+  console.warn(`Host ${host} indisponivel; usando fallback local ${fallbackHost}.`)
+  startServer(fallbackHost, () => {})
 })

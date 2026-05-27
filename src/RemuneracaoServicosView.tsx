@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { listDreItemsPaginated } from './services/dre'
 import type { DreItem } from './services/dre'
 import {
+  getRemuneracaoServicosBatchStatus,
   listRemuneracaoServicosItems,
   saveRemuneracaoServicosItems,
+  startRemuneracaoServicosBatch,
+  type RemuneracaoServicosBatchStatus,
   type RemuneracaoServicosItem,
   type RemuneracaoServicosSaveItem,
 } from './services/remuneracaoServicos'
@@ -15,6 +18,7 @@ import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
 import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
+type MonetaryColumnVisibilityMode = 'all' | 'continua-only' | 'km-valor-only'
 
 type RemuneracaoServicosFilters = {
   mesAno: string
@@ -123,6 +127,36 @@ const formatDateLabel = (value: string) => {
 
 const formatPeriodLabel = (item: Pick<RemuneracaoServicosItem, 'periodoInicio' | 'periodoFim'>) => {
   return [formatDateLabel(item.periodoInicio), formatDateLabel(item.periodoFim)].filter(Boolean).join(' a ')
+}
+
+const formatBatchTimestamp = (value: string) => {
+  if (!value) {
+    return '-'
+  }
+
+  const parsedDate = new Date(value)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value
+  }
+
+  return parsedDate.toLocaleString('pt-BR')
+}
+
+const formatBatchStatusLabel = (value: RemuneracaoServicosBatchStatus['status']) => {
+  if (value === 'running') {
+    return 'Executando'
+  }
+
+  if (value === 'passed') {
+    return 'Concluido'
+  }
+
+  if (value === 'failed') {
+    return 'Falhou'
+  }
+
+  return 'Sem execucao'
 }
 
 const formatCrmcDisplay = (value: string) => {
@@ -246,50 +280,43 @@ const areSavePayloadItemsEqual = (left: RemuneracaoServicosSaveItem, right: Remu
     && left.continuaCadeirante === right.continuaCadeirante
 }
 
-const getOrdemServicoGroupRowIndex = (items: RemuneracaoServicosItem[], itemIndex: number) => {
-  const currentGroupKey = buildOrdemServicoGroupKey(items[itemIndex])
-  let groupRowIndex = 0
-
-  for (let index = itemIndex - 1; index >= 0; index -= 1) {
-    if (buildOrdemServicoGroupKey(items[index]) !== currentGroupKey) {
-      break
-    }
-
-    groupRowIndex += 1
-  }
-
-  return groupRowIndex
-}
-
 const monetaryColumns = [
-  { key: 'tegRegularFixo', label: 'TEG Regular fixo' },
-  { key: 'tegRegularPercapita', label: 'TEG Regular percapita' },
-  { key: 'tegAcessivelFixo', label: 'TEG Acessivel fixo' },
-  { key: 'tegAcessivelPercapita', label: 'TEG Acessivel percapita' },
-  { key: 'tegEspecialRegularFixo', label: 'TEG Especial regular fixo' },
-  { key: 'tegEspecialRegularPercapita', label: 'TEG Especial regular percapita' },
-  { key: 'tegEspecialAcessivelFixo', label: 'TEG Especial acessivel fixo' },
-  { key: 'tegEspecialAcessivelPercapita', label: 'TEG Especial acessivel percapita' },
-  { key: 'tegCrecheFixo', label: 'TEG Creche fixo' },
-  { key: 'tegCrechePercapita', label: 'TEG Creche percapita' },
-  { key: 'kmValor', label: 'KM valor' },
-  { key: 'continuaRegular', label: 'Continua regular' },
-  { key: 'continuaCadeirante', label: 'Continua cadeirante' },
+  { key: 'tegRegularFixo', line1: 'TEG', line2: 'Reg.', line3: 'Fixo' },
+  { key: 'tegRegularPercapita', line1: 'TEG', line2: 'Reg.', line3: 'Percapita' },
+  { key: 'tegAcessivelFixo', line1: 'TEG', line2: 'Aces.', line3: 'Fixo' },
+  { key: 'tegAcessivelPercapita', line1: 'TEG', line2: 'Aces.', line3: 'Percapita' },
+  { key: 'tegEspecialRegularFixo', line1: 'TEG Esp.', line2: 'Reg.', line3: 'Fixo' },
+  { key: 'tegEspecialRegularPercapita', line1: 'TEG Esp.', line2: 'Reg.', line3: 'Percapita' },
+  { key: 'tegEspecialAcessivelFixo', line1: 'TEG Esp.', line2: 'Aces.', line3: 'Fixo' },
+  { key: 'tegEspecialAcessivelPercapita', line1: 'TEG Esp.', line2: 'Aces.', line3: 'Percapita' },
+  { key: 'tegCrecheFixo', line1: 'TEG', line2: 'Creche', line3: 'Fixo' },
+  { key: 'tegCrechePercapita', line1: 'TEG', line2: 'Creche', line3: 'Percapita' },
+  { key: 'kmValor', line1: 'KM', line2: '', line3: 'Valor' },
+  { key: 'continuaRegular', line1: 'Continua', line2: '', line3: 'Reg.' },
+  { key: 'continuaCadeirante', line1: 'Continua', line2: '', line3: 'Cadeirante' },
 ] as const
 
 type MonetaryColumnKey = (typeof monetaryColumns)[number]['key']
 
+const CONTINUA_MONETARY_COLUMN_KEYS: ReadonlySet<MonetaryColumnKey> = new Set([
+  'continuaRegular',
+  'continuaCadeirante',
+])
+const KM_VALOR_MONETARY_COLUMN_KEYS: ReadonlySet<MonetaryColumnKey> = new Set([
+  'kmValor',
+])
+
 export default function RemuneracaoServicosView() {
   const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY) || hasEditableFormPermission(LEGACY_FORM_ACCESS_KEY)
   const initialMesAno = getCurrentMonthYear()
-  const initialDataReferencia = getCurrentIsoDate()
+  const initialDataReferencia = getFirstDateOfMonthYear(initialMesAno) || getCurrentIsoDate()
   const [dreOptions, setDreOptions] = useState<DreItem[]>([])
   const [mesAno, setMesAno] = useState(initialMesAno)
   const [dataOperacaoInput, setDataOperacaoInput] = useState(formatIsoDateToDisplay(initialDataReferencia))
   const [dreCodigo, setDreCodigo] = useState('')
   const [crmcCondutor, setCrmcCondutor] = useState('')
   const [placa, setPlaca] = useState('')
-  const [revisao, setRevisao] = useState('0')
+  const [revisao, setRevisao] = useState('')
   const [tipoPessoa, setTipoPessoa] = useState<ApuracaoTipoPessoa>('PF')
   const [appliedFilters, setAppliedFilters] = useState<RemuneracaoServicosFilters>({
     mesAno: initialMesAno,
@@ -297,7 +324,7 @@ export default function RemuneracaoServicosView() {
     dreCodigo: '',
     crmcCondutor: '',
     placa: '',
-    revisao: '0',
+    revisao: '',
     tipoPessoa: 'PF',
   })
   const [items, setItems] = useState<RemuneracaoServicosItem[]>([])
@@ -313,14 +340,56 @@ export default function RemuneracaoServicosView() {
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isCalculating, setIsCalculating] = useState(false)
+  const [isBatchStatusDialogVisible, setIsBatchStatusDialogVisible] = useState(false)
+  const [isLoadingBatchStatus, setIsLoadingBatchStatus] = useState(false)
+  const [remuneracaoBatchStatus, setRemuneracaoBatchStatus] = useState<RemuneracaoServicosBatchStatus | null>(null)
+  const [monetaryColumnVisibilityMode, setMonetaryColumnVisibilityMode] = useState<MonetaryColumnVisibilityMode>('all')
   const shouldFocusFirstGridRecordRef = useRef(false)
   const topScrollWrapperRef = useRef<HTMLDivElement | null>(null)
   const topScrollContentRef = useRef<HTMLDivElement | null>(null)
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
-  const tableColumnCount = 1 + monetaryColumns.length
   const monthYearMismatchMessage = 'A data de operacao deve pertencer ao mes/ano informado.'
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
+  const isProcessingBatch = isCalculating || isLoadingBatchStatus || Boolean(remuneracaoBatchStatus?.isRunning)
+  const visibleMonetaryColumns = useMemo(() => {
+    if (monetaryColumnVisibilityMode === 'continua-only') {
+      return monetaryColumns.filter((column) => CONTINUA_MONETARY_COLUMN_KEYS.has(column.key))
+    }
+
+    if (monetaryColumnVisibilityMode === 'km-valor-only') {
+      return monetaryColumns.filter((column) => KM_VALOR_MONETARY_COLUMN_KEYS.has(column.key))
+    }
+
+    return monetaryColumns
+  }, [monetaryColumnVisibilityMode])
+  const loadedItemsByRowKey = useMemo(() => {
+    return new Map(loadedItemsSnapshot.map((item) => [buildRowKey(item), buildSavePayloadItem(item)]))
+  }, [loadedItemsSnapshot])
+  const rowGroupInfoByIndex = useMemo(() => {
+    const groupInfoByIndex = new Map<number, { rowGroupIndex: number; isFirstRowOfGroup: boolean }>()
+    let previousGroupKey = ''
+    let currentRowGroupIndex = 0
+
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+      const currentGroupKey = buildOrdemServicoGroupKey(items[itemIndex])
+      const isFirstRow = itemIndex === 0
+      const isFirstRowOfGroup = isFirstRow || currentGroupKey !== previousGroupKey
+
+      if (isFirstRowOfGroup) {
+        currentRowGroupIndex = 0
+      } else {
+        currentRowGroupIndex += 1
+      }
+
+      groupInfoByIndex.set(itemIndex, { rowGroupIndex: currentRowGroupIndex, isFirstRowOfGroup })
+      previousGroupKey = currentGroupKey
+    }
+
+    return groupInfoByIndex
+  }, [items])
+  const tableColumnCount = 1 + visibleMonetaryColumns.length
 
   const openValidationDialog = useCallback((message: string) => {
     setValidationDialogMessage(message)
@@ -330,6 +399,10 @@ export default function RemuneracaoServicosView() {
   const closeValidationDialog = useCallback(() => {
     setIsValidationDialogVisible(false)
     setValidationDialogMessage('')
+  }, [])
+
+  const closeBatchStatusDialog = useCallback(() => {
+    setIsBatchStatusDialogVisible(false)
   }, [])
 
   const handleMesAnoChange = (value: string) => {
@@ -371,7 +444,45 @@ export default function RemuneracaoServicosView() {
     }
   }, [])
 
-  const loadItems = useCallback(async (filters: RemuneracaoServicosFilters, pageToLoad: number, pageSizeToLoad: number) => {
+  const syncBatchStatus = useCallback(async (options: { openDialog?: boolean } = {}) => {
+    setIsLoadingBatchStatus(true)
+
+    try {
+      const result = await getRemuneracaoServicosBatchStatus()
+      setRemuneracaoBatchStatus(result)
+      setStatusTone(result.status === 'failed' ? 'error' : result.status === 'passed' ? 'success' : 'idle')
+      setStatusMessage(result.message)
+
+      if (options.openDialog) {
+        setIsBatchStatusDialogVisible(true)
+      }
+
+      return result
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao consultar o status do processamento em lote.'
+      setStatusTone('error')
+      setStatusMessage(message)
+
+      if (options.openDialog) {
+        setIsBatchStatusDialogVisible(true)
+      }
+
+      return null
+    } finally {
+      setIsLoadingBatchStatus(false)
+    }
+  }, [])
+
+  const openBatchStatusDialog = useCallback(async () => {
+    await syncBatchStatus({ openDialog: true })
+  }, [syncBatchStatus])
+
+  const loadItems = useCallback(async (
+    filters: RemuneracaoServicosFilters,
+    pageToLoad: number,
+    pageSizeToLoad: number,
+    options: { silent?: boolean } = {},
+  ) => {
     if (!isValidMonthYear(filters.mesAno)) {
       openValidationDialog('Informe um mes/ano valido para consultar a remuneracao.')
       return
@@ -387,9 +498,11 @@ export default function RemuneracaoServicosView() {
       return
     }
 
-    setIsLoading(true)
-    setStatusTone('idle')
-    setStatusMessage('Carregando remuneracao de servicos...')
+    if (!options.silent) {
+      setIsLoading(true)
+      setStatusTone('idle')
+      setStatusMessage('Carregando remuneracao de servicos...')
+    }
 
     try {
       const parsedRevisao = Number.parseInt(filters.revisao, 10)
@@ -405,15 +518,16 @@ export default function RemuneracaoServicosView() {
         pageSize: pageSizeToLoad,
       })
 
-      setAppliedFilters(filters)
       setItems(result.items)
       setLoadedItemsSnapshot(result.items)
       setTotalItems(result.total)
       setTotalPages(result.totalPages)
       setPage(result.page)
       setPageSize(result.pageSize)
-      setStatusTone('idle')
-      setStatusMessage(result.items.length ? '' : 'Nenhum registro de remuneracao encontrado para os filtros informados.')
+      if (!options.silent) {
+        setStatusTone('idle')
+        setStatusMessage(result.items.length ? '' : 'Nenhum registro de remuneracao encontrado para os filtros informados.')
+      }
 
       if (result.items.length) {
         shouldFocusFirstGridRecordRef.current = true
@@ -427,7 +541,9 @@ export default function RemuneracaoServicosView() {
       setTotalItems(0)
       setTotalPages(1)
     } finally {
-      setIsLoading(false)
+      if (!options.silent) {
+        setIsLoading(false)
+      }
     }
   }, [monthYearMismatchMessage, openValidationDialog])
 
@@ -521,7 +637,7 @@ export default function RemuneracaoServicosView() {
         window.removeEventListener('resize', syncScrollMetrics)
       }
     }
-  }, [items, pageSize])
+  }, [items, pageSize, visibleMonetaryColumns.length])
 
   const handleFilterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -534,11 +650,12 @@ export default function RemuneracaoServicosView() {
       dreCodigo,
       crmcCondutor: crmcCondutor.trim(),
       placa: placa.trim(),
-      revisao: revisao.trim() || '0',
+      revisao: revisao.trim(),
       tipoPessoa,
     }
 
-    await loadItems(nextFilters, 1, pageSize)
+    setAppliedFilters(nextFilters)
+    setPage(1)
   }
 
   const handleClearFilters = () => {
@@ -550,7 +667,7 @@ export default function RemuneracaoServicosView() {
     setDreCodigo('')
     setCrmcCondutor('')
     setPlaca('')
-    setRevisao('0')
+    setRevisao('')
     setTipoPessoa('PF')
     setAppliedFilters({
       mesAno: defaultMesAno,
@@ -558,7 +675,7 @@ export default function RemuneracaoServicosView() {
       dreCodigo: '',
       crmcCondutor: '',
       placa: '',
-      revisao: '0',
+      revisao: '',
       tipoPessoa: 'PF',
     })
     setPage(1)
@@ -576,14 +693,15 @@ export default function RemuneracaoServicosView() {
     return loadedItemsSnapshot.some((item) => {
       const rowKey = buildRowKey(item)
       const currentItem = currentByKey.get(rowKey)
+      const originalItem = loadedItemsByRowKey.get(rowKey)
 
-      if (!currentItem) {
+      if (!currentItem || !originalItem) {
         return true
       }
 
-      return !areSavePayloadItemsEqual(currentItem, buildSavePayloadItem(item))
+      return !areSavePayloadItemsEqual(currentItem, originalItem)
     })
-  }, [items, loadedItemsSnapshot])
+  }, [items, loadedItemsByRowKey, loadedItemsSnapshot])
 
   const handleMoneyFieldChange = useCallback((rowKey: string, field: MonetaryColumnKey, value: string) => {
     const normalizedInput = normalizeMoneyInput(value)
@@ -621,11 +739,10 @@ export default function RemuneracaoServicosView() {
       const payloadItems = items
         .map((item) => ({
           rowKey: buildRowKey(item),
-          item,
           current: buildSavePayloadItem(item),
-          original: loadedItemsSnapshot.find((snapshotItem) => buildRowKey(snapshotItem) === buildRowKey(item)),
+          original: loadedItemsByRowKey.get(buildRowKey(item)),
         }))
-        .filter(({ original, current }) => !original || !areSavePayloadItemsEqual(current, buildSavePayloadItem(original)))
+        .filter(({ original, current }) => !original || !areSavePayloadItemsEqual(current, original))
         .map(({ current }) => current)
 
       if (!payloadItems.length) {
@@ -650,7 +767,7 @@ export default function RemuneracaoServicosView() {
 
       setStatusTone('success')
       setStatusMessage(message || 'Remuneracao de servicos gravada com sucesso.')
-      await loadItems(appliedFilters, page, pageSize)
+      await loadItems(appliedFilters, page, pageSize, { silent: true })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha ao salvar a remuneracao de servicos.'
       setStatusTone('error')
@@ -658,7 +775,62 @@ export default function RemuneracaoServicosView() {
     } finally {
       setIsSaving(false)
     }
-  }, [appliedFilters, hasEditPermission, hasPendingChanges, items, loadItems, loadedItemsSnapshot, page, pageSize])
+  }, [appliedFilters, hasEditPermission, hasPendingChanges, items, loadItems, loadedItemsByRowKey, page, pageSize])
+
+  const handleCalculate = useCallback(async () => {
+    if (!isValidMonthYear(appliedFilters.mesAno) || !appliedFilters.dataReferencia) {
+      openValidationDialog('Informe um mes/ano e data de operacao validos antes de calcular a remuneracao.')
+      return
+    }
+
+    if (!window.confirm('Autoriza a execucao do processamento de remuneracao em lote?')) {
+      return
+    }
+
+    setIsCalculating(true)
+    setStatusTone('idle')
+    setStatusMessage('Iniciando processamento em lote da remuneracao de servicos...')
+
+    try {
+      const parsedRevisao = Number.parseInt(appliedFilters.revisao, 10)
+      const result = await startRemuneracaoServicosBatch({
+        mesAno: appliedFilters.mesAno,
+        dataReferencia: appliedFilters.dataReferencia,
+        dreCodigo: appliedFilters.dreCodigo,
+        crmcCondutor: appliedFilters.crmcCondutor,
+        placa: appliedFilters.placa,
+        revisao: Number.isInteger(parsedRevisao) ? parsedRevisao : undefined,
+        tipoPessoa: appliedFilters.tipoPessoa,
+      })
+
+      setRemuneracaoBatchStatus(result)
+      setStatusTone(result.status === 'failed' ? 'error' : 'idle')
+      setStatusMessage(result.message)
+      setIsBatchStatusDialogVisible(true)
+
+      if (result.isRunning) {
+        void syncBatchStatus()
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao iniciar o processamento em lote da remuneracao de servicos.'
+      setStatusTone('error')
+      setStatusMessage(message)
+    } finally {
+      setIsCalculating(false)
+    }
+  }, [appliedFilters, openValidationDialog, syncBatchStatus])
+
+  useEffect(() => {
+    if (!isBatchStatusDialogVisible || !remuneracaoBatchStatus?.isRunning) {
+      return undefined
+    }
+
+    const timerId = window.setInterval(() => {
+      void syncBatchStatus()
+    }, 3000)
+
+    return () => window.clearInterval(timerId)
+  }, [isBatchStatusDialogVisible, remuneracaoBatchStatus?.isRunning, syncBatchStatus])
 
   const handlePageSizeChange = (value: string) => {
     const parsedValue = Number.parseInt(value, 10)
@@ -695,7 +867,7 @@ export default function RemuneracaoServicosView() {
                 placeholder="mm/aaaa"
                 value={mesAno}
                 onChange={(event) => handleMesAnoChange(event.target.value)}
-                disabled={isLoading || isSaving}
+                disabled={isLoading || isSaving || isProcessingBatch}
               />
             </label>
             <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-data-operacao">
@@ -708,7 +880,7 @@ export default function RemuneracaoServicosView() {
                 placeholder="dd/mm/aaaa"
                 value={dataOperacaoInput}
                 onChange={(event) => handleDataOperacaoInputChange(event.target.value)}
-                disabled={isLoading || isSaving}
+                disabled={isLoading || isSaving || isProcessingBatch}
               />
             </label>
             <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-dre">
@@ -718,7 +890,7 @@ export default function RemuneracaoServicosView() {
                 className="management-filter-select apontamento-servicos-filter-input"
                 value={dreCodigo}
                 onChange={(event) => setDreCodigo(event.target.value)}
-                disabled={isLoading || isSaving || isLoadingOptions}
+                disabled={isLoading || isSaving || isLoadingOptions || isProcessingBatch}
               >
                 <option value="">Todas</option>
                 {dreOptions.map((item) => (
@@ -736,7 +908,7 @@ export default function RemuneracaoServicosView() {
                 type="text"
                 value={crmcCondutor}
                 onChange={(event) => setCrmcCondutor(event.target.value)}
-                disabled={isLoading || isSaving}
+                disabled={isLoading || isSaving || isProcessingBatch}
               />
             </label>
             <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-placa">
@@ -747,7 +919,7 @@ export default function RemuneracaoServicosView() {
                 type="text"
                 value={placa}
                 onChange={(event) => setPlaca(event.target.value)}
-                disabled={isLoading || isSaving}
+                disabled={isLoading || isSaving || isProcessingBatch}
               />
             </label>
             <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-revisao">
@@ -759,7 +931,7 @@ export default function RemuneracaoServicosView() {
                 inputMode="numeric"
                 value={revisao}
                 onChange={(event) => setRevisao(normalizeIntegerInput(event.target.value))}
-                disabled={isLoading || isSaving}
+                disabled={isLoading || isSaving || isProcessingBatch}
               />
             </label>
             <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-tipo-pessoa">
@@ -769,7 +941,7 @@ export default function RemuneracaoServicosView() {
                 className="management-filter-select apontamento-servicos-filter-input"
                 value={tipoPessoa}
                 onChange={(event) => setTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
-                disabled={isLoading || isSaving}
+                disabled={isLoading || isSaving || isProcessingBatch}
               >
                 {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -779,36 +951,38 @@ export default function RemuneracaoServicosView() {
               </select>
             </label>
             <div className="apontamento-servicos-filter-actions">
-              <button type="submit" className="secondary-button management-filter-button" disabled={isLoading || isSaving}>
+              <button type="submit" className="secondary-button management-filter-button" disabled={isLoading || isSaving || isProcessingBatch}>
                 Filtrar
               </button>
-              <button type="button" className="secondary-button management-filter-button" onClick={handleClearFilters} disabled={isLoading || isSaving}>
+              <button type="button" className="secondary-button management-filter-button" onClick={handleClearFilters} disabled={isLoading || isSaving || isProcessingBatch}>
                 Limpar
               </button>
             </div>
           </form>
-          <div className="apontamento-servicos-toolbar-actions">
-            <label className="apontamento-servicos-page-size-control" htmlFor="remuneracao-servicos-page-size">
-              <span>Itens por pagina</span>
-              <select
-                id="remuneracao-servicos-page-size"
-                className="apontamento-servicos-page-size-select"
-                value={pageSize}
-                onChange={(event) => handlePageSizeChange(event.target.value)}
-                disabled={isLoading || isSaving}
-              >
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
+          <div className="apontamento-servicos-toolbar-actions remuneracao-servicos-toolbar-actions">
             <button
               type="button"
               className="primary-button"
               onClick={() => void handleSave()}
-              disabled={isLoading || isSaving || !hasPendingChanges}
+              disabled={isLoading || isSaving || isProcessingBatch || !hasPendingChanges}
             >
               {isSaving ? 'Salvando...' : 'Salvar remuneracao'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void handleCalculate()}
+              disabled={isLoading || isSaving || isProcessingBatch}
+            >
+              {isCalculating ? 'Iniciando lote...' : 'Calcular remuneracao'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void openBatchStatusDialog()}
+              disabled={isLoading || isSaving || isProcessingBatch}
+            >
+              {isLoadingBatchStatus ? 'Consultando...' : 'Consultar status do processamento'}
             </button>
           </div>
         </div>
@@ -817,6 +991,43 @@ export default function RemuneracaoServicosView() {
           <div className="management-grid-header">
             <h2>Registros de remuneracao</h2>
             <span>{isLoading ? 'Atualizando...' : `${totalItems} item(ns) encontrados`}</span>
+            <div className="remuneracao-servicos-visibility-toggles">
+              <label className="apontamento-servicos-accumulated-toggle">
+                <input
+                  type="checkbox"
+                  checked={monetaryColumnVisibilityMode === 'continua-only'}
+                  onChange={(event) => setMonetaryColumnVisibilityMode(event.target.checked ? 'continua-only' : 'all')}
+                  disabled={isLoading || isSaving || isProcessingBatch}
+                />
+                <span>Mostrar somente Continua</span>
+              </label>
+              <label className="apontamento-servicos-accumulated-toggle">
+                <input
+                  type="checkbox"
+                  checked={monetaryColumnVisibilityMode === 'km-valor-only'}
+                  onChange={(event) => setMonetaryColumnVisibilityMode(event.target.checked ? 'km-valor-only' : 'all')}
+                  disabled={isLoading || isSaving || isProcessingBatch}
+                />
+                <span>Mostrar somente KM Valor</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="remuneracao-servicos-grid-top-actions">
+            <label className="apontamento-servicos-page-size-control" htmlFor="remuneracao-servicos-page-size">
+              <span>OS por pagina</span>
+              <select
+                id="remuneracao-servicos-page-size"
+                className="apontamento-servicos-page-size-select"
+                value={pageSize}
+                onChange={(event) => handlePageSizeChange(event.target.value)}
+                disabled={isLoading || isSaving || isProcessingBatch}
+              >
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div ref={topScrollWrapperRef} className="apontamento-servicos-top-scrollbar" aria-label="Rolagem horizontal superior da tabela">
@@ -824,13 +1035,15 @@ export default function RemuneracaoServicosView() {
           </div>
 
           <div ref={tableWrapperRef} className="apontamento-servicos-table-wrapper remuneracao-servicos-table-wrapper">
-            <table className="apontamento-servicos-table apontamento-servicos-table-sem-acumulados remuneracao-servicos-table">
+            <table className={`apontamento-servicos-table apontamento-servicos-table-sem-acumulados remuneracao-servicos-table ${monetaryColumnVisibilityMode !== 'all' ? 'remuneracao-servicos-table-only-continua' : ''}`}>
               <thead>
                 <tr>
                   <th className="apontamento-servicos-header-compact">DRE/CRMC/Tipo de Veiculo</th>
-                  {monetaryColumns.map((column) => (
-                    <th key={column.key} className="apontamento-servicos-header-detail">
-                      {column.label}
+                  {visibleMonetaryColumns.map((column) => (
+                    <th key={column.key} className="apontamento-servicos-header-detail remuneracao-servicos-header-detail">
+                      <span className="remuneracao-servicos-header-line">{column.line1}</span>
+                      <span className="remuneracao-servicos-header-line">{column.line2 || ' '}</span>
+                      <span className="remuneracao-servicos-header-line">{column.line3}</span>
                     </th>
                   ))}
                 </tr>
@@ -838,14 +1051,14 @@ export default function RemuneracaoServicosView() {
               <tbody>
                 {items.map((item, index) => {
                   const rowKey = buildRowKey(item)
-                  const rowGroupIndex = getOrdemServicoGroupRowIndex(items, index)
-                  const isFirstRowOfGroup = rowGroupIndex === 0
+                  const groupInfo = rowGroupInfoByIndex.get(index) ?? { rowGroupIndex: 0, isFirstRowOfGroup: index === 0 }
+                  const isFirstRowOfGroup = groupInfo.isFirstRowOfGroup
                   const isEditable = hasEditPermission
                     && item.isAtivoNaData
                     && item.apuracaoFinanceiraSituacao === APURACAO_SERVICOS_EDITABLE_STATUS
 
                   return (
-                    <>
+                    <Fragment key={`${rowKey}|${index}`}>
                       {isFirstRowOfGroup ? (
                         <tr className="apontamento-servicos-subtitle-row" key={`${rowKey}-subtitle`}>
                           <td colSpan={tableColumnCount}>
@@ -877,7 +1090,7 @@ export default function RemuneracaoServicosView() {
                             <strong>Tipo de Veiculo:</strong> {formatTipoVeiculoDisplay(item.tipoVeiculo)}
                           </span>
                         </td>
-                        {monetaryColumns.map((column) => (
+                        {visibleMonetaryColumns.map((column) => (
                           <td key={`${rowKey}-${column.key}`} className="apontamento-servicos-cell-compact">
                             <input
                               data-remuneracao-grid-input="true"
@@ -886,13 +1099,13 @@ export default function RemuneracaoServicosView() {
                               inputMode="decimal"
                               value={formatMoneyValue(item[column.key])}
                               onChange={(event) => handleMoneyFieldChange(rowKey, column.key, event.target.value)}
-                              disabled={isLoading || isSaving || !isEditable}
+                              disabled={isLoading || isSaving || isProcessingBatch || !isEditable}
                               title={!isEditable ? getEditPermissionDeniedMessage('Remuneracao Servicos') : ''}
                             />
                           </td>
                         ))}
                       </tr>
-                    </>
+                    </Fragment>
                   )
                 })}
               </tbody>
@@ -908,7 +1121,7 @@ export default function RemuneracaoServicosView() {
               type="button"
               className="secondary-button management-pagination-button management-pagination-button-icon"
               onClick={() => setPage(1)}
-              disabled={!canGoToPreviousPage || isLoading || isSaving}
+              disabled={!canGoToPreviousPage || isLoading || isSaving || isProcessingBatch}
               title="Primeiro registro"
               aria-label="Primeiro registro"
             >
@@ -918,7 +1131,7 @@ export default function RemuneracaoServicosView() {
               type="button"
               className="secondary-button management-pagination-button management-pagination-button-icon"
               onClick={() => setPage((currentPage) => currentPage - 1)}
-              disabled={!canGoToPreviousPage || isLoading || isSaving}
+              disabled={!canGoToPreviousPage || isLoading || isSaving || isProcessingBatch}
               title="Registro anterior"
               aria-label="Registro anterior"
             >
@@ -929,7 +1142,7 @@ export default function RemuneracaoServicosView() {
               type="button"
               className="secondary-button management-pagination-button management-pagination-button-icon"
               onClick={() => setPage((currentPage) => currentPage + 1)}
-              disabled={!canGoToNextPage || isLoading || isSaving}
+              disabled={!canGoToNextPage || isLoading || isSaving || isProcessingBatch}
               title="Proximo registro"
               aria-label="Proximo registro"
             >
@@ -939,7 +1152,7 @@ export default function RemuneracaoServicosView() {
               type="button"
               className="secondary-button management-pagination-button management-pagination-button-icon"
               onClick={() => setPage(totalPages)}
-              disabled={!canGoToNextPage || isLoading || isSaving}
+              disabled={!canGoToNextPage || isLoading || isSaving || isProcessingBatch}
               title="Ultimo registro"
               aria-label="Ultimo registro"
             >
@@ -977,6 +1190,95 @@ export default function RemuneracaoServicosView() {
               <div className="button-row dre-button-row management-modal-footer">
                 <button type="button" className="primary-button" onClick={closeValidationDialog}>
                   Entendi
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      ) : null}
+
+      {isBatchStatusDialogVisible ? (
+        <div className="management-modal-overlay" role="presentation" onClick={closeBatchStatusDialog}>
+          <div
+            className="management-modal-shell"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remuneracao-servicos-batch-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <section className="management-card management-form dre-form management-modal-form-card">
+              <div className="management-modal-header">
+                <div>
+                  <p className="management-modal-kicker">Processamento em lote</p>
+                  <h2 id="remuneracao-servicos-batch-modal-title">Remuneracao Servicos</h2>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button management-modal-close-button"
+                  onClick={closeBatchStatusDialog}
+                  aria-label="Fechar status"
+                >
+                  X
+                </button>
+              </div>
+
+              <p className="management-modal-subtitle">{remuneracaoBatchStatus?.message || 'Nenhum processamento em lote localizado.'}</p>
+
+              <div className="management-form-grid">
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Status</span>
+                  <strong>{formatBatchStatusLabel(remuneracaoBatchStatus?.status ?? 'idle')}</strong>
+                </div>
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Inicio</span>
+                  <strong>{formatBatchTimestamp(remuneracaoBatchStatus?.startedAt ?? '')}</strong>
+                </div>
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Fim</span>
+                  <strong>{formatBatchTimestamp(remuneracaoBatchStatus?.finishedAt ?? '')}</strong>
+                </div>
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Erros</span>
+                  <strong>{remuneracaoBatchStatus?.errorMessage || '-'}</strong>
+                </div>
+              </div>
+
+              <div className="management-form-grid">
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Total registros</span>
+                  <strong>{remuneracaoBatchStatus?.totalRegistros ?? 0}</strong>
+                </div>
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Calculados</span>
+                  <strong>{remuneracaoBatchStatus?.totalCalculados ?? 0}</strong>
+                </div>
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Atualizados</span>
+                  <strong>{remuneracaoBatchStatus?.totalAtualizados ?? 0}</strong>
+                </div>
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Ignorados</span>
+                  <strong>{remuneracaoBatchStatus?.totalIgnorados ?? 0}</strong>
+                </div>
+              </div>
+
+              <div className="management-form-grid">
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Mes/Ano</span>
+                  <strong>{remuneracaoBatchStatus?.requestedFilters?.mesAno || appliedFilters.mesAno}</strong>
+                </div>
+                <div className="field-group">
+                  <span className="apontamento-servicos-filter-label">Data referencia</span>
+                  <strong>{remuneracaoBatchStatus?.requestedFilters?.dataReferencia || appliedFilters.dataReferencia}</strong>
+                </div>
+              </div>
+
+              <div className="button-row dre-button-row management-modal-footer">
+                <button type="button" className="secondary-button" onClick={() => void syncBatchStatus()} disabled={isLoadingBatchStatus}>
+                  {isLoadingBatchStatus ? 'Atualizando...' : 'Atualizar status'}
+                </button>
+                <button type="button" className="primary-button" onClick={closeBatchStatusDialog}>
+                  Fechar
                 </button>
               </div>
             </section>

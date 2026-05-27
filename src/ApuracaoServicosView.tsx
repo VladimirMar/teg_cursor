@@ -2,20 +2,14 @@ import { useCallback, useDeferredValue, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { listDreItemsPaginated } from './services/dre'
 import type { DreItem } from './services/dre'
-import { listTipoEscolaItemsPaginated } from './services/tipoEscola'
-import type { TipoEscolaItem } from './services/tipoEscola'
 import {
-  createApuracaoServicosItem,
   listApuracaoServicosItemsPaginated,
   listApuracaoServicosOrdemServicoOptions,
-  updateApuracaoServicosItem,
 } from './services/apuracaoServicos'
-import { listApuracaoFinanceiraItemsPaginated } from './services/apuracaoFinanceira'
 import type {
   ApuracaoServicosItem,
   ApuracaoServicosKey,
   ApuracaoServicosOrdemServicoOption,
-  ApuracaoServicosSaveItem,
   ApuracaoServicosSortField,
 } from './services/apuracaoServicos'
 import {
@@ -25,10 +19,6 @@ import {
 import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
-type FormMode = 'create' | 'edit' | 'view'
-
-const APURACAO_SERVICOS_EDITABLE_STATUS = 'Em digitacao'
-const APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE = 'Registro nao liberado para digitacao.'
 
 const normalizeMonthYearInput = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 6)
@@ -64,34 +54,12 @@ const parseNonNegativeInteger = (value: string) => {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : Number.NaN
 }
 
-const parseFourDecimalInput = (value: string) => {
-  const normalizedValue = value.trim()
-
-  if (!normalizedValue) {
-    return Number.NaN
-  }
-
-  const parsed = /^-?\d+(?:\.\d+)?$/.test(normalizedValue)
-    ? Number(normalizedValue)
-    : Number(normalizedValue.replace(/\./g, '').replace(',', '.'))
-
-  return Number.isFinite(parsed) ? Number(parsed.toFixed(4)) : Number.NaN
-}
-
 const formatDreDisplayLabel = (item: Pick<DreItem, 'sigla' | 'descricao'>) => {
-  return [item.sigla, item.descricao].filter(Boolean).join(' - ')
-}
-
-const formatTipoEscolaDisplayLabel = (item: Pick<TipoEscolaItem, 'sigla' | 'descricao'>) => {
   return [item.sigla, item.descricao].filter(Boolean).join(' - ')
 }
 
 const formatDreFormDisplayLabel = (item: Pick<ApuracaoServicosItem, 'dreSigla' | 'dreDescricao'>) => {
   return [item.dreSigla, item.dreDescricao].filter(Boolean).join(' - ')
-}
-
-const formatTipoEscolaFormDisplayLabel = (item: Pick<ApuracaoServicosItem, 'tipoEscolaSigla' | 'tipoEscolaDescricao'>) => {
-  return [item.tipoEscolaSigla, item.tipoEscolaDescricao].filter(Boolean).join(' - ')
 }
 
 const formatOrdemServicoFormDisplayLabel = (item: Pick<ApuracaoServicosItem, 'ordemServicoOsConcat' | 'ordemServicoTermoAdesao' | 'ordemServicoNumOs'>) => {
@@ -114,19 +82,6 @@ const findDreByDisplayValue = (items: DreItem[], value: string) => {
     return item.codigo.toLowerCase() === normalizedValue
       || formatDreOptionLabel(item).toLowerCase() === normalizedValue
       || formatDreDisplayLabel(item).toLowerCase() === normalizedValue
-  }) ?? null
-}
-
-const findTipoEscolaByDisplayValue = (items: TipoEscolaItem[], value: string) => {
-  const normalizedValue = value.trim().toLowerCase()
-  if (!normalizedValue) {
-    return null
-  }
-
-  return items.find((item) => {
-    return item.codigo.toLowerCase() === normalizedValue
-      || formatTipoEscolaOptionLabel(item).toLowerCase() === normalizedValue
-      || formatTipoEscolaDisplayLabel(item).toLowerCase() === normalizedValue
   }) ?? null
 }
 
@@ -154,24 +109,16 @@ const findTipoPessoaByDisplayValue = (value: string) => {
   }) ?? null
 }
 
-const formatApuracaoServicosKey = (item: Pick<ApuracaoServicosKey, 'mesAno' | 'dataReferencia' | 'dreCodigo' | 'ordemServicoCodigo' | 'revisao' | 'tipoEscolaCodigo' | 'tipoPessoa'>) => {
-  return `${item.mesAno}|${item.dataReferencia}|${item.dreCodigo}|${item.ordemServicoCodigo}|${item.revisao}|${item.tipoEscolaCodigo}|${item.tipoPessoa}`
+const formatApuracaoServicosKey = (item: Pick<ApuracaoServicosKey, 'mesAno' | 'dataReferencia' | 'dreCodigo' | 'ordemServicoCodigo' | 'revisao' | 'tipoPessoa'>) => {
+  return `${item.mesAno}|${item.dataReferencia}|${item.dreCodigo}|${item.ordemServicoCodigo}|${item.revisao}|${item.tipoPessoa}`
 }
 
 const formatDreOptionLabel = (item: Pick<DreItem, 'codigo' | 'sigla' | 'descricao'>) => {
   return `${item.codigo} - ${item.sigla} - ${item.descricao}`
 }
 
-const formatTipoEscolaOptionLabel = (item: Pick<TipoEscolaItem, 'codigo' | 'sigla' | 'descricao'>) => {
-  return `${item.codigo} - ${item.sigla} - ${item.descricao}`
-}
-
 const formatDreGridLabel = (item: Pick<ApuracaoServicosItem, 'dreCodigo' | 'dreSigla' | 'dreDescricao'>) => {
   return item.dreSigla || item.dreDescricao || item.dreCodigo
-}
-
-const formatTipoEscolaGridLabel = (item: Pick<ApuracaoServicosItem, 'tipoEscolaCodigo' | 'tipoEscolaSigla' | 'tipoEscolaDescricao'>) => {
-  return item.tipoEscolaSigla || item.tipoEscolaDescricao || item.tipoEscolaCodigo
 }
 
 const formatOrdemServicoOptionLabel = (item: ApuracaoServicosOrdemServicoOption) => {
@@ -199,7 +146,6 @@ const emptyFormErrors = {
   dreCodigo: '',
   ordemServicoCodigo: '',
   revisao: '',
-  tipoEscolaCodigo: '',
   tipoPessoa: '',
   naoCadeirantePresencial: '',
   cadeirante: '',
@@ -226,27 +172,20 @@ export default function ApuracaoServicosView() {
   const [statusMessage, setStatusMessage] = useState('')
   const [statusTone, setStatusTone] = useState<StatusTone>('idle')
   const [isLoading, setIsLoading] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
 
   const [dreOptions, setDreOptions] = useState<DreItem[]>([])
-  const [tipoEscolaOptions, setTipoEscolaOptions] = useState<TipoEscolaItem[]>([])
   const [ordemServicoOptions, setOrdemServicoOptions] = useState<ApuracaoServicosOrdemServicoOption[]>([])
   const [isLoadingFormOptions, setIsLoadingFormOptions] = useState(false)
   const [isLoadingOrdemServicoOptions, setIsLoadingOrdemServicoOptions] = useState(false)
 
   const [isFormVisible, setIsFormVisible] = useState(false)
-  const [formMode, setFormMode] = useState<FormMode>('create')
-  const [editingKey, setEditingKey] = useState<ApuracaoServicosKey | null>(null)
 
   const [mesAno, setMesAno] = useState('')
   const [dataReferencia, setDataReferencia] = useState('')
   const [dreCodigo, setDreCodigo] = useState('')
   const [dreDisplayValue, setDreDisplayValue] = useState('')
-  const [ordemServicoCodigo, setOrdemServicoCodigo] = useState('')
   const [ordemServicoDisplayValue, setOrdemServicoDisplayValue] = useState('')
   const [revisao, setRevisao] = useState('0')
-  const [tipoEscolaCodigo, setTipoEscolaCodigo] = useState('')
-  const [tipoEscolaDisplayValue, setTipoEscolaDisplayValue] = useState('')
   const [tipoPessoa, setTipoPessoa] = useState<ApuracaoTipoPessoa>('PF')
   const [tipoPessoaDisplayValue, setTipoPessoaDisplayValue] = useState(formatApuracaoTipoPessoaLabel('PF'))
   const [naoCadeirantePresencial, setNaoCadeirantePresencial] = useState('0')
@@ -260,19 +199,14 @@ export default function ApuracaoServicosView() {
 
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
-  const isReadOnly = formMode === 'view'
-  const isKeyFieldLocked = isReadOnly || formMode === 'edit'
 
   const resetForm = useCallback(() => {
     setMesAno('')
     setDataReferencia('')
     setDreCodigo('')
     setDreDisplayValue('')
-    setOrdemServicoCodigo('')
     setOrdemServicoDisplayValue('')
     setRevisao('0')
-    setTipoEscolaCodigo('')
-    setTipoEscolaDisplayValue('')
     setTipoPessoa('PF')
     setTipoPessoaDisplayValue(formatApuracaoTipoPessoaLabel('PF'))
     setNaoCadeirantePresencial('0')
@@ -283,7 +217,6 @@ export default function ApuracaoServicosView() {
     setContinuaCadeirante('0')
     setKilometragem('0,0000')
     setFormErrors(emptyFormErrors)
-    setEditingKey(null)
     setOrdemServicoOptions([])
   }, [])
 
@@ -326,13 +259,9 @@ export default function ApuracaoServicosView() {
     setIsLoadingFormOptions(true)
 
     try {
-      const [dreResult, tipoEscolaResult] = await Promise.all([
-        listDreItemsPaginated({ page: 1, pageSize: 500, sortBy: 'descricao', sortDirection: 'asc' }),
-        listTipoEscolaItemsPaginated({ page: 1, pageSize: 500, sortBy: 'descricao', sortDirection: 'asc' }),
-      ])
+      const dreResult = await listDreItemsPaginated({ page: 1, pageSize: 500, sortBy: 'descricao', sortDirection: 'asc' })
 
       setDreOptions(dreResult.items)
-      setTipoEscolaOptions(tipoEscolaResult.items)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha ao carregar as opcoes de total de servicos.'
       setStatusTone('error')
@@ -401,25 +330,13 @@ export default function ApuracaoServicosView() {
     setSortBy(field)
   }
 
-  const openFormWithItem = (item: ApuracaoServicosItem, nextMode: FormMode) => {
-    setEditingKey({
-      mesAno: item.mesAno,
-      dataReferencia: item.dataReferencia,
-      dreCodigo: item.dreCodigo,
-      ordemServicoCodigo: item.ordemServicoCodigo,
-      revisao: item.revisao,
-      tipoEscolaCodigo: item.tipoEscolaCodigo,
-      tipoPessoa: item.tipoPessoa,
-    })
+  const openFormWithItem = (item: ApuracaoServicosItem) => {
     setMesAno(item.mesAno)
     setDataReferencia(item.dataReferencia)
     setDreCodigo(item.dreCodigo)
     setDreDisplayValue(formatDreFormDisplayLabel(item))
-    setOrdemServicoCodigo(item.ordemServicoCodigo)
     setOrdemServicoDisplayValue(formatOrdemServicoFormDisplayLabel(item))
     setRevisao(String(item.revisao))
-    setTipoEscolaCodigo(item.tipoEscolaCodigo)
-    setTipoEscolaDisplayValue(formatTipoEscolaFormDisplayLabel(item))
     setTipoPessoa(item.tipoPessoa)
     setTipoPessoaDisplayValue(formatApuracaoTipoPessoaLabel(item.tipoPessoa))
     setNaoCadeirantePresencial(String(item.naoCadeirantePresencial))
@@ -430,21 +347,16 @@ export default function ApuracaoServicosView() {
     setContinuaCadeirante(String(item.continuaCadeirante))
     setKilometragem(item.kilometragem.replace('.', ','))
     setFormErrors(emptyFormErrors)
-    setFormMode(nextMode)
     setIsFormVisible(true)
     setStatusTone('idle')
     setStatusMessage('')
   }
 
   const handleStartView = (item: ApuracaoServicosItem) => {
-    openFormWithItem(item, 'view')
+    openFormWithItem(item)
   }
 
   const handleCancelForm = () => {
-    if (isSaving) {
-      return
-    }
-
     setIsFormVisible(false)
     resetForm()
     setStatusTone('idle')
@@ -456,21 +368,13 @@ export default function ApuracaoServicosView() {
     const matchedItem = findDreByDisplayValue(dreOptions, value)
     setDreCodigo(matchedItem?.codigo ?? '')
     if (!matchedItem) {
-      setOrdemServicoCodigo('')
       setOrdemServicoDisplayValue('')
     }
   }
 
   const handleOrdemServicoDisplayChange = (value: string) => {
     setOrdemServicoDisplayValue(value)
-    const matchedItem = findOrdemServicoByDisplayValue(ordemServicoOptions, value)
-    setOrdemServicoCodigo(matchedItem?.codigo ?? '')
-  }
-
-  const handleTipoEscolaDisplayChange = (value: string) => {
-    setTipoEscolaDisplayValue(value)
-    const matchedItem = findTipoEscolaByDisplayValue(tipoEscolaOptions, value)
-    setTipoEscolaCodigo(matchedItem?.codigo ?? '')
+    findOrdemServicoByDisplayValue(ordemServicoOptions, value)
   }
 
   const handleTipoPessoaDisplayChange = (value: string) => {
@@ -479,167 +383,13 @@ export default function ApuracaoServicosView() {
     setTipoPessoa(matchedItem?.value ?? ('' as ApuracaoTipoPessoa))
   }
 
-  const buildPayload = (): ApuracaoServicosSaveItem | null => {
-    const nextErrors = { ...emptyFormErrors }
-    const parsedRevisao = parseNonNegativeInteger(revisao)
-    const parsedNaoCadeirantePresencial = parseNonNegativeInteger(naoCadeirantePresencial)
-    const parsedCadeirante = parseNonNegativeInteger(cadeirante)
-    const parsedAtendimentoComplementarNaoCadeirante = parseNonNegativeInteger(atendimentoComplementarNaoCadeirante)
-    const parsedAtendimentoComplementarCadeirante = parseNonNegativeInteger(atendimentoComplementarCadeirante)
-    const parsedContinuaNaoCadeirante = parseNonNegativeInteger(continuaNaoCadeirante)
-    const parsedContinuaCadeirante = parseNonNegativeInteger(continuaCadeirante)
-    const parsedKilometragem = parseFourDecimalInput(kilometragem)
-
-    if (!isValidMonthYear(mesAno)) {
-      nextErrors.mesAno = 'Informe o mes/ano no formato mm/aaaa.'
-    }
-
-    if (!isValidDateInput(dataReferencia)) {
-      nextErrors.dataReferencia = 'Informe a data de referencia no formato aaaa-mm-dd.'
-    }
-
-    if (!dreCodigo) {
-      nextErrors.dreCodigo = 'Selecione a DRE.'
-    }
-
-    if (!ordemServicoCodigo) {
-      nextErrors.ordemServicoCodigo = 'Selecione a ordem de servico.'
-    }
-
-    if (!Number.isInteger(parsedRevisao)) {
-      nextErrors.revisao = 'Informe uma revisao inteira maior ou igual a zero.'
-    }
-
-    if (!tipoEscolaCodigo) {
-      nextErrors.tipoEscolaCodigo = 'Selecione o tipo de escola.'
-    }
-
-    if (!APURACAO_TIPO_PESSOA_OPTIONS.some((item) => item.value === tipoPessoa)) {
-      nextErrors.tipoPessoa = 'Selecione o tipo pessoa.'
-    }
-
-    if (!Number.isInteger(parsedNaoCadeirantePresencial)) {
-      nextErrors.naoCadeirantePresencial = 'Informe um valor inteiro maior ou igual a zero.'
-    }
-
-    if (!Number.isInteger(parsedCadeirante)) {
-      nextErrors.cadeirante = 'Informe um valor inteiro maior ou igual a zero.'
-    }
-
-    if (!Number.isInteger(parsedAtendimentoComplementarNaoCadeirante)) {
-      nextErrors.atendimentoComplementarNaoCadeirante = 'Informe um valor inteiro maior ou igual a zero.'
-    }
-
-    if (!Number.isInteger(parsedAtendimentoComplementarCadeirante)) {
-      nextErrors.atendimentoComplementarCadeirante = 'Informe um valor inteiro maior ou igual a zero.'
-    }
-
-    if (!Number.isInteger(parsedContinuaNaoCadeirante)) {
-      nextErrors.continuaNaoCadeirante = 'Informe um valor inteiro maior ou igual a zero.'
-    }
-
-    if (!Number.isInteger(parsedContinuaCadeirante)) {
-      nextErrors.continuaCadeirante = 'Informe um valor inteiro maior ou igual a zero.'
-    }
-
-    if (!Number.isFinite(parsedKilometragem) || parsedKilometragem < 0) {
-      nextErrors.kilometragem = 'Informe a kilometragem com ate 4 casas decimais.'
-    }
-
-    setFormErrors(nextErrors)
-
-    if (Object.values(nextErrors).some(Boolean)) {
-      return null
-    }
-
-    return {
-      mesAno,
-      dataReferencia,
-      dreCodigo,
-      ordemServicoCodigo,
-      revisao: parsedRevisao,
-      tipoEscolaCodigo,
-      tipoPessoa,
-      naoCadeirantePresencial: parsedNaoCadeirantePresencial,
-      cadeirante: parsedCadeirante,
-      atendimentoComplementarNaoCadeirante: parsedAtendimentoComplementarNaoCadeirante,
-      atendimentoComplementarCadeirante: parsedAtendimentoComplementarCadeirante,
-      continuaNaoCadeirante: parsedContinuaNaoCadeirante,
-      continuaCadeirante: parsedContinuaCadeirante,
-      kilometragem: parsedKilometragem.toFixed(4),
-    }
-  }
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (isReadOnly) {
-      return
-    }
-
-    const payload = buildPayload()
-
-    if (!payload) {
-      setStatusTone('error')
-      setStatusMessage('Corrija os campos destacados para continuar.')
-      return
-    }
-
-    try {
-      const apuracaoFinanceiraResult = await listApuracaoFinanceiraItemsPaginated({
-        mesAno: payload.mesAno,
-        dreCodigo: payload.dreCodigo,
-        revisao: payload.revisao,
-        tipoPessoa: payload.tipoPessoa,
-        page: 1,
-        pageSize: 1,
-      })
-
-      if (apuracaoFinanceiraResult.items[0]?.situacao !== APURACAO_SERVICOS_EDITABLE_STATUS) {
-        setStatusTone('warning')
-        setStatusMessage(APURACAO_SERVICOS_DIGITACAO_BLOCK_MESSAGE)
-        return
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao validar a situacao da apuracao financeira.'
-      setStatusTone('error')
-      setStatusMessage(message)
-      return
-    }
-
-    setIsSaving(true)
-    setStatusTone('idle')
-    setStatusMessage(editingKey ? 'Salvando alteracoes...' : 'Salvando total de servicos...')
-
-    try {
-      const savedItem = editingKey
-        ? await updateApuracaoServicosItem(editingKey, payload)
-        : await createApuracaoServicosItem(payload)
-
-      setStatusTone('success')
-      setStatusMessage(editingKey ? 'Total de servicos alterado com sucesso.' : 'Total de servicos cadastrado com sucesso.')
-      setIsFormVisible(false)
-      resetForm()
-      await loadItems(page)
-      if (!editingKey && savedItem) {
-        setPage(1)
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao salvar o total de servicos.'
-      setStatusTone('error')
-      setStatusMessage(message)
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   return (
     <>
       <div className="content-copy">
         <p className="content-kicker">Operacional financeiro</p>
         <h2 id="content-title">Total Servicos</h2>
         <p className="content-description">
-          Consulte o total diario de servicos por data de referencia, DRE, tipo pessoa, OS ativa, revisao e tipo de escola. Os valores sao apurados automaticamente a partir das alteracoes realizadas em Apontamento Servicos.
+          Consulte o total diario de servicos por data de referencia, DRE, tipo pessoa, OS ativa e revisao. Os valores sao exibidos de forma aglutinada e apurados automaticamente a partir das alteracoes realizadas em Apontamento Servicos.
         </p>
       </div>
 
@@ -709,7 +459,7 @@ export default function ApuracaoServicosView() {
               aria-labelledby="apuracao-servicos-modal-title"
               onClick={(event) => event.stopPropagation()}
             >
-              <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleSubmit} noValidate>
+              <div className="management-card management-form dre-form management-modal-form-card">
                 <div className="management-modal-header">
                   <div>
                     <p className="management-modal-kicker">Operacional financeiro - APURSVC021</p>
@@ -719,7 +469,6 @@ export default function ApuracaoServicosView() {
                     type="button"
                     className="secondary-button management-modal-close-button"
                     onClick={handleCancelForm}
-                    disabled={isSaving}
                     aria-label="Fechar formulario de total de servicos"
                   >
                     X
@@ -727,7 +476,7 @@ export default function ApuracaoServicosView() {
                 </div>
 
                 <p className="management-modal-subtitle">
-                  {formMode === 'view' ? 'Consulta de registro' : editingKey ? 'Alterar registro' : 'Novo registro'}
+                  Consulta de registro
                 </p>
 
                 <div className="apuracao-servicos-section-card apuracao-servicos-primary-card">
@@ -741,7 +490,7 @@ export default function ApuracaoServicosView() {
                         placeholder="mm/aaaa"
                         value={mesAno}
                         onChange={(event) => setMesAno(normalizeMonthYearInput(event.target.value))}
-                        disabled={isSaving || isKeyFieldLocked}
+                        disabled
                         aria-invalid={Boolean(formErrors.mesAno)}
                       />
                       {formErrors.mesAno ? <strong className="field-error">{formErrors.mesAno}</strong> : null}
@@ -754,7 +503,7 @@ export default function ApuracaoServicosView() {
                         type="date"
                         value={dataReferencia}
                         onChange={(event) => setDataReferencia(event.target.value)}
-                        disabled={isSaving || isKeyFieldLocked}
+                        disabled
                         aria-invalid={Boolean(formErrors.dataReferencia)}
                       />
                       {formErrors.dataReferencia ? <strong className="field-error">{formErrors.dataReferencia}</strong> : null}
@@ -768,7 +517,7 @@ export default function ApuracaoServicosView() {
                         inputMode="numeric"
                         value={revisao}
                         onChange={(event) => setRevisao(normalizeIntegerInput(event.target.value))}
-                        disabled={isSaving || isKeyFieldLocked}
+                        disabled
                         aria-invalid={Boolean(formErrors.revisao)}
                       />
                       {formErrors.revisao ? <strong className="field-error">{formErrors.revisao}</strong> : null}
@@ -785,7 +534,7 @@ export default function ApuracaoServicosView() {
                         placeholder="Descritivo da DRE"
                         value={dreDisplayValue}
                         onChange={(event) => handleDreDisplayChange(event.target.value)}
-                        disabled={isSaving || isKeyFieldLocked || isLoadingFormOptions}
+                        disabled
                         aria-invalid={Boolean(formErrors.dreCodigo)}
                       />
                       <datalist id="apuracao-servicos-dre-options">
@@ -805,7 +554,7 @@ export default function ApuracaoServicosView() {
                         placeholder="Descritivo da OS"
                         value={ordemServicoDisplayValue}
                         onChange={(event) => handleOrdemServicoDisplayChange(event.target.value)}
-                        disabled={isSaving || isKeyFieldLocked || isLoadingOrdemServicoOptions || !isValidMonthYear(mesAno) || !dreCodigo}
+                        disabled
                         aria-invalid={Boolean(formErrors.ordemServicoCodigo)}
                       />
                       <datalist id="apuracao-servicos-os-options">
@@ -814,26 +563,6 @@ export default function ApuracaoServicosView() {
                         ))}
                       </datalist>
                       {formErrors.ordemServicoCodigo ? <strong className="field-error">{formErrors.ordemServicoCodigo}</strong> : null}
-                    </label>
-
-                    <label className="field-group" htmlFor="apuracao-servicos-tipo-escola">
-                      <span>Tipo Escola</span>
-                      <input
-                        id="apuracao-servicos-tipo-escola"
-                        type="text"
-                        list="apuracao-servicos-tipo-escola-options"
-                        placeholder="Descritivo do tipo escola"
-                        value={tipoEscolaDisplayValue}
-                        onChange={(event) => handleTipoEscolaDisplayChange(event.target.value)}
-                        disabled={isSaving || isKeyFieldLocked || isLoadingFormOptions}
-                        aria-invalid={Boolean(formErrors.tipoEscolaCodigo)}
-                      />
-                      <datalist id="apuracao-servicos-tipo-escola-options">
-                        {tipoEscolaOptions.map((item) => (
-                            <option key={item.codigo} value={formatTipoEscolaDisplayLabel(item)} />
-                        ))}
-                      </datalist>
-                      {formErrors.tipoEscolaCodigo ? <strong className="field-error">{formErrors.tipoEscolaCodigo}</strong> : null}
                     </label>
 
                     <label className="field-group" htmlFor="apuracao-servicos-tipo-pessoa">
@@ -845,7 +574,7 @@ export default function ApuracaoServicosView() {
                         placeholder="Descritivo do tipo pessoa"
                         value={tipoPessoaDisplayValue}
                         onChange={(event) => handleTipoPessoaDisplayChange(event.target.value)}
-                        disabled={isSaving || isKeyFieldLocked}
+                        disabled
                         aria-invalid={Boolean(formErrors.tipoPessoa)}
                       />
                       <datalist id="apuracao-servicos-tipo-pessoa-options">
@@ -869,7 +598,7 @@ export default function ApuracaoServicosView() {
                       step="1"
                       value={naoCadeirantePresencial}
                       onChange={(event) => setNaoCadeirantePresencial(normalizeIntegerInput(event.target.value))}
-                      disabled={isSaving || isReadOnly}
+                      disabled
                       aria-invalid={Boolean(formErrors.naoCadeirantePresencial)}
                     />
                     {formErrors.naoCadeirantePresencial ? <strong className="field-error">{formErrors.naoCadeirantePresencial}</strong> : null}
@@ -884,7 +613,7 @@ export default function ApuracaoServicosView() {
                       step="1"
                       value={cadeirante}
                       onChange={(event) => setCadeirante(normalizeIntegerInput(event.target.value))}
-                      disabled={isSaving || isReadOnly}
+                      disabled
                       aria-invalid={Boolean(formErrors.cadeirante)}
                     />
                     {formErrors.cadeirante ? <strong className="field-error">{formErrors.cadeirante}</strong> : null}
@@ -899,7 +628,7 @@ export default function ApuracaoServicosView() {
                       step="1"
                       value={atendimentoComplementarNaoCadeirante}
                       onChange={(event) => setAtendimentoComplementarNaoCadeirante(normalizeIntegerInput(event.target.value))}
-                      disabled={isSaving || isReadOnly}
+                      disabled
                       aria-invalid={Boolean(formErrors.atendimentoComplementarNaoCadeirante)}
                     />
                     {formErrors.atendimentoComplementarNaoCadeirante ? <strong className="field-error">{formErrors.atendimentoComplementarNaoCadeirante}</strong> : null}
@@ -914,7 +643,7 @@ export default function ApuracaoServicosView() {
                       step="1"
                       value={atendimentoComplementarCadeirante}
                       onChange={(event) => setAtendimentoComplementarCadeirante(normalizeIntegerInput(event.target.value))}
-                      disabled={isSaving || isReadOnly}
+                      disabled
                       aria-invalid={Boolean(formErrors.atendimentoComplementarCadeirante)}
                     />
                     {formErrors.atendimentoComplementarCadeirante ? <strong className="field-error">{formErrors.atendimentoComplementarCadeirante}</strong> : null}
@@ -929,7 +658,7 @@ export default function ApuracaoServicosView() {
                       step="1"
                       value={continuaNaoCadeirante}
                       onChange={(event) => setContinuaNaoCadeirante(normalizeIntegerInput(event.target.value))}
-                      disabled={isSaving || isReadOnly}
+                      disabled
                       aria-invalid={Boolean(formErrors.continuaNaoCadeirante)}
                     />
                     {formErrors.continuaNaoCadeirante ? <strong className="field-error">{formErrors.continuaNaoCadeirante}</strong> : null}
@@ -944,7 +673,7 @@ export default function ApuracaoServicosView() {
                       step="1"
                       value={continuaCadeirante}
                       onChange={(event) => setContinuaCadeirante(normalizeIntegerInput(event.target.value))}
-                      disabled={isSaving || isReadOnly}
+                      disabled
                       aria-invalid={Boolean(formErrors.continuaCadeirante)}
                     />
                     {formErrors.continuaCadeirante ? <strong className="field-error">{formErrors.continuaCadeirante}</strong> : null}
@@ -959,7 +688,7 @@ export default function ApuracaoServicosView() {
                       placeholder="0,0000"
                       value={kilometragem}
                       onChange={(event) => setKilometragem(event.target.value)}
-                      disabled={isSaving || isReadOnly}
+                      disabled
                       aria-invalid={Boolean(formErrors.kilometragem)}
                     />
                     {formErrors.kilometragem ? <strong className="field-error">{formErrors.kilometragem}</strong> : null}
@@ -972,16 +701,11 @@ export default function ApuracaoServicosView() {
                 </p>
 
                 <div className="button-row dre-button-row management-modal-footer">
-                  {!isReadOnly ? (
-                    <button type="submit" className="primary-button" disabled={isSaving}>
-                      {isSaving ? 'Salvando...' : editingKey ? 'Salvar alteracao' : 'Salvar Total Servicos'}
-                    </button>
-                  ) : null}
-                  <button type="button" className="secondary-button" onClick={handleCancelForm} disabled={isSaving}>
-                    {isReadOnly ? 'Fechar' : 'Cancelar'}
+                  <button type="button" className="secondary-button" onClick={handleCancelForm}>
+                    Fechar
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         ) : null}
@@ -1002,11 +726,6 @@ export default function ApuracaoServicosView() {
                     </button>
                   </th>
                   <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('revisao')}>
-                      Revisao <span>{getSortIndicator('revisao', sortBy, sortDirection)}</span>
-                    </button>
-                  </th>
-                  <th>
                     <button type="button" className="dre-sort-button" onClick={() => handleSort('dreDescricao')}>
                       DRE <span>{getSortIndicator('dreDescricao', sortBy, sortDirection)}</span>
                     </button>
@@ -1015,8 +734,8 @@ export default function ApuracaoServicosView() {
                     Tipo Pessoa
                   </th>
                   <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('ordemServicoCodigo')}>
-                      OS <span>{getSortIndicator('ordemServicoCodigo', sortBy, sortDirection)}</span>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('revisao')}>
+                      Revisao <span>{getSortIndicator('revisao', sortBy, sortDirection)}</span>
                     </button>
                   </th>
                   <th>
@@ -1025,8 +744,8 @@ export default function ApuracaoServicosView() {
                     </button>
                   </th>
                   <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('tipoEscolaDescricao')}>
-                      Tipo Escola <span>{getSortIndicator('tipoEscolaDescricao', sortBy, sortDirection)}</span>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('ordemServicoCodigo')}>
+                      OS <span>{getSortIndicator('ordemServicoCodigo', sortBy, sortDirection)}</span>
                     </button>
                   </th>
                   <th className="dre-actions-column">Acoes</th>
@@ -1036,12 +755,11 @@ export default function ApuracaoServicosView() {
                 {items.map((item) => (
                   <tr key={formatApuracaoServicosKey(item)}>
                     <td>{item.mesAno}</td>
-                    <td>{item.revisao}</td>
                     <td>{formatDreGridLabel(item)}</td>
                     <td>{formatApuracaoTipoPessoaLabel(item.tipoPessoa)}</td>
-                    <td>{formatOrdemServicoGridLabel(item)}</td>
+                    <td>{item.revisao}</td>
                     <td>{formatIsoDateToDisplay(item.dataReferencia)}</td>
-                    <td>{formatTipoEscolaGridLabel(item)}</td>
+                    <td>{formatOrdemServicoGridLabel(item)}</td>
                     <td>
                       <div className="dre-row-actions">
                         <button type="button" className="row-action-button" onClick={() => handleStartView(item)}>

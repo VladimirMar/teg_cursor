@@ -36,6 +36,27 @@ function Stop-ByPort {
     }
 }
 
+function Resolve-WebHost {
+  param([string]$PreferredHost)
+
+  if ([string]::IsNullOrWhiteSpace($PreferredHost)) {
+    return '127.0.0.1'
+  }
+
+  if ($PreferredHost -eq '0.0.0.0' -or $PreferredHost -eq '127.0.0.1' -or $PreferredHost -eq 'localhost') {
+    return $PreferredHost
+  }
+
+  $ipAddresses = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty IPAddress
+
+  if ($ipAddresses -contains $PreferredHost) {
+    return $PreferredHost
+  }
+
+  return '127.0.0.1'
+}
+
 if (-not (Test-Path (Join-Path $runtimeRoot 'server.js'))) {
   throw 'Pacote publicado de homologacao nao encontrado em .homolog\\runtime.'
 }
@@ -49,6 +70,8 @@ $apiOutLog = Join-Path $logRoot 'api-out.log'
 $apiErrLog = Join-Path $logRoot 'api-err.log'
 $webOutLog = Join-Path $logRoot 'web-out.log'
 $webErrLog = Join-Path $logRoot 'web-err.log'
+$preferredWebHost = '10.36.144.147'
+$webHost = Resolve-WebHost -PreferredHost $preferredWebHost
 
 $apiCommand = @"
 Set-Location '$runtimeRoot'
@@ -66,7 +89,8 @@ $webCommand = @"
 Set-Location '$runtimeRoot'
 `$env:HOMOL_RUNTIME_ROOT = '$runtimeRoot'
 `$env:HOMOL_API_TARGET = 'http://127.0.0.1:3002'
-`$env:HOMOL_WEB_HOST = '10.36.144.147'
+`$env:HOMOL_WEB_HOST = '$webHost'
+`$env:HOMOL_WEB_FALLBACK_HOST = '127.0.0.1'
 `$env:HOMOL_WEB_PORT = '4173'
 & '$nodeCommand' '$runtimeRoot\scripts\homologation-web-server.mjs'
 "@
@@ -90,5 +114,8 @@ if ($webProcess.HasExited) {
 }
 
 Write-Info 'Homologacao iniciada com sucesso.'
-Write-Info 'Web: http://10.36.144.147:4173'
+if ($webHost -ne $preferredWebHost) {
+  Write-Info "Web preferencial $preferredWebHost indisponivel neste host; usando fallback local."
+}
+Write-Info "Web: http://$webHost`:4173"
 Write-Info 'API: http://127.0.0.1:3002'

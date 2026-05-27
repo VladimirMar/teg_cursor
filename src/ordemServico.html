@@ -140,24 +140,71 @@
 
       body:has(#ordem-servico-grid-body) #ordem-servico-grid-table .dsc-grid-actions-column {
         text-align: center;
-        padding-left: 14px;
+        padding: 0;
+        width: 200px;
+        min-width: 200px;
       }
 
       body:has(#ordem-servico-grid-body) #ordem-servico-grid-table .dsc-grid-actions {
         display: flex;
-        flex-wrap: nowrap;
-        gap: 3px;
+        flex-wrap: wrap;
+        gap: 4px;
         width: 100%;
+        justify-content: center;
+        align-items: center;
       }
 
       body:has(#ordem-servico-grid-body) #ordem-servico-grid-table .dsc-grid-action-button {
-        flex: 1 1 0;
-        min-width: 0;
-        padding: 3px 5px;
-        font-size: 0.68rem;
+        flex: 0 0 auto;
+        min-width: 36px;
+        width: 36px;
+        height: 36px;
+        padding: 6px;
+        font-size: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      body:has(#ordem-servico-grid-body) #ordem-servico-grid-table .dsc-grid-action-button svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-ordem-servico-grid-main-cell {
+        display: grid;
+        gap: 1px;
+        min-width: 0;
+        line-height: 1.15;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-ordem-servico-grid-main-cell strong,
+      body:has(#ordem-servico-grid-body) .dsc-ordem-servico-grid-main-cell span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-ordem-servico-grid-main-cell span {
+        display: block;
+        color: #556761;
+        font-size: 0.74rem;
+        font-weight: 400;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-situacao-ativo {
+        color: #15803d;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-situacao-cancelado {
+        color: #b91c1c;
+      }
+
+      body:has(#ordem-servico-grid-body) .dsc-access-filter-input {
+        border-radius: 16px;
       }
 
       body:has(#ordem-servico-grid-body) #ordem-servico-grid-feedback {
@@ -246,7 +293,7 @@
                 <button type="button" class="dsc-btn dsc-btn-blue dsc-access-insert-button" id="insert-ordem-servico-button">Inserir registro</button>
                 <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-ordem-servico-import-button">Importar XML</button>
                 <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-ordem-servico-rejections-button">Recusas XML</button>
-                <input class="dsc-form-control dsc-access-filter-input" id="ordem-servico-search" type="text" placeholder="Filtrar por termo, num OS, revisao, OS, credenciado, DRE, condutor, monitor, placa ou CRM" />
+                <input class="dsc-form-control dsc-access-filter-input" id="ordem-servico-search" type="text" placeholder="Filtrar por termo, num OS, revisao, OS, credenciado, CPF/CNPJ do credenciado, CPF do condutor, CPF do monitor, DRE, placa ou CRM do veículo" />
                 <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="clear-ordem-servico-filter-button">Limpar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="open-ordem-servico-eol-button">Pendências EOL</button>
@@ -738,16 +785,12 @@
                   <thead>
                     <tr>
                       <th>OS</th>
-                      <th>
-                        <button type="button" class="dsc-grid-sort-button" id="sort-ordem-servico-credenciado-button">
-                          Credenciado <span id="sort-ordem-servico-credenciado-indicator">v</span>
-                        </button>
-                      </th>
+                      <th>Credenciado</th>
                       <th>Condutor</th>
                       <th>Monitor</th>
                       <th>Placa</th>
                       <th>Situacao</th>
-                      <th class="dsc-grid-actions-column">Acoes</th>
+                      <th class="dsc-grid-actions-column">Ações</th>
                     </tr>
                   </thead>
                   <tbody id="ordem-servico-grid-body"></tbody>
@@ -887,7 +930,7 @@
       const lastPageButton = document.getElementById('last-ordem-servico-page-button');
       const paginationInfo = document.getElementById('ordem-servico-pagination-info');
       const sortNumOsButton = document.getElementById('sort-ordem-servico-num-os-button');
-      const sortCredenciadoButton = document.getElementById('sort-ordem-servico-credenciado-button');
+      const sortCredenciadoButton = null;
       const sortNumOsIndicator = document.getElementById('sort-ordem-servico-num-os-indicator');
       const sortCredenciadoIndicator = document.getElementById('sort-ordem-servico-credenciado-indicator');
       const formTitle = document.getElementById('ordem-servico-form-title');
@@ -2131,6 +2174,23 @@
         }
       };
 
+      const getCurrentOrdemServicoCodigoForLookup = () => {
+        if (Number.isInteger(editingCodigo) && editingCodigo > 0) {
+          return editingCodigo;
+        }
+
+        const dashboardPopupCodigo = normalizeCodigo(dashboardPopupCodigoParam);
+        if (dashboardPopupCodigo) {
+          const parsedCodigo = Number.parseInt(dashboardPopupCodigo, 10);
+
+          if (Number.isInteger(parsedCodigo) && parsedCodigo > 0) {
+            return parsedCodigo;
+          }
+        }
+
+        return null;
+      };
+
       const normalizeEmissaoDateKey = (value) => {
         const normalizedValue = String(value ?? '').trim();
 
@@ -2256,6 +2316,25 @@
           .replace(/[^0-9A-Za-z_.-]/g, '-');
 
         return `${normalizedLabel || 'emissao-ordem-servico'}.doc`;
+      };
+
+      const resolveEmissaoDocumentoTemplateText = (value, replacements = {}) => {
+        const normalizedValue = String(value ?? '');
+
+        if (!normalizedValue) {
+          return normalizedValue;
+        }
+
+        return Object.entries(replacements).reduce((resolvedValue, [token, replacement]) => {
+          const normalizedToken = String(token || '').trim();
+
+          if (!normalizedToken) {
+            return resolvedValue;
+          }
+
+          const escapedToken = normalizedToken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          return resolvedValue.replace(new RegExp(escapedToken, 'gi'), String(replacement ?? ''));
+        }, normalizedValue);
       };
 
       const buildEmissaoDocumentWordMarkup = (documentMarkup = lastEmissaoDocumentMarkup) => {
@@ -2651,7 +2730,7 @@
         emissaoFeedback.className = 'dsc-feedback dsc-feedback-success';
       };
 
-      const buildEmissaoDocumentMarkup = ({ parametroItem, termoItem, condutorItem, monitorItem, veiculoItem, requestedDate, notices = [], includePrefeituraImage = false }) => {
+      const buildEmissaoDocumentMarkup = ({ parametroItem, ordemServicoItem, termoItem, condutorItem, monitorItem, veiculoItem, requestedDate, notices = [], includePrefeituraImage = false }) => {
         const credenciado = String(termoItem?.credenciado || credenciadoInput.value || '').trim();
         const termoAdesao = String(termoItem?.termoAdesao || termoItem?.termo_adesao || termoAdesaoInput.value || '').trim();
         const ordemServicoLabel = buildOrdemServicoLabel();
@@ -2663,7 +2742,23 @@
           .map((value) => String(value ?? '').trim())
           .filter(Boolean)
           .join(' ');
-        const motivoEmissao = String(tipoTrocaInput.value || anotacaoInput.value || '').trim();
+        const motivoEmissao = String(
+          ordemServicoItem?.tipo_troca_descricao
+          || ordemServicoItem?.tipoTrocaDescricao
+          || tipoTrocaInput.value
+          || anotacaoInput.value
+          || '',
+        ).trim();
+        const emissaoTemplateReplacements = {
+          '<ordem de servico/tipo de troca>': motivoEmissao,
+          '<ordemservico/tipo de troca>': motivoEmissao,
+          '{{ordem de servico/tipo de troca}}': motivoEmissao,
+          '{{ordemservico/tipo de troca}}': motivoEmissao,
+        };
+        const objetoEmissao = resolveEmissaoDocumentoTemplateText(parametroItem?.objeto, emissaoTemplateReplacements);
+        const observacao01Emissao = resolveEmissaoDocumentoTemplateText(parametroItem?.obs_01_emissao, emissaoTemplateReplacements);
+        const observacao02Emissao = resolveEmissaoDocumentoTemplateText(parametroItem?.obs_02_emissao, emissaoTemplateReplacements);
+        const rodapeEmissao = resolveEmissaoDocumentoTemplateText(parametroItem?.rodape_emissao, emissaoTemplateReplacements);
 
         const vehicleFields = [
           { label: 'CRM', value: formatSummaryValue(veiculoItem?.crm || crmInput.value) },
@@ -2705,12 +2800,11 @@
         sections.push(buildEmissaoDocumentSectionHtml('Dados do veiculo', buildEmissaoDocumentFieldsHtml(vehicleFields, 'dsc-emissao-documento-grid-compact')));
         sections.push(buildEmissaoDocumentSectionHtml('Dados do condutor', buildEmissaoDocumentFieldsHtml(condutorFields)));
         sections.push(buildEmissaoDocumentSectionHtml('Dados do monitor', buildEmissaoDocumentFieldsHtml(monitorFields)));
-        sections.push(buildEmissaoDocumentSectionHtml('Objeto', `<p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(parametroItem?.objeto))}</p>`));
+        sections.push(buildEmissaoDocumentSectionHtml('Objeto', `<p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(objetoEmissao))}</p>`));
         sections.push(buildEmissaoDocumentSectionHtml('Dados da emissao', buildEmissaoDocumentFieldsHtml(metaFields)));
-        sections.push(buildEmissaoDocumentSectionHtml('Obs 01 da emissao', `<p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(parametroItem?.obs_01_emissao))}</p>`));
+        sections.push(buildEmissaoDocumentSectionHtml('Obs 01 da emissao', `<p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(observacao01Emissao))}</p>`));
         sections.push(buildEmissaoDocumentSectionHtml('Obs 02 da emissao', `
-          <p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(parametroItem?.obs_02_emissao))}</p>
-          <p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(motivoEmissao, 'Nao informado'))}</p>
+          <p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(observacao02Emissao))}</p>
         `));
 
         lastEmissaoDocumentTitle = `Emissao ${formatSummaryValue(ordemServicoDocumentLabel, 'OS')}`;
@@ -2741,7 +2835,7 @@
             <footer class="dsc-emissao-documento-footer">
               <section class="dsc-emissao-documento-section">
                 <h4 class="dsc-emissao-documento-section-title">Rodape da emissao</h4>
-                <p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(parametroItem?.rodape_emissao))}</p>
+                <p class="dsc-emissao-documento-paragraph">${escapeHtml(formatSummaryValue(rodapeEmissao))}</p>
               </section>
               ${diretorEmissao ? `<div class="dsc-emissao-documento-director-block">${diretorEmissao.split(/\n+/).map((line) => `<p class="dsc-emissao-documento-director-line">${escapeHtml(line)}</p>`).join('')}</div>` : ''}
               <p class="dsc-emissao-documento-date-line">Sao Paulo, ${escapeHtml(formatEmissaoDateLong(requestedDate))}</p>
@@ -2834,8 +2928,12 @@
         focusOrdemServicoEmissao();
 
         try {
-          const [parametroResult, termoResult, condutorResult, monitorResult, veiculoResult] = await Promise.all([
+          const currentOrdemServicoCodigo = getCurrentOrdemServicoCodigoForLookup();
+          const [parametroResult, ordemServicoResult, termoResult, condutorResult, monitorResult, veiculoResult] = await Promise.all([
             fetchSummaryLookup(`/api/emissao-documento-parametro/resolve?dataReferencia=${encodeURIComponent(requestedDate)}`, 'Parametro de emissao nao encontrado.'),
+            currentOrdemServicoCodigo
+              ? fetchSummaryLookup(`/api/ordem-servico/${encodeURIComponent(currentOrdemServicoCodigo)}`, 'Falha ao localizar a OrdemServico para compor a emissao.')
+              : Promise.resolve({ item: null, error: '' }),
             termoAdesao
               ? fetchSummaryLookup(`/api/termo/lookup?termoAdesao=${encodeURIComponent(termoAdesao)}`, 'Termo de adesao nao encontrado ou nao ativo')
               : Promise.resolve({ item: null, error: '' }),
@@ -2872,9 +2970,14 @@
             notices.push('Nao foi possivel complementar os dados detalhados do veiculo.');
           }
 
+          if (currentOrdemServicoCodigo && ordemServicoResult.error) {
+            notices.push('Nao foi possivel complementar o tipo de troca diretamente da OrdemServico gravada.');
+          }
+
           emissaoSubtitle.textContent = `Documento pronto para ${buildOrdemServicoLabel() || 'OS em preenchimento'}.`;
           lastEmissaoDocumentMarkup = buildEmissaoDocumentMarkup({
             parametroItem: parametroResult.item,
+            ordemServicoItem: ordemServicoResult.item,
             termoItem: termoResult.item,
             condutorItem: condutorResult.item,
             monitorItem: monitorResult.item,
@@ -2885,6 +2988,7 @@
           });
           lastEmissaoDocumentPrintMarkup = buildEmissaoDocumentMarkup({
             parametroItem: parametroResult.item,
+            ordemServicoItem: ordemServicoResult.item,
             termoItem: termoResult.item,
             condutorItem: condutorResult.item,
             monitorItem: monitorResult.item,
@@ -4446,8 +4550,44 @@
         applyInsertSpecificRules();
       };
 
+      const filterGridItemsBySearch = (items, searchTerm) => {
+        if (!searchTerm) {
+          return items;
+        }
+
+        const normalizedSearch = String(searchTerm || '').toLowerCase().trim();
+        if (!normalizedSearch) {
+          return items;
+        }
+
+        return items.filter((item) => {
+          const os = String(item.os_concat || '').toLowerCase();
+          const credenciado = String(item.credenciado || '').toLowerCase();
+          const condutor = String(item.condutor || '').toLowerCase();
+          const monitor = String(item.monitor || '').toLowerCase();
+          const placas = String(item.veiculo_placas || '').toLowerCase();
+          const situacao = String(item.situacao || '').toLowerCase();
+          const cnpjCpf = normalizeCnpjCpf(item.cnpj_cpf || item.cnpjCpf || item.cnpj || item.cpf || '');
+          const cpfCondutor = normalizeCnpjCpf(item.cpf_condutor || item.cpfCondutor || '');
+          const cpfMonitor = normalizeCnpjCpf(item.cpf_monitor || item.cpfMonitor || '');
+          const crm = String(item.crm || item.veiculo_crm || item.crm_os || '').toLowerCase();
+
+          return os.includes(normalizedSearch)
+            || credenciado.includes(normalizedSearch)
+            || condutor.includes(normalizedSearch)
+            || monitor.includes(normalizedSearch)
+            || placas.includes(normalizedSearch)
+            || situacao.includes(normalizedSearch)
+            || cnpjCpf.includes(normalizedSearch)
+            || cpfCondutor.includes(normalizedSearch)
+            || cpfMonitor.includes(normalizedSearch)
+            || crm.includes(normalizedSearch);
+        });
+      };
+
       const renderGrid = (items) => {
-        const orderedItems = prioritizeAtivos(items || []);
+        const filteredItems = filterGridItemsBySearch(items || [], currentSearch);
+        const orderedItems = prioritizeAtivos(filteredItems);
         currentGridItems = orderedItems;
         gridBody.innerHTML = '';
 
@@ -4463,20 +4603,51 @@
 
         orderedItems.forEach((item) => {
           const row = document.createElement('tr');
+          const credenciadoDocument = normalizeCnpjCpf(item.cnpj_cpf || item.cnpjCpf || item.cnpj || item.cpf || '');
+          const condutorCpf = normalizeCnpjCpf(item.cpf_condutor || item.cpfCondutor || '');
+          const monitorCpf = normalizeCnpjCpf(item.cpf_monitor || item.cpfMonitor || '');
+          const placaCrm = item.crm || item.veiculo_crm || item.crm_os || '';
+          const situacaoText = String(item.situacao || '').trim();
+          const situacaoClass = situacaoText.toLowerCase() === 'ativo'
+            ? 'dsc-situacao-ativo'
+            : situacaoText.toLowerCase() === 'cancelado'
+              ? 'dsc-situacao-cancelado'
+              : '';
+
           row.dataset.codigo = String(item.codigo || '');
           row.innerHTML = `
-            <td>${item.os_concat || ''}</td>
-            <td>${item.credenciado || ''}</td>
-            <td>${item.condutor || ''}</td>
-            <td>${item.monitor || ''}</td>
-            <td>${item.veiculo_placas || ''}</td>
-            <td>${item.situacao || ''}</td>
+            <td><strong>${item.os_concat || ''}</strong></td>
+            <td title="${item.credenciado || ''}">
+              <div class="dsc-ordem-servico-grid-main-cell">
+                <strong>${item.credenciado || ''}</strong>
+                ${credenciadoDocument ? `<span>CPF/CNPJ: ${credenciadoDocument}</span>` : ''}
+              </div>
+            </td>
+            <td title="${item.condutor || ''}">
+              <div class="dsc-ordem-servico-grid-main-cell">
+                <strong>${item.condutor || ''}</strong>
+                ${condutorCpf ? `<span>CPF: ${condutorCpf}</span>` : ''}
+              </div>
+            </td>
+            <td title="${item.monitor || ''}">
+              <div class="dsc-ordem-servico-grid-main-cell">
+                <strong>${item.monitor || ''}</strong>
+                ${monitorCpf ? `<span>CPF: ${monitorCpf}</span>` : ''}
+              </div>
+            </td>
+            <td title="${item.veiculo_placas || ''}">
+              <div class="dsc-ordem-servico-grid-main-cell">
+                <strong>${item.veiculo_placas || ''}</strong>
+                ${placaCrm ? `<span>CRM: ${placaCrm}</span>` : ''}
+              </div>
+            </td>
+            <td><strong><span class="${situacaoClass}">${item.situacao || ''}</span></strong></td>
             <td>
               <div class="dsc-grid-actions">
-                ${hasViewPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-view" data-action="history" data-codigo="${item.codigo}">Historico</button>` : ''}
-                <button type="button" class="dsc-grid-action-button" data-action="view" data-codigo="${item.codigo}">Consulta</button>
-                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Corrigir</button>` : ''}
-                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="substitute" data-codigo="${item.codigo}"${item.situacao === 'Cancelado' ? ' disabled' : ''}>Substituir</button>` : ''}
+                ${hasViewPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-history" data-action="history" data-codigo="${item.codigo}" title="Histórico" aria-label="Histórico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5l3 3"/><path d="M21 12a9 9 0 1 1-9-9"/></svg></button>` : ''}
+                <button type="button" class="dsc-grid-action-button dsc-grid-action-consulta" data-action="view" data-codigo="${item.codigo}" title="Consulta" aria-label="Consulta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg></button>
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}" title="Corrigir" aria-label="Corrigir"${item.situacao === 'Cancelado' ? ' disabled' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5 20.5 7.5 7 21H3v-4L16.5 3.5Z"/></svg></button>` : ''}
+                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-substitute" data-action="substitute" data-codigo="${item.codigo}" title="Substituir" aria-label="Substituir"${item.situacao === 'Cancelado' ? ' disabled' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7v3h3"/><path d="M20 17v-3h-3"/><path d="M5 10a7 7 0 0 1 14 0"/><path d="M19 14a7 7 0 0 1-14 0"/></svg></button>` : ''}
               </div>
             </td>
           `;
@@ -5611,77 +5782,19 @@
       };
 
       const startSubstitution = async (item) => {
-        const normalizedDre = normalizeOrdemServicoDre(item.dre_codigo || '', item.dre_descricao || '');
+        const url = `/src/ordemServico.html?popupMode=dashboard-ordem-servico&codigo=${encodeURIComponent(item.codigo)}&mode=substitute`;
+        const popupWindow = window.open(
+          url,
+          `tegfinanc-ordem-servico-substitute-${item?.codigo || 'substituicao'}`,
+          buildCenteredPopupFeatures({ width: 1480, height: 900 }),
+        );
 
-        form.reset();
-        clearLookupFields();
-        clearSaveChangeRequirement();
-        editingCodigo = null;
-        isInsertNewTerm = false;
-        isRevisionInsertion = false;
-        isSubstitutionInsertion = true;
-        isActivationInsertion = false;
-        substitutionSourceCodigo = Number(item.codigo) || null;
-        activationSourceEncerramento = null;
-        isDraftSubstitutionReadOnly = normalizeKey(item.situacao || '') === 'rascunho' || normalizeKey(item.situacao || '') === 'substituido';
-        originalSituacaoValue = item.situacao || '';
-        originalCpfCondutorValue = normalizeCpf(String(item.cpf_condutor || ''));
-        originalCpfMonitorValue = normalizeCpf(String(item.cpf_monitor || ''));
-        originalVeiculoPlacaValue = normalizePlaca(String(item.veiculo_placas || ''));
-        termoAdesaoInput.value = normalizeTermoAdesao(String(item.termo_adesao || ''));
-        numOsInput.value = normalizeNumOs(String(item.num_os || ''));
-        revisaoInput.value = normalizeRevisao(String(item.revisao || ''));
-        vigenciaOsInput.value = item.vigencia_os || '';
-        dataEmissaoInput.value = getCurrentDateInputValue();
-        cnpjCpfInput.value = item.cnpj_cpf || '';
-        credenciadoInput.value = item.credenciado || '';
-        dreCodigoInput.value = normalizedDre.dreCodigo;
-        dreDescricaoInput.value = normalizedDre.dreDescricao;
-        modalidadeDescricaoInput.value = item.modalidade_descricao || normalizedDre.modalidadeDescricao;
-        cpfCondutorInput.value = item.cpf_condutor || '';
-        condutorInput.value = item.condutor || '';
-        dataAdmissaoCondutorInput.value = item.data_admissao_condutor || '';
-        possuiPrepostoInput.checked = Boolean(item.cpf_preposto || item.preposto_condutor || item.preposto_inicio || item.preposto_dias);
-        cpfPrepostoInput.value = item.cpf_preposto || '';
-        prepostoCondutorInput.value = item.preposto_condutor || '';
-        prepostoInicioInput.value = item.preposto_inicio || '';
-        prepostoDiasInput.value = item.preposto_dias || '';
-        crmInput.value = item.crm || '';
-        veiculoPlacasInput.value = item.veiculo_placas || '';
-        cpfMonitorInput.value = item.cpf_monitor || '';
-        monitorInput.value = item.monitor || '';
-        dataAdmissaoMonitorInput.value = item.data_admissao_monitor || '';
-        tipoTrocaInput.value = item.tipo_troca_descricao || '';
-        vigenciaOsInput.min = getCurrentDateInputValue();
-        dataEncerramentoInput.value = '';
-        anotacaoInput.value = item.anotacao || '';
-        setSelectedSituacao('Ativo');
-        codigoAccessInput.value = item.codigo_access || '';
-        renderDreOptions(dreCodigoInput.value);
-        renderModalidadeOptions(modalidadeDescricaoInput.value || deriveModalidadeFromDreDescricao(dreDescricaoInput.value));
-        renderTipoTrocaOptions(tipoTrocaInput.value);
-        syncOsConcatInput();
-        resetMessages();
-        setGridMessage('');
-        showForm('substitute');
-        updateInsertTermGuard({ showMissingError: false });
-        applyInsertSpecificRules();
-        applyIdentityFieldLock();
-        syncPrepostoState();
-        syncSituacaoRadioAvailability({ allowRascunho: false, lockAll: true });
-        void refreshRelatedFieldsOnFormEntry();
-        void ensureDreOptionsLoaded(dreCodigoInput.value);
-        void ensureModalidadeOptionsLoaded(modalidadeDescricaoInput.value || deriveModalidadeFromDreDescricao(dreDescricaoInput.value));
-        void ensureTipoTrocaOptionsLoaded(tipoTrocaInput.value);
-        await handleAddRevisao();
-        if (isDraftSubstitutionReadOnly) {
-          clearSaveChangeRequirement();
-          applyDraftSubstitutionLock();
-        } else {
-          armSaveChangeRequirement();
+        if (!popupWindow) {
+          showBanner('Não foi possível abrir a substituição da OrdemServico.', 'error');
+          return;
         }
-        revisaoInput.focus();
-        revisaoInput.select();
+
+        popupWindow.focus();
       };
 
       const populateFormFromItem = (item, mode = 'edit') => {
@@ -5763,12 +5876,35 @@
           return;
         }
 
-        populateFormFromItem(item, 'edit');
-        armSaveChangeRequirement();
+        const url = `/src/ordemServico.html?popupMode=dashboard-ordem-servico&codigo=${encodeURIComponent(item.codigo)}&mode=edit`;
+        const popupWindow = window.open(
+          url,
+          `tegfinanc-ordem-servico-edit-${item?.codigo || 'edicao'}`,
+          buildCenteredPopupFeatures({ width: 1480, height: 900 }),
+        );
+
+        if (!popupWindow) {
+          showBanner('Não foi possível abrir a edição da OrdemServico.', 'error');
+          return;
+        }
+
+        popupWindow.focus();
       };
 
       const startView = (item) => {
-        populateFormFromItem(item, 'view');
+        const url = `/src/ordemServico.html?popupMode=dashboard-ordem-servico&codigo=${encodeURIComponent(item.codigo)}&mode=view`;
+        const popupWindow = window.open(
+          url,
+          `tegfinanc-ordem-servico-view-${item?.codigo || 'consulta'}`,
+          buildCenteredPopupFeatures({ width: 1480, height: 900 }),
+        );
+
+        if (!popupWindow) {
+          showBanner('Não foi possível abrir a consulta da OrdemServico.', 'error');
+          return;
+        }
+
+        popupWindow.focus();
       };
 
       const bootstrapDashboardPopup = async () => {
@@ -5791,9 +5927,9 @@
           }
 
           if (dashboardPopupMode === 'edit') {
-            startEdit(payload);
+            populateFormFromItem(payload, 'edit');
           } else {
-            startView(payload);
+            populateFormFromItem(payload, 'view');
           }
 
           dashboardPopupBootstrapDone = true;
@@ -5910,18 +6046,20 @@
 
       gridBody.addEventListener('click', (event) => {
         const target = event.target;
+        const button = target instanceof Element ? target.closest('button[data-action]') : null;
         const row = target instanceof Element ? target.closest('tr') : null;
 
-        if (row instanceof HTMLTableRowElement) {
+        if (row instanceof HTMLTableRowElement && !button) {
           applyGridRowSelection(row);
         }
 
-        if (!(target instanceof HTMLButtonElement)) {
+        if (!button) {
           return;
         }
 
-        const action = target.dataset.action;
-        const rawItem = row ? row.dataset.item : '';
+        const action = button.dataset.action;
+        const rowElement = button.closest('tr');
+        const rawItem = rowElement ? rowElement.dataset.item : '';
 
         if (!rawItem) {
           return;
