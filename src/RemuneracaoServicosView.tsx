@@ -51,6 +51,7 @@ const normalizeIntegerInput = (value: string) => value.replace(/[^\d]/g, '')
 
 const getCurrentMonthYear = () => {
   const currentDate = new Date()
+  currentDate.setMonth(currentDate.getMonth() - 1)
   const month = String(currentDate.getMonth() + 1).padStart(2, '0')
   return `${month}/${currentDate.getFullYear()}`
 }
@@ -316,7 +317,7 @@ export default function RemuneracaoServicosView() {
   const [dreCodigo, setDreCodigo] = useState('')
   const [crmcCondutor, setCrmcCondutor] = useState('')
   const [placa, setPlaca] = useState('')
-  const [revisao, setRevisao] = useState('')
+  const [revisao, setRevisao] = useState('0')
   const [tipoPessoa, setTipoPessoa] = useState<ApuracaoTipoPessoa>('PF')
   const [appliedFilters, setAppliedFilters] = useState<RemuneracaoServicosFilters>({
     mesAno: initialMesAno,
@@ -324,7 +325,7 @@ export default function RemuneracaoServicosView() {
     dreCodigo: '',
     crmcCondutor: '',
     placa: '',
-    revisao: '',
+    revisao: '0',
     tipoPessoa: 'PF',
   })
   const [items, setItems] = useState<RemuneracaoServicosItem[]>([])
@@ -667,7 +668,7 @@ export default function RemuneracaoServicosView() {
     setDreCodigo('')
     setCrmcCondutor('')
     setPlaca('')
-    setRevisao('')
+    setRevisao('0')
     setTipoPessoa('PF')
     setAppliedFilters({
       mesAno: defaultMesAno,
@@ -675,7 +676,7 @@ export default function RemuneracaoServicosView() {
       dreCodigo: '',
       crmcCondutor: '',
       placa: '',
-      revisao: '',
+      revisao: '0',
       tipoPessoa: 'PF',
     })
     setPage(1)
@@ -870,19 +871,6 @@ export default function RemuneracaoServicosView() {
                 disabled={isLoading || isSaving || isProcessingBatch}
               />
             </label>
-            <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-data-operacao">
-              <span className="apontamento-servicos-filter-label">Data operacao</span>
-              <input
-                id="remuneracao-servicos-data-operacao"
-                className="management-filter-input apontamento-servicos-filter-input"
-                type="text"
-                inputMode="numeric"
-                placeholder="dd/mm/aaaa"
-                value={dataOperacaoInput}
-                onChange={(event) => handleDataOperacaoInputChange(event.target.value)}
-                disabled={isLoading || isSaving || isProcessingBatch}
-              />
-            </label>
             <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-dre">
               <span className="apontamento-servicos-filter-label">DRE</span>
               <select
@@ -899,6 +887,48 @@ export default function RemuneracaoServicosView() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-tipo-pessoa">
+              <span className="apontamento-servicos-filter-label">Tipo pessoa</span>
+              <select
+                id="remuneracao-servicos-tipo-pessoa"
+                className="management-filter-select apontamento-servicos-filter-input"
+                value={tipoPessoa}
+                onChange={(event) => setTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
+                disabled={isLoading || isSaving || isProcessingBatch}
+              >
+                {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-revisao">
+              <span className="apontamento-servicos-filter-label">Revisao</span>
+              <input
+                id="remuneracao-servicos-revisao"
+                className="management-filter-input apontamento-servicos-filter-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                value={revisao}
+                onChange={(event) => setRevisao(normalizeIntegerInput(event.target.value))}
+                disabled={isLoading || isSaving || isProcessingBatch}
+              />
+            </label>
+            <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-data-operacao">
+              <span className="apontamento-servicos-filter-label">Data referencia</span>
+              <input
+                id="remuneracao-servicos-data-operacao"
+                className="management-filter-input apontamento-servicos-filter-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="dd/mm/aaaa"
+                value={dataOperacaoInput}
+                onChange={(event) => handleDataOperacaoInputChange(event.target.value)}
+                disabled={isLoading || isSaving || isProcessingBatch}
+              />
             </label>
             <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-crmc">
               <span className="apontamento-servicos-filter-label">CRMC condutor</span>
@@ -921,34 +951,6 @@ export default function RemuneracaoServicosView() {
                 onChange={(event) => setPlaca(event.target.value)}
                 disabled={isLoading || isSaving || isProcessingBatch}
               />
-            </label>
-            <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-revisao">
-              <span className="apontamento-servicos-filter-label">Revisao</span>
-              <input
-                id="remuneracao-servicos-revisao"
-                className="management-filter-input apontamento-servicos-filter-input"
-                type="text"
-                inputMode="numeric"
-                value={revisao}
-                onChange={(event) => setRevisao(normalizeIntegerInput(event.target.value))}
-                disabled={isLoading || isSaving || isProcessingBatch}
-              />
-            </label>
-            <label className="field-group apontamento-servicos-filter-field" htmlFor="remuneracao-servicos-tipo-pessoa">
-              <span className="apontamento-servicos-filter-label">Tipo pessoa</span>
-              <select
-                id="remuneracao-servicos-tipo-pessoa"
-                className="management-filter-select apontamento-servicos-filter-input"
-                value={tipoPessoa}
-                onChange={(event) => setTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
-                disabled={isLoading || isSaving || isProcessingBatch}
-              >
-                {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
             </label>
             <div className="apontamento-servicos-filter-actions">
               <button type="submit" className="secondary-button management-filter-button" disabled={isLoading || isSaving || isProcessingBatch}>

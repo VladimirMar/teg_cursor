@@ -137,10 +137,62 @@ const parseJsonSafely = (value: string) => {
   }
 }
 
-const getErrorMessage = (payload: Record<string, unknown>) => {
-  return typeof payload.message === 'string' && payload.message.trim()
-    ? payload.message
-    : 'Falha ao processar dados da remuneracao de servicos.'
+const getErrorMessage = (payload: unknown, responseStatus?: number, responseStatusText?: string) => {
+  if (Array.isArray(payload)) {
+    const firstText = payload.find((value) => typeof value === 'string' && value.trim()) as string | undefined
+
+    if (firstText) {
+      return firstText.trim()
+    }
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    if (Number.isInteger(responseStatus)) {
+      const statusSuffix = responseStatusText?.trim() ? ` (${responseStatusText.trim()})` : ''
+      return `Falha ao processar dados da remuneracao de servicos. HTTP ${responseStatus}${statusSuffix}.`
+    }
+
+    return 'Falha ao processar dados da remuneracao de servicos.'
+  }
+
+  const payloadObject = payload as Record<string, unknown>
+
+  if (typeof payloadObject.message === 'string' && payloadObject.message.trim()) {
+    return payloadObject.message.trim()
+  }
+
+  if (typeof payloadObject.errorMessage === 'string' && payloadObject.errorMessage.trim()) {
+    return payloadObject.errorMessage.trim()
+  }
+
+  if (typeof payloadObject.error === 'string' && payloadObject.error.trim()) {
+    return payloadObject.error.trim()
+  }
+
+  if (Array.isArray(payloadObject.errors)) {
+    const firstListError = payloadObject.errors.find((value) => typeof value === 'string' && value.trim()) as string | undefined
+
+    if (firstListError) {
+      return firstListError.trim()
+    }
+  }
+
+  if (payloadObject.errors && typeof payloadObject.errors === 'object' && !Array.isArray(payloadObject.errors)) {
+    const firstError = Object.values(payloadObject.errors as Record<string, unknown>).find(
+      (value) => typeof value === 'string' && value.trim(),
+    ) as string | undefined
+
+    if (firstError) {
+      return firstError.trim()
+    }
+  }
+
+  if (Number.isInteger(responseStatus)) {
+    const statusSuffix = responseStatusText?.trim() ? ` (${responseStatusText.trim()})` : ''
+    return `Falha ao processar dados da remuneracao de servicos. HTTP ${responseStatus}${statusSuffix}.`
+  }
+
+  return 'Falha ao processar dados da remuneracao de servicos.'
 }
 
 const normalizeBatchStatus = (
@@ -223,7 +275,7 @@ export async function listRemuneracaoServicosItems(params: RemuneracaoServicosLi
   const payload = parseJsonSafely(responseText)
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(payload))
+    throw new Error(getErrorMessage(payload, response.status, response.statusText))
   }
 
   return {
@@ -255,7 +307,7 @@ export async function saveRemuneracaoServicosItems(params: {
   const payload = parseJsonSafely(responseText)
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(payload))
+    throw new Error(getErrorMessage(payload, response.status, response.statusText))
   }
 
   return typeof payload.message === 'string'
@@ -277,7 +329,7 @@ export async function startRemuneracaoServicosBatch(params: RemuneracaoServicosC
   const payload = parseJsonSafely(responseText)
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(payload))
+    throw new Error(getErrorMessage(payload, response.status, response.statusText))
   }
 
   return normalizeBatchStatus(payload, params)
@@ -295,7 +347,7 @@ export async function getRemuneracaoServicosBatchStatus(): Promise<RemuneracaoSe
   const payload = parseJsonSafely(responseText)
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(payload))
+    throw new Error(getErrorMessage(payload, response.status, response.statusText))
   }
 
   return normalizeBatchStatus(payload)

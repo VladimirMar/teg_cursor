@@ -67,6 +67,7 @@ const normalizeKmInput = (value: string) => value.replace(/[^\d,.-]/g, '')
 
 const getCurrentMonthYear = () => {
   const currentDate = new Date()
+  currentDate.setMonth(currentDate.getMonth() - 1)
   const month = String(currentDate.getMonth() + 1).padStart(2, '0')
   return `${month}/${currentDate.getFullYear()}`
 }
@@ -227,7 +228,7 @@ const areSavePayloadItemsEqual = (left: ApontamentoServicosSaveItem, right: Apon
 export default function ApontamentoServicosView() {
   const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY) || hasEditableFormPermission(LEGACY_FORM_ACCESS_KEY)
   const initialMesAno = getCurrentMonthYear()
-  const initialDataReferencia = getCurrentIsoDate()
+  const initialDataReferencia = getFirstDateOfMonthYear(initialMesAno) || getCurrentIsoDate()
   const [dreOptions, setDreOptions] = useState<DreItem[]>([])
   const [mesAno, setMesAno] = useState(initialMesAno)
   const [dataOperacaoInput, setDataOperacaoInput] = useState(formatIsoDateToDisplay(initialDataReferencia))
@@ -594,7 +595,7 @@ export default function ApontamentoServicosView() {
 
   const handleClearFilter = async () => {
     const currentMonthYear = getCurrentMonthYear()
-    const currentIsoDate = getCurrentIsoDate()
+    const currentIsoDate = getFirstDateOfMonthYear(currentMonthYear) || getCurrentIsoDate()
     setMesAno(currentMonthYear)
     setDataOperacaoInput(formatIsoDateToDisplay(doesDateBelongToMonthYear(currentIsoDate, currentMonthYear) ? currentIsoDate : getFirstDateOfMonthYear(currentMonthYear)))
     setDreCodigo('')
@@ -1057,17 +1058,6 @@ export default function ApontamentoServicosView() {
               />
             </label>
             <label className="apontamento-servicos-filter-field">
-              <span className="apontamento-servicos-filter-label">Data operacao</span>
-              <input
-                className="management-filter-input apontamento-servicos-filter-input"
-                type="text"
-                inputMode="numeric"
-                placeholder="dd/mm/yyyy"
-                value={dataOperacaoInput}
-                onChange={(event) => handleDataOperacaoInputChange(event.target.value)}
-              />
-            </label>
-            <label className="apontamento-servicos-filter-field">
               <span className="apontamento-servicos-filter-label">DRE</span>
               <select
                 className="management-filter-input apontamento-servicos-filter-input"
@@ -1082,6 +1072,42 @@ export default function ApontamentoServicosView() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="apontamento-servicos-filter-field">
+              <span className="apontamento-servicos-filter-label">Tipo pessoa</span>
+              <select
+                className="management-filter-input apontamento-servicos-filter-input"
+                value={tipoPessoa}
+                onChange={(event) => setTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
+              >
+                {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="apontamento-servicos-filter-field">
+              <span className="apontamento-servicos-filter-label">Revisao</span>
+              <input
+                className="management-filter-input apontamento-servicos-filter-input"
+                type="number"
+                step="1"
+                placeholder="0"
+                value={revisao}
+                onChange={(event) => setRevisao(normalizeIntegerInput(event.target.value))}
+              />
+            </label>
+            <label className="apontamento-servicos-filter-field">
+              <span className="apontamento-servicos-filter-label">Data referencia</span>
+              <input
+                className="management-filter-input apontamento-servicos-filter-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="dd/mm/yyyy"
+                value={dataOperacaoInput}
+                onChange={(event) => handleDataOperacaoInputChange(event.target.value)}
+              />
             </label>
             <label className="apontamento-servicos-filter-field">
               <span className="apontamento-servicos-filter-label">CRMC</span>
@@ -1102,31 +1128,6 @@ export default function ApontamentoServicosView() {
                 onChange={(event) => setPlaca(event.target.value)}
                 placeholder="Filtrar por placa"
               />
-            </label>
-            <label className="apontamento-servicos-filter-field">
-              <span className="apontamento-servicos-filter-label">Revisao</span>
-              <input
-                className="management-filter-input apontamento-servicos-filter-input"
-                type="number"
-                step="1"
-                placeholder="0"
-                value={revisao}
-                onChange={(event) => setRevisao(normalizeIntegerInput(event.target.value))}
-              />
-            </label>
-            <label className="apontamento-servicos-filter-field">
-              <span className="apontamento-servicos-filter-label">Tipo pessoa</span>
-              <select
-                className="management-filter-input apontamento-servicos-filter-input"
-                value={tipoPessoa}
-                onChange={(event) => setTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
-              >
-                {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
             </label>
             <div className="apontamento-servicos-filter-actions">
               <button type="submit" className="secondary-button management-filter-button" disabled={isLoading || isSaving}>

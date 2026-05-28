@@ -11,6 +11,8 @@ import XLSX from 'xlsx'
 
 const port = Number(process.env.PORT ?? 3001)
 const skipDatabaseSchemaSetup = String(process.env.SKIP_DB_SCHEMA_SETUP ?? '').trim().toLowerCase() === 'true'
+const skipStartupDataBootstrap = skipDatabaseSchemaSetup
+  || String(process.env.SKIP_STARTUP_DATA_BOOTSTRAP ?? '').trim().toLowerCase() === 'true'
 const workspaceRoot = path.dirname(fileURLToPath(import.meta.url))
 const importXmlDirectory = path.join(workspaceRoot, 'importXML')
 const apontamentoServicosImportDefaultFilePath = path.join(workspaceRoot, 'pgtos', '2026-04 Pgto', '04 ATESTE BT PF ABR 26.xlsx')
@@ -2981,6 +2983,124 @@ const buildApontamentoServicosLocaleOrderExpression = (valueExpression) => {
   return `BTRIM(REGEXP_REPLACE(REGEXP_REPLACE(UPPER(BTRIM(COALESCE(${normalizedExpression}, ''))), '[[:punct:]]+', ' ', 'g'), '\\s+', ' ', 'g'))`
 }
 
+const listCondutorCpfKeysByCrmc = async (crmcCondutor, executor = pool) => {
+  const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
+
+  if (!normalizedCrmcCondutor) {
+    return []
+  }
+
+  const result = await executor.query(
+    `SELECT DISTINCT regexp_replace(COALESCE(cpf_condutor, ''), '[^0-9]', '', 'g') AS cpf_key
+     FROM condutor
+     WHERE COALESCE(BTRIM(crmc), '') ILIKE $1
+       AND regexp_replace(COALESCE(cpf_condutor, ''), '[^0-9]', '', 'g') <> ''`,
+    [`%${normalizedCrmcCondutor}%`],
+  )
+
+  return result.rows
+    .map((row) => normalizeRequestValue(row?.cpf_key))
+    .filter((value) => Boolean(value))
+}
+
+const syncApuracaoServicosMaterializedFields = async (key, executor = pool) => {
+  await executor.query(
+    `WITH materialized_values AS (
+       SELECT
+         aps.mes_ano,
+         aps.data_referencia,
+         aps.dre_codigo,
+         aps.ordem_servico_codigo,
+         aps.revisao,
+         aps.tipo_escola_codigo,
+         COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+         regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g') AS cpf_condutor_key,
+         COALESCE(BTRIM(condutor_lookup.crmc), '') AS crmc_condutor,
+         CASE UPPER(BTRIM(COALESCE(veiculo_lookup.tipo_de_bancada, historico_lookup.veiculo_tipo_de_bancada, '')))
+           WHEN 'CONVENCIONAL' THEN 'NORMAL'
+           WHEN 'NORMAL' THEN 'NORMAL'
+           WHEN 'CRECHE' THEN 'CRECHE'
+           WHEN 'ADAPTADO' THEN 'ACESSIVEL'
+           WHEN 'ACESSIVEL' THEN 'ACESSIVEL'
+           ELSE COALESCE(BTRIM(veiculo_lookup.tipo_de_bancada), BTRIM(historico_lookup.veiculo_tipo_de_bancada), '')
+         END AS tipo_veiculo,
+         ${buildApontamentoServicosLocaleOrderExpression('CAST(dre.descricao AS text)')} AS dre_descricao_order,
+         ${buildApontamentoServicosLocaleOrderExpression('credenciada_lookup.empresa')} AS empresa_order,
+         ${buildApontamentoServicosLocaleOrderExpression('os.condutor')} AS nome_condutor_order,
+         ${buildApontamentoServicosLocaleOrderExpression('os.termo_adesao')} AS termo_adesao_order,
+         ${buildApontamentoServicosLocaleOrderExpression('os.num_os')} AS num_os_order,
+         ${buildApontamentoServicosTipoEscolaOrderExpression('tipo_escola')} AS tipo_escola_display_order,
+         ${buildApontamentoServicosLocaleOrderExpression('CAST(tipo_escola.descricao AS text)')} AS tipo_escola_descricao_order
+       FROM apuracao_servicos aps
+       INNER JOIN dre ON dre.codigo = aps.dre_codigo
+       INNER JOIN tipo_escola ON tipo_escola.codigo = aps.tipo_escola_codigo
+       INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+       LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+       LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+       LEFT JOIN condutor condutor_lookup
+         ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
+       LEFT JOIN LATERAL (
+         SELECT BTRIM(COALESCE(v.tipo_de_bancada, '')) AS tipo_de_bancada
+         FROM veiculo v
+         WHERE (
+           BTRIM(COALESCE(v.crm, '')) <> ''
+           AND BTRIM(COALESCE(os.crm, '')) <> ''
+           AND BTRIM(v.crm) = BTRIM(os.crm)
+         ) OR (
+           regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') <> ''
+           AND regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g') <> ''
+           AND regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') = regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g')
+         )
+         ORDER BY
+           CASE
+             WHEN BTRIM(COALESCE(v.crm, '')) <> ''
+               AND BTRIM(COALESCE(os.crm, '')) <> ''
+               AND BTRIM(v.crm) = BTRIM(os.crm)
+             THEN 0
+             ELSE 1
+           END,
+           v.codigo DESC
+         LIMIT 1
+       ) veiculo_lookup ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) AS veiculo_tipo_de_bancada
+         FROM ${ordemServicoHistoricoTableName} osh
+         WHERE osh.ordem_servico_codigo = os.codigo
+           AND BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) <> ''
+           AND osh.data_evento <= (aps.data_referencia + INTERVAL '1 day')
+         ORDER BY osh.data_evento DESC, osh.id DESC
+         LIMIT 1
+       ) historico_lookup ON TRUE
+       WHERE aps.mes_ano = $1
+         AND aps.dre_codigo = $2
+         AND aps.ordem_servico_codigo = $3
+         AND aps.revisao = $4
+         AND aps.tipo_escola_codigo = $5
+         AND COALESCE(BTRIM(aps.tipo_pessoa), '') = $6
+     )
+     UPDATE apuracao_servicos aps
+     SET cpf_condutor_key = materialized_values.cpf_condutor_key,
+         crmc_condutor = materialized_values.crmc_condutor,
+         tipo_veiculo = materialized_values.tipo_veiculo,
+         dre_descricao_order = materialized_values.dre_descricao_order,
+         empresa_order = materialized_values.empresa_order,
+         nome_condutor_order = materialized_values.nome_condutor_order,
+         termo_adesao_order = materialized_values.termo_adesao_order,
+         num_os_order = materialized_values.num_os_order,
+         tipo_escola_display_order = materialized_values.tipo_escola_display_order,
+         tipo_escola_descricao_order = materialized_values.tipo_escola_descricao_order
+     FROM materialized_values
+     WHERE aps.mes_ano = materialized_values.mes_ano
+       AND aps.data_referencia = materialized_values.data_referencia
+       AND aps.dre_codigo = materialized_values.dre_codigo
+       AND aps.ordem_servico_codigo = materialized_values.ordem_servico_codigo
+       AND aps.revisao = materialized_values.revisao
+       AND aps.tipo_escola_codigo = materialized_values.tipo_escola_codigo
+       AND COALESCE(BTRIM(aps.tipo_pessoa), '') = materialized_values.tipo_pessoa`,
+    [key.mesAno, Number.parseInt(key.dreCodigo, 10), Number.parseInt(key.ordemServicoCodigo, 10), key.revisao, Number.parseInt(key.tipoEscolaCodigo, 10), key.tipoPessoa],
+  )
+}
+
 const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, preserveExistingKilometragem = false, createApuracaoFinanceiraIfMissing = false }, executor = pool) => {
   const touchedKeys = new Map()
   const remunerationSeedItems = []
@@ -3360,8 +3480,8 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
     throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
   }
 
-  const values = [normalizedDate, monthRange.monthStart, monthRange.monthEnd, normalizedMesAno]
-  const filters = ['aps.mes_ano = $4']
+  const values = [normalizedDate, normalizedMesAno]
+  const filters = ['aps.data_referencia = $1::date', 'aps.mes_ano = $2']
 
   if (normalizedDreCodigo) {
     values.push(normalizedDreCodigo)
@@ -3369,8 +3489,14 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   }
 
   if (normalizedCrmcCondutor) {
-    values.push(`%${normalizedCrmcCondutor}%`)
-    filters.push(`COALESCE(BTRIM(condutor_lookup.crmc), '') ILIKE $${values.length}`)
+    const cpfKeys = await listCondutorCpfKeysByCrmc(normalizedCrmcCondutor, executor)
+
+    if (!cpfKeys.length) {
+      filters.push('1 = 0')
+    } else {
+      values.push(cpfKeys)
+      filters.push(`COALESCE(BTRIM(aps.cpf_condutor_key), '') = ANY($${values.length}::text[])`)
+    }
   }
 
   if (normalizedPlaca) {
@@ -3389,130 +3515,16 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   }
 
   const normalizedPageSize = Math.min(Math.max(Number(pageSize) || 20, 1), 50)
-  const canonicalEntriesCte = `
-    WITH canonical_entries AS (
-      SELECT DISTINCT ON (
-        BTRIM(aps.mes_ano),
-        CAST(aps.dre_codigo AS text),
-        aps.ordem_servico_codigo::text,
-        aps.revisao,
-        CAST(aps.tipo_escola_codigo AS text),
-        COALESCE(BTRIM(aps.tipo_pessoa), '')
-      )
-        BTRIM(aps.mes_ano) AS mes_ano,
-        CAST(aps.dre_codigo AS text) AS dre_codigo,
-        COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
-        BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
-        aps.ordem_servico_codigo::text AS ordem_servico_codigo,
-        COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
-        COALESCE(BTRIM(os.termo_adesao), '') AS ordem_servico_termo_adesao,
-        COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
-        aps.revisao AS revisao,
-        CAST(aps.tipo_escola_codigo AS text) AS tipo_escola_codigo,
-        COALESCE(BTRIM(tipo_escola.sigla), '') AS tipo_escola_sigla,
-        BTRIM(CAST(tipo_escola.descricao AS text)) AS tipo_escola_descricao,
-        COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
-        TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $2::date), 'YYYY-MM-DD') AS periodo_inicio,
-        TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $3::date), 'YYYY-MM-DD') AS periodo_fim,
-        COALESCE(BTRIM(condutor_lookup.crmc), '') AS crmc_condutor,
-        COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
-        COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
-        COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
-        COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
-        CASE UPPER(BTRIM(COALESCE(veiculo_lookup.tipo_de_bancada, historico_lookup.veiculo_tipo_de_bancada, '')))
-          WHEN 'CONVENCIONAL' THEN 'NORMAL'
-          WHEN 'NORMAL' THEN 'NORMAL'
-          WHEN 'CRECHE' THEN 'CRECHE'
-          WHEN 'ADAPTADO' THEN 'ACESSIVEL'
-          WHEN 'ACESSIVEL' THEN 'ACESSIVEL'
-          ELSE COALESCE(BTRIM(veiculo_lookup.tipo_de_bancada), BTRIM(historico_lookup.veiculo_tipo_de_bancada), '')
-        END AS tipo_veiculo,
-        COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
-        TRUE AS ativo_na_data,
-        ${buildApontamentoServicosLocaleOrderExpression('CAST(dre.descricao AS text)')} AS dre_descricao_order,
-        ${buildApontamentoServicosLocaleOrderExpression('credenciada_lookup.empresa')} AS empresa_order,
-        ${buildApontamentoServicosLocaleOrderExpression('os.condutor')} AS nome_condutor_order,
-        ${buildApontamentoServicosLocaleOrderExpression('os.termo_adesao')} AS termo_adesao_order,
-        ${buildApontamentoServicosLocaleOrderExpression('os.num_os')} AS num_os_order,
-        ${buildApontamentoServicosTipoEscolaOrderExpression('tipo_escola')} AS tipo_escola_display_order,
-        ${buildApontamentoServicosLocaleOrderExpression('CAST(tipo_escola.descricao AS text)')} AS tipo_escola_descricao_order
-      FROM apuracao_servicos aps
-      INNER JOIN dre ON dre.codigo = aps.dre_codigo
-      INNER JOIN tipo_escola ON tipo_escola.codigo = aps.tipo_escola_codigo
-      INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
-      LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
-      LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
-      LEFT JOIN condutor condutor_lookup
-        ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
-      LEFT JOIN LATERAL (
-        SELECT BTRIM(COALESCE(v.tipo_de_bancada, '')) AS tipo_de_bancada
-        FROM veiculo v
-        WHERE (
-          BTRIM(COALESCE(v.crm, '')) <> ''
-          AND BTRIM(COALESCE(os.crm, '')) <> ''
-          AND BTRIM(v.crm) = BTRIM(os.crm)
-        ) OR (
-          regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') <> ''
-          AND regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g') <> ''
-          AND regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') = regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g')
-        )
-        ORDER BY
-          CASE
-            WHEN BTRIM(COALESCE(v.crm, '')) <> ''
-              AND BTRIM(COALESCE(os.crm, '')) <> ''
-              AND BTRIM(v.crm) = BTRIM(os.crm)
-            THEN 0
-            ELSE 1
-          END,
-          v.codigo DESC
-        LIMIT 1
-      ) veiculo_lookup ON TRUE
-      LEFT JOIN LATERAL (
-        SELECT BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) AS veiculo_tipo_de_bancada
-        FROM ${ordemServicoHistoricoTableName} osh
-        WHERE osh.ordem_servico_codigo = os.codigo
-          AND BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) <> ''
-          AND osh.data_evento <= ($1::date + INTERVAL '1 day')
-        ORDER BY osh.data_evento DESC, osh.id DESC
-        LIMIT 1
-      ) historico_lookup ON TRUE
-      INNER JOIN apuracao_financeira
-        ON apuracao_financeira.mes_ano = aps.mes_ano
-       AND apuracao_financeira.dre_codigo = aps.dre_codigo
-       AND apuracao_financeira.revisao = aps.revisao
-       AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(aps.tipo_pessoa)
-      WHERE ${filters.join('\n       AND ')}
-        AND ${ordemServicoActiveStartDateExpression} <= $1::date
-        AND ${ordemServicoActiveEndDateExpression} >= $1::date
-      ORDER BY
-        BTRIM(aps.mes_ano),
-        CAST(aps.dre_codigo AS text),
-        aps.ordem_servico_codigo::text,
-        aps.revisao,
-        CAST(aps.tipo_escola_codigo AS text),
-        COALESCE(BTRIM(aps.tipo_pessoa), ''),
-        aps.data_referencia ASC
-    ),
-    grouped_ordens AS (
-      SELECT
-        mes_ano,
-        dre_codigo,
-        ordem_servico_codigo,
-        revisao,
-        tipo_pessoa,
-        MAX(dre_descricao_order) AS dre_descricao_order,
-        MAX(empresa_order) AS empresa_order,
-        MAX(nome_condutor_order) AS nome_condutor_order,
-        MAX(termo_adesao_order) AS termo_adesao_order,
-        MAX(num_os_order) AS num_os_order
-      FROM canonical_entries
-      GROUP BY mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa
-    )`
+  const fromAndWhereClause = `
+     FROM apuracao_servicos aps
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+     WHERE ${filters.join('\n       AND ')}
+       AND ${ordemServicoActiveStartDateExpression} <= $1::date
+       AND ${ordemServicoActiveEndDateExpression} >= $1::date`
 
   const countResult = await executor.query(
-    `${canonicalEntriesCte}
-     SELECT COUNT(*)::int AS total
-     FROM grouped_ordens`,
+    `SELECT COUNT(*)::int AS total
+     ${fromAndWhereClause}`,
     values,
   )
 
@@ -3520,52 +3532,67 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   const totalPages = Math.max(Math.ceil(total / normalizedPageSize), 1)
   const normalizedPage = Math.min(Math.max(Number(page) || 1, 1), totalPages)
   const offset = (normalizedPage - 1) * normalizedPageSize
-  const pagedValues = [...values, normalizedPageSize, offset]
+  const pagedValues = [...values, monthRange.monthStart, monthRange.monthEnd, normalizedPageSize, offset]
+  const monthStartParameterIndex = pagedValues.length - 3
+  const monthEndParameterIndex = pagedValues.length - 2
   const result = await executor.query(
-    `${canonicalEntriesCte},
-     paged_ordens AS (
+    `WITH paged_apontamentos AS (
        SELECT
-         mes_ano,
-         dre_codigo,
-         ordem_servico_codigo,
-         revisao,
-         tipo_pessoa
-       FROM grouped_ordens
-        ORDER BY empresa_order ASC,
-             nome_condutor_order ASC,
-             dre_descricao_order ASC,
-                termo_adesao_order ASC,
-                num_os_order ASC,
-                revisao ASC,
-                ordem_servico_codigo ASC
+         BTRIM(aps.mes_ano) AS mes_ano,
+         aps.data_referencia,
+         CAST(aps.dre_codigo AS text) AS dre_codigo,
+         aps.ordem_servico_codigo::text AS ordem_servico_codigo,
+         aps.revisao,
+         CAST(aps.tipo_escola_codigo AS text) AS tipo_escola_codigo,
+         COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+         COALESCE(aps.empresa_order, '') AS empresa_order,
+         COALESCE(aps.nome_condutor_order, '') AS nome_condutor_order,
+         COALESCE(aps.dre_descricao_order, '') AS dre_descricao_order,
+         COALESCE(aps.termo_adesao_order, '') AS termo_adesao_order,
+         COALESCE(aps.num_os_order, '') AS num_os_order,
+         COALESCE(aps.tipo_escola_display_order, 999) AS tipo_escola_display_order,
+         COALESCE(aps.tipo_escola_descricao_order, '') AS tipo_escola_descricao_order
+       ${fromAndWhereClause}
+      ORDER BY COALESCE(BTRIM(aps.crmc_condutor), '') ASC,
+                COALESCE(BTRIM(aps.tipo_veiculo), '') ASC,
+          COALESCE(aps.empresa_order, '') ASC,
+                COALESCE(aps.termo_adesao_order, '') ASC,
+                COALESCE(aps.num_os_order, '') ASC,
+                aps.revisao ASC,
+                COALESCE(aps.tipo_escola_display_order, 999) ASC,
+                COALESCE(aps.tipo_escola_descricao_order, '') ASC,
+                aps.ordem_servico_codigo ASC,
+                aps.tipo_escola_codigo ASC,
+                aps.dre_codigo ASC,
+                COALESCE(BTRIM(aps.tipo_pessoa), '') ASC
        LIMIT $${pagedValues.length - 1}
        OFFSET $${pagedValues.length}
      )
      SELECT
-       canonical_entries.mes_ano,
-       canonical_entries.dre_codigo,
-       canonical_entries.dre_sigla,
-       canonical_entries.dre_descricao,
-       canonical_entries.ordem_servico_codigo,
-       canonical_entries.ordem_servico_os_concat,
-       canonical_entries.ordem_servico_termo_adesao,
-       canonical_entries.ordem_servico_num_os,
-       canonical_entries.revisao,
-       canonical_entries.tipo_escola_codigo,
-       canonical_entries.tipo_escola_sigla,
-       canonical_entries.tipo_escola_descricao,
-       canonical_entries.tipo_pessoa,
-       canonical_entries.periodo_inicio,
-       canonical_entries.periodo_fim,
-       canonical_entries.crmc_condutor,
-       canonical_entries.contrato,
-       canonical_entries.placa,
-       canonical_entries.empresa,
-       canonical_entries.nome_condutor,
-       canonical_entries.tipo_veiculo,
-       canonical_entries.apuracao_financeira_situacao,
+       BTRIM(apontamento_dia.mes_ano) AS mes_ano,
+       CAST(apontamento_dia.dre_codigo AS text) AS dre_codigo,
+       COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+       BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+       apontamento_dia.ordem_servico_codigo::text AS ordem_servico_codigo,
+       COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
+       COALESCE(BTRIM(os.termo_adesao), '') AS ordem_servico_termo_adesao,
+       COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+       apontamento_dia.revisao,
+       CAST(apontamento_dia.tipo_escola_codigo AS text) AS tipo_escola_codigo,
+       COALESCE(BTRIM(tipo_escola.sigla), '') AS tipo_escola_sigla,
+       BTRIM(CAST(tipo_escola.descricao AS text)) AS tipo_escola_descricao,
+       COALESCE(BTRIM(apontamento_dia.tipo_pessoa), '') AS tipo_pessoa,
+       TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $${monthStartParameterIndex}::date), 'YYYY-MM-DD') AS periodo_inicio,
+       TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $${monthEndParameterIndex}::date), 'YYYY-MM-DD') AS periodo_fim,
+      COALESCE(BTRIM(apontamento_dia.crmc_condutor), '') AS crmc_condutor,
+       COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
+       COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
+       COALESCE(BTRIM(apontamento_dia.tipo_veiculo), '') AS tipo_veiculo,
+       COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
+       TRUE AS ativo_na_data,
        $1::date::text AS data_referencia,
-       canonical_entries.ativo_na_data,
        COALESCE(apontamento_dia.nc_pres, 0) AS nc_pres,
        COALESCE(apontamento_dia.cad, 0) AS cad,
        COALESCE(apontamento_dia.ac_nc, 0) AS ac_nc,
@@ -3578,30 +3605,47 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
        COALESCE(apontamento_dia.ac_cad_acm, 0) AS ac_cad_acm,
        COALESCE(apontamento_dia.cont_nc_acm, 0) AS cont_nc_acm,
        COALESCE(apontamento_dia.cont_cad_acm, 0) AS cont_cad_acm,
-       TO_CHAR(COALESCE(apontamento_dia.km, 0), 'FM9999999990.0000') AS km
-     FROM canonical_entries
-     INNER JOIN paged_ordens
-       ON paged_ordens.mes_ano = canonical_entries.mes_ano
-      AND paged_ordens.dre_codigo = canonical_entries.dre_codigo
-      AND paged_ordens.ordem_servico_codigo = canonical_entries.ordem_servico_codigo
-      AND paged_ordens.revisao = canonical_entries.revisao
-      AND paged_ordens.tipo_pessoa = canonical_entries.tipo_pessoa
-     LEFT JOIN apuracao_servicos apontamento_dia
-       ON apontamento_dia.mes_ano = canonical_entries.mes_ano
-      AND apontamento_dia.data_referencia = $1::date
-      AND CAST(apontamento_dia.dre_codigo AS text) = canonical_entries.dre_codigo
-      AND apontamento_dia.ordem_servico_codigo::text = canonical_entries.ordem_servico_codigo
-      AND apontamento_dia.revisao = canonical_entries.revisao
-      AND CAST(apontamento_dia.tipo_escola_codigo AS text) = canonical_entries.tipo_escola_codigo
-      AND COALESCE(BTRIM(apontamento_dia.tipo_pessoa), '') = canonical_entries.tipo_pessoa
-     ORDER BY canonical_entries.empresa_order ASC,
-              canonical_entries.nome_condutor_order ASC,
-              canonical_entries.dre_descricao_order ASC,
-              canonical_entries.termo_adesao_order ASC,
-              canonical_entries.num_os_order ASC,
-              canonical_entries.revisao ASC,
-              canonical_entries.tipo_escola_display_order ASC,
-              canonical_entries.tipo_escola_descricao_order ASC`,
+       TO_CHAR(COALESCE(apontamento_dia.km, 0), 'FM9999999990.0000') AS km,
+       COALESCE(apontamento_dia.empresa_order, '') AS empresa_order,
+       COALESCE(apontamento_dia.nome_condutor_order, '') AS nome_condutor_order,
+       COALESCE(apontamento_dia.dre_descricao_order, '') AS dre_descricao_order,
+       COALESCE(apontamento_dia.termo_adesao_order, '') AS termo_adesao_order,
+       COALESCE(apontamento_dia.num_os_order, '') AS num_os_order,
+       COALESCE(apontamento_dia.tipo_escola_display_order, 999) AS tipo_escola_display_order,
+       COALESCE(apontamento_dia.tipo_escola_descricao_order, '') AS tipo_escola_descricao_order
+     FROM apuracao_servicos apontamento_dia
+     INNER JOIN paged_apontamentos
+       ON paged_apontamentos.mes_ano = BTRIM(apontamento_dia.mes_ano)
+      AND paged_apontamentos.data_referencia = apontamento_dia.data_referencia
+      AND paged_apontamentos.dre_codigo = CAST(apontamento_dia.dre_codigo AS text)
+      AND paged_apontamentos.ordem_servico_codigo = apontamento_dia.ordem_servico_codigo::text
+      AND paged_apontamentos.revisao = apontamento_dia.revisao
+      AND paged_apontamentos.tipo_escola_codigo = CAST(apontamento_dia.tipo_escola_codigo AS text)
+      AND paged_apontamentos.tipo_pessoa = COALESCE(BTRIM(apontamento_dia.tipo_pessoa), '')
+     INNER JOIN dre ON dre.codigo = apontamento_dia.dre_codigo
+     INNER JOIN tipo_escola ON tipo_escola.codigo = apontamento_dia.tipo_escola_codigo
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo = apontamento_dia.ordem_servico_codigo
+     LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+     LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+     LEFT JOIN apuracao_financeira
+       ON apuracao_financeira.mes_ano = apontamento_dia.mes_ano
+      AND apuracao_financeira.dre_codigo = apontamento_dia.dre_codigo
+      AND apuracao_financeira.revisao = apontamento_dia.revisao
+      AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apontamento_dia.tipo_pessoa)
+     WHERE apontamento_dia.data_referencia = $1::date
+       AND apontamento_dia.mes_ano = $2
+    ORDER BY COALESCE(BTRIM(apontamento_dia.crmc_condutor), '') ASC,
+              COALESCE(BTRIM(apontamento_dia.tipo_veiculo), '') ASC,
+          empresa_order ASC,
+              termo_adesao_order ASC,
+              num_os_order ASC,
+              apontamento_dia.revisao ASC,
+              tipo_escola_display_order ASC,
+              tipo_escola_descricao_order ASC,
+              apontamento_dia.ordem_servico_codigo ASC,
+              apontamento_dia.tipo_escola_codigo ASC,
+              apontamento_dia.dre_codigo ASC,
+              COALESCE(BTRIM(apontamento_dia.tipo_pessoa), '') ASC`,
     pagedValues,
   )
 
@@ -3638,7 +3682,7 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
     throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
   }
 
-  const values = [normalizedDate, normalizedMesAno, monthRange.monthStart, monthRange.monthEnd]
+  const values = [normalizedDate, normalizedMesAno]
   const filters = ['aps.data_referencia = $1::date', 'aps.mes_ano = $2']
 
   if (normalizedDreCodigo) {
@@ -3647,8 +3691,14 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   }
 
   if (normalizedCrmcCondutor) {
-    values.push(`%${normalizedCrmcCondutor}%`)
-    filters.push(`COALESCE(BTRIM(condutor_lookup.crmc), '') ILIKE $${values.length}`)
+    const cpfKeys = await listCondutorCpfKeysByCrmc(normalizedCrmcCondutor, executor)
+
+    if (!cpfKeys.length) {
+      filters.push('1 = 0')
+    } else {
+      values.push(cpfKeys)
+      filters.push(`COALESCE(BTRIM(aps.cpf_condutor_key), '') = ANY($${values.length}::text[])`)
+    }
   }
 
   if (normalizedPlaca) {
@@ -3667,7 +3717,6 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   }
 
   const normalizedPageSize = Math.min(Math.max(Number(pageSize) || 20, 1), 50)
-
   const groupedOrdensCte = `
     WITH grouped_ordens AS (
       SELECT
@@ -3675,11 +3724,11 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         CAST(aps.dre_codigo AS text) AS dre_codigo,
         aps.ordem_servico_codigo::text AS ordem_servico_codigo,
         aps.revisao AS revisao,
-        COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa
+        COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+        MAX(COALESCE(BTRIM(aps.crmc_condutor), '')) AS crmc_condutor,
+        MAX(COALESCE(BTRIM(aps.tipo_veiculo), '')) AS tipo_veiculo
       FROM apuracao_servicos aps
       INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
-      LEFT JOIN condutor condutor_lookup
-        ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
       INNER JOIN apuracao_financeira
         ON apuracao_financeira.mes_ano = aps.mes_ano
        AND apuracao_financeira.dre_codigo = aps.dre_codigo
@@ -3707,7 +3756,9 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   const totalPages = Math.max(Math.ceil(total / normalizedPageSize), 1)
   const normalizedPage = Math.min(Math.max(Number(page) || 1, 1), totalPages)
   const offset = (normalizedPage - 1) * normalizedPageSize
-  const pagedValues = [...values, normalizedPageSize, offset]
+  const pagedValues = [...values, monthRange.monthStart, monthRange.monthEnd, normalizedPageSize, offset]
+  const monthStartParameterIndex = pagedValues.length - 3
+  const monthEndParameterIndex = pagedValues.length - 2
 
   const groupedResult = await executor.query(
     `${groupedOrdensCte},
@@ -3717,10 +3768,14 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
          dre_codigo,
          ordem_servico_codigo,
          revisao,
-         tipo_pessoa
+         tipo_pessoa,
+         crmc_condutor,
+         tipo_veiculo
        FROM grouped_ordens
        ORDER BY mes_ano ASC,
                 CAST(dre_codigo AS integer) ASC,
+                crmc_condutor ASC,
+                tipo_veiculo ASC,
                 revisao ASC,
                 ordem_servico_codigo ASC
        LIMIT $${pagedValues.length - 1}
@@ -3737,22 +3792,15 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
        COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
        paged_ordens.revisao,
        paged_ordens.tipo_pessoa,
-       TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $3::date), 'YYYY-MM-DD') AS periodo_inicio,
-       TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $4::date), 'YYYY-MM-DD') AS periodo_fim,
-       COALESCE(BTRIM(condutor_lookup.crmc), '') AS crmc_condutor,
+      TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $${monthStartParameterIndex}::date), 'YYYY-MM-DD') AS periodo_inicio,
+      TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $${monthEndParameterIndex}::date), 'YYYY-MM-DD') AS periodo_fim,
+       COALESCE(BTRIM(paged_ordens.crmc_condutor), '') AS crmc_condutor,
        COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
        COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
        COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
        COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
        COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
-       CASE UPPER(BTRIM(COALESCE(veiculo_lookup.tipo_de_bancada, historico_lookup.veiculo_tipo_de_bancada, '')))
-         WHEN 'CONVENCIONAL' THEN 'NORMAL'
-         WHEN 'NORMAL' THEN 'NORMAL'
-         WHEN 'CRECHE' THEN 'CRECHE'
-         WHEN 'ADAPTADO' THEN 'ACESSIVEL'
-         WHEN 'ACESSIVEL' THEN 'ACESSIVEL'
-         ELSE COALESCE(BTRIM(veiculo_lookup.tipo_de_bancada), BTRIM(historico_lookup.veiculo_tipo_de_bancada), '')
-       END AS tipo_veiculo,
+       COALESCE(BTRIM(paged_ordens.tipo_veiculo), '') AS tipo_veiculo,
        $1::date::text AS data_referencia,
        TRUE AS ativo_na_data
      FROM paged_ordens
@@ -3765,41 +3813,9 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
       AND COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') = paged_ordens.tipo_pessoa
      LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
      LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
-     LEFT JOIN condutor condutor_lookup
-       ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
-     LEFT JOIN LATERAL (
-       SELECT BTRIM(COALESCE(v.tipo_de_bancada, '')) AS tipo_de_bancada
-       FROM veiculo v
-       WHERE (
-         BTRIM(COALESCE(v.crm, '')) <> ''
-         AND BTRIM(COALESCE(os.crm, '')) <> ''
-         AND BTRIM(v.crm) = BTRIM(os.crm)
-       ) OR (
-         regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') <> ''
-         AND regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g') <> ''
-         AND regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') = regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g')
-       )
-       ORDER BY
-         CASE
-           WHEN BTRIM(COALESCE(v.crm, '')) <> ''
-             AND BTRIM(COALESCE(os.crm, '')) <> ''
-             AND BTRIM(v.crm) = BTRIM(os.crm)
-           THEN 0
-           ELSE 1
-         END,
-         v.codigo DESC
-       LIMIT 1
-     ) veiculo_lookup ON TRUE
-     LEFT JOIN LATERAL (
-       SELECT BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) AS veiculo_tipo_de_bancada
-       FROM ${ordemServicoHistoricoTableName} osh
-       WHERE osh.ordem_servico_codigo = os.codigo
-         AND BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) <> ''
-         AND osh.data_evento <= ($1::date + INTERVAL '1 day')
-       ORDER BY osh.data_evento DESC, osh.id DESC
-       LIMIT 1
-     ) historico_lookup ON TRUE
      ORDER BY CAST(paged_ordens.dre_codigo AS integer) ASC,
+              paged_ordens.crmc_condutor ASC,
+              paged_ordens.tipo_veiculo ASC,
               paged_ordens.revisao ASC,
               CAST(paged_ordens.ordem_servico_codigo AS integer) ASC`,
     pagedValues,
@@ -3898,7 +3914,46 @@ const resolveTipoBancadaFromRemuneracaoItem = (item) => {
   return ''
 }
 
+const normalizeTipoEscolaLabel = (value) => normalizeRequestValue(value)
+  .toUpperCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+
+const isExcludedTipoEscolaFromRegular = (item) => {
+  const tipoEscolaCodigo = normalizeRequestValue(item?.tipoEscolaCodigo ?? item?.tipo_escola_codigo)
+
+  // CEI e CCA devem ser sempre desconsiderados no quantitativo regular.
+  if (tipoEscolaCodigo === '6' || tipoEscolaCodigo === '7') {
+    return true
+  }
+
+  const tipoEscolaSigla = normalizeTipoEscolaLabel(item?.tipoEscolaSigla ?? item?.tipo_escola_sigla)
+
+  if (tipoEscolaSigla === 'CEI' || tipoEscolaSigla === 'CCA') {
+    return true
+  }
+
+  const tipoEscolaDescricao = normalizeTipoEscolaLabel(item?.tipoEscolaDescricao ?? item?.tipo_escola_descricao)
+  if (tipoEscolaDescricao === 'CEI' || tipoEscolaDescricao === 'CCA') {
+    return true
+  }
+
+  if (tipoEscolaDescricao.includes('CENTRO DE EDUCACAO INFANTIL')) {
+    return true
+  }
+
+  if (tipoEscolaDescricao.includes('CENTRO PARA CRIANCAS E ADOLESCENTES')) {
+    return true
+  }
+
+  return false
+}
+
 const getRegularAccumulatedQuantity = (item) => {
+  if (isExcludedTipoEscolaFromRegular(item)) {
+    return 0
+  }
+
   const ncPresAcm = Number(item?.naoCadeirantePresencialAcm) || 0
   const atCompNcAcm = Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0
   return Math.max(0, ncPresAcm + atCompNcAcm)
@@ -4073,33 +4128,44 @@ const calculateRemuneracaoServicosItems = async ({
 
     const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
     const quantidade = Math.max(0, Number(accumulatedByGroupKey.get(groupKey) ?? 0))
-    const fixoLookupKey = `${tipoBancada}|FIXO|${quantidade}`
-    const percapitaLookupKey = `${tipoBancada}|PER CAPITA|${quantidade}`
+    let tegRegularFixo = 0
+    let tegRegularPercapita = 0
 
-    let tegRegularFixo = valorByLookupKey.get(fixoLookupKey)
-    if (!Number.isFinite(tegRegularFixo)) {
-      tegRegularFixo = await findLatestRemuneracaoCondicaoValor({
-        dataReferencia,
-        tipoBancada,
-        tipoPgtoDescricao: 'FIXO',
-        quantidade,
-      }, executor)
-      valorByLookupKey.set(fixoLookupKey, tegRegularFixo)
+    if (quantidade > 0) {
+      const fixoLookupKey = `${tipoBancada}|FIXO|${quantidade}`
+      const percapitaLookupKey = `${tipoBancada}|PER CAPITA|${quantidade}`
+
+      tegRegularFixo = valorByLookupKey.get(fixoLookupKey)
+      if (!Number.isFinite(tegRegularFixo)) {
+        tegRegularFixo = await findLatestRemuneracaoCondicaoValor({
+          dataReferencia,
+          tipoBancada,
+          tipoPgtoDescricao: 'FIXO',
+          quantidade,
+        }, executor)
+        valorByLookupKey.set(fixoLookupKey, tegRegularFixo)
+      }
+
+      tegRegularPercapita = valorByLookupKey.get(percapitaLookupKey)
+      if (!Number.isFinite(tegRegularPercapita)) {
+        tegRegularPercapita = await findLatestRemuneracaoCondicaoValor({
+          dataReferencia,
+          tipoBancada,
+          tipoPgtoDescricao: 'PER CAPITA',
+          quantidade,
+        }, executor)
+        valorByLookupKey.set(percapitaLookupKey, tegRegularPercapita)
+      }
     }
 
-    let tegRegularPercapita = valorByLookupKey.get(percapitaLookupKey)
-    if (!Number.isFinite(tegRegularPercapita)) {
-      tegRegularPercapita = await findLatestRemuneracaoCondicaoValor({
-        dataReferencia,
-        tipoBancada,
-        tipoPgtoDescricao: 'PER CAPITA',
-        quantidade,
-      }, executor)
-      valorByLookupKey.set(percapitaLookupKey, tegRegularPercapita)
-    }
-
-    const normalizedTegRegularFixo = Number(Number(tegRegularFixo).toFixed(2))
-    const normalizedTegRegularPercapita = Number(Number(tegRegularPercapita).toFixed(2))
+    const normalizedTegRegularFixo = normalizeRemuneracaoServicosAmount((Number(tegRegularFixo) || 0) / 30)
+    const percapitaBaseQuantity = Math.max(quantidade, 0)
+    const percapitaQuantity = percapitaBaseQuantity <= 15
+      ? percapitaBaseQuantity
+      : percapitaBaseQuantity === 16
+        ? 16
+        : Math.max(percapitaBaseQuantity - 17 + 1, 0)
+    const normalizedTegRegularPercapita = normalizeRemuneracaoServicosAmount(((Number(tegRegularPercapita) || 0) * percapitaQuantity) / 30)
 
     totalCalculados += 1
 
@@ -4395,6 +4461,8 @@ const syncApuracaoServicosDailyTotals = async (key, executor = pool) => {
        AND COALESCE(BTRIM(aps.tipo_pessoa), '') = accumulated.tipo_pessoa`,
     [key.mesAno, Number.parseInt(key.dreCodigo, 10), Number.parseInt(key.ordemServicoCodigo, 10), key.revisao, Number.parseInt(key.tipoEscolaCodigo, 10), key.tipoPessoa],
   )
+
+  await syncApuracaoServicosMaterializedFields(key, executor)
 }
 
 const modalidadeTipoBancadaAssociationSelectClause = `
@@ -17665,6 +17733,15 @@ const ensureDatabaseSchema = async () => {
       cont_nc_acm integer NOT NULL DEFAULT 0,
       cont_cad_acm integer NOT NULL DEFAULT 0,
       km numeric(14, 4) NOT NULL DEFAULT 0,
+      crmc_condutor varchar(50),
+      tipo_veiculo varchar(20),
+      dre_descricao_order text,
+      empresa_order text,
+      nome_condutor_order text,
+      termo_adesao_order text,
+      num_os_order text,
+      tipo_escola_display_order integer,
+      tipo_escola_descricao_order text,
       data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
       data_alteracao timestamp without time zone,
       CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
@@ -17672,8 +17749,41 @@ const ensureDatabaseSchema = async () => {
   `)
   await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_apuracao_financeira_fk')
   await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_pk')
-  await pool.query('ALTER TABLE apuracao_financeira DROP CONSTRAINT IF EXISTS apuracao_financeira_pk')
-  await pool.query('ALTER TABLE apuracao_financeira ADD CONSTRAINT apuracao_financeira_pk PRIMARY KEY (mes_ano, dre_codigo, revisao, tipo_pessoa)')
+  await pool.query(`
+    DO $$
+    DECLARE existing_pk_columns text[];
+    DECLARE expected_pk_columns text[] := ARRAY['mes_ano', 'dre_codigo', 'revisao', 'tipo_pessoa'];
+    DECLARE dependent_fk record;
+    BEGIN
+      SELECT array_agg(att.attname ORDER BY key_position.ordinality)
+        INTO existing_pk_columns
+      FROM pg_constraint con
+      JOIN unnest(con.conkey) WITH ORDINALITY AS key_position(attnum, ordinality) ON TRUE
+      JOIN pg_attribute att
+        ON att.attrelid = con.conrelid
+       AND att.attnum = key_position.attnum
+      WHERE con.conrelid = 'apuracao_financeira'::regclass
+        AND con.contype = 'p';
+
+      IF existing_pk_columns IS NULL THEN
+        ALTER TABLE apuracao_financeira
+          ADD CONSTRAINT apuracao_financeira_pk PRIMARY KEY (mes_ano, dre_codigo, revisao, tipo_pessoa);
+      ELSIF existing_pk_columns <> expected_pk_columns THEN
+        FOR dependent_fk IN
+          SELECT conrelid::regclass AS table_name, conname
+          FROM pg_constraint
+          WHERE contype = 'f'
+            AND confrelid = 'apuracao_financeira'::regclass
+        LOOP
+          EXECUTE format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %I', dependent_fk.table_name, dependent_fk.conname);
+        END LOOP;
+
+        ALTER TABLE apuracao_financeira DROP CONSTRAINT IF EXISTS apuracao_financeira_pk;
+        ALTER TABLE apuracao_financeira
+          ADD CONSTRAINT apuracao_financeira_pk PRIMARY KEY (mes_ano, dre_codigo, revisao, tipo_pessoa);
+      END IF;
+    END $$;
+  `)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS apuracao_financeira_processamento_lock (
       mes_ano varchar(7) PRIMARY KEY,
@@ -19401,6 +19511,7 @@ const ensureDatabaseSchema = async () => {
       cont_nc_acm integer NOT NULL DEFAULT 0,
       cont_cad_acm integer NOT NULL DEFAULT 0,
       km numeric(14, 4) NOT NULL DEFAULT 0,
+      cpf_condutor_key varchar(14),
       data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
       data_alteracao timestamp without time zone,
       CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
@@ -19426,6 +19537,16 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cont_nc_acm integer DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cont_cad_acm integer DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS km numeric(14, 4) DEFAULT 0')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS cpf_condutor_key varchar(14)')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS crmc_condutor varchar(50)')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS tipo_veiculo varchar(20)')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS dre_descricao_order text')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS empresa_order text')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS nome_condutor_order text')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS termo_adesao_order text')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS num_os_order text')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS tipo_escola_display_order integer DEFAULT 999')
+  await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS tipo_escola_descricao_order text')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
   await pool.query('ALTER TABLE apuracao_servicos ADD COLUMN IF NOT EXISTS data_alteracao timestamp without time zone')
   await pool.query('ALTER TABLE apuracao_servicos ALTER COLUMN mes_ano TYPE varchar(7)')
@@ -19553,6 +19674,94 @@ const ensureDatabaseSchema = async () => {
       AND aps.tipo_escola_codigo = accumulated.tipo_escola_codigo
       AND COALESCE(BTRIM(aps.tipo_pessoa), '') = accumulated.tipo_pessoa
   `)
+  await pool.query(`
+    WITH materialized_values AS (
+      SELECT
+        aps.mes_ano,
+        aps.data_referencia,
+        aps.dre_codigo,
+        aps.ordem_servico_codigo,
+        aps.revisao,
+        aps.tipo_escola_codigo,
+        COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+        regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g') AS cpf_condutor_key,
+        COALESCE(BTRIM(condutor_lookup.crmc), '') AS crmc_condutor,
+        CASE UPPER(BTRIM(COALESCE(veiculo_lookup.tipo_de_bancada, historico_lookup.veiculo_tipo_de_bancada, '')))
+          WHEN 'CONVENCIONAL' THEN 'NORMAL'
+          WHEN 'NORMAL' THEN 'NORMAL'
+          WHEN 'CRECHE' THEN 'CRECHE'
+          WHEN 'ADAPTADO' THEN 'ACESSIVEL'
+          WHEN 'ACESSIVEL' THEN 'ACESSIVEL'
+          ELSE COALESCE(BTRIM(veiculo_lookup.tipo_de_bancada), BTRIM(historico_lookup.veiculo_tipo_de_bancada), '')
+        END AS tipo_veiculo,
+        ${buildApontamentoServicosLocaleOrderExpression('CAST(dre.descricao AS text)')} AS dre_descricao_order,
+        ${buildApontamentoServicosLocaleOrderExpression('credenciada_lookup.empresa')} AS empresa_order,
+        ${buildApontamentoServicosLocaleOrderExpression('os.condutor')} AS nome_condutor_order,
+        ${buildApontamentoServicosLocaleOrderExpression('os.termo_adesao')} AS termo_adesao_order,
+        ${buildApontamentoServicosLocaleOrderExpression('os.num_os')} AS num_os_order,
+        ${buildApontamentoServicosTipoEscolaOrderExpression('tipo_escola')} AS tipo_escola_display_order,
+        ${buildApontamentoServicosLocaleOrderExpression('CAST(tipo_escola.descricao AS text)')} AS tipo_escola_descricao_order
+      FROM apuracao_servicos aps
+      INNER JOIN dre ON dre.codigo = aps.dre_codigo
+      INNER JOIN tipo_escola ON tipo_escola.codigo = aps.tipo_escola_codigo
+      INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+      LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+      LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+      LEFT JOIN condutor condutor_lookup
+        ON regexp_replace(COALESCE(condutor_lookup.cpf_condutor, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(os.cpf_condutor, ''), '[^0-9]', '', 'g')
+      LEFT JOIN LATERAL (
+        SELECT BTRIM(COALESCE(v.tipo_de_bancada, '')) AS tipo_de_bancada
+        FROM veiculo v
+        WHERE (
+          BTRIM(COALESCE(v.crm, '')) <> ''
+          AND BTRIM(COALESCE(os.crm, '')) <> ''
+          AND BTRIM(v.crm) = BTRIM(os.crm)
+        ) OR (
+          regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') <> ''
+          AND regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g') <> ''
+          AND regexp_replace(UPPER(COALESCE(v.placas, '')), '[^A-Z0-9]', '', 'g') = regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g')
+        )
+        ORDER BY
+          CASE
+            WHEN BTRIM(COALESCE(v.crm, '')) <> ''
+              AND BTRIM(COALESCE(os.crm, '')) <> ''
+              AND BTRIM(v.crm) = BTRIM(os.crm)
+            THEN 0
+            ELSE 1
+          END,
+          v.codigo DESC
+        LIMIT 1
+      ) veiculo_lookup ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) AS veiculo_tipo_de_bancada
+        FROM ${ordemServicoHistoricoTableName} osh
+        WHERE osh.ordem_servico_codigo = os.codigo
+          AND BTRIM(COALESCE(osh.veiculo_tipo_de_bancada, '')) <> ''
+          AND osh.data_evento <= (aps.data_referencia + INTERVAL '1 day')
+        ORDER BY osh.data_evento DESC, osh.id DESC
+        LIMIT 1
+      ) historico_lookup ON TRUE
+    )
+    UPDATE apuracao_servicos aps
+    SET cpf_condutor_key = materialized_values.cpf_condutor_key,
+      crmc_condutor = materialized_values.crmc_condutor,
+      tipo_veiculo = materialized_values.tipo_veiculo,
+        dre_descricao_order = materialized_values.dre_descricao_order,
+        empresa_order = materialized_values.empresa_order,
+        nome_condutor_order = materialized_values.nome_condutor_order,
+        termo_adesao_order = materialized_values.termo_adesao_order,
+        num_os_order = materialized_values.num_os_order,
+        tipo_escola_display_order = materialized_values.tipo_escola_display_order,
+        tipo_escola_descricao_order = materialized_values.tipo_escola_descricao_order
+    FROM materialized_values
+    WHERE aps.mes_ano = materialized_values.mes_ano
+      AND aps.data_referencia = materialized_values.data_referencia
+      AND aps.dre_codigo = materialized_values.dre_codigo
+      AND aps.ordem_servico_codigo = materialized_values.ordem_servico_codigo
+      AND aps.revisao = materialized_values.revisao
+      AND aps.tipo_escola_codigo = materialized_values.tipo_escola_codigo
+      AND COALESCE(BTRIM(aps.tipo_pessoa), '') = materialized_values.tipo_pessoa
+  `)
   const duplicateApuracaoServicosResult = await pool.query(`
     WITH ranked_rows AS (
       SELECT
@@ -19618,6 +19827,27 @@ const ensureDatabaseSchema = async () => {
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_tipo_escola_idx ON apuracao_servicos (tipo_escola_codigo)')
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_mes_ano_idx ON apuracao_servicos (mes_ano)')
   await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_data_referencia_idx ON apuracao_servicos (data_referencia)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_mes_ano_data_referencia_idx ON apuracao_servicos (mes_ano, data_referencia)')
+  await pool.query('CREATE INDEX IF NOT EXISTS apuracao_servicos_cpf_condutor_key_idx ON apuracao_servicos (cpf_condutor_key)')
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS apuracao_servicos_paginacao_ordenacao_idx
+    ON apuracao_servicos (
+      mes_ano,
+      data_referencia,
+      COALESCE(BTRIM(tipo_pessoa), ''),
+      COALESCE(BTRIM(crmc_condutor), ''),
+      COALESCE(BTRIM(tipo_veiculo), ''),
+      COALESCE(empresa_order, ''),
+      COALESCE(termo_adesao_order, ''),
+      COALESCE(num_os_order, ''),
+      revisao,
+      COALESCE(tipo_escola_display_order, 999),
+      COALESCE(tipo_escola_descricao_order, ''),
+      ordem_servico_codigo,
+      tipo_escola_codigo,
+      dre_codigo
+    )
+  `)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS remuneracao_servicos (
       mes_ano varchar(7) NOT NULL,
@@ -28817,7 +29047,7 @@ const server = createServer(async (request, response) => {
         if (latestTermo && !allowExistingTermAditivo) {
           await client.query('ROLLBACK')
           sendJson(response, 409, {
-            message: 'Termo ja cadastrado. Para incluir aditivo, use o botao Aditivos no grid.',
+            message: 'Termo ja cadastrado. Para incluir aditivo, abra Aditivos no grid e use o botao Novo Aditivo na lista de aditivos vinculados.',
             errors: {
               termoAdesao: 'O cadastro principal aceita somente termo novo com aditivo 0.',
             },
@@ -33975,18 +34205,39 @@ Promise.resolve()
     return ensureDatabaseSchema()
   })
   .then(() => {
+    if (skipStartupDataBootstrap) {
+      console.warn('Inicializacao com SKIP_STARTUP_DATA_BOOTSTRAP=true: pulando carga inicial de dados e rebalanceamento.')
+      return null
+    }
+
     return seedTrocaTableFromXmlIfEmpty()
   })
   .then(() => {
+    if (skipStartupDataBootstrap) {
+      return null
+    }
+
     return seedSeguradoraTableFromXmlIfEmpty()
   })
   .then(() => {
+    if (skipStartupDataBootstrap) {
+      return null
+    }
+
     return seedMarcaModeloTableFromXmlIfEmpty()
   })
   .then(() => {
+    if (skipStartupDataBootstrap) {
+      return null
+    }
+
     return seedTitularTableFromXmlIfEmpty()
   })
   .then(() => {
+    if (skipStartupDataBootstrap) {
+      return null
+    }
+
     return rebalanceOrdemServicoRevisions(pool)
   })
   .then(() => {
