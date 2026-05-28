@@ -5398,14 +5398,14 @@
 
         if (formMode === 'create' && isExistingTermCreateBlocked) {
           errors.termoAdesao.textContent = 'O cadastro principal aceita somente termo novo com aditivo 0.';
-          feedback.textContent = 'Este termo ja existe. Para incluir aditivo, use o botao Aditivos no grid.';
+          feedback.textContent = 'Este termo ja existe. Para incluir aditivo, abra Aditivos no grid e use o botao Novo Aditivo na lista de aditivos vinculados.';
           revealFirstFormError({ termoAdesao: errors.termoAdesao.textContent });
           return;
         }
 
         if (formMode === 'create' && payload.aditivo !== '0') {
           errors.aditivo.textContent = 'Inserir registro aceita somente termo novo com aditivo 0. Para incluir aditivo, use o botao Aditivos.';
-          feedback.textContent = 'Corrija os campos do credenciamento termo para continuar.';
+          feedback.textContent = `Inclusao de aditivo ${payload.aditivo} bloqueada no cadastro principal. Para o termo ${payload.termoAdesao || 'informado'}, abra Aditivos no grid e use o botao Novo Aditivo na lista de aditivos vinculados.`;
           revealFirstFormError({ aditivo: errors.aditivo.textContent });
           return;
         }
