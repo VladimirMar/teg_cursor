@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
+import { networkInterfaces } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -20,9 +21,30 @@ const resolveRuntimeRoot = () => {
 
 const runtimeRoot = resolveRuntimeRoot()
 const port = Number(process.env.HOMOL_WEB_PORT ?? 4173)
-const host = process.env.HOMOL_WEB_HOST ?? '10.36.144.147'
+const host = process.env.HOMOL_WEB_HOST ?? '0.0.0.0'
 const fallbackHost = process.env.HOMOL_WEB_FALLBACK_HOST ?? '127.0.0.1'
 const apiTarget = process.env.HOMOL_API_TARGET ?? 'http://127.0.0.1:3002'
+
+const resolveAdvertisedHosts = () => {
+  if (host !== '0.0.0.0') {
+    return [host]
+  }
+
+  const interfaces = networkInterfaces()
+  const discoveredHosts = new Set(['127.0.0.1'])
+
+  for (const interfaceEntries of Object.values(interfaces)) {
+    for (const entry of interfaceEntries ?? []) {
+      if (!entry || entry.internal || entry.family !== 'IPv4') {
+        continue
+      }
+
+      discoveredHosts.add(entry.address)
+    }
+  }
+
+  return [...discoveredHosts]
+}
 
 const mimeTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -178,7 +200,12 @@ const server = createServer(async (request, response) => {
 
 const startServer = (listenHost, onRetry) => {
   const handleListening = () => {
-    console.log(`Homologacao web disponivel em http://${listenHost}:${port}`)
+    const advertisedHosts = resolveAdvertisedHosts()
+
+    for (const advertisedHost of advertisedHosts) {
+      console.log(`Homologacao web disponivel em http://${advertisedHost}:${port}`)
+    }
+
     console.log(`Proxy /api -> ${apiTarget}`)
   }
 
