@@ -4573,16 +4573,20 @@ const calculateRemuneracaoServicosItems = async ({
     },
   }
 
-  const specialFixedRulesByTipoBancada = {
+  const specialRulesByTipoBancada = {
     CONVENCIONAL: {
-      condicaoDescricao: 'Fixo Esp',
+      fixoCondicaoDescricao: 'Fixo Esp',
+      percapitaCondicaoDescricao: 'Per Cap Regular',
       quantityMap: accumulatedRegularByGroupKey,
-      outputField: 'tegEspecialRegularFixo',
+      outputFixedField: 'tegEspecialRegularFixo',
+      outputPercapitaField: 'tegEspecialRegularPercapita',
     },
     ACESSIVEL: {
-      condicaoDescricao: ['Fixo Esp para acessivel', 'Fixo Esp'],
+      fixoCondicaoDescricao: ['Fixo Esp para acessivel', 'Fixo Esp'],
+      percapitaCondicaoDescricao: ['Per Cap Acessi', 'Per Cap Acessivel'],
       quantityMap: accumulatedAcessivelByGroupKey,
-      outputField: 'tegEspecialAcessivelFixo',
+      outputFixedField: 'tegEspecialAcessivelFixo',
+      outputPercapitaField: 'tegEspecialAcessivelPercapita',
     },
   }
 
@@ -4613,7 +4617,7 @@ const calculateRemuneracaoServicosItems = async ({
     ))
     const quantidadeConfig = quantidadeConfigByTipoBancada[tipoBancada] ?? quantidadeConfigByTipoBancada.CONVENCIONAL
     const lookupQuantidade = quantidadeConfig.resolveLookupQuantidade(quantidade)
-    const shouldUseSpecialOnlyCalculation = isOrdemServicoTegEspecial && Boolean(specialFixedRulesByTipoBancada[tipoBancada])
+    const shouldUseSpecialOnlyCalculation = isOrdemServicoTegEspecial && Boolean(specialRulesByTipoBancada[tipoBancada])
     let tegRegularFixo = 0
     let tegRegularPercapita = 0
 
@@ -4657,16 +4661,21 @@ const calculateRemuneracaoServicosItems = async ({
         : Math.max(percapitaBaseQuantity - quantidadeConfig.faixa3Inicio + 1, 0)
     const normalizedTegRegularPercapita = normalizeRemuneracaoServicosAmount(((Number(tegRegularPercapita) || 0) * percapitaQuantity) / 30)
 
-    const specialRule = specialFixedRulesByTipoBancada[tipoBancada] ?? null
+    const specialRule = specialRulesByTipoBancada[tipoBancada] ?? null
     let normalizedTegEspecialRegularFixo = 0
+    let normalizedTegEspecialRegularPercapita = 0
     let normalizedTegEspecialAcessivelFixo = 0
+    let normalizedTegEspecialAcessivelPercapita = 0
 
     if (isOrdemServicoTegEspecial && specialRule) {
       const specialQuantidade = Math.max(0, Number(specialRule.quantityMap.get(groupKey) ?? 0))
 
       if (specialQuantidade > 0) {
-        const specialLookupKey = `TEG ESPECIAL|${tipoBancada}|FIXO|${specialRule.condicaoDescricao}`
-        let tegEspecialFixo = valorByLookupKey.get(specialLookupKey)
+        const specialFixoConditionKey = Array.isArray(specialRule.fixoCondicaoDescricao)
+          ? specialRule.fixoCondicaoDescricao.join('|')
+          : String(specialRule.fixoCondicaoDescricao)
+        const specialFixoLookupKey = `TEG ESPECIAL|${tipoBancada}|FIXO|${specialFixoConditionKey}`
+        let tegEspecialFixo = valorByLookupKey.get(specialFixoLookupKey)
 
         if (!Number.isFinite(tegEspecialFixo)) {
           tegEspecialFixo = await findLatestRemuneracaoCondicaoValorByCondicao({
@@ -4674,19 +4683,45 @@ const calculateRemuneracaoServicosItems = async ({
             modalidadeDescricao: 'TEG ESPECIAL',
             tipoBancada,
             tipoPgtoDescricao: 'FIXO',
-            condicaoDescricao: specialRule.condicaoDescricao,
+            condicaoDescricao: specialRule.fixoCondicaoDescricao,
           }, executor)
-          valorByLookupKey.set(specialLookupKey, tegEspecialFixo)
+          valorByLookupKey.set(specialFixoLookupKey, tegEspecialFixo)
+        }
+
+        const specialPercapitaConditionKey = Array.isArray(specialRule.percapitaCondicaoDescricao)
+          ? specialRule.percapitaCondicaoDescricao.join('|')
+          : String(specialRule.percapitaCondicaoDescricao)
+        const specialPercapitaLookupKey = `TEG ESPECIAL|${tipoBancada}|PER CAPITA|${specialPercapitaConditionKey}`
+        let tegEspecialPercapita = valorByLookupKey.get(specialPercapitaLookupKey)
+
+        if (!Number.isFinite(tegEspecialPercapita)) {
+          tegEspecialPercapita = await findLatestRemuneracaoCondicaoValorByCondicao({
+            dataReferencia,
+            modalidadeDescricao: 'TEG ESPECIAL',
+            tipoBancada,
+            tipoPgtoDescricao: 'PER CAPITA',
+            condicaoDescricao: specialRule.percapitaCondicaoDescricao,
+          }, executor)
+          valorByLookupKey.set(specialPercapitaLookupKey, tegEspecialPercapita)
         }
 
         const normalizedSpecialFixo = normalizeRemuneracaoServicosAmount((Number(tegEspecialFixo) || 0) / 30)
+        const normalizedSpecialPercapita = normalizeRemuneracaoServicosAmount(((Number(tegEspecialPercapita) || 0) * specialQuantidade) / 30)
 
-        if (specialRule.outputField === 'tegEspecialRegularFixo') {
+        if (specialRule.outputFixedField === 'tegEspecialRegularFixo') {
           normalizedTegEspecialRegularFixo = normalizedSpecialFixo
         }
 
-        if (specialRule.outputField === 'tegEspecialAcessivelFixo') {
+        if (specialRule.outputFixedField === 'tegEspecialAcessivelFixo') {
           normalizedTegEspecialAcessivelFixo = normalizedSpecialFixo
+        }
+
+        if (specialRule.outputPercapitaField === 'tegEspecialRegularPercapita') {
+          normalizedTegEspecialRegularPercapita = normalizedSpecialPercapita
+        }
+
+        if (specialRule.outputPercapitaField === 'tegEspecialAcessivelPercapita') {
+          normalizedTegEspecialAcessivelPercapita = normalizedSpecialPercapita
         }
       }
     }
@@ -4706,9 +4741,9 @@ const calculateRemuneracaoServicosItems = async ({
       ? normalizedTegRegularPercapita
       : Number(item.tegAcessivelPercapita) || 0
     const nextTegEspecialRegularFixo = normalizedTegEspecialRegularFixo
-    const nextTegEspecialRegularPercapita = Number(item.tegEspecialRegularPercapita) || 0
+    const nextTegEspecialRegularPercapita = normalizedTegEspecialRegularPercapita
     const nextTegEspecialAcessivelFixo = normalizedTegEspecialAcessivelFixo
-    const nextTegEspecialAcessivelPercapita = Number(item.tegEspecialAcessivelPercapita) || 0
+    const nextTegEspecialAcessivelPercapita = normalizedTegEspecialAcessivelPercapita
     const nextTegCrecheFixo = tipoBancada === 'CRECHE'
       ? normalizedTegRegularFixo
       : Number(item.tegCrecheFixo) || 0
