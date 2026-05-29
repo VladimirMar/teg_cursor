@@ -443,12 +443,6 @@
   min-width: 154px;
 }
 
-.remuneracao-servicos-table th:nth-child(2),
-.remuneracao-servicos-table td:nth-child(2) {
-  width: 80px;
-  min-width: 80px;
-}
-
 .apontamento-servicos-table td {
   vertical-align: top;
 }
@@ -489,6 +483,30 @@
   display: block;
 }
 
+.remuneracao-servicos-table th.remuneracao-servicos-header-teg-regular {
+  background: #88a9cf;
+}
+
+.remuneracao-servicos-table th.remuneracao-servicos-header-teg-acessivel {
+  background: #9ed9a5;
+}
+
+.remuneracao-servicos-table th.remuneracao-servicos-header-teg-especial {
+  background: #f2c986;
+}
+
+.remuneracao-servicos-table th.remuneracao-servicos-header-teg-creche {
+  background: #c8a9e8;
+}
+
+.remuneracao-servicos-table th.remuneracao-servicos-header-km {
+  background: #f3e07b;
+}
+
+.remuneracao-servicos-table th.remuneracao-servicos-header-continua {
+  background: #ef9ea8;
+}
+
 .remuneracao-servicos-table.remuneracao-servicos-table-only-continua {
   width: 100%;
   min-width: 300px;
@@ -510,6 +528,12 @@
   text-align: left;
   padding-left: 6px;
   padding-right: 4px;
+}
+
+.remuneracao-servicos-table thead tr:nth-child(2) th.remuneracao-servicos-header-detail,
+.remuneracao-servicos-table tbody td:not(:first-child) {
+  width: 72px;
+  min-width: 72px;
 }
 
 .apontamento-servicos-table th:nth-child(n + 3),

@@ -468,7 +468,6 @@ export default function ApontamentoServicosView() {
         pageSize: targetPageSize,
       })
 
-      setAppliedFilters(filters)
       setItems(result.items)
       setLoadedItemsSnapshot(result.items)
       setPage(result.page)
@@ -493,6 +492,10 @@ export default function ApontamentoServicosView() {
   useEffect(() => {
     void loadDreOptions()
   }, [loadDreOptions])
+
+  useEffect(() => {
+    void loadItems(appliedFilters, page, pageSize)
+  }, [appliedFilters, loadItems, page, pageSize])
 
   useEffect(() => {
     if (!isValidationDialogVisible && !isImportDialogVisible && !isImportRequestDialogVisible) {
@@ -575,14 +578,15 @@ export default function ApontamentoServicosView() {
     setPlaca('')
     setRevisao(String(result.revisao))
     setTipoPessoa(result.tipoPessoa)
-    await loadItems(importedFilters, 1)
-  }, [loadItems])
+    setAppliedFilters(importedFilters)
+    setPage(1)
+  }, [])
 
   const handleFilterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const parsedDataOperacao = parseDisplayDateToIso(dataOperacaoInput)
 
-    await loadItems({
+    setAppliedFilters({
       mesAno,
       dataReferencia: parsedDataOperacao ?? '',
       dreCodigo,
@@ -590,7 +594,8 @@ export default function ApontamentoServicosView() {
       placa,
       revisao,
       tipoPessoa,
-    }, 1)
+    })
+    setPage(1)
   }
 
   const handleClearFilter = async () => {
@@ -603,13 +608,18 @@ export default function ApontamentoServicosView() {
     setPlaca('')
     setRevisao('0')
     setTipoPessoa('PF')
-    setItems([])
-    setLoadedItemsSnapshot([])
     setPage(1)
-    setTotalItems(0)
-    setTotalPages(1)
     setStatusTone('idle')
     setStatusMessage('')
+    setAppliedFilters({
+      mesAno: currentMonthYear,
+      dataReferencia: formatIsoDateToDisplay(doesDateBelongToMonthYear(currentIsoDate, currentMonthYear) ? currentIsoDate : getFirstDateOfMonthYear(currentMonthYear)),
+      dreCodigo: '',
+      crmcCondutor: '',
+      placa: '',
+      revisao: '0',
+      tipoPessoa: 'PF',
+    })
   }
 
   const handlePageSizeChange = (value: string) => {
@@ -620,15 +630,12 @@ export default function ApontamentoServicosView() {
     }
 
     setPageSize(nextPageSize)
-
-    if (items.length || totalItems > 0) {
-      void loadItems(appliedFilters, 1, nextPageSize)
-    }
+    setPage(1)
   }
 
   const handleNavigateToPage = (targetPage: number) => {
     shouldFocusFirstGridRecordRef.current = true
-    void loadItems(appliedFilters, targetPage)
+    setPage(targetPage)
   }
 
   const updateMetricField = (rowKey: string, field: keyof Pick<ApontamentoServicosItem, 'naoCadeirantePresencial' | 'cadeirante' | 'atendimentoComplementarNaoCadeirante' | 'atendimentoComplementarCadeirante' | 'continuaNaoCadeirante' | 'continuaCadeirante' | 'kilometragem'>, value: string) => {

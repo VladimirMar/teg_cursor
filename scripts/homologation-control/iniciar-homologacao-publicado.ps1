@@ -70,7 +70,7 @@ $apiOutLog = Join-Path $logRoot 'api-out.log'
 $apiErrLog = Join-Path $logRoot 'api-err.log'
 $webOutLog = Join-Path $logRoot 'web-out.log'
 $webErrLog = Join-Path $logRoot 'web-err.log'
-$preferredWebHost = '10.36.144.147'
+$preferredWebHost = '0.0.0.0'
 $webHost = Resolve-WebHost -PreferredHost $preferredWebHost
 
 $apiCommand = @"
@@ -114,8 +114,5 @@ if ($webProcess.HasExited) {
 }
 
 Write-Info 'Homologacao iniciada com sucesso.'
-if ($webHost -ne $preferredWebHost) {
-  Write-Info "Web preferencial $preferredWebHost indisponivel neste host; usando fallback local."
-}
 Write-Info "Web: http://$webHost`:4173"
 Write-Info 'API: http://127.0.0.1:3002'

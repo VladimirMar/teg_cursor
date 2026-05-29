@@ -12,9 +12,9 @@ import {
   type RemuneracaoServicosSaveItem,
 } from './services/remuneracaoServicos'
 import {
-  APURACAO_TIPO_PESSOA_OPTIONS,
+  APURACAO_TIPO_PESSOA_FILTER_OPTIONS,
 } from './services/apuracaoTipoPessoa'
-import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
+import type { ApuracaoTipoPessoaFilter } from './services/apuracaoTipoPessoa'
 import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
@@ -27,7 +27,7 @@ type RemuneracaoServicosFilters = {
   crmcCondutor: string
   placa: string
   revisao: string
-  tipoPessoa: ApuracaoTipoPessoa
+  tipoPessoa: ApuracaoTipoPessoaFilter
 }
 
 const FORM_ACCESS_KEY = 'form_apntsvc024'
@@ -125,6 +125,8 @@ const formatDateLabel = (value: string) => {
   const [year, month, day] = value.split('-')
   return `${day}/${month}/${year}`
 }
+
+const REMUNERACAO_BATCH_ALL_DATES_LABEL = 'Todos os dias do mes (exceto dia 31)'
 
 const formatPeriodLabel = (item: Pick<RemuneracaoServicosItem, 'periodoInicio' | 'periodoFim'>) => {
   return [formatDateLabel(item.periodoInicio), formatDateLabel(item.periodoFim)].filter(Boolean).join(' a ')
@@ -282,19 +284,19 @@ const areSavePayloadItemsEqual = (left: RemuneracaoServicosSaveItem, right: Remu
 }
 
 const monetaryColumns = [
-  { key: 'tegRegularFixo', line1: 'TEG', line2: 'Reg.', line3: 'Fixo' },
-  { key: 'tegRegularPercapita', line1: 'TEG', line2: 'Reg.', line3: 'Percapita' },
-  { key: 'tegAcessivelFixo', line1: 'TEG', line2: 'Aces.', line3: 'Fixo' },
-  { key: 'tegAcessivelPercapita', line1: 'TEG', line2: 'Aces.', line3: 'Percapita' },
-  { key: 'tegEspecialRegularFixo', line1: 'TEG Esp.', line2: 'Reg.', line3: 'Fixo' },
-  { key: 'tegEspecialRegularPercapita', line1: 'TEG Esp.', line2: 'Reg.', line3: 'Percapita' },
-  { key: 'tegEspecialAcessivelFixo', line1: 'TEG Esp.', line2: 'Aces.', line3: 'Fixo' },
-  { key: 'tegEspecialAcessivelPercapita', line1: 'TEG Esp.', line2: 'Aces.', line3: 'Percapita' },
-  { key: 'tegCrecheFixo', line1: 'TEG', line2: 'Creche', line3: 'Fixo' },
-  { key: 'tegCrechePercapita', line1: 'TEG', line2: 'Creche', line3: 'Percapita' },
-  { key: 'kmValor', line1: 'KM', line2: '', line3: 'Valor' },
-  { key: 'continuaRegular', line1: 'Continua', line2: '', line3: 'Reg.' },
-  { key: 'continuaCadeirante', line1: 'Continua', line2: '', line3: 'Cadeirante' },
+  { key: 'tegRegularFixo', groupTitle: 'TEG Regular', columnTitle: 'Fixo', headerClass: 'remuneracao-servicos-header-teg-regular' },
+  { key: 'tegRegularPercapita', groupTitle: 'TEG Regular', columnTitle: 'Percapita', headerClass: 'remuneracao-servicos-header-teg-regular' },
+  { key: 'tegAcessivelFixo', groupTitle: 'TEG Acessível', columnTitle: 'Fixo', headerClass: 'remuneracao-servicos-header-teg-acessivel' },
+  { key: 'tegAcessivelPercapita', groupTitle: 'TEG Acessível', columnTitle: 'Percapita', headerClass: 'remuneracao-servicos-header-teg-acessivel' },
+  { key: 'tegEspecialRegularFixo', groupTitle: 'TEG Especial', columnTitle: 'Reg. Fixo', headerClass: 'remuneracao-servicos-header-teg-especial' },
+  { key: 'tegEspecialRegularPercapita', groupTitle: 'TEG Especial', columnTitle: 'Reg. Percapita', headerClass: 'remuneracao-servicos-header-teg-especial' },
+  { key: 'tegEspecialAcessivelFixo', groupTitle: 'TEG Especial', columnTitle: 'Acess. Fixo', headerClass: 'remuneracao-servicos-header-teg-especial' },
+  { key: 'tegEspecialAcessivelPercapita', groupTitle: 'TEG Especial', columnTitle: 'Acess. Percapita', headerClass: 'remuneracao-servicos-header-teg-especial' },
+  { key: 'tegCrecheFixo', groupTitle: 'TEG Creche', columnTitle: 'Fixo', headerClass: 'remuneracao-servicos-header-teg-creche' },
+  { key: 'tegCrechePercapita', groupTitle: 'TEG Creche', columnTitle: 'Percapita', headerClass: 'remuneracao-servicos-header-teg-creche' },
+  { key: 'kmValor', groupTitle: 'KM', columnTitle: 'Valor', headerClass: 'remuneracao-servicos-header-km' },
+  { key: 'continuaRegular', groupTitle: 'Continua', columnTitle: 'Reg.', headerClass: 'remuneracao-servicos-header-continua' },
+  { key: 'continuaCadeirante', groupTitle: 'Continua', columnTitle: 'Cadeirante', headerClass: 'remuneracao-servicos-header-continua' },
 ] as const
 
 type MonetaryColumnKey = (typeof monetaryColumns)[number]['key']
@@ -318,7 +320,7 @@ export default function RemuneracaoServicosView() {
   const [crmcCondutor, setCrmcCondutor] = useState('')
   const [placa, setPlaca] = useState('')
   const [revisao, setRevisao] = useState('0')
-  const [tipoPessoa, setTipoPessoa] = useState<ApuracaoTipoPessoa>('PF')
+  const [tipoPessoa, setTipoPessoa] = useState<ApuracaoTipoPessoaFilter>('')
   const [appliedFilters, setAppliedFilters] = useState<RemuneracaoServicosFilters>({
     mesAno: initialMesAno,
     dataReferencia: initialDataReferencia,
@@ -326,7 +328,7 @@ export default function RemuneracaoServicosView() {
     crmcCondutor: '',
     placa: '',
     revisao: '0',
-    tipoPessoa: 'PF',
+    tipoPessoa: '',
   })
   const [items, setItems] = useState<RemuneracaoServicosItem[]>([])
   const [loadedItemsSnapshot, setLoadedItemsSnapshot] = useState<RemuneracaoServicosItem[]>([])
@@ -391,6 +393,30 @@ export default function RemuneracaoServicosView() {
     return groupInfoByIndex
   }, [items])
   const tableColumnCount = 1 + visibleMonetaryColumns.length
+  const mergedHeaderGroups = useMemo(() => {
+    const groups: Array<{
+      title: string
+      headerClass: string
+      colSpan: number
+    }> = []
+
+    for (const column of visibleMonetaryColumns) {
+      const lastGroup = groups[groups.length - 1]
+
+      if (lastGroup && lastGroup.title === column.groupTitle && lastGroup.headerClass === column.headerClass) {
+        lastGroup.colSpan += 1
+        continue
+      }
+
+      groups.push({
+        title: column.groupTitle,
+        headerClass: column.headerClass,
+        colSpan: 1,
+      })
+    }
+
+    return groups
+  }, [visibleMonetaryColumns])
 
   const openValidationDialog = useCallback((message: string) => {
     setValidationDialogMessage(message)
@@ -424,6 +450,20 @@ export default function RemuneracaoServicosView() {
   const handleDataOperacaoInputChange = (value: string) => {
     setDataOperacaoInput(normalizeDisplayDateInput(value))
   }
+
+  const buildCurrentFilters = useCallback((): RemuneracaoServicosFilters => {
+    const parsedDate = parseDisplayDateToIso(dataOperacaoInput)
+
+    return {
+      mesAno,
+      dataReferencia: parsedDate ?? '',
+      dreCodigo,
+      crmcCondutor: crmcCondutor.trim(),
+      placa: placa.trim(),
+      revisao: revisao.trim(),
+      tipoPessoa,
+    }
+  }, [crmcCondutor, dataOperacaoInput, dreCodigo, mesAno, placa, revisao, tipoPessoa])
 
   const loadDreOptions = useCallback(async () => {
     setIsLoadingOptions(true)
@@ -643,17 +683,7 @@ export default function RemuneracaoServicosView() {
   const handleFilterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const parsedDate = parseDisplayDateToIso(dataOperacaoInput)
-
-    const nextFilters: RemuneracaoServicosFilters = {
-      mesAno,
-      dataReferencia: parsedDate ?? '',
-      dreCodigo,
-      crmcCondutor: crmcCondutor.trim(),
-      placa: placa.trim(),
-      revisao: revisao.trim(),
-      tipoPessoa,
-    }
+    const nextFilters = buildCurrentFilters()
 
     setAppliedFilters(nextFilters)
     setPage(1)
@@ -669,7 +699,7 @@ export default function RemuneracaoServicosView() {
     setCrmcCondutor('')
     setPlaca('')
     setRevisao('0')
-    setTipoPessoa('PF')
+    setTipoPessoa('')
     setAppliedFilters({
       mesAno: defaultMesAno,
       dataReferencia: defaultDataReferencia,
@@ -677,7 +707,7 @@ export default function RemuneracaoServicosView() {
       crmcCondutor: '',
       placa: '',
       revisao: '0',
-      tipoPessoa: 'PF',
+      tipoPessoa: '',
     })
     setPage(1)
     setStatusTone('idle')
@@ -779,9 +809,21 @@ export default function RemuneracaoServicosView() {
   }, [appliedFilters, hasEditPermission, hasPendingChanges, items, loadItems, loadedItemsByRowKey, page, pageSize])
 
   const handleCalculate = useCallback(async () => {
-    if (!isValidMonthYear(appliedFilters.mesAno) || !appliedFilters.dataReferencia) {
-      openValidationDialog('Informe um mes/ano e data de operacao validos antes de calcular a remuneracao.')
+    const currentFilters = buildCurrentFilters()
+
+    if (!isValidMonthYear(currentFilters.mesAno)) {
+      openValidationDialog('Informe um mes/ano valido antes de calcular a remuneracao.')
       return
+    }
+
+    if (currentFilters.dataReferencia && !doesDateBelongToMonthYear(currentFilters.dataReferencia, currentFilters.mesAno)) {
+      openValidationDialog(monthYearMismatchMessage)
+      return
+    }
+
+    if (currentFilters.dataReferencia) {
+      setAppliedFilters(currentFilters)
+      setPage(1)
     }
 
     if (!window.confirm('Autoriza a execucao do processamento de remuneracao em lote?')) {
@@ -793,15 +835,15 @@ export default function RemuneracaoServicosView() {
     setStatusMessage('Iniciando processamento em lote da remuneracao de servicos...')
 
     try {
-      const parsedRevisao = Number.parseInt(appliedFilters.revisao, 10)
+      const parsedRevisao = Number.parseInt(currentFilters.revisao, 10)
       const result = await startRemuneracaoServicosBatch({
-        mesAno: appliedFilters.mesAno,
-        dataReferencia: appliedFilters.dataReferencia,
-        dreCodigo: appliedFilters.dreCodigo,
-        crmcCondutor: appliedFilters.crmcCondutor,
-        placa: appliedFilters.placa,
+        mesAno: currentFilters.mesAno,
+        dataReferencia: currentFilters.dataReferencia,
+        dreCodigo: currentFilters.dreCodigo,
+        crmcCondutor: currentFilters.crmcCondutor,
+        placa: currentFilters.placa,
         revisao: Number.isInteger(parsedRevisao) ? parsedRevisao : undefined,
-        tipoPessoa: appliedFilters.tipoPessoa,
+        tipoPessoa: currentFilters.tipoPessoa,
       })
 
       setRemuneracaoBatchStatus(result)
@@ -819,7 +861,7 @@ export default function RemuneracaoServicosView() {
     } finally {
       setIsCalculating(false)
     }
-  }, [appliedFilters, openValidationDialog, syncBatchStatus])
+  }, [buildCurrentFilters, monthYearMismatchMessage, openValidationDialog, syncBatchStatus])
 
   useEffect(() => {
     if (!isBatchStatusDialogVisible || !remuneracaoBatchStatus?.isRunning) {
@@ -894,10 +936,10 @@ export default function RemuneracaoServicosView() {
                 id="remuneracao-servicos-tipo-pessoa"
                 className="management-filter-select apontamento-servicos-filter-input"
                 value={tipoPessoa}
-                onChange={(event) => setTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
+                onChange={(event) => setTipoPessoa(event.target.value as ApuracaoTipoPessoaFilter)}
                 disabled={isLoading || isSaving || isProcessingBatch}
               >
-                {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
+                {APURACAO_TIPO_PESSOA_FILTER_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
                     {item.label}
                   </option>
@@ -1040,12 +1082,17 @@ export default function RemuneracaoServicosView() {
             <table className={`apontamento-servicos-table apontamento-servicos-table-sem-acumulados remuneracao-servicos-table ${monetaryColumnVisibilityMode !== 'all' ? 'remuneracao-servicos-table-only-continua' : ''}`}>
               <thead>
                 <tr>
-                  <th className="apontamento-servicos-header-compact">DRE/CRMC/Tipo de Veiculo</th>
+                  <th rowSpan={2} className="apontamento-servicos-header-compact">DRE/CRMC/Tipo de Veiculo</th>
+                  {mergedHeaderGroups.map((group, index) => (
+                    <th key={`${group.title}-${index}`} colSpan={group.colSpan} className={`apontamento-servicos-header-detail remuneracao-servicos-header-detail ${group.headerClass}`}>
+                      <span className="remuneracao-servicos-header-line">{group.title}</span>
+                    </th>
+                  ))}
+                </tr>
+                <tr>
                   {visibleMonetaryColumns.map((column) => (
-                    <th key={column.key} className="apontamento-servicos-header-detail remuneracao-servicos-header-detail">
-                      <span className="remuneracao-servicos-header-line">{column.line1}</span>
-                      <span className="remuneracao-servicos-header-line">{column.line2 || ' '}</span>
-                      <span className="remuneracao-servicos-header-line">{column.line3}</span>
+                    <th key={column.key} className={`apontamento-servicos-header-detail remuneracao-servicos-header-detail ${column.headerClass}`}>
+                      <span className="remuneracao-servicos-header-line">{column.columnTitle}</span>
                     </th>
                   ))}
                 </tr>
@@ -1271,7 +1318,9 @@ export default function RemuneracaoServicosView() {
                 </div>
                 <div className="field-group">
                   <span className="apontamento-servicos-filter-label">Data referencia</span>
-                  <strong>{remuneracaoBatchStatus?.requestedFilters?.dataReferencia || appliedFilters.dataReferencia}</strong>
+                  <strong>{remuneracaoBatchStatus?.requestedFilters
+                    ? (remuneracaoBatchStatus.requestedFilters.dataReferencia || REMUNERACAO_BATCH_ALL_DATES_LABEL)
+                    : (appliedFilters.dataReferencia || REMUNERACAO_BATCH_ALL_DATES_LABEL)}</strong>
                 </div>
               </div>
 

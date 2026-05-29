@@ -1,5 +1,5 @@
 import type { ApuracaoFinanceiraStatus } from './apuracaoFinanceira'
-import type { ApuracaoTipoPessoa } from './apuracaoTipoPessoa'
+import type { ApuracaoTipoPessoa, ApuracaoTipoPessoaFilter } from './apuracaoTipoPessoa'
 
 export type RemuneracaoServicosItem = {
   mesAno: string
@@ -76,7 +76,7 @@ type RemuneracaoServicosListParams = {
   crmcCondutor?: string
   placa?: string
   revisao?: number
-  tipoPessoa?: ApuracaoTipoPessoa
+  tipoPessoa?: ApuracaoTipoPessoaFilter
   page?: number
   pageSize?: number
 }
@@ -88,7 +88,7 @@ export type RemuneracaoServicosCalculateParams = {
   crmcCondutor?: string
   placa?: string
   revisao?: number
-  tipoPessoa?: ApuracaoTipoPessoa
+  tipoPessoa?: ApuracaoTipoPessoaFilter
   page?: number
   pageSize?: number
 }

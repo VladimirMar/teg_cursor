@@ -13,6 +13,7 @@
     "homol:publish": "powershell -ExecutionPolicy Bypass -File .\\publicar-homologacao.ps1",
     "homol:api": "node scripts/start-homologation-api.mjs",
     "homol:web": "node scripts/homologation-web-server.mjs",
+    "homol:url": "powershell -ExecutionPolicy Bypass -File .\\scripts\\show-homologation-urls.ps1",
     "homol:repair-config": "node scripts/homologation-control/repair-homologation-reference-data.mjs",
     "homol:prepare-smoke": "node scripts/homologation-control/prepare-homologation-smoke-data.mjs",
     "homol:smoke": "set API_BASE_URL=http://127.0.0.1:3002&& node scripts/smoke-api.mjs all",
@@ -45,7 +46,9 @@
     "smoke:api:ordem-servico": "node scripts/smoke-api.mjs ordem-servico",
     "smoke:api:apontamento-servicos": "node scripts/smoke-api.mjs apontamento-servicos",
     "smoke:api:veiculo": "node scripts/smoke-api.mjs veiculo",
-    "smoke:api:marca-modelo": "node scripts/smoke-api.mjs marca-modelo"
+    "smoke:api:marca-modelo": "node scripts/smoke-api.mjs marca-modelo",
+    "smoke:api:remuneracao-formula": "node scripts/verify-remuneracao-formula.mjs",
+    "verify:remuneracao:formula": "node scripts/verify-remuneracao-formula.mjs"
   },
   "dependencies": {
     "fast-xml-parser": "^5.5.10",

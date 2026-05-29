@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:3001'
 const reportPath = process.env.SMOKE_REPORT_PATH ?? ''
-const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo', 'apontamento-servicos', 'documental'])
+const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo', 'apontamento-servicos', 'remuneracao-formula', 'documental'])
 const suite = (process.argv[2] ?? process.env.SMOKE_SUITE ?? 'all').trim().toLowerCase()
 const shouldRunVeiculoInAll = String(process.env.SMOKE_API_INCLUDE_VEICULO ?? '').trim().toLowerCase() === 'true'
 
@@ -318,7 +318,7 @@ const runDocumentalEmissionChecks = async () => {
   const termoRequestedDate = String(latestTermoItem.data_publicacao || latestTermoItem.inicio_vigencia || '').trim()
   assert(termoRequestedDate, 'Termo de emissao nao retornou data de referencia para despacho/aditivo.')
 
-  const termoParametroResponse = await requestJson(`/api/emissao-documento-parametro/resolve?dataReferencia=${encodeURIComponent(termoRequestedDate)}`)
+  const termoParametroResponse = await requestJson(`/api/emissao-documento-parametro/resolve?dataReferencia=${encodeURIComponent(termoRequestedDate)}&includeContent=1`)
   const termoParametroItem = termoParametroResponse.item
   assert(Boolean(termoParametroItem), 'Parametro de emissao do termo nao foi encontrado.')
   assert(Boolean(String(termoParametroItem.titulo_aditivo ?? '').trim()), 'Parametro de emissao do termo nao retornou titulo do aditivo.')
@@ -391,7 +391,7 @@ const runDocumentalEmissionChecks = async () => {
   logStep(`consulta de dados OS validada para ${emissaoOsItem.termo_adesao}/${emissaoOsItem.num_os}${emissaoOsItem.revisao || ''}`)
 
   const ordemServicoRequestedDate = String(emissaoOsItem.data_emissao || formatDateInputValue(new Date())).trim()
-  const ordemServicoParametroResponse = await requestJson(`/api/emissao-documento-parametro/resolve?dataReferencia=${encodeURIComponent(ordemServicoRequestedDate)}`)
+  const ordemServicoParametroResponse = await requestJson(`/api/emissao-documento-parametro/resolve?dataReferencia=${encodeURIComponent(ordemServicoRequestedDate)}&includeContent=1`)
   const ordemServicoParametroItem = ordemServicoParametroResponse.item
   assert(Boolean(ordemServicoParametroItem), 'Parametro da emissao de documento da OrdemServico nao foi encontrado.')
   assert(Boolean(String(ordemServicoParametroItem.obs_01_emissao ?? '').trim()), 'Parametro da emissao de documento da OrdemServico nao retornou observacao 1.')
@@ -1176,6 +1176,20 @@ const runApontamentoServicosSmoke = async () => {
   }
 }
 
+const runRemuneracaoFormulaSmoke = async () => {
+  console.log('Smoke test da formula de Remuneracao')
+  const suiteReport = recordSuite('remuneracao-formula')
+
+  try {
+    await runNodeScript(new URL('./verify-remuneracao-formula.mjs', import.meta.url))
+    logStep('validacao de formula para ACESSIVEL (q=1,2,3,4,5) e REGULAR_TN (q=1,2,3,4) executada com sucesso')
+    finalizeSuite(suiteReport, 'passed')
+  } catch (error) {
+    finalizeSuite(suiteReport, 'failed')
+    throw error
+  }
+}
+
 try {
   if (suite === 'all' || suite === 'condutor') {
     await runCondutorSmoke()
@@ -1229,6 +1243,14 @@ try {
 
   if (suite === 'all' || suite === 'apontamento-servicos') {
     await runApontamentoServicosSmoke()
+  }
+
+  if (suite === 'all') {
+    console.log('')
+  }
+
+  if (suite === 'all' || suite === 'remuneracao-formula') {
+    await runRemuneracaoFormulaSmoke()
   }
 
   if (suite === 'documental') {

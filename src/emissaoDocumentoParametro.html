@@ -313,6 +313,8 @@
       let formMode = 'create';
       let bannerTimeoutId = null;
       let currentPrefeituraImagem = '';
+      let currentPrefeituraImagemUrl = '';
+      let currentPrefeituraImagemDirty = false;
       let defaultAuditTemplateItem = null;
       let defaultAuditTemplatePromise = null;
       const linkModeloRelatorioMaxLength = 4000;
@@ -384,7 +386,7 @@
         }
 
         if (!defaultAuditTemplatePromise) {
-          defaultAuditTemplatePromise = fetch('/api/emissao-documento-parametro/resolve?dataReferencia=01/01/2022', {
+          defaultAuditTemplatePromise = fetch('/api/emissao-documento-parametro/resolve?dataReferencia=01/01/2022&includeContent=1', {
             headers: { Accept: 'application/json' },
           })
             .then((response) => response.ok ? readJsonResponse(response) : null)
@@ -539,8 +541,9 @@
       };
 
       const syncPrefeituraImagemPreview = () => {
-        prefeituraImagemPreview.src = currentPrefeituraImagem || '';
-        prefeituraImagemPreview.style.display = currentPrefeituraImagem ? 'block' : 'none';
+        const previewSource = currentPrefeituraImagem || currentPrefeituraImagemUrl;
+        prefeituraImagemPreview.src = previewSource || '';
+        prefeituraImagemPreview.style.display = previewSource ? 'block' : 'none';
       };
 
       const setGridMessage = (message, tone = '') => {
@@ -735,7 +738,9 @@
         obs01Input.value = item.obs_01_emissao || '';
         obs02Input.value = item.obs_02_emissao || '';
         rodapeInput.value = item.rodape_emissao || '';
-        currentPrefeituraImagem = item.prefeitura_imagem || '';
+        currentPrefeituraImagem = '';
+        currentPrefeituraImagemUrl = item.prefeitura_imagem_url || '';
+        currentPrefeituraImagemDirty = false;
         tituloEmissaoInput.value = item.titulo_emissao || defaultTituloEmissao;
         diretorEmissaoInput.value = item.diretor_emissao || defaultDiretorEmissao;
         textoDespachoInput.value = item.texto_despacho || defaultTextoDespacho;
@@ -746,6 +751,8 @@
         editingDataReferencia = null;
         form.reset();
         currentPrefeituraImagem = '';
+        currentPrefeituraImagemUrl = '';
+        currentPrefeituraImagemDirty = false;
         objetoInput.value = defaultObjetoOrdemServico;
         objetoLicitacaoInput.value = defaultObjetoLicitacao;
         credencianteInput.value = defaultCredenciante;
@@ -764,25 +771,62 @@
         showForm('create');
       };
 
-      const startEdit = (item) => {
+      const fetchItemDetails = async (dataReferencia) => {
+        const response = await fetch(`/api/emissao-documento-parametro/${encodeURIComponent(dataReferencia)}?includeContent=1`, {
+          headers: { Accept: 'application/json' },
+        });
+        const payload = await readJsonResponse(response);
+
+        if (!response.ok) {
+          throw new Error(payload.message || 'Falha ao carregar detalhes do parametro geral.');
+        }
+
+        return payload?.item || null;
+      };
+
+      const startEdit = async (item) => {
         if (!hasEditPermission()) {
           showEditPermissionDeniedMessage();
           return;
         }
 
-        editingDataReferencia = item.data_referencia;
-        fillForm(item);
-        resetMessages();
-        showForm('edit');
-        renderDefaultAuditPanel(item);
+        try {
+          const detailedItem = await fetchItemDetails(item.data_referencia);
+
+          if (!detailedItem) {
+            throw new Error('Parametro geral nao encontrado.');
+          }
+
+          editingDataReferencia = detailedItem.data_referencia;
+          fillForm(detailedItem);
+          resetMessages();
+          showForm('edit');
+          renderDefaultAuditPanel(detailedItem);
+        } catch (error) {
+          const message = getRequestErrorMessage(error, 'Falha ao carregar detalhes do parametro geral.');
+          setGridMessage(message, 'error');
+          showBanner(message, 'error');
+        }
       };
 
-      const startView = (item) => {
-        editingDataReferencia = item.data_referencia;
-        fillForm(item);
-        resetMessages();
-        showForm('view');
-        renderDefaultAuditPanel(item);
+      const startView = async (item) => {
+        try {
+          const detailedItem = await fetchItemDetails(item.data_referencia);
+
+          if (!detailedItem) {
+            throw new Error('Parametro geral nao encontrado.');
+          }
+
+          editingDataReferencia = detailedItem.data_referencia;
+          fillForm(detailedItem);
+          resetMessages();
+          showForm('view');
+          renderDefaultAuditPanel(detailedItem);
+        } catch (error) {
+          const message = getRequestErrorMessage(error, 'Falha ao carregar detalhes do parametro geral.');
+          setGridMessage(message, 'error');
+          showBanner(message, 'error');
+        }
       };
 
       const handleDelete = async (item) => {
@@ -839,12 +883,12 @@
         const item = JSON.parse(rawItem);
 
         if (action === 'view') {
-          startView(item);
+          void startView(item);
           return;
         }
 
         if (action === 'edit') {
-          startEdit(item);
+          void startEdit(item);
           return;
         }
 
@@ -894,6 +938,8 @@
             reader.onerror = () => reject(new Error('Falha ao ler a imagem selecionada.'));
             reader.readAsDataURL(file);
           });
+          currentPrefeituraImagemUrl = '';
+          currentPrefeituraImagemDirty = true;
           syncPrefeituraImagemPreview();
         } catch (error) {
           prefeituraImagemError.textContent = error instanceof Error ? error.message : 'Falha ao ler a imagem selecionada.';
@@ -902,6 +948,8 @@
 
       clearPrefeituraImagemButton.addEventListener('click', () => {
         currentPrefeituraImagem = '';
+        currentPrefeituraImagemUrl = '';
+        currentPrefeituraImagemDirty = true;
         prefeituraImagemInput.value = '';
         syncPrefeituraImagemPreview();
         renderDefaultAuditPanel();
@@ -1050,33 +1098,38 @@
         }
 
         try {
+          const payloadToSave = {
+            dataReferencia,
+            editalChamamentoPublico,
+            objeto,
+            objetoLicitacao,
+            credenciante,
+            tituloAditivo,
+            termoSmt,
+            descricaoAditivo,
+            corpoAditivo,
+            assinaturasAditivo,
+            linkModeloRelatorioContratoPf,
+            linkModeloRelatorioContratoPj,
+            obs01Emissao,
+            obs02Emissao,
+            rodapeEmissao,
+            tituloEmissao,
+            diretorEmissao,
+            textoDespacho,
+          };
+
+          if (currentPrefeituraImagemDirty) {
+            payloadToSave.prefeituraImagem = currentPrefeituraImagem;
+          }
+
           const response = await fetch(editingDataReferencia ? `/api/emissao-documento-parametro/${encodeURIComponent(editingDataReferencia)}` : '/api/emissao-documento-parametro', {
             method: editingDataReferencia ? 'PUT' : 'POST',
             headers: {
               'Content-Type': 'application/json',
               Accept: 'application/json',
             },
-            body: JSON.stringify({
-              dataReferencia,
-              editalChamamentoPublico,
-              objeto,
-              objetoLicitacao,
-              credenciante,
-              tituloAditivo,
-              termoSmt,
-              descricaoAditivo,
-              corpoAditivo,
-              assinaturasAditivo,
-              linkModeloRelatorioContratoPf,
-              linkModeloRelatorioContratoPj,
-              obs01Emissao,
-              obs02Emissao,
-              rodapeEmissao,
-              prefeituraImagem: currentPrefeituraImagem,
-              tituloEmissao,
-              diretorEmissao,
-              textoDespacho,
-            }),
+            body: JSON.stringify(payloadToSave),
           });
 
           const payload = await readJsonResponse(response);

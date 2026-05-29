@@ -849,7 +849,8 @@ const startXmlImportAllExecution = async () => {
 
 const normalizeRemuneracaoServicosBatchRequest = (body = {}) => {
   const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
-  const dataReferencia = normalizeApontamentoServicosDate(body.dataReferencia)
+  const requestedDataReferencia = normalizeRequestValue(body.dataReferencia)
+  const dataReferencia = normalizeApontamentoServicosDate(requestedDataReferencia)
   const dreCodigo = normalizeRequestValue(body.dreCodigo)
   const crmcCondutor = normalizeRequestValue(body.crmcCondutor)
   const placa = normalizeRequestValue(body.placa)
@@ -860,13 +861,13 @@ const normalizeRemuneracaoServicosBatchRequest = (body = {}) => {
     throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
   }
 
-  if (!dataReferencia) {
+  if (requestedDataReferencia && !dataReferencia) {
     throw createHttpError(400, 'Data de referencia invalida.')
   }
 
   const monthRange = buildApuracaoFinanceiraMonthRange(mesAno)
 
-  if (!monthRange || dataReferencia < monthRange.monthStart || dataReferencia > monthRange.monthEnd) {
+  if (!monthRange || (dataReferencia && (dataReferencia < monthRange.monthStart || dataReferencia > monthRange.monthEnd))) {
     throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
   }
 
@@ -879,6 +880,39 @@ const normalizeRemuneracaoServicosBatchRequest = (body = {}) => {
     revisao: Number.isInteger(revisao) ? revisao : undefined,
     tipoPessoa,
   }
+}
+
+const buildRemuneracaoServicosBatchReferenceDates = ({ mesAno, dataReferencia }) => {
+  const monthRange = buildApuracaoFinanceiraMonthRange(mesAno)
+
+  if (!monthRange) {
+    throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  if (dataReferencia) {
+    if (dataReferencia < monthRange.monthStart || dataReferencia > monthRange.monthEnd) {
+      throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
+    }
+
+    return [dataReferencia]
+  }
+
+  const yearMonth = monthRange.normalizedMonth
+  const monthEndDay = Number.parseInt(monthRange.monthEnd.slice(8, 10), 10)
+  const upperDayLimit = Math.min(monthEndDay, 30)
+  const dates = []
+
+  for (let dayNumber = 1; dayNumber <= upperDayLimit; dayNumber += 1) {
+    const dateValue = `${yearMonth}-${String(dayNumber).padStart(2, '0')}`
+
+    if (!isDateInputValid(dateValue)) {
+      continue
+    }
+
+    dates.push(dateValue)
+  }
+
+  return dates
 }
 
 const buildRemuneracaoServicosBatchExecutionResponse = () => {
@@ -931,6 +965,7 @@ const buildRemuneracaoServicosBatchExecutionResponse = () => {
 
 const startRemuneracaoServicosBatchExecution = async (body = {}) => {
   const requestedFilters = normalizeRemuneracaoServicosBatchRequest(body)
+  const processingReferenceDates = buildRemuneracaoServicosBatchReferenceDates(requestedFilters)
 
   if (remuneracaoServicosBatchExecution?.running) {
     return buildRemuneracaoServicosBatchExecutionResponse()
@@ -966,7 +1001,24 @@ const startRemuneracaoServicosBatchExecution = async (body = {}) => {
     try {
       await client.query('BEGIN')
 
-      const summary = await calculateRemuneracaoServicosItems(requestedFilters, client)
+      const summary = {
+        totalRegistros: 0,
+        totalCalculados: 0,
+        totalAtualizados: 0,
+        totalIgnorados: 0,
+      }
+
+      for (const currentDataReferencia of processingReferenceDates) {
+        const currentSummary = await calculateRemuneracaoServicosItems({
+          ...requestedFilters,
+          dataReferencia: currentDataReferencia,
+        }, client)
+
+        summary.totalRegistros += Number(currentSummary?.totalRegistros) || 0
+        summary.totalCalculados += Number(currentSummary?.totalCalculados) || 0
+        summary.totalAtualizados += Number(currentSummary?.totalAtualizados) || 0
+        summary.totalIgnorados += Number(currentSummary?.totalIgnorados) || 0
+      }
 
       await client.query('COMMIT')
 
@@ -1104,6 +1156,129 @@ const cepImportXmlPath = '/api/cep/import-xml'
 const cepImportRejectionsPath = '/api/cep/import-rejections'
 const emissaoDocumentoParametroCollectionPath = '/api/emissao-documento-parametro'
 const emissaoDocumentoParametroResolvePath = '/api/emissao-documento-parametro/resolve'
+
+const emissaoDocumentoParametroLargeResponseFields = [
+  'descricao_aditivo',
+  'corpo_aditivo',
+  'assinaturas_aditivo',
+  'descricao_contrato_pf',
+  'descricao_contrato_pj',
+  'corpo_contrato_pf',
+  'corpo_contrato_pj',
+  'texto_despacho',
+  'obs_01_emissao',
+  'obs_02_emissao',
+  'rodape_emissao',
+  'titulo_emissao',
+  'diretor_emissao',
+]
+
+const buildTruncatedLogValue = (value, maxLength = 200) => {
+  const normalizedValue = String(value ?? '')
+
+  if (normalizedValue.length <= maxLength) {
+    return normalizedValue
+  }
+
+  return `${normalizedValue.slice(0, maxLength)}...[len=${normalizedValue.length}]`
+}
+
+const buildEmissaoDocumentoParametroLogPayload = (item) => {
+  const normalizedItem = item && typeof item === 'object' ? item : {}
+  const logPayload = {
+    data_referencia: String(normalizedItem.data_referencia ?? ''),
+    edital_chamamento_publico: String(normalizedItem.edital_chamamento_publico ?? ''),
+    has_prefeitura_imagem: Boolean(String(normalizedItem.prefeitura_imagem ?? '').trim()),
+  }
+
+  for (const fieldName of emissaoDocumentoParametroLargeResponseFields) {
+    logPayload[fieldName] = buildTruncatedLogValue(normalizedItem[fieldName])
+  }
+
+  return logPayload
+}
+
+const buildEmissaoDocumentoParametroImageUrl = (dataReferencia) => {
+  const normalizedDateKey = normalizeEmissaoDocumentoDateKey(dataReferencia)
+
+  if (!normalizedDateKey) {
+    return ''
+  }
+
+  return `/api/emissao-documento-parametro/${encodeURIComponent(normalizedDateKey)}/prefeitura-imagem`
+}
+
+const buildEmissaoDocumentoParametroSummary = (item, previewLength = 200) => {
+  const hasImage = Boolean(String(item?.prefeitura_imagem ?? '').trim())
+
+  return {
+    data_referencia: String(item?.data_referencia ?? ''),
+    objeto: String(item?.objeto ?? ''),
+    objeto_preview: buildTruncatedLogValue(item?.objeto, previewLength),
+    edital_chamamento_publico: String(item?.edital_chamamento_publico ?? ''),
+    obs_01_emissao_preview: buildTruncatedLogValue(item?.obs_01_emissao, previewLength),
+    obs_02_emissao_preview: buildTruncatedLogValue(item?.obs_02_emissao, previewLength),
+    rodape_emissao_preview: buildTruncatedLogValue(item?.rodape_emissao, previewLength),
+    texto_despacho_preview: buildTruncatedLogValue(item?.texto_despacho, previewLength),
+    prefeitura_imagem_presente: hasImage,
+    prefeitura_imagem_url: hasImage ? buildEmissaoDocumentoParametroImageUrl(item?.data_referencia) : '',
+  }
+}
+
+const normalizeBooleanQueryFlag = (value) => {
+  const normalizedValue = String(value ?? '').trim().toLowerCase()
+  return normalizedValue === '1' || normalizedValue === 'true' || normalizedValue === 'yes'
+}
+
+const serializeEmissaoDocumentoParametroItem = (item, { includeContent = false, includeImageInline = false } = {}) => {
+  const summary = buildEmissaoDocumentoParametroSummary(item)
+
+  if (!includeContent) {
+    return summary
+  }
+
+  return {
+    ...summary,
+    objeto_licitacao: String(item?.objeto_licitacao ?? ''),
+    credenciante: String(item?.credenciante ?? ''),
+    titulo_aditivo: String(item?.titulo_aditivo ?? ''),
+    termo_smt: String(item?.termo_smt ?? ''),
+    descricao_aditivo: String(item?.descricao_aditivo ?? ''),
+    corpo_aditivo: String(item?.corpo_aditivo ?? ''),
+    assinaturas_aditivo: String(item?.assinaturas_aditivo ?? ''),
+    descricao_contrato_pf: String(item?.descricao_contrato_pf ?? ''),
+    descricao_contrato_pj: String(item?.descricao_contrato_pj ?? ''),
+    corpo_contrato_pf: String(item?.corpo_contrato_pf ?? ''),
+    corpo_contrato_pj: String(item?.corpo_contrato_pj ?? ''),
+    link_modelo_relatorio_contrato_pf: String(item?.link_modelo_relatorio_contrato_pf ?? ''),
+    link_modelo_relatorio_contrato_pj: String(item?.link_modelo_relatorio_contrato_pj ?? ''),
+    texto_despacho: String(item?.texto_despacho ?? ''),
+    obs_01_emissao: String(item?.obs_01_emissao ?? ''),
+    obs_02_emissao: String(item?.obs_02_emissao ?? ''),
+    rodape_emissao: String(item?.rodape_emissao ?? ''),
+    titulo_emissao: String(item?.titulo_emissao ?? ''),
+    diretor_emissao: String(item?.diretor_emissao ?? ''),
+    prefeitura_imagem: includeImageInline ? String(item?.prefeitura_imagem ?? '') : '',
+  }
+}
+
+const parsePrefeituraImagemDataUrl = (value) => {
+  const normalizedValue = String(value ?? '').trim()
+  const match = normalizedValue.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/)
+
+  if (!match) {
+    return null
+  }
+
+  try {
+    return {
+      contentType: match[1],
+      buffer: Buffer.from(match[2].replace(/\s+/g, ''), 'base64'),
+    }
+  } catch {
+    return null
+  }
+}
 
 const sendJson = (response, statusCode, payload) => {
   response.writeHead(statusCode, {
@@ -1496,6 +1671,11 @@ const getTitularCodigoFromUrl = (url) => {
 
 const getEmissaoDocumentoParametroDataFromUrl = (url) => {
   const match = url.match(/^\/api\/emissao-documento-parametro\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getEmissaoDocumentoParametroImageDataFromUrl = (url) => {
+  const match = url.match(/^\/api\/emissao-documento-parametro\/([^/]+)\/prefeitura-imagem$/)
   return match ? decodeURIComponent(match[1]) : null
 }
 
@@ -2492,6 +2672,7 @@ const mapApontamentoServicosRow = (row) => ({
   ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
   ordemServicoTermoAdesao: normalizeRequestValue(row?.ordem_servico_termo_adesao),
   ordemServicoNumOs: normalizeRequestValue(row?.ordem_servico_num_os),
+  ordemServicoModalidadeDescricao: normalizeRequestValue(row?.ordem_servico_modalidade_descricao),
   revisao: Number(row?.revisao) || 0,
   tipoEscolaCodigo: normalizeRequestValue(row?.tipo_escola_codigo),
   tipoEscolaSigla: normalizeRequestValue(row?.tipo_escola_sigla),
@@ -2532,6 +2713,7 @@ const mapRemuneracaoServicosRow = (baseItem, remuneracaoItem) => ({
   ordemServicoOsConcat: baseItem.ordemServicoOsConcat,
   ordemServicoTermoAdesao: baseItem.ordemServicoTermoAdesao,
   ordemServicoNumOs: baseItem.ordemServicoNumOs,
+  ordemServicoModalidadeDescricao: baseItem.ordemServicoModalidadeDescricao,
   revisao: baseItem.revisao,
   tipoPessoa: baseItem.tipoPessoa,
   periodoInicio: baseItem.periodoInicio,
@@ -3515,16 +3697,40 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   }
 
   const normalizedPageSize = Math.min(Math.max(Number(pageSize) || 20, 1), 50)
-  const fromAndWhereClause = `
-     FROM apuracao_servicos aps
-     INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
-     WHERE ${filters.join('\n       AND ')}
-       AND ${ordemServicoActiveStartDateExpression} <= $1::date
-       AND ${ordemServicoActiveEndDateExpression} >= $1::date`
+  const groupedOrdensCte = `
+    WITH grouped_ordens AS (
+      SELECT
+        BTRIM(aps.mes_ano) AS mes_ano,
+        CAST(aps.dre_codigo AS text) AS dre_codigo,
+        aps.ordem_servico_codigo::text AS ordem_servico_codigo,
+        aps.revisao,
+        COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+        MAX(COALESCE(BTRIM(aps.crmc_condutor), '')) AS crmc_condutor,
+        MAX(COALESCE(BTRIM(aps.tipo_veiculo), '')) AS tipo_veiculo,
+        MAX(COALESCE(aps.empresa_order, '')) AS empresa_order,
+        MAX(COALESCE(aps.nome_condutor_order, '')) AS nome_condutor_order,
+        MAX(COALESCE(aps.dre_descricao_order, '')) AS dre_descricao_order,
+        MAX(COALESCE(aps.termo_adesao_order, '')) AS termo_adesao_order,
+        MAX(COALESCE(aps.num_os_order, '')) AS num_os_order,
+        MAX(COALESCE(aps.tipo_escola_display_order, 999)) AS tipo_escola_display_order,
+        MAX(COALESCE(aps.tipo_escola_descricao_order, '')) AS tipo_escola_descricao_order
+      FROM apuracao_servicos aps
+      INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+      WHERE ${filters.join('\n       AND ')}
+        AND ${ordemServicoActiveStartDateExpression} <= $1::date
+        AND ${ordemServicoActiveEndDateExpression} >= $1::date
+      GROUP BY
+        BTRIM(aps.mes_ano),
+        CAST(aps.dre_codigo AS text),
+        aps.ordem_servico_codigo,
+        aps.revisao,
+        COALESCE(BTRIM(aps.tipo_pessoa), '')
+    )`
 
   const countResult = await executor.query(
-    `SELECT COUNT(*)::int AS total
-     ${fromAndWhereClause}`,
+    `${groupedOrdensCte}
+     SELECT COUNT(*)::int AS total
+     FROM grouped_ordens`,
     values,
   )
 
@@ -3536,35 +3742,33 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   const monthStartParameterIndex = pagedValues.length - 3
   const monthEndParameterIndex = pagedValues.length - 2
   const result = await executor.query(
-    `WITH paged_apontamentos AS (
+    `${groupedOrdensCte},
+     paged_apontamentos AS (
        SELECT
-         BTRIM(aps.mes_ano) AS mes_ano,
-         aps.data_referencia,
-         CAST(aps.dre_codigo AS text) AS dre_codigo,
-         aps.ordem_servico_codigo::text AS ordem_servico_codigo,
-         aps.revisao,
-         CAST(aps.tipo_escola_codigo AS text) AS tipo_escola_codigo,
-         COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
-         COALESCE(aps.empresa_order, '') AS empresa_order,
-         COALESCE(aps.nome_condutor_order, '') AS nome_condutor_order,
-         COALESCE(aps.dre_descricao_order, '') AS dre_descricao_order,
-         COALESCE(aps.termo_adesao_order, '') AS termo_adesao_order,
-         COALESCE(aps.num_os_order, '') AS num_os_order,
-         COALESCE(aps.tipo_escola_display_order, 999) AS tipo_escola_display_order,
-         COALESCE(aps.tipo_escola_descricao_order, '') AS tipo_escola_descricao_order
-       ${fromAndWhereClause}
-      ORDER BY COALESCE(BTRIM(aps.crmc_condutor), '') ASC,
-                COALESCE(BTRIM(aps.tipo_veiculo), '') ASC,
-          COALESCE(aps.empresa_order, '') ASC,
-                COALESCE(aps.termo_adesao_order, '') ASC,
-                COALESCE(aps.num_os_order, '') ASC,
-                aps.revisao ASC,
-                COALESCE(aps.tipo_escola_display_order, 999) ASC,
-                COALESCE(aps.tipo_escola_descricao_order, '') ASC,
-                aps.ordem_servico_codigo ASC,
-                aps.tipo_escola_codigo ASC,
-                aps.dre_codigo ASC,
-                COALESCE(BTRIM(aps.tipo_pessoa), '') ASC
+         mes_ano,
+         dre_codigo,
+         ordem_servico_codigo,
+         revisao,
+         tipo_pessoa,
+         empresa_order,
+         nome_condutor_order,
+         dre_descricao_order,
+         termo_adesao_order,
+         num_os_order,
+         tipo_escola_display_order,
+         tipo_escola_descricao_order
+       FROM grouped_ordens
+       ORDER BY COALESCE(crmc_condutor, '') ASC,
+                COALESCE(tipo_veiculo, '') ASC,
+                COALESCE(empresa_order, '') ASC,
+                COALESCE(termo_adesao_order, '') ASC,
+                COALESCE(num_os_order, '') ASC,
+                revisao ASC,
+                COALESCE(tipo_escola_display_order, 999) ASC,
+                COALESCE(tipo_escola_descricao_order, '') ASC,
+                ordem_servico_codigo ASC,
+                dre_codigo ASC,
+                COALESCE(tipo_pessoa, '') ASC
        LIMIT $${pagedValues.length - 1}
        OFFSET $${pagedValues.length}
      )
@@ -3577,6 +3781,7 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
        COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
        COALESCE(BTRIM(os.termo_adesao), '') AS ordem_servico_termo_adesao,
        COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+      COALESCE(BTRIM(os.modalidade_descricao), '') AS ordem_servico_modalidade_descricao,
        apontamento_dia.revisao,
        CAST(apontamento_dia.tipo_escola_codigo AS text) AS tipo_escola_codigo,
        COALESCE(BTRIM(tipo_escola.sigla), '') AS tipo_escola_sigla,
@@ -3616,11 +3821,9 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
      FROM apuracao_servicos apontamento_dia
      INNER JOIN paged_apontamentos
        ON paged_apontamentos.mes_ano = BTRIM(apontamento_dia.mes_ano)
-      AND paged_apontamentos.data_referencia = apontamento_dia.data_referencia
       AND paged_apontamentos.dre_codigo = CAST(apontamento_dia.dre_codigo AS text)
       AND paged_apontamentos.ordem_servico_codigo = apontamento_dia.ordem_servico_codigo::text
       AND paged_apontamentos.revisao = apontamento_dia.revisao
-      AND paged_apontamentos.tipo_escola_codigo = CAST(apontamento_dia.tipo_escola_codigo AS text)
       AND paged_apontamentos.tipo_pessoa = COALESCE(BTRIM(apontamento_dia.tipo_pessoa), '')
      INNER JOIN dre ON dre.codigo = apontamento_dia.dre_codigo
      INNER JOIN tipo_escola ON tipo_escola.codigo = apontamento_dia.tipo_escola_codigo
@@ -3959,7 +4162,121 @@ const getRegularAccumulatedQuantity = (item) => {
   return Math.max(0, ncPresAcm + atCompNcAcm)
 }
 
-const findLatestRemuneracaoCondicaoValor = async ({ dataReferencia, tipoBancada, tipoPgtoDescricao, quantidade }, executor = pool) => {
+const isIncludedTipoEscolaForAcessivel = (item) => {
+  const tipoEscolaCodigo = normalizeRequestValue(item?.tipoEscolaCodigo ?? item?.tipo_escola_codigo)
+
+  if (tipoEscolaCodigo === '6') {
+    return true
+  }
+
+  // CCA deve ser sempre desconsiderado no quantitativo acessivel.
+  if (tipoEscolaCodigo === '7') {
+    return false
+  }
+
+  const tipoEscolaSigla = normalizeTipoEscolaLabel(item?.tipoEscolaSigla ?? item?.tipo_escola_sigla)
+
+  if (tipoEscolaSigla === 'CCA') {
+    return false
+  }
+
+  if (tipoEscolaSigla === 'CEI' || tipoEscolaSigla === 'EMEI' || tipoEscolaSigla === 'EMEF' || tipoEscolaSigla === 'EMEE') {
+    return true
+  }
+
+  const tipoEscolaDescricao = normalizeTipoEscolaLabel(item?.tipoEscolaDescricao ?? item?.tipo_escola_descricao)
+
+  if (tipoEscolaDescricao.includes('CENTRO PARA CRIANCAS E ADOLESCENTES')) {
+    return false
+  }
+
+  if (tipoEscolaDescricao.includes('CENTRO DE EDUCACAO INFANTIL')) {
+    return true
+  }
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO INFANTIL')) {
+    return true
+  }
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE ENSINO FUNDAMENTAL')) {
+    return true
+  }
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO ESPECIAL')) {
+    return true
+  }
+
+  return false
+}
+
+const getAcessivelAccumulatedQuantity = (item) => {
+  if (!isIncludedTipoEscolaForAcessivel(item)) {
+    return 0
+  }
+
+  const cadeiranteAcm = Number(item?.cadeiranteAcm) || 0
+  const atCompCadAcm = Number(item?.atendimentoComplementarCadeiranteAcm) || 0
+  return Math.max(0, cadeiranteAcm + atCompCadAcm)
+}
+
+const isIncludedTipoEscolaForCreche = (item) => {
+  const tipoEscolaCodigo = normalizeRequestValue(item?.tipoEscolaCodigo ?? item?.tipo_escola_codigo)
+
+  if (tipoEscolaCodigo === '6') {
+    return true
+  }
+
+  // Excluir explicitamente os demais grupos citados para o calculo de creche.
+  if (tipoEscolaCodigo === '7') {
+    return false
+  }
+
+  const tipoEscolaSigla = normalizeTipoEscolaLabel(item?.tipoEscolaSigla ?? item?.tipo_escola_sigla)
+
+  if (tipoEscolaSigla === 'CEI') {
+    return true
+  }
+
+  if (tipoEscolaSigla === 'EMEI' || tipoEscolaSigla === 'EMEF' || tipoEscolaSigla === 'EMEE' || tipoEscolaSigla === 'CCA') {
+    return false
+  }
+
+  const tipoEscolaDescricao = normalizeTipoEscolaLabel(item?.tipoEscolaDescricao ?? item?.tipo_escola_descricao)
+
+  if (tipoEscolaDescricao.includes('CENTRO DE EDUCACAO INFANTIL')) {
+    return true
+  }
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO INFANTIL')) {
+    return false
+  }
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE ENSINO FUNDAMENTAL')) {
+    return false
+  }
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO ESPECIAL')) {
+    return false
+  }
+
+  if (tipoEscolaDescricao.includes('CENTRO PARA CRIANCAS E ADOLESCENTES')) {
+    return false
+  }
+
+  return false
+}
+
+const getCrecheAccumulatedQuantity = (item) => {
+  if (!isIncludedTipoEscolaForCreche(item)) {
+    return 0
+  }
+
+  const ncPresAcm = Number(item?.naoCadeirantePresencialAcm) || 0
+  const atCompNcAcm = Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0
+  return Math.max(0, ncPresAcm + atCompNcAcm)
+}
+
+const findLatestRemuneracaoCondicaoValor = async ({ dataReferencia, modalidadeDescricao, tipoBancada, tipoPgtoDescricao, quantidade }, executor = pool) => {
   const result = await executor.query(
     `SELECT mbv.valor::numeric(14,2) AS valor
      FROM modal_bancada_condicao_tipo_pgto_valor mbv
@@ -3969,22 +4286,107 @@ const findLatestRemuneracaoCondicaoValor = async ({ dataReferencia, tipoBancada,
      INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
      INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
      INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
-     WHERE ${normalizedSqlTextExpression('m.descricao')} = 'TEG REGULAR'
-       AND ${normalizedSqlTextExpression('tb.descricao')} = ${normalizedSqlTextExpression('$1')}
-       AND ${normalizedSqlTextExpression('tp.descricao')} = ${normalizedSqlTextExpression('$2')}
-       AND c.qtde_ini <= $3
-       AND c.qtde_fim >= $3
-       AND mbv.data <= $4::date
+     WHERE ${normalizedSqlTextExpression('m.descricao')} = ${normalizedSqlTextExpression('$1')}
+       AND ${normalizedSqlTextExpression('tb.descricao')} = ${normalizedSqlTextExpression('$2')}
+       AND ${normalizedSqlTextExpression('tp.descricao')} = ${normalizedSqlTextExpression('$3')}
+       AND c.qtde_ini <= $4
+       AND c.qtde_fim >= $4
+       AND mbv.data <= $5::date
      ORDER BY mbv.data DESC, mbv.codigo DESC
      LIMIT 1`,
-    [tipoBancada, tipoPgtoDescricao, quantidade, dataReferencia],
+    [modalidadeDescricao, tipoBancada, tipoPgtoDescricao, quantidade, dataReferencia],
   )
 
   if (result.rowCount === 0) {
-    throw createHttpError(409, `Nao foi encontrado valor para TEG REGULAR (${tipoBancada}, ${tipoPgtoDescricao}) com quantidade ${quantidade} na data de operacao.`)
+    throw createHttpError(409, `Nao foi encontrado valor para ${modalidadeDescricao} (${tipoBancada}, ${tipoPgtoDescricao}) com quantidade ${quantidade} na data de operacao.`)
   }
 
   return Number(result.rows[0].valor) || 0
+}
+
+const findLatestRemuneracaoCondicaoValorWithFallback = async ({
+  dataReferencia,
+  modalidadeDescricaoCandidates,
+  tipoBancada,
+  tipoPgtoDescricao,
+  quantidade,
+}, executor = pool) => {
+  const normalizedCandidates = [...new Set((Array.isArray(modalidadeDescricaoCandidates) ? modalidadeDescricaoCandidates : [modalidadeDescricaoCandidates])
+    .map((candidate) => normalizeRequestValue(candidate))
+    .filter(Boolean))]
+
+  if (!normalizedCandidates.length) {
+    throw createHttpError(400, 'Modalidade obrigatoria para buscar valor de remuneracao.')
+  }
+
+  let notFoundError = null
+
+  for (const modalidadeDescricao of normalizedCandidates) {
+    try {
+      const valor = await findLatestRemuneracaoCondicaoValor({
+        dataReferencia,
+        modalidadeDescricao,
+        tipoBancada,
+        tipoPgtoDescricao,
+        quantidade,
+      }, executor)
+
+      return {
+        modalidadeDescricao,
+        valor,
+      }
+    } catch (error) {
+      if (error && typeof error === 'object' && Number((error).statusCode) === 409) {
+        notFoundError = error
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  if (notFoundError) {
+    throw notFoundError
+  }
+
+  throw createHttpError(409, `Nao foi encontrado valor para ${normalizedCandidates.join(' ou ')} (${tipoBancada}, ${tipoPgtoDescricao}) com quantidade ${quantidade} na data de operacao.`)
+}
+
+const findLatestRemuneracaoCondicaoValorByCondicao = async ({ dataReferencia, modalidadeDescricao, tipoBancada, tipoPgtoDescricao, condicaoDescricao }, executor = pool) => {
+  const normalizedCondicaoCandidates = [...new Set((Array.isArray(condicaoDescricao) ? condicaoDescricao : [condicaoDescricao])
+    .map((candidate) => normalizeRequestValue(candidate))
+    .filter(Boolean))]
+
+  if (!normalizedCondicaoCandidates.length) {
+    throw createHttpError(400, 'Condicao obrigatoria para buscar valor de remuneracao por condicao.')
+  }
+
+  for (const normalizedCondicaoDescricao of normalizedCondicaoCandidates) {
+    const result = await executor.query(
+      `SELECT mbv.valor::numeric(14,2) AS valor
+       FROM modal_bancada_condicao_tipo_pgto_valor mbv
+       INNER JOIN modal_bancada_condicao_tipo_pgto assoc ON assoc.codigo = mbv.modal_bancada_condicao_tipo_pgto_codigo
+       INNER JOIN modalidade_tipo_bancada mtb ON mtb.codigo = assoc.modalidade_tipo_bancada_codigo
+       INNER JOIN modalidade m ON m.codigo = mtb.modalidade_codigo
+       INNER JOIN tipo_bancada tb ON tb.codigo = mtb.tipo_bancada_codigo
+       INNER JOIN tipo_pgto tp ON tp.codigo = assoc.tipo_pgto_codigo
+       INNER JOIN condicao c ON c.codigo = assoc.condicao_codigo
+       WHERE ${normalizedSqlTextExpression('m.descricao')} = ${normalizedSqlTextExpression('$1')}
+         AND ${normalizedSqlTextExpression('tb.descricao')} = ${normalizedSqlTextExpression('$2')}
+         AND ${normalizedSqlTextExpression('tp.descricao')} = ${normalizedSqlTextExpression('$3')}
+         AND ${normalizedSqlTextExpression('c.descricao')} = ${normalizedSqlTextExpression('$4')}
+         AND mbv.data <= $5::date
+       ORDER BY mbv.data DESC, mbv.codigo DESC
+       LIMIT 1`,
+      [modalidadeDescricao, tipoBancada, tipoPgtoDescricao, normalizedCondicaoDescricao, dataReferencia],
+    )
+
+    if (result.rowCount > 0) {
+      return Number(result.rows[0].valor) || 0
+    }
+  }
+
+  throw createHttpError(409, `Nao foi encontrado valor para ${modalidadeDescricao} (${tipoBancada}, ${tipoPgtoDescricao}) nas condicoes ${normalizedCondicaoCandidates.join(' ou ')} na data de operacao.`)
 }
 
 const listAllApontamentoServicosItems = async ({
@@ -4067,6 +4469,18 @@ const calculateRemuneracaoServicosItems = async ({
         ...currentItem,
         tipoVeiculo: nextTipoVeiculo,
       })
+
+      return groupedItemsMap
+    }
+
+    const currentModalidadeDescricao = normalizeRequestValue(currentItem.ordemServicoModalidadeDescricao)
+    const nextModalidadeDescricao = normalizeRequestValue(item.ordemServicoModalidadeDescricao)
+
+    if (!currentModalidadeDescricao && nextModalidadeDescricao) {
+      groupedItemsMap.set(groupKey, {
+        ...currentItem,
+        ordemServicoModalidadeDescricao: nextModalidadeDescricao,
+      })
     }
 
     return groupedItemsMap
@@ -4105,10 +4519,24 @@ const calculateRemuneracaoServicosItems = async ({
   const remuneracaoByKey = new Map(remuneracaoResult.rows.map((row) => [buildRemuneracaoServicosCompositeKey(row), row]))
   const remuneracaoItems = groupedApontamentoItems.map((item) => mapRemuneracaoServicosRow(item, remuneracaoByKey.get(buildRemuneracaoServicosCompositeKey(item))))
 
-  const accumulatedByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+  const accumulatedRegularByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
     const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
     const currentValue = resultMap.get(groupKey) ?? 0
     resultMap.set(groupKey, currentValue + getRegularAccumulatedQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const accumulatedAcessivelByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getAcessivelAccumulatedQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const accumulatedCrecheByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getCrecheAccumulatedQuantity(item))
     return resultMap
   }, new Map())
 
@@ -4118,58 +4546,189 @@ const calculateRemuneracaoServicosItems = async ({
   let totalAtualizados = 0
   let totalIgnorados = 0
 
+  const modalidadeByTipoBancada = {
+    CONVENCIONAL: 'TEG REGULAR',
+    ACESSIVEL: 'TEG ACESSIVEL',
+    CRECHE: 'TEG CRECHE',
+  }
+
+  const quantidadeConfigByTipoBancada = {
+    CONVENCIONAL: {
+      faixa1Limite: 15,
+      faixa2Quantidade: 16,
+      faixa3Inicio: 17,
+      resolveLookupQuantidade: (quantidade) => quantidade,
+    },
+    ACESSIVEL: {
+      faixa1Limite: 1,
+      faixa2Quantidade: 2,
+      faixa3Inicio: 3,
+      resolveLookupQuantidade: (quantidade) => (quantidade >= 3 ? 3 : quantidade),
+    },
+    CRECHE: {
+      faixa1Limite: 9,
+      faixa2Quantidade: 10,
+      faixa3Inicio: 11,
+      resolveLookupQuantidade: (quantidade) => quantidade,
+    },
+  }
+
+  const specialFixedRulesByTipoBancada = {
+    CONVENCIONAL: {
+      condicaoDescricao: 'Fixo Esp',
+      quantityMap: accumulatedRegularByGroupKey,
+      outputField: 'tegEspecialRegularFixo',
+    },
+    ACESSIVEL: {
+      condicaoDescricao: ['Fixo Esp para acessivel', 'Fixo Esp'],
+      quantityMap: accumulatedAcessivelByGroupKey,
+      outputField: 'tegEspecialAcessivelFixo',
+    },
+  }
+
   for (const item of remuneracaoItems) {
     const tipoBancada = resolveTipoBancadaFromRemuneracaoItem(item)
+    const ordemServicoModalidadeKey = normalizeModalidadeDescriptionKey(item.ordemServicoModalidadeDescricao)
+    const isOrdemServicoTegEspecial = ordemServicoModalidadeKey === normalizeModalidadeDescriptionKey('TEG ESPECIAL')
+    const isOrdemServicoTegRegular = ordemServicoModalidadeKey === normalizeModalidadeDescriptionKey('TEG REGULAR')
+    const modalidadeDescricao = tipoBancada === 'ACESSIVEL' && isOrdemServicoTegRegular
+      ? 'TEG REGULAR'
+      : modalidadeByTipoBancada[tipoBancada]
+    const modalidadeDescricaoCandidates = tipoBancada === 'ACESSIVEL' && isOrdemServicoTegRegular
+      ? ['TEG REGULAR']
+      : [modalidadeDescricao]
 
-    if (tipoBancada !== 'CONVENCIONAL') {
+    if (!modalidadeDescricao) {
       totalIgnorados += 1
       continue
     }
 
     const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
-    const quantidade = Math.max(0, Number(accumulatedByGroupKey.get(groupKey) ?? 0))
+    const quantidade = Math.max(0, Number(
+      tipoBancada === 'ACESSIVEL'
+        ? (accumulatedAcessivelByGroupKey.get(groupKey) ?? 0)
+        : tipoBancada === 'CRECHE'
+          ? (accumulatedCrecheByGroupKey.get(groupKey) ?? 0)
+        : (accumulatedRegularByGroupKey.get(groupKey) ?? 0),
+    ))
+    const quantidadeConfig = quantidadeConfigByTipoBancada[tipoBancada] ?? quantidadeConfigByTipoBancada.CONVENCIONAL
+    const lookupQuantidade = quantidadeConfig.resolveLookupQuantidade(quantidade)
+    const shouldUseSpecialOnlyCalculation = isOrdemServicoTegEspecial && Boolean(specialFixedRulesByTipoBancada[tipoBancada])
     let tegRegularFixo = 0
     let tegRegularPercapita = 0
 
-    if (quantidade > 0) {
-      const fixoLookupKey = `${tipoBancada}|FIXO|${quantidade}`
-      const percapitaLookupKey = `${tipoBancada}|PER CAPITA|${quantidade}`
+    if (quantidade > 0 && !shouldUseSpecialOnlyCalculation) {
+      const fixoLookupKey = `${modalidadeDescricao}|${tipoBancada}|FIXO|${lookupQuantidade}`
+      const percapitaLookupKey = `${modalidadeDescricao}|${tipoBancada}|PER CAPITA|${lookupQuantidade}`
 
       tegRegularFixo = valorByLookupKey.get(fixoLookupKey)
       if (!Number.isFinite(tegRegularFixo)) {
-        tegRegularFixo = await findLatestRemuneracaoCondicaoValor({
+        const fixoLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
           dataReferencia,
+          modalidadeDescricaoCandidates,
           tipoBancada,
           tipoPgtoDescricao: 'FIXO',
-          quantidade,
+          quantidade: lookupQuantidade,
         }, executor)
+        tegRegularFixo = Number(fixoLookup.valor) || 0
         valorByLookupKey.set(fixoLookupKey, tegRegularFixo)
       }
 
       tegRegularPercapita = valorByLookupKey.get(percapitaLookupKey)
       if (!Number.isFinite(tegRegularPercapita)) {
-        tegRegularPercapita = await findLatestRemuneracaoCondicaoValor({
+        const percapitaLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
           dataReferencia,
+          modalidadeDescricaoCandidates,
           tipoBancada,
           tipoPgtoDescricao: 'PER CAPITA',
-          quantidade,
+          quantidade: lookupQuantidade,
         }, executor)
+        tegRegularPercapita = Number(percapitaLookup.valor) || 0
         valorByLookupKey.set(percapitaLookupKey, tegRegularPercapita)
       }
     }
 
     const normalizedTegRegularFixo = normalizeRemuneracaoServicosAmount((Number(tegRegularFixo) || 0) / 30)
     const percapitaBaseQuantity = Math.max(quantidade, 0)
-    const percapitaQuantity = percapitaBaseQuantity <= 15
+    const percapitaQuantity = percapitaBaseQuantity <= quantidadeConfig.faixa1Limite
       ? percapitaBaseQuantity
-      : percapitaBaseQuantity === 16
-        ? 16
-        : Math.max(percapitaBaseQuantity - 17 + 1, 0)
+      : percapitaBaseQuantity === quantidadeConfig.faixa2Quantidade
+        ? percapitaBaseQuantity
+        : Math.max(percapitaBaseQuantity - quantidadeConfig.faixa3Inicio + 1, 0)
     const normalizedTegRegularPercapita = normalizeRemuneracaoServicosAmount(((Number(tegRegularPercapita) || 0) * percapitaQuantity) / 30)
+
+    const specialRule = specialFixedRulesByTipoBancada[tipoBancada] ?? null
+    let normalizedTegEspecialRegularFixo = 0
+    let normalizedTegEspecialAcessivelFixo = 0
+
+    if (isOrdemServicoTegEspecial && specialRule) {
+      const specialQuantidade = Math.max(0, Number(specialRule.quantityMap.get(groupKey) ?? 0))
+
+      if (specialQuantidade > 0) {
+        const specialLookupKey = `TEG ESPECIAL|${tipoBancada}|FIXO|${specialRule.condicaoDescricao}`
+        let tegEspecialFixo = valorByLookupKey.get(specialLookupKey)
+
+        if (!Number.isFinite(tegEspecialFixo)) {
+          tegEspecialFixo = await findLatestRemuneracaoCondicaoValorByCondicao({
+            dataReferencia,
+            modalidadeDescricao: 'TEG ESPECIAL',
+            tipoBancada,
+            tipoPgtoDescricao: 'FIXO',
+            condicaoDescricao: specialRule.condicaoDescricao,
+          }, executor)
+          valorByLookupKey.set(specialLookupKey, tegEspecialFixo)
+        }
+
+        const normalizedSpecialFixo = normalizeRemuneracaoServicosAmount((Number(tegEspecialFixo) || 0) / 30)
+
+        if (specialRule.outputField === 'tegEspecialRegularFixo') {
+          normalizedTegEspecialRegularFixo = normalizedSpecialFixo
+        }
+
+        if (specialRule.outputField === 'tegEspecialAcessivelFixo') {
+          normalizedTegEspecialAcessivelFixo = normalizedSpecialFixo
+        }
+      }
+    }
 
     totalCalculados += 1
 
-    if (Number(item.tegRegularFixo) !== normalizedTegRegularFixo || Number(item.tegRegularPercapita) !== normalizedTegRegularPercapita) {
+    const nextTegRegularFixo = tipoBancada === 'CONVENCIONAL'
+      ? normalizedTegRegularFixo
+      : Number(item.tegRegularFixo) || 0
+    const nextTegRegularPercapita = tipoBancada === 'CONVENCIONAL'
+      ? normalizedTegRegularPercapita
+      : Number(item.tegRegularPercapita) || 0
+    const nextTegAcessivelFixo = tipoBancada === 'ACESSIVEL'
+      ? normalizedTegRegularFixo
+      : Number(item.tegAcessivelFixo) || 0
+    const nextTegAcessivelPercapita = tipoBancada === 'ACESSIVEL'
+      ? normalizedTegRegularPercapita
+      : Number(item.tegAcessivelPercapita) || 0
+    const nextTegEspecialRegularFixo = normalizedTegEspecialRegularFixo
+    const nextTegEspecialRegularPercapita = Number(item.tegEspecialRegularPercapita) || 0
+    const nextTegEspecialAcessivelFixo = normalizedTegEspecialAcessivelFixo
+    const nextTegEspecialAcessivelPercapita = Number(item.tegEspecialAcessivelPercapita) || 0
+    const nextTegCrecheFixo = tipoBancada === 'CRECHE'
+      ? normalizedTegRegularFixo
+      : Number(item.tegCrecheFixo) || 0
+    const nextTegCrechePercapita = tipoBancada === 'CRECHE'
+      ? normalizedTegRegularPercapita
+      : Number(item.tegCrechePercapita) || 0
+
+    const hasAnyValueChange =
+      nextTegRegularFixo !== (Number(item.tegRegularFixo) || 0)
+      || nextTegRegularPercapita !== (Number(item.tegRegularPercapita) || 0)
+      || nextTegAcessivelFixo !== (Number(item.tegAcessivelFixo) || 0)
+      || nextTegAcessivelPercapita !== (Number(item.tegAcessivelPercapita) || 0)
+      || nextTegEspecialRegularFixo !== (Number(item.tegEspecialRegularFixo) || 0)
+      || nextTegEspecialRegularPercapita !== (Number(item.tegEspecialRegularPercapita) || 0)
+      || nextTegEspecialAcessivelFixo !== (Number(item.tegEspecialAcessivelFixo) || 0)
+      || nextTegEspecialAcessivelPercapita !== (Number(item.tegEspecialAcessivelPercapita) || 0)
+      || nextTegCrecheFixo !== (Number(item.tegCrecheFixo) || 0)
+      || nextTegCrechePercapita !== (Number(item.tegCrechePercapita) || 0)
+
+    if (hasAnyValueChange) {
       totalAtualizados += 1
     }
 
@@ -4178,16 +4737,16 @@ const calculateRemuneracaoServicosItems = async ({
       ordemServicoCodigo: item.ordemServicoCodigo,
       revisao: item.revisao,
       tipoPessoa: item.tipoPessoa,
-      tegRegularFixo: normalizedTegRegularFixo,
-      tegRegularPercapita: normalizedTegRegularPercapita,
-      tegAcessivelFixo: Number(item.tegAcessivelFixo) || 0,
-      tegAcessivelPercapita: Number(item.tegAcessivelPercapita) || 0,
-      tegEspecialRegularFixo: Number(item.tegEspecialRegularFixo) || 0,
-      tegEspecialRegularPercapita: Number(item.tegEspecialRegularPercapita) || 0,
-      tegEspecialAcessivelFixo: Number(item.tegEspecialAcessivelFixo) || 0,
-      tegEspecialAcessivelPercapita: Number(item.tegEspecialAcessivelPercapita) || 0,
-      tegCrecheFixo: Number(item.tegCrecheFixo) || 0,
-      tegCrechePercapita: Number(item.tegCrechePercapita) || 0,
+      tegRegularFixo: nextTegRegularFixo,
+      tegRegularPercapita: nextTegRegularPercapita,
+      tegAcessivelFixo: nextTegAcessivelFixo,
+      tegAcessivelPercapita: nextTegAcessivelPercapita,
+      tegEspecialRegularFixo: nextTegEspecialRegularFixo,
+      tegEspecialRegularPercapita: nextTegEspecialRegularPercapita,
+      tegEspecialAcessivelFixo: nextTegEspecialAcessivelFixo,
+      tegEspecialAcessivelPercapita: nextTegEspecialAcessivelPercapita,
+      tegCrecheFixo: nextTegCrecheFixo,
+      tegCrechePercapita: nextTegCrechePercapita,
       kmValor: Number(item.kmValor) || 0,
       continuaRegular: Number(item.continuaRegular) || 0,
       continuaCadeirante: Number(item.continuaCadeirante) || 0,
@@ -15407,6 +15966,25 @@ const findEmissaoDocumentoParametroByDate = async (dataReferencia, executor = po
   return result.rows[0] ?? null
 }
 
+const findEmissaoDocumentoParametroByExactDate = async (dataReferencia, executor = pool) => {
+  const normalizedDateKey = normalizeEmissaoDocumentoDateKey(dataReferencia)
+
+  if (!normalizedDateKey || !isEmissaoDocumentoDateKeyValid(normalizedDateKey)) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT
+       ${emissaoDocumentoParametroSelectClause}
+     FROM ${emissaoDocumentoParametroTableName}
+     WHERE BTRIM(data_referencia) = $1
+     LIMIT 1`,
+    [normalizedDateKey],
+  )
+
+  return result.rows[0] ?? null
+}
+
 const normalizeContractTemplateKey = (value) => String(value || '')
   .replace(/[<>]/g, '')
   .replace(/[_/]+/g, ' ')
@@ -16167,6 +16745,28 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
   }
 
   const veiculoItem = hasValidCrm ? await findVeiculoByCrm(normalizedCrm) : null
+
+  if (derivedModalidadeDescricao && veiculoItem) {
+    const veiculoOsEspecial = normalizeOsEspecial(veiculoItem.os_especial)
+
+    if (derivedModalidadeDescricao === 'TEG ESPECIAL' && veiculoOsEspecial !== 'Sim') {
+      return {
+        status: 400,
+        payload: {
+          message: 'TEG ESPECIAL somente aceita veiculo com OS especial = Sim.',
+        },
+      }
+    }
+
+    if ((derivedModalidadeDescricao === 'TEG REGULAR' || derivedModalidadeDescricao === 'TEG CRECHE') && veiculoOsEspecial !== 'Não') {
+      return {
+        status: 400,
+        payload: {
+          message: 'TEG REGULAR e TEG CRECHE somente aceitam veiculo com OS especial = Nao.',
+        },
+      }
+    }
+  }
 
   if (normalizedSituacao === 'Ativo') {
     const normalizedOriginalCodigo = normalizeCondutorCodigo(originalCodigo)
@@ -17615,8 +18215,18 @@ const ensureDatabaseSchema = async () => {
   `)
   await pool.query('ALTER TABLE aliquota_optante DROP CONSTRAINT IF EXISTS aliquota_optante_pkey')
   await pool.query('ALTER TABLE aliquota_optante DROP CONSTRAINT IF EXISTS aliquota_optante_pk')
-  await pool.query('DROP INDEX IF EXISTS aliquota_optante_data_tipo_empresa_unique_idx')
-  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS aliquota_optante_data_tipo_empresa_unique_idx ON aliquota_optante (data, tipo_empresa)')
+  await pool.query(`
+    DO $$
+    BEGIN
+      BEGIN
+        CREATE UNIQUE INDEX IF NOT EXISTS aliquota_optante_data_tipo_empresa_unique_idx
+        ON aliquota_optante (data, tipo_empresa);
+      EXCEPTION
+        WHEN duplicate_table OR unique_violation THEN
+          NULL;
+      END;
+    END $$;
+  `)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS dias_letivos (
       data date PRIMARY KEY,
@@ -22702,6 +23312,8 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === emissaoDocumentoParametroResolvePath) {
     try {
       const requestedDate = normalizeEmissaoDocumentoDateKey(requestUrl.searchParams.get('dataReferencia') ?? '') || buildCurrentEmissaoDocumentoDateKey()
+      const includeContent = normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeContent'))
+      const includeImageInline = includeContent && normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeImageInline'))
 
       if (!isEmissaoDocumentoDateKeyValid(requestedDate)) {
         sendJson(response, 400, { message: 'Data de referencia invalida. Use dd/mm/yyyy ou yyyy-mm-dd.' })
@@ -22716,9 +23328,88 @@ const server = createServer(async (request, response) => {
       }
 
       sendJson(response, 200, {
-        item,
+        item: serializeEmissaoDocumentoParametroItem(item, { includeContent, includeImageInline }),
         requestedDate,
         exactMatch: item.data_referencia === requestedDate,
+      })
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar parametro de emissao.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && getEmissaoDocumentoParametroImageDataFromUrl(pathname)) {
+    try {
+      const dataReferencia = normalizeEmissaoDocumentoDateKey(getEmissaoDocumentoParametroImageDataFromUrl(pathname))
+
+      if (!dataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida.' })
+        return
+      }
+
+      const item = await findEmissaoDocumentoParametroByExactDate(dataReferencia)
+
+      if (!item) {
+        sendJson(response, 404, { message: 'Parametro de emissao nao encontrado para a data informada.' })
+        return
+      }
+
+      const rawImageValue = String(item.prefeitura_imagem ?? '').trim()
+
+      if (!rawImageValue) {
+        sendJson(response, 404, { message: 'Imagem da prefeitura nao cadastrada para a data informada.' })
+        return
+      }
+
+      const parsedImage = parsePrefeituraImagemDataUrl(rawImageValue)
+
+      if (!parsedImage) {
+        sendJson(response, 415, { message: 'Formato de imagem nao suportado para entrega binaria.' })
+        return
+      }
+
+      response.writeHead(200, {
+        'Content-Type': parsedImage.contentType,
+        'Cache-Control': 'no-store',
+        'Access-Control-Allow-Origin': '*',
+      })
+      response.end(parsedImage.buffer)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar imagem da prefeitura.'
+
+      sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && getEmissaoDocumentoParametroDataFromUrl(pathname)) {
+    try {
+      const dataReferencia = normalizeEmissaoDocumentoDateKey(getEmissaoDocumentoParametroDataFromUrl(pathname))
+      const includeContent = normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeContent'))
+      const includeImageInline = includeContent && normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeImageInline'))
+
+      if (!dataReferencia) {
+        sendJson(response, 400, { message: 'Data de referencia invalida.' })
+        return
+      }
+
+      const item = await findEmissaoDocumentoParametroByExactDate(dataReferencia)
+
+      if (!item) {
+        sendJson(response, 404, { message: 'Parametro de emissao nao encontrado para a data informada.' })
+        return
+      }
+
+      sendJson(response, 200, {
+        item: serializeEmissaoDocumentoParametroItem(item, { includeContent, includeImageInline }),
       })
     } catch (error) {
       const message = error instanceof Error
@@ -22736,6 +23427,8 @@ const server = createServer(async (request, response) => {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
       const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 10) || 10, 1), 50)
+      const includeContent = normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeContent'))
+      const includeImageInline = includeContent && normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeImageInline'))
       const sortDirection = normalizeRequestValue(requestUrl.searchParams.get('sortDirection') ?? 'desc').toLowerCase() === 'asc'
         ? 'ASC'
         : 'DESC'
@@ -22837,7 +23530,7 @@ const server = createServer(async (request, response) => {
       }
 
       sendJson(response, 200, {
-        items: result.rows,
+        items: result.rows.map((row) => serializeEmissaoDocumentoParametroItem(row, { includeContent, includeImageInline })),
         total,
         page: shouldUseTailQuery ? totalPages : page,
         pageSize,
@@ -28238,6 +28931,8 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && pathname === emissaoDocumentoParametroCollectionPath) {
     try {
       const body = await readJsonBody(request)
+      const includeContent = normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeContent'))
+      const includeImageInline = includeContent && normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeImageInline'))
       const validationResult = await validateEmissaoDocumentoParametroPayload({
         dataReferencia: body.dataReferencia,
         objeto: body.objeto,
@@ -28268,6 +28963,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, validationResult.status, validationResult.payload)
         return
       }
+
+      console.info('[emissao-documento-parametro] create payload', buildEmissaoDocumentoParametroLogPayload(validationResult.payload))
 
       const insertResult = await pool.query(
         `INSERT INTO ${emissaoDocumentoParametroTableName} (
@@ -28326,7 +29023,9 @@ const server = createServer(async (request, response) => {
         ],
       )
 
-      sendJson(response, 201, { item: insertResult.rows[0] })
+      sendJson(response, 201, {
+        item: serializeEmissaoDocumentoParametroItem(insertResult.rows[0], { includeContent, includeImageInline }),
+      })
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -31229,6 +31928,8 @@ const server = createServer(async (request, response) => {
     try {
       const originalDataReferencia = getEmissaoDocumentoParametroDataFromUrl(pathname)
       const body = await readJsonBody(request)
+      const includeContent = normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeContent'))
+      const includeImageInline = includeContent && normalizeBooleanQueryFlag(requestUrl.searchParams.get('includeImageInline'))
 
       if (!originalDataReferencia) {
         sendJson(response, 400, { message: 'Data original invalida.' })
@@ -31237,7 +31938,7 @@ const server = createServer(async (request, response) => {
 
       const normalizedOriginalDataReferencia = normalizeEmissaoDocumentoDateKey(originalDataReferencia)
       const existingResult = await pool.query(
-        `SELECT 1
+        `SELECT COALESCE(prefeitura_imagem, '') AS prefeitura_imagem
          FROM ${emissaoDocumentoParametroTableName}
          WHERE BTRIM(data_referencia) = $1
          LIMIT 1`,
@@ -31248,6 +31949,11 @@ const server = createServer(async (request, response) => {
         sendJson(response, 404, { message: 'Parametro de emissao nao encontrado.' })
         return
       }
+
+      const existingPrefeituraImagem = String(existingResult.rows[0]?.prefeitura_imagem ?? '')
+      const prefeituraImagemPayloadValue = Object.prototype.hasOwnProperty.call(body, 'prefeituraImagem')
+        ? body.prefeituraImagem
+        : existingPrefeituraImagem
 
       const validationResult = await validateEmissaoDocumentoParametroPayload({
         dataReferencia: body.dataReferencia,
@@ -31270,7 +31976,7 @@ const server = createServer(async (request, response) => {
         obs01Emissao: body.obs01Emissao,
         obs02Emissao: body.obs02Emissao,
         rodapeEmissao: body.rodapeEmissao,
-        prefeituraImagem: body.prefeituraImagem,
+        prefeituraImagem: prefeituraImagemPayloadValue,
         tituloEmissao: body.tituloEmissao,
         diretorEmissao: body.diretorEmissao,
         originalDataReferencia: normalizedOriginalDataReferencia,
@@ -31280,6 +31986,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, validationResult.status, validationResult.payload)
         return
       }
+
+      console.info('[emissao-documento-parametro] update payload', buildEmissaoDocumentoParametroLogPayload(validationResult.payload))
 
       const updateResult = await pool.query(
         `UPDATE ${emissaoDocumentoParametroTableName}
@@ -31337,7 +32045,9 @@ const server = createServer(async (request, response) => {
         ],
       )
 
-      sendJson(response, 200, { item: updateResult.rows[0] })
+      sendJson(response, 200, {
+        item: serializeEmissaoDocumentoParametroItem(updateResult.rows[0], { includeContent, includeImageInline }),
+      })
     } catch (error) {
       const message = error instanceof Error
         ? error.message
