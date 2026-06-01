@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:noNamespaceSchemaLocation="Veiculo.xsd" generated="2026-06-01T13:21:19">
+<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:noNamespaceSchemaLocation="Veiculo.xsd" generated="2026-06-01T16:05:57">
 <Veiculo>
 <Código>4139</Código>
 <CRM>000.717-00</CRM>
@@ -140,9 +140,9 @@
 <Cap_DETRAN>27</Cap_DETRAN>
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2027-01-29T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-06T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-06T00:00:00</Seguro_termino>
+<Seguradora>KOVR SEGURADORA</Seguradora>
+<Seguro_inicio>2025-02-26T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-26T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO NIKS MIC 20</Marca_modelo>
@@ -1017,8 +1017,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M. BENZ313CDI SPRINTERM</Marca_modelo>
-<Titular>MARCO ANTONIO FERREIRA DE OLIVEIRA (PREPOSTO)</Titular>
-<CNPJ_CPF>346.931.728-39</CNPJ_CPF>
+<Titular>CARLOS ALBERTO GOMES</Titular>
+<CNPJ_CPF>223.525.468-34</CNPJ_CPF>
 <Valor_veiculo>265575.1200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -1112,8 +1112,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER FFBM 32</Marca_modelo>
-<Titular>MARCELO ESTEVES DE OLIVEIRA (PREPOSTO)</Titular>
-<CNPJ_CPF>118.978.778-46</CNPJ_CPF>
+<Titular>MARIA VALDETE MUNIZ DA SILVA (PREPOSTO)</Titular>
+<CNPJ_CPF>411.114.938-39</CNPJ_CPF>
 <Valor_veiculo>334916.5200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -1905,8 +1905,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>CITROEN/JUMPER M33M 23S</Marca_modelo>
-<Titular>DANIEL SOARES GONÇALVES (PREPOSTO)</Titular>
-<CNPJ_CPF>297.514.818-64</CNPJ_CPF>
+<Titular>ROBERTO DIAS OLIVEIRA</Titular>
+<CNPJ_CPF>298.582.648-95</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -2763,8 +2763,8 @@
 <Cap_TEG>32</Cap_TEG>
 <VAL_CRM>2026-07-07T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-12-02T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-12-02T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-18T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-18T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>IVECO/DAILY GREENCAR MO</Marca_modelo>
@@ -3556,13 +3556,13 @@
 <Cap_TEG>23</Cap_TEG>
 <VAL_CRM>2026-07-27T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-12-01T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-12-01T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-12-01T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-12-01T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCA ESCOLAR FFBM26</Marca_modelo>
-<Titular>E.B.B TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>21.663.095/0001-01</CNPJ_CPF>
+<Titular>MARIO MORENO</Titular>
+<CNPJ_CPF>065.986.948-92</CNPJ_CPF>
 <Valor_veiculo>334916.5200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -4447,8 +4447,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2026-08-11T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-04-23T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-04-23T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-03-19T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-03-19T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ 416CDISPRINTERM</Marca_modelo>
@@ -4883,8 +4883,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2027-02-01T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-03-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-03-27T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-03-27T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-03-27T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ 415CDISPRINTERM</Marca_modelo>
@@ -6855,15 +6855,15 @@
 <Ano>2007</Ano>
 <Cap_DETRAN>29</Cap_DETRAN>
 <Cap_TEG>27</Cap_TEG>
-<VAL_CRM>2027-04-17T00:00:00</VAL_CRM>
+<VAL_CRM>2026-04-17T00:00:00</VAL_CRM>
 <Seguradora>KOVR SEGURADORA</Seguradora>
 <Seguro_inicio>2025-08-07T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-08-07T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MUL REVESCAP</Marca_modelo>
-<Titular>FABIO TELES DE SOUSA SALES (PREPOSTO)</Titular>
-<CNPJ_CPF>175.764.378-80</CNPJ_CPF>
+<Titular>JOSE PAULO DOS SANTOS</Titular>
+<CNPJ_CPF>235.954.349-00</CNPJ_CPF>
 <Valor_veiculo>390389.6400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -7295,15 +7295,15 @@
 <Ano>2011</Ano>
 <Cap_DETRAN>27</Cap_DETRAN>
 <Cap_TEG>26</Cap_TEG>
-<VAL_CRM>2027-05-15T00:00:00</VAL_CRM>
+<VAL_CRM>2026-05-15T00:00:00</VAL_CRM>
 <Seguradora>KOVR SEGURADORA</Seguradora>
-<Seguro_inicio>2026-05-05T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-05T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-05T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-05T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/ DUCA ESCOLAR FFBM25</Marca_modelo>
-<Titular>EVOLUÇÃO TRANSPORTE LTDA</Titular>
-<CNPJ_CPF>65.652.962/0001-70</CNPJ_CPF>
+<Titular>MAURICIO HOUCK DE FREITAS</Titular>
+<CNPJ_CPF>879.174.168-87</CNPJ_CPF>
 <Valor_veiculo>376521.3600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -7473,15 +7473,15 @@
 <Ano>2009</Ano>
 <Cap_DETRAN>19</Cap_DETRAN>
 <Cap_TEG>18</Cap_TEG>
-<VAL_CRM>2027-05-29T00:00:00</VAL_CRM>
+<VAL_CRM>2026-05-29T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2025-06-23T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-06-23T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO NIKS MULT 16</Marca_modelo>
-<Titular>E.G DANIEL LTDA</Titular>
-<CNPJ_CPF>61.904.995/0001-00</CNPJ_CPF>
+<Titular>ELIZANGELA GONCALVES DANIEL</Titular>
+<CNPJ_CPF>146.951.718-30</CNPJ_CPF>
 <Valor_veiculo>304006.9200</Valor_veiculo>
 <OS_especial>SIM</OS_especial>
 </Veiculo>
@@ -7909,8 +7909,8 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-07-29T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-04-07T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-04-07T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-04-07T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-04-07T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/ DUCA ESCOLAR FFBM25</Marca_modelo>
@@ -7971,8 +7971,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER NIKS MO20</Marca_modelo>
-<Titular>LIRIO LUZ TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>34.656.638/0001-05</CNPJ_CPF>
+<Titular>ELIANA BARBOSA DA SILVA</Titular>
+<CNPJ_CPF>118.597.308-76</CNPJ_CPF>
 <Valor_veiculo>304006.9200</Valor_veiculo>
 <OS_especial>SIM</OS_especial>
 </Veiculo>
@@ -8816,8 +8816,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER FFBM 32</Marca_modelo>
-<Titular>ELIAS NUNES MOREIRA (PREPOSTO)</Titular>
-<CNPJ_CPF>260.066.618-45</CNPJ_CPF>
+<Titular>SANDRO SOUZA DE OLIVEIRA (PREPOSTO)</Titular>
+<CNPJ_CPF>264.024.988-66</CNPJ_CPF>
 <Valor_veiculo>390389.6400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -9387,8 +9387,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE W9 ON</Marca_modelo>
-<Titular>ANDRE MARTINS DIAS (PREPOSTO)</Titular>
-<CNPJ_CPF>317.575.988-20</CNPJ_CPF>
+<Titular>SEVIRINO ALBINO CARDOSO JUNIOR</Titular>
+<CNPJ_CPF>152.267.578-75</CNPJ_CPF>
 <Valor_veiculo>681623.5200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -9483,8 +9483,8 @@
 <Cap_TEG>09</Cap_TEG>
 <VAL_CRM>2026-08-22T00:00:00</VAL_CRM>
 <Seguradora>ESSOR SEGUROS</Seguradora>
-<Seguro_inicio>2025-09-12T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-09-12T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-09-12T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-09-12T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO NIKS MULT 16</Marca_modelo>
@@ -11579,7 +11579,7 @@
 <Veiculo>
 <Código>4716</Código>
 <CRM>019.068-00</CRM>
-<Placas>FCB0A48</Placas>
+<Placas>FCB0048</Placas>
 <Ano>2011</Ano>
 <Cap_DETRAN>19</Cap_DETRAN>
 <Cap_TEG>18</Cap_TEG>
@@ -11590,8 +11590,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ313CDI REVESCAP</Marca_modelo>
-<Titular>SARAIVA TUR TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>65.252.961/0001-39</CNPJ_CPF>
+<Titular>LEDA MARIA COELHO SARAIVA</Titular>
+<CNPJ_CPF>088.744.068-19</CNPJ_CPF>
 <Valor_veiculo>265575.1200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -11698,8 +11698,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M330M 23S</Marca_modelo>
-<Titular>G T DE MACEDO TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>14.457.168/0001-35</CNPJ_CPF>
+<Titular>MARCELO APARECIDO DA MOTA</Titular>
+<CNPJ_CPF>094.950.008-90</CNPJ_CPF>
 <Valor_veiculo>304006.9200</Valor_veiculo>
 <OS_especial>SIM</OS_especial>
 </Veiculo>
@@ -13438,20 +13438,20 @@
 <Veiculo>
 <Código>4818</Código>
 <CRM>019.546-00</CRM>
-<Placas>CUA0D19</Placas>
-<Ano>2012</Ano>
-<Cap_DETRAN>27</Cap_DETRAN>
-<Cap_TEG>26</Cap_TEG>
+<Placas>DMM2282</Placas>
+<Ano>2003</Ano>
+<Cap_DETRAN>25</Cap_DETRAN>
+<Cap_TEG>23</Cap_TEG>
 <VAL_CRM>2026-11-19T00:00:00</VAL_CRM>
 <Seguradora>ESSOR SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-21T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-21T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-29T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-29T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>FIAT/DUCATO FABUSFORMA</Marca_modelo>
+<Marca_modelo>IVECO/MPOLO FRATELLO MO</Marca_modelo>
 <Titular>WILSON PEREIRA DA CRUZ</Titular>
 <CNPJ_CPF>088.268.328-46</CNPJ_CPF>
-<Valor_veiculo>376521.3600</Valor_veiculo>
+<Valor_veiculo>334916.5200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
@@ -13686,8 +13686,8 @@
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO NIKS MULT 16</Marca_modelo>
-<Titular>RAQUEL ALVES DE LIMA DIAS (PREPOSTO)</Titular>
-<CNPJ_CPF>489.925.078-95</CNPJ_CPF>
+<Titular>EDIVALDO FRANCISCO DO CARMO</Titular>
+<CNPJ_CPF>131.782.548-97</CNPJ_CPF>
 <Valor_veiculo>335148.2400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -13979,8 +13979,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
-<Titular>IRG TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>64.729.369/0001-12</CNPJ_CPF>
+<Titular>IRETE DONIZETE RANGEL GARCIA</Titular>
+<CNPJ_CPF>077.782.338-19</CNPJ_CPF>
 <Valor_veiculo>251706.8400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -14337,9 +14337,9 @@
 <Cap_DETRAN>45</Cap_DETRAN>
 <Cap_TEG>43</Cap_TEG>
 <VAL_CRM>2027-02-06T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-12T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-12T00:00:00</Seguro_termino>
+<Seguradora>TOKIO MARINE</Seguradora>
+<Seguro_inicio>2025-02-15T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-15T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE W9 ON</Marca_modelo>
@@ -15612,10 +15612,10 @@
 <Ano>2010</Ano>
 <Cap_DETRAN>19</Cap_DETRAN>
 <Cap_TEG>18</Cap_TEG>
-<VAL_CRM>2027-03-05T00:00:00</VAL_CRM>
-<Seguradora>SUHAI</Seguradora>
-<Seguro_inicio>2026-03-09T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-03-09T00:00:00</Seguro_termino>
+<VAL_CRM>2026-03-05T00:00:00</VAL_CRM>
+<Seguradora>EZZE SEGUROS</Seguradora>
+<Seguro_inicio>2024-06-11T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-11T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOX GREENCAR MO2</Marca_modelo>
@@ -15969,15 +15969,15 @@
 <Ano>2001</Ano>
 <Cap_DETRAN>34</Cap_DETRAN>
 <Cap_TEG>32</Cap_TEG>
-<VAL_CRM>2027-03-12T00:00:00</VAL_CRM>
+<VAL_CRM>2026-03-12T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2025-06-26T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-06-26T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE LOTACAO</Marca_modelo>
-<Titular>LAERTE SANTOS TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>32.826.123/0001-72</CNPJ_CPF>
+<Titular>LAERTE SANTOS</Titular>
+<CNPJ_CPF>632.865.808-72</CNPJ_CPF>
 <Valor_veiculo>459731.0400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -20343,8 +20343,8 @@
 <Cap_TEG>18</Cap_TEG>
 <VAL_CRM>2027-01-16T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-29T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-29T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-29T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-29T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUC TRANSFORMERS TE</Marca_modelo>
@@ -20758,8 +20758,8 @@
 <Marca_modelo>FIAT/DUCATO COMBINATO</Marca_modelo>
 <Titular>JC TRANSPORTES LTDA - ME</Titular>
 <CNPJ_CPF>03.873.096/0001-90</CNPJ_CPF>
-<Valor_veiculo>265575.1200</Valor_veiculo>
-<OS_especial>NÃO</OS_especial>
+<Valor_veiculo>304006.9200</Valor_veiculo>
+<OS_especial>SIM</OS_especial>
 </Veiculo>
 <Veiculo>
 <Código>5146</Código>
@@ -22944,15 +22944,15 @@
 <Ano>2009</Ano>
 <Cap_DETRAN>27</Cap_DETRAN>
 <Cap_TEG>26</Cap_TEG>
-<VAL_CRM>2027-01-14T00:00:00</VAL_CRM>
+<VAL_CRM>2025-01-14T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2026-01-27T00:00:00</Seguro_inicio>
 <Seguro_termino>2027-01-27T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOX GREENCAR MO2</Marca_modelo>
-<Titular>AGENILSON MOTA DA SILVA (PREPOSTO)</Titular>
-<CNPJ_CPF>336.013.928-36</CNPJ_CPF>
+<Titular>PALOMA CRISTINA PEDRO</Titular>
+<CNPJ_CPF>362.645.768-08</CNPJ_CPF>
 <Valor_veiculo>376521.3600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -24502,8 +24502,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ 517 GUERRA ESC</Marca_modelo>
-<Titular>L&amp;E PINTER TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>66.311.257/0001-72</CNPJ_CPF>
+<Titular>FABIOLA SOLER QUERIDO DE LIMA (PREPOSTO)</Titular>
+<CNPJ_CPF>351.503.698-96</CNPJ_CPF>
 <Valor_veiculo>418126.2000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -25267,8 +25267,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>CITROEN/JUMPER M33M 23S</Marca_modelo>
-<Titular>FLAVIO JOSE DE CARVALHO (PREPOSTO)</Titular>
-<CNPJ_CPF>064.071.198-71</CNPJ_CPF>
+<Titular>HIDEKI AKAMINE (PREPOSTO)</Titular>
+<CNPJ_CPF>055.573.128-62</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -25880,7 +25880,7 @@
 <Ano>2007</Ano>
 <Cap_DETRAN>45</Cap_DETRAN>
 <Cap_TEG>43</Cap_TEG>
-<VAL_CRM>2027-03-26T00:00:00</VAL_CRM>
+<VAL_CRM>2026-03-26T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
 <Seguro_inicio>2024-12-19T00:00:00</Seguro_inicio>
 <Seguro_termino>2025-12-19T00:00:00</Seguro_termino>
@@ -26008,7 +26008,7 @@
 <Ano>2009</Ano>
 <Cap_DETRAN>11</Cap_DETRAN>
 <Cap_TEG>10</Cap_TEG>
-<VAL_CRM>2027-03-31T00:00:00</VAL_CRM>
+<VAL_CRM>2026-03-31T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2026-01-27T00:00:00</Seguro_inicio>
 <Seguro_termino>2027-01-27T00:00:00</Seguro_termino>
@@ -26873,15 +26873,15 @@
 <Ano>2018</Ano>
 <Cap_DETRAN>19</Cap_DETRAN>
 <Cap_TEG>18</Cap_TEG>
-<VAL_CRM>2027-05-07T00:00:00</VAL_CRM>
+<VAL_CRM>2026-05-07T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
 <Seguro_inicio>2025-05-15T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-05-15T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ SPRINTER FFORMA</Marca_modelo>
-<Titular>JUH TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>65.618.783/0001-17</CNPJ_CPF>
+<Titular>JUREMA APARECIDA NASCIMENTO ROMUALDO PAIXAO</Titular>
+<CNPJ_CPF>117.324.388-70</CNPJ_CPF>
 <Valor_veiculo>304006.9200</Valor_veiculo>
 <OS_especial>SIM</OS_especial>
 </Veiculo>
@@ -27368,8 +27368,8 @@
 <Cap_TEG>10</Cap_TEG>
 <VAL_CRM>2026-07-08T00:00:00</VAL_CRM>
 <Seguradora>SOMBRERO</Seguradora>
-<Seguro_inicio>2025-09-03T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-09-03T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-09-03T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-09-03T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO NIKS MIC 20</Marca_modelo>
@@ -29597,8 +29597,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE A8 ON</Marca_modelo>
-<Titular>LUIS &amp; JULIANA TRANSPORTE ESCOLAR LTDA</Titular>
-<CNPJ_CPF>62.689.632/0001-61</CNPJ_CPF>
+<Titular>LUIS AUGUSTO DOS SANTOS</Titular>
+<CNPJ_CPF>106.205.948-45</CNPJ_CPF>
 <Valor_veiculo>515204.1600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -30119,8 +30119,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2027-02-08T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-01-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-27T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-01-27T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-01-27T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>RENAULT/MASTER FFORMA.ES</Marca_modelo>
@@ -30174,15 +30174,15 @@
 <Ano>2002</Ano>
 <Cap_DETRAN>25</Cap_DETRAN>
 <Cap_TEG>23</Cap_TEG>
-<VAL_CRM>2027-05-21T00:00:00</VAL_CRM>
+<VAL_CRM>2026-05-21T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-02-20T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-20T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-02-20T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-20T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCA ESCOLAR FFBM26</Marca_modelo>
-<Titular>SILVELYN TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>65.810.677/0001-30</CNPJ_CPF>
+<Titular>SILVIO ITIZO TAKEDA</Titular>
+<CNPJ_CPF>994.340.678-04</CNPJ_CPF>
 <Valor_veiculo>334916.5200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -30346,8 +30346,8 @@
 <Cap_TEG>32</Cap_TEG>
 <VAL_CRM>2026-05-24T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-02-19T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-19T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-02-19T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-19T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE V8 ON</Marca_modelo>
@@ -30389,8 +30389,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCA ESCOLAR FFBM25</Marca_modelo>
-<Titular>KLEBER CAVALCANTE DOS SANTOS (PREPOSTO)</Titular>
-<CNPJ_CPF>213.212.128-10</CNPJ_CPF>
+<Titular>MAURO DE MORAIS SANTIAGO</Titular>
+<CNPJ_CPF>064.997.478-66</CNPJ_CPF>
 <Valor_veiculo>321048.2400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -30990,8 +30990,8 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-07-29T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-07-01T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-07-01T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-23T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-23T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER NIKS MO20</Marca_modelo>
@@ -31351,13 +31351,13 @@
 <Cap_TEG>18</Cap_TEG>
 <VAL_CRM>2026-08-18T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-11T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-11T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-07T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-07T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCA15 FFORMA MIC20</Marca_modelo>
-<Titular>53.074.000 ANDERSON SILVA TARDOQUE</Titular>
-<CNPJ_CPF>53.074.000/0001-00</CNPJ_CPF>
+<Titular>AMIGOS TRANS LTDA</Titular>
+<CNPJ_CPF>43.874.830/0001-50</CNPJ_CPF>
 <Valor_veiculo>265575.1200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -32762,8 +32762,8 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-12-30T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-07-15T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-07-15T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-07-15T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-07-15T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO GREENCAR MO1</Marca_modelo>
@@ -34021,10 +34021,10 @@
 <Cap_DETRAN>15</Cap_DETRAN>
 <Cap_TEG>14</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2027-02-25T00:00:00</VAL_CRM>
+<VAL_CRM>2026-02-25T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-04-30T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-04-30T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-04-30T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-04-30T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO GUERRA MC 20</Marca_modelo>
@@ -36379,26 +36379,6 @@
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
-<Código>10033</Código>
-<CRM>033.266-00</CRM>
-<Placas>FMO6H61</Placas>
-<Ano>2013</Ano>
-<Cap_DETRAN>15</Cap_DETRAN>
-<Cap_TEG>14</Cap_TEG>
-<Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2026-09-13T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-04-10T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-04-10T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CRECHE</Tipo_de_bancada>
-<Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>PEUGEOT/BOXER M330M 23S</Marca_modelo>
-<Titular>J A - TRANSPORTES ESCOLAR E TURISMO LTDA</Titular>
-<CNPJ_CPF>27.140.650/0001-99</CNPJ_CPF>
-<Valor_veiculo>328428.0000</Valor_veiculo>
-<OS_especial>NÃO</OS_especial>
-</Veiculo>
-<Veiculo>
 <Código>8813</Código>
 <CRM>033.270-00</CRM>
 <Placas>ELW1G58</Placas>
@@ -36934,8 +36914,8 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-10-04T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-10-13T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-10-13T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-10-13T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-10-13T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/ DUCA ESCOLAR FFBM25</Marca_modelo>
@@ -37007,8 +36987,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2026-10-11T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-02-20T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-20T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-02-20T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-20T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ 417 SPRINTER M</Marca_modelo>
@@ -41154,10 +41134,10 @@
 <Ano>2012</Ano>
 <Cap_DETRAN>10</Cap_DETRAN>
 <Cap_TEG>09</Cap_TEG>
-<VAL_CRM>2027-05-03T00:00:00</VAL_CRM>
+<VAL_CRM>2026-05-03T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-04-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-04-27T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-04-27T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-04-27T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO NIKS MIC 20</Marca_modelo>
@@ -41173,10 +41153,10 @@
 <Ano>2012</Ano>
 <Cap_DETRAN>10</Cap_DETRAN>
 <Cap_TEG>09</Cap_TEG>
-<VAL_CRM>2027-05-03T00:00:00</VAL_CRM>
+<VAL_CRM>2026-05-03T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-02-04T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-04T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-02-04T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-04T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO NIKS MIC 20</Marca_modelo>
@@ -42822,8 +42802,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M330M 23S</Marca_modelo>
-<Titular>KELY CRISTINA SANTOS LOPES</Titular>
-<CNPJ_CPF>24.777.676/0001-54</CNPJ_CPF>
+<Titular>KARINA GONCALVES</Titular>
+<CNPJ_CPF>323.990.788-70</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -43852,8 +43832,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2026-12-04T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-17T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-17T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-16T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-16T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M330M 23S</Marca_modelo>
@@ -44307,8 +44287,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2027-01-11T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2025-06-21T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-06-21T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-21T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-21T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO GUERRA MC 20</Marca_modelo>
@@ -44403,9 +44383,9 @@
 <Cap_DETRAN>27</Cap_DETRAN>
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2027-01-18T00:00:00</VAL_CRM>
-<Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-07-01T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-07-01T00:00:00</Seguro_termino>
+<Seguradora>EZZE SEGUROS</Seguradora>
+<Seguro_inicio>2024-06-06T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-06T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUC TRANSFORMERS TE</Marca_modelo>
@@ -44546,13 +44526,13 @@
 <Cap_TEG>13</Cap_TEG>
 <VAL_CRM>2027-01-15T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-10-07T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-10-07T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-10-07T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-10-07T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
-<Titular>RDOPRADO TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>64.344.386/0001-31</CNPJ_CPF>
+<Titular>RAMON CASTRO DO PRADO</Titular>
+<CNPJ_CPF>770.297.205-04</CNPJ_CPF>
 <Valor_veiculo>196233.7200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -45139,8 +45119,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
-<Titular>JULIO JONAS FERREIRA DA SILVA</Titular>
-<CNPJ_CPF>031.121.458-44</CNPJ_CPF>
+<Titular>JOSENIL PEREIRA DA SILVA (PREPOSTO)</Titular>
+<CNPJ_CPF>274.489.928-30</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -45407,21 +45387,21 @@
 <Veiculo>
 <Código>8578</Código>
 <CRM>036.280-00</CRM>
-<Placas>PQK5E48</Placas>
-<Ano>2015</Ano>
+<Placas>EZT9J87</Placas>
+<Ano>2011</Ano>
 <Cap_DETRAN>15</Cap_DETRAN>
 <Cap_TEG>14</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2027-02-26T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-04-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-04-27T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-10-25T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-10-25T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
 <Titular>GIOVANNI SOUZA SILVA 45982225819</Titular>
 <CNPJ_CPF>47.690.533/0001-06</CNPJ_CPF>
-<Valor_veiculo>328428.0000</Valor_veiculo>
+<Valor_veiculo>284594.5200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
@@ -45890,7 +45870,7 @@
 <Cap_DETRAN>15</Cap_DETRAN>
 <Cap_TEG>14</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2027-03-13T00:00:00</VAL_CRM>
+<VAL_CRM>2026-03-13T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
 <Seguro_inicio>2026-01-27T00:00:00</Seguro_inicio>
 <Seguro_termino>2027-01-27T00:00:00</Seguro_termino>
@@ -47544,20 +47524,20 @@
 <Veiculo>
 <Código>6297</Código>
 <CRM>037.168-00</CRM>
-<Placas>GCA4B49</Placas>
-<Ano>2018</Ano>
-<Cap_DETRAN>23</Cap_DETRAN>
-<Cap_TEG>22</Cap_TEG>
+<Placas>CUB2687</Placas>
+<Ano>2009</Ano>
+<Cap_DETRAN>15</Cap_DETRAN>
+<Cap_TEG>14</Cap_TEG>
 <VAL_CRM>2026-08-08T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-05-12T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-12T00:00:00</Seguro_termino>
+<Seguro_inicio>2022-01-26T00:00:00</Seguro_inicio>
+<Seguro_termino>2023-01-26T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
-<Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>I/M.BENZ SPRINTER MARTM4</Marca_modelo>
+<Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
+<Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
 <Titular>MARIA FERNANDA TRANSPORTES LTDA</Titular>
 <CNPJ_CPF>14.138.729/0001-33</CNPJ_CPF>
-<Valor_veiculo>321048.2400</Valor_veiculo>
+<Valor_veiculo>170032.0800</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
@@ -47911,8 +47891,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ SPRINTER FFORMA</Marca_modelo>
-<Titular>JONATHAN DE ROZA SANTOS (PREPOSTO)</Titular>
-<CNPJ_CPF>438.294.808-81</CNPJ_CPF>
+<Titular>CARLOS EDUARDO SOARES DA SILVA</Titular>
+<CNPJ_CPF>332.956.778-32</CNPJ_CPF>
 <Valor_veiculo>265575.1200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -48663,13 +48643,13 @@
 <Cap_TEG>27</Cap_TEG>
 <VAL_CRM>2026-11-11T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-01-08T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-08T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-12-06T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-12-06T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUC TRANSFORMERS TE</Marca_modelo>
-<Titular>KAIROS TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>63.595.340/0001-22</CNPJ_CPF>
+<Titular>WALTER DA MOTTA</Titular>
+<CNPJ_CPF>126.822.638-60</CNPJ_CPF>
 <Valor_veiculo>390389.6400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -48964,16 +48944,17 @@
 <Ano>2013</Ano>
 <Cap_DETRAN>15</Cap_DETRAN>
 <Cap_TEG>14</Cap_TEG>
+<Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2026-12-02T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2025-08-16T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-08-16T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
+<Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO FABUSFORMA</Marca_modelo>
 <Titular>SERGIO ALVES DE LIMA</Titular>
 <CNPJ_CPF>294.544.518-20</CNPJ_CPF>
-<Valor_veiculo>210102.0000</Valor_veiculo>
+<Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
@@ -49559,8 +49540,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2027-01-20T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-11-16T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-11-16T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-11-16T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-11-16T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>RENAULT/MASTER FFORMA.ES</Marca_modelo>
@@ -50206,8 +50187,8 @@
 <Cap_TEG>27</Cap_TEG>
 <VAL_CRM>2027-01-28T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-01-28T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-28T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-01-28T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-01-28T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
@@ -51648,10 +51629,10 @@
 <Ano>2012</Ano>
 <Cap_DETRAN>29</Cap_DETRAN>
 <Cap_TEG>28</Cap_TEG>
-<VAL_CRM>2027-04-08T00:00:00</VAL_CRM>
+<VAL_CRM>2026-04-08T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-08-02T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-08-02T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-08-02T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-08-02T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>IVECO/CITYCLASS 70C17</Marca_modelo>
@@ -52366,25 +52347,6 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 </Veiculo>
 <Veiculo>
-<Código>10030</Código>
-<CRM>038.658-00</CRM>
-<Placas>FLG5G27</Placas>
-<Ano>2014</Ano>
-<Cap_DETRAN>27</Cap_DETRAN>
-<Cap_TEG>26</Cap_TEG>
-<VAL_CRM>2027-05-13T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-01-19T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-19T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
-<Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>FIAT/DUCATO FABUSFORMA</Marca_modelo>
-<Titular>C.P DE SOUZA TRANSPORTES - ME</Titular>
-<CNPJ_CPF>17.782.652/0001-28</CNPJ_CPF>
-<Valor_veiculo>376521.3600</Valor_veiculo>
-<OS_especial>NÃO</OS_especial>
-</Veiculo>
-<Veiculo>
 <Código>6503</Código>
 <CRM>038.673-00</CRM>
 <Placas>DBL8989</Placas>
@@ -52558,8 +52520,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ313CDI SPRINTERM</Marca_modelo>
-<Titular>JAIR CANDIDO CUSTODIO (PREPOSTO)</Titular>
-<CNPJ_CPF>162.526.108-01</CNPJ_CPF>
+<Titular>CLAYTON RIBEIRO COSTA (PREPOSTO)</Titular>
+<CNPJ_CPF>447.132.148-09</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -52749,8 +52711,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/MB S312 FFORMA ESCOLAR</Marca_modelo>
-<Titular>NILSON SANTANA MARTINS FERREIRA (PREPOSTO)</Titular>
-<CNPJ_CPF>053.010.956-50</CNPJ_CPF>
+<Titular>FABIANE FILLVOCK NOGUEIRA</Titular>
+<CNPJ_CPF>280.097.938-09</CNPJ_CPF>
 <Valor_veiculo>321048.2400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -53183,8 +53145,8 @@
 <Cap_TEG>09</Cap_TEG>
 <VAL_CRM>2026-06-27T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-01-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-27T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-01-27T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-01-27T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO VIPK</Marca_modelo>
@@ -53796,8 +53758,8 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-06-24T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-09T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-09T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-09T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-09T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO GUERRA MC 20</Marca_modelo>
@@ -54521,9 +54483,9 @@
 <Cap_DETRAN>29</Cap_DETRAN>
 <Cap_TEG>27</Cap_TEG>
 <VAL_CRM>2026-08-18T00:00:00</VAL_CRM>
-<Seguradora>KOVR SEGURADORA</Seguradora>
-<Seguro_inicio>2026-02-22T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-22T00:00:00</Seguro_termino>
+<Seguradora>SOMBRERO</Seguradora>
+<Seguro_inicio>2025-02-22T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-22T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
@@ -54727,8 +54689,8 @@
 <Cap_TEG>22</Cap_TEG>
 <VAL_CRM>2026-08-20T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-10-13T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-10-13T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-10-13T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-10-13T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO COMBINATO</Marca_modelo>
@@ -55885,8 +55847,8 @@
 <Cap_TEG>27</Cap_TEG>
 <VAL_CRM>2026-10-02T00:00:00</VAL_CRM>
 <Seguradora>SOMBRERO</Seguradora>
-<Seguro_inicio>2026-04-29T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-04-29T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-04-29T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-04-29T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER FFBM 32</Marca_modelo>
@@ -57249,8 +57211,8 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-11-19T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-02T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-02T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-02T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-02T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ SPRINTER FFB ES</Marca_modelo>
@@ -57862,10 +57824,10 @@
 <Cap_DETRAN>14</Cap_DETRAN>
 <Cap_TEG>13</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2026-12-26T00:00:00</VAL_CRM>
+<VAL_CRM>2025-12-26T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2025-08-16T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-08-16T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-08-16T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-08-16T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
@@ -59183,9 +59145,9 @@
 <Cap_DETRAN>19</Cap_DETRAN>
 <Cap_TEG>18</Cap_TEG>
 <VAL_CRM>2027-01-28T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-04-30T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-04-30T00:00:00</Seguro_termino>
+<Seguradora>KOVR SEGURADORA</Seguradora>
+<Seguro_inicio>2025-04-25T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-04-25T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUC TRANSFORMERS TE</Marca_modelo>
@@ -59238,8 +59200,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2027-01-22T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-06-24T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-06-24T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-24T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-24T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER TRANS ESC</Marca_modelo>
@@ -60717,7 +60679,7 @@
 <Ano>2023</Ano>
 <Cap_DETRAN>27</Cap_DETRAN>
 <Cap_TEG>26</Cap_TEG>
-<VAL_CRM>2027-04-15T00:00:00</VAL_CRM>
+<VAL_CRM>2026-04-15T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2025-05-15T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-05-15T00:00:00</Seguro_termino>
@@ -61626,8 +61588,8 @@
 <Cap_TEG>23</Cap_TEG>
 <VAL_CRM>2026-06-01T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-02-14T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-14T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-03-08T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-03-08T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO COMBINATO</Marca_modelo>
@@ -62186,8 +62148,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2026-07-13T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-09T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-09T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-09T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-09T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
@@ -65556,9 +65518,9 @@
 <Cap_DETRAN>27</Cap_DETRAN>
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2027-01-11T00:00:00</VAL_CRM>
-<Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-01-16T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-16T00:00:00</Seguro_termino>
+<Seguradora>EZZE SEGUROS</Seguradora>
+<Seguro_inicio>2024-07-29T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-07-29T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
@@ -66802,7 +66764,7 @@
 <Cap_DETRAN>15</Cap_DETRAN>
 <Cap_TEG>14</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2027-05-25T00:00:00</VAL_CRM>
+<VAL_CRM>2026-05-25T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2025-01-27T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-01-27T00:00:00</Seguro_termino>
@@ -66810,7 +66772,7 @@
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>CITROEN/JUMPER M33M 23S</Marca_modelo>
 <Titular>MILLA TRANSPORTE E TURISMO LTDA</Titular>
-<CNPJ_CPF>03.858.810/0001-71</CNPJ_CPF>
+<CNPJ_CPF> 03,858,810,0001,71</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -66863,8 +66825,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2026-07-13T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2025-06-05T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-06-05T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-05T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-05T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
@@ -66901,8 +66863,8 @@
 <Cap_TEG>37</Cap_TEG>
 <VAL_CRM>2026-08-02T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2026-02-07T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-07T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-08-18T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-08-18T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE A8 ESC</Marca_modelo>
@@ -68701,7 +68663,7 @@
 <Cap_DETRAN>15</Cap_DETRAN>
 <Cap_TEG>14</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2027-01-30T00:00:00</VAL_CRM>
+<VAL_CRM>2026-01-30T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2025-02-17T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-02-17T00:00:00</Seguro_termino>
@@ -69055,14 +69017,14 @@
 <Cap_DETRAN>19</Cap_DETRAN>
 <Cap_TEG>18</Cap_TEG>
 <VAL_CRM>2027-01-09T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-01-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-27T00:00:00</Seguro_termino>
+<Seguradora>PORTO SEGURO</Seguradora>
+<Seguro_inicio>2025-07-13T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-07-13T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>RENAULT/MASTER FFORMA.ES</Marca_modelo>
-<Titular>COOPERATIVA DE T. E. C. M. - COOTRECM</Titular>
-<CNPJ_CPF>16.702.140/0001-41</CNPJ_CPF>
+<Titular>ANTONIO MIGUEL DA SILVA</Titular>
+<CNPJ_CPF>925.200.814-49</CNPJ_CPF>
 <Valor_veiculo>265575.1200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -69403,8 +69365,8 @@
 <Cap_ACESSIVEL>04</Cap_ACESSIVEL>
 <VAL_CRM>2027-02-03T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-06-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-06-27T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-27T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-27T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE V8L EM</Marca_modelo>
@@ -71301,10 +71263,10 @@
 <Ano>2015</Ano>
 <Cap_DETRAN>10</Cap_DETRAN>
 <Cap_TEG>09</Cap_TEG>
-<VAL_CRM>2027-04-20T00:00:00</VAL_CRM>
+<VAL_CRM>2026-04-20T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-07-01T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-07-01T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-23T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-23T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER TRANS ESC</Marca_modelo>
@@ -71398,10 +71360,10 @@
 <Ano>2011</Ano>
 <Cap_DETRAN>10</Cap_DETRAN>
 <Cap_TEG>09</Cap_TEG>
-<VAL_CRM>2027-04-27T00:00:00</VAL_CRM>
+<VAL_CRM>2026-04-27T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-07-01T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-07-01T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-23T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-23T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MULTI REVESC</Marca_modelo>
@@ -71455,15 +71417,15 @@
 <Cap_DETRAN>14</Cap_DETRAN>
 <Cap_TEG>13</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2027-04-19T00:00:00</VAL_CRM>
+<VAL_CRM>2026-04-19T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2026-01-19T00:00:00</Seguro_inicio>
 <Seguro_termino>2027-01-19T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>CITROEN/JUMPER M33M 2.3</Marca_modelo>
-<Titular>WALDOMIRO NUNES DOS SANTOS (PREPOSTO)</Titular>
-<CNPJ_CPF>574.602.488-00</CNPJ_CPF>
+<Titular>RENAN DAVID ELIAS DOS SANTOS (PREPOSTO)</Titular>
+<CNPJ_CPF>234.364.728-32</CNPJ_CPF>
 <Valor_veiculo>306066.9600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -72770,8 +72732,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
-<Titular>GILVANIO NERY DOS SANTOS (PREPOSTO)</Titular>
-<CNPJ_CPF>388.889.338-08</CNPJ_CPF>
+<Titular>KELLY KATIA MOREIRA (PREPOSTO)</Titular>
+<CNPJ_CPF>228.691.678-06</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -74355,8 +74317,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>IVECO/CITYCLASS 70C17</Marca_modelo>
-<Titular>MILLA TRANSPORTE E TURISMO LTDA</Titular>
-<CNPJ_CPF>03.858.810/0001-71</CNPJ_CPF>
+<Titular>FRANCISCO ELIONARDO BARROS VIEIRA (PREPOSTO)</Titular>
+<CNPJ_CPF>270.628.598-26</CNPJ_CPF>
 <Valor_veiculo>459731.0400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -74969,13 +74931,13 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-11-27T00:00:00</VAL_CRM>
 <Seguradora>KOVR SEGURADORA</Seguradora>
-<Seguro_inicio>2025-10-10T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-10-10T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-10-10T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-10-10T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M350LH 2.3</Marca_modelo>
-<Titular>DSTOUR TRANSPORTES LTDA</Titular>
-<CNPJ_CPF>63.170.223/0001-17</CNPJ_CPF>
+<Titular>PJV JATOBA TRANSPORTES - ME</Titular>
+<CNPJ_CPF>16.843.725/0001-81</CNPJ_CPF>
 <Valor_veiculo>376521.3600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -75549,8 +75511,8 @@
 <Marca_modelo>FIAT/DUC TRANSFORMERS TE</Marca_modelo>
 <Titular>JC TRANSPORTES LTDA - ME</Titular>
 <CNPJ_CPF>03.873.096/0001-90</CNPJ_CPF>
-<Valor_veiculo>304006.9200</Valor_veiculo>
-<OS_especial>SIM</OS_especial>
+<Valor_veiculo>265575.1200</Valor_veiculo>
+<OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
 <Código>9996</Código>
@@ -75834,7 +75796,7 @@
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO VIPK</Marca_modelo>
 <Titular>OELSON JOSE DE OLIVEIRA (PREPOSTO)</Titular>
-<CNPJ_CPF>255.453.918-94</CNPJ_CPF>
+<CNPJ_CPF>308.647.688-50</CNPJ_CPF>
 <Valor_veiculo>265575.1200</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -76211,8 +76173,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ 415SPRINTE VIPK</Marca_modelo>
-<Titular>RAFAEL VINICIUS DA SILVA (PREPOSTO)</Titular>
-<CNPJ_CPF>399.351.888-84</CNPJ_CPF>
+<Titular>LUIZ CARLOS ROSA (PREPOSTO)</Titular>
+<CNPJ_CPF>059.467.088-80</CNPJ_CPF>
 <Valor_veiculo>376521.3600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -77218,7 +77180,7 @@
 <Ano>2011</Ano>
 <Cap_DETRAN>19</Cap_DETRAN>
 <Cap_TEG>18</Cap_TEG>
-<VAL_CRM>2027-02-27T00:00:00</VAL_CRM>
+<VAL_CRM>2026-02-27T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2026-02-05T00:00:00</Seguro_inicio>
 <Seguro_termino>2027-02-05T00:00:00</Seguro_termino>
@@ -77372,15 +77334,15 @@
 <Cap_DETRAN>15</Cap_DETRAN>
 <Cap_TEG>14</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2027-03-07T00:00:00</VAL_CRM>
+<VAL_CRM>2026-03-07T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2026-01-17T00:00:00</Seguro_inicio>
 <Seguro_termino>2027-01-17T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M330M 23S</Marca_modelo>
-<Titular>BRENO GABRIEL FERREIRA SODRE</Titular>
-<CNPJ_CPF>486.129.708-73</CNPJ_CPF>
+<Titular>SG DA SILVA TRANSP ESC E LOC DE VEICULOS</Titular>
+<CNPJ_CPF>12.728.932/0001-34</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -78696,11 +78658,11 @@
 <Veiculo>
 <Código>7610</Código>
 <CRM>044.828-00</CRM>
-<Placas>DBL3H16</Placas>
+<Placas>DBL3716</Placas>
 <Ano>2008</Ano>
 <Cap_DETRAN>38</Cap_DETRAN>
 <Cap_TEG>36</Cap_TEG>
-<VAL_CRM>2027-05-03T00:00:00</VAL_CRM>
+<VAL_CRM>2026-05-03T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2025-08-07T00:00:00</Seguro_inicio>
 <Seguro_termino>2026-08-07T00:00:00</Seguro_termino>
@@ -79318,8 +79280,8 @@
 <Cap_TEG>27</Cap_TEG>
 <VAL_CRM>2026-05-29T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2025-05-28T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-05-28T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-05-28T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-05-28T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MULTI REVESC</Marca_modelo>
@@ -80443,8 +80405,8 @@
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
-<Titular>MATHEUS DE LEMOS SILVA (PREPOSTO)</Titular>
-<CNPJ_CPF>525.942.058-69</CNPJ_CPF>
+<Titular>CRISTIANO ANTENOR DA SILVA</Titular>
+<CNPJ_CPF>194.773.248-09</CNPJ_CPF>
 <Valor_veiculo>390389.6400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -80599,8 +80561,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M330M 23S</Marca_modelo>
-<Titular>MONICA DE OLIVEIRA (PREPOSTO)</Titular>
-<CNPJ_CPF>271.929.078-55</CNPJ_CPF>
+<Titular>ALEX SANDRO APARECIDO COSTA</Titular>
+<CNPJ_CPF>272.592.488-07</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -80639,7 +80601,7 @@
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M33OM HDI</Marca_modelo>
 <Titular>VANESSA DOS SANTOS VIANA (PREPOSTO)</Titular>
-<CNPJ_CPF>343.407.928-96</CNPJ_CPF>
+<CNPJ_CPF>343.407.928-9</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -80801,8 +80763,8 @@
 <Cap_TEG>23</Cap_TEG>
 <VAL_CRM>2026-08-20T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-08-28T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-08-28T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-08-28T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-08-28T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO COMBINATO</Marca_modelo>
@@ -81012,8 +80974,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2026-08-27T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-02-28T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-28T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-02-28T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-28T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>RENAULT/MASTER FFORMA.ES</Marca_modelo>
@@ -83126,18 +83088,18 @@
 <Veiculo>
 <Código>7764</Código>
 <CRM>045.710-00</CRM>
-<Placas>UEX5F38</Placas>
-<Ano>2025</Ano>
+<Placas>FLZ2G64</Placas>
+<Ano>2023</Ano>
 <Cap_DETRAN>27</Cap_DETRAN>
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-12-21T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2025-10-19T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-10-19T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-10-19T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-10-19T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ SPRINTER FFB ES</Marca_modelo>
-<Titular>WENDEL FARIAS DOS SANTOS 35063488846</Titular>
+<Titular> WENDEL FARIAS DOS SANTOS 35063488846</Titular>
 <CNPJ_CPF>30.857.850/0001-71</CNPJ_CPF>
 <Valor_veiculo>376521.3600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
@@ -83705,8 +83667,8 @@
 <Cap_TEG>08</Cap_TEG>
 <VAL_CRM>2027-01-17T00:00:00</VAL_CRM>
 <Seguradora>PORTO SEGURO</Seguradora>
-<Seguro_inicio>2025-07-01T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-07-01T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-06-23T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-06-23T00:00:00</Seguro_termino>
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO GREENCAR MO1</Marca_modelo>
@@ -83741,16 +83703,17 @@
 <Ano>2008</Ano>
 <Cap_DETRAN>15</Cap_DETRAN>
 <Cap_TEG>14</Cap_TEG>
+<Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2027-01-17T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-02-18T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-18T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
+<Seguro_inicio>2025-02-18T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-18T00:00:00</Seguro_termino>
+<Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOX GUERRA MIC20</Marca_modelo>
 <Titular>PAIVA TRANSPORTES LTDA - ME</Titular>
 <CNPJ_CPF>15.408.356/0001-36</CNPJ_CPF>
-<Valor_veiculo>210102.0000</Valor_veiculo>
+<Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
@@ -84581,8 +84544,8 @@
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUC TRANSFORMERS TE</Marca_modelo>
-<Titular>ALBERTO ALVES</Titular>
-<CNPJ_CPF>250.924.158-35</CNPJ_CPF>
+<Titular>HELIO SILVERIO DE FREITAS JUNIOR (PREPOSTO)</Titular>
+<CNPJ_CPF>303.460.448-39</CNPJ_CPF>
 <Valor_veiculo>335148.2400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -85558,8 +85521,8 @@
 <Cap_TEG>29</Cap_TEG>
 <VAL_CRM>2027-02-11T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2025-07-23T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-07-23T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-07-18T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-07-18T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>I/M.BENZ 517 GUERRA ESC</Marca_modelo>
@@ -86704,10 +86667,10 @@
 <Ano>2012</Ano>
 <Cap_DETRAN>29</Cap_DETRAN>
 <Cap_TEG>28</Cap_TEG>
-<VAL_CRM>2027-03-08T00:00:00</VAL_CRM>
+<VAL_CRM>2026-03-08T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-06T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-06T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-05T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-05T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>IVECO/CITYCLASS 70C17</Marca_modelo>
@@ -89520,7 +89483,7 @@
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
 <Titular>ADELAIDE ALMEIDA NARCIZO EIRELI</Titular>
-<CNPJ_CPF>19.080.007/0001-99</CNPJ_CPF>
+<CNPJ_CPF>19.80.007/0001-99</CNPJ_CPF>
 <Valor_veiculo>258348.8400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -90023,8 +89986,8 @@
 <Cap_TEG>27</Cap_TEG>
 <VAL_CRM>2026-06-25T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2025-07-01T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-07-01T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-03-28T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-03-28T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
@@ -95104,8 +95067,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
-<Titular>BARBARA BEZERRA AQUINO (PREPOSTO)</Titular>
-<CNPJ_CPF>357.360.958-90</CNPJ_CPF>
+<Titular>BRYAN SOUZA DE MORAIS</Titular>
+<CNPJ_CPF>417.573.908-47</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -96012,8 +95975,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
-<Titular>AURELIO AUGUSTO DE ALMEIDA FELIX (PREPOSTO)</Titular>
-<CNPJ_CPF>084.749.759-30</CNPJ_CPF>
+<Titular>RICARDO ELPIDIO (PREPOSTO)</Titular>
+<CNPJ_CPF>167.555.738-17</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -96132,25 +96095,6 @@
 <CNPJ_CPF>14.826.154/0001-41</CNPJ_CPF>
 <Valor_veiculo>231387.9600</Valor_veiculo>
 <OS_especial>SIM</OS_especial>
-</Veiculo>
-<Veiculo>
-<Código>10028</Código>
-<CRM>047.638-00</CRM>
-<Placas>UDB4E50</Placas>
-<Ano>2025</Ano>
-<Cap_DETRAN>27</Cap_DETRAN>
-<Cap_TEG>26</Cap_TEG>
-<VAL_CRM>2026-12-07T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-05T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-05T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
-<Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>I/M.BENZ SPRINTER FFB ES</Marca_modelo>
-<Titular>ROCHA TRANSPORTE LTDA</Titular>
-<CNPJ_CPF>43.868.909/0001-79</CNPJ_CPF>
-<Valor_veiculo>376521.3600</Valor_veiculo>
-<OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
 <Código>8952</Código>
@@ -96919,15 +96863,15 @@
 <Cap_DETRAN>14</Cap_DETRAN>
 <Cap_TEG>13</Cap_TEG>
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2027-03-28T00:00:00</VAL_CRM>
+<VAL_CRM>2026-03-28T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
 <Seguro_inicio>2026-02-07T00:00:00</Seguro_inicio>
 <Seguro_termino>2027-02-07T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>CITROEN/JUMPER M33M 2.3</Marca_modelo>
-<Titular>MARIA LUZINEIDE DE SOUZA (PREPOSTO)</Titular>
-<CNPJ_CPF>170.807.178-41</CNPJ_CPF>
+<Titular>DJALMA VIEIRA GONCALVES</Titular>
+<CNPJ_CPF>287.502.118-46</CNPJ_CPF>
 <Valor_veiculo>306066.9600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -99311,8 +99255,8 @@
 <Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
 <VAL_CRM>2026-10-16T00:00:00</VAL_CRM>
 <Seguradora>KOVR SEGURADORA</Seguradora>
-<Seguro_inicio>2025-10-30T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-10-30T00:00:00</Seguro_termino>
+<Seguro_inicio>2024-10-30T00:00:00</Seguro_inicio>
+<Seguro_termino>2025-10-30T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M330M 2.3</Marca_modelo>
@@ -100429,8 +100373,8 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-12-14T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-02-07T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-07T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-02-07T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-02-07T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCATO MINIBUS</Marca_modelo>
@@ -101662,8 +101606,8 @@
 <Cap_TEG>41</Cap_TEG>
 <VAL_CRM>2027-02-19T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-06T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-06T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-03-26T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-03-26T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE W8 ON</Marca_modelo>
@@ -102166,10 +102110,10 @@
 <Ano>2013</Ano>
 <Cap_DETRAN>35</Cap_DETRAN>
 <Cap_TEG>34</Cap_TEG>
-<VAL_CRM>2027-03-22T00:00:00</VAL_CRM>
+<VAL_CRM>2026-03-22T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-05-09T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-05-09T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-05-09T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-05-09T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>MARCOPOLO/VOLARE V8L EM</Marca_modelo>
@@ -102576,8 +102520,8 @@
 <Tipo_de_bancada>CRECHE</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER M350LH 23S</Marca_modelo>
-<Titular>ANILTON DOS SANTOS (PREPOSTO)</Titular>
-<CNPJ_CPF>250.935.108-74</CNPJ_CPF>
+<Titular>LEANDRO BARBOZA NUNES</Titular>
+<CNPJ_CPF>291.941.538-76</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -103816,8 +103760,8 @@
 <Cap_TEG>26</Cap_TEG>
 <VAL_CRM>2026-12-17T00:00:00</VAL_CRM>
 <Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-01-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-27T00:00:00</Seguro_termino>
+<Seguro_inicio>2025-01-27T00:00:00</Seguro_inicio>
+<Seguro_termino>2026-01-27T00:00:00</Seguro_termino>
 <Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
 <Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>FIAT/DUCA ESCOLAR FFBM25</Marca_modelo>
@@ -103898,8 +103842,8 @@
 <Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
 <Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
 <Marca_modelo>PEUGEOT/BOXER FFBM 32</Marca_modelo>
-<Titular>CHS TRANSPORTES DE PASSAGEIROS E LOCAÇÃO DE VEICULOS EIRELLI - ME</Titular>
-<CNPJ_CPF>21.877.955/0001-00</CNPJ_CPF>
+<Titular>CAVALCANTE TRANSP. ESCOLARES E FRET LTDA</Titular>
+<CNPJ_CPF>06.334.560/0001-69</CNPJ_CPF>
 <Valor_veiculo>335148.2400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
@@ -104170,25 +104114,6 @@
 <Titular>LENO DE SOUZA TRANSPORTES</Titular>
 <CNPJ_CPF>54.836.588/0001-47</CNPJ_CPF>
 <Valor_veiculo>376521.3600</Valor_veiculo>
-<OS_especial>NÃO</OS_especial>
-</Veiculo>
-<Veiculo>
-<Código>10031</Código>
-<CRM>048.806-00</CRM>
-<Placas>OLH3A92</Placas>
-<Ano>2012</Ano>
-<Cap_DETRAN>28</Cap_DETRAN>
-<Cap_TEG>27</Cap_TEG>
-<VAL_CRM>2027-02-12T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-01-27T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-27T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
-<Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>IVECO/CITYCLASS 70C17</Marca_modelo>
-<Titular>MARCIA LEITE MEDEIROS 24994313857</Titular>
-<CNPJ_CPF>23.905.873/0001-49</CNPJ_CPF>
-<Valor_veiculo>390389.6400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
@@ -104785,7 +104710,7 @@
 <Marca_modelo>FIAT/DUCATO MULT TAKO MI</Marca_modelo>
 <Titular>ANDRE MIRANDA DE SOUZA (PREPOSTO)</Titular>
 <CNPJ_CPF>224.324.588-42</CNPJ_CPF>
-<Valor_veiculo>376521.3600</Valor_veiculo>
+<Valor_veiculo>326272.4400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
@@ -105131,25 +105056,6 @@
 <Titular>DIEGO ALVES JONAS - ME</Titular>
 <CNPJ_CPF>15.606.681/0001-03</CNPJ_CPF>
 <Valor_veiculo>328428.0000</Valor_veiculo>
-<OS_especial>NÃO</OS_especial>
-</Veiculo>
-<Veiculo>
-<Código>10027</Código>
-<CRM>049.143-00</CRM>
-<Placas>UFO9F88</Placas>
-<Ano>2025</Ano>
-<Cap_DETRAN>27</Cap_DETRAN>
-<Cap_TEG>26</Cap_TEG>
-<VAL_CRM>2026-10-06T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-02-07T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-02-07T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
-<Tipo_de_veiculo>ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>I/M.BENZ SPRINTER FFB ES</Marca_modelo>
-<Titular>CHS TRANSP.PASSAG.E LOC. VEIC. EIRELI ME</Titular>
-<CNPJ_CPF>21.877.955/0001-00</CNPJ_CPF>
-<Valor_veiculo>376521.3600</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
@@ -105925,26 +105831,6 @@
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 <Veiculo>
-<Código>10029</Código>
-<CRM>049.363-00</CRM>
-<Placas>FTP4A44</Placas>
-<Ano>2013</Ano>
-<Cap_DETRAN>15</Cap_DETRAN>
-<Cap_TEG>14</Cap_TEG>
-<Cap_TEG_CRECHE>12</Cap_TEG_CRECHE>
-<VAL_CRM>2027-03-24T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2026-01-25T00:00:00</Seguro_inicio>
-<Seguro_termino>2027-01-25T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CRECHE</Tipo_de_bancada>
-<Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>PEUGEOT/BOXER M330M 23S</Marca_modelo>
-<Titular>COOPERATIVA DE TRANSP. ESCOLAR REG. NORT</Titular>
-<CNPJ_CPF>38.335.018/0001-17</CNPJ_CPF>
-<Valor_veiculo>328428.0000</Valor_veiculo>
-<OS_especial>NÃO</OS_especial>
-</Veiculo>
-<Veiculo>
 <Código>10019</Código>
 <CRM>049.371-00</CRM>
 <Placas>PUF5H94</Placas>
@@ -105961,44 +105847,6 @@
 <Titular>REGINA DE FATIMA FAJAN PEREIRA</Titular>
 <CNPJ_CPF>16.552.756/0001-83</CNPJ_CPF>
 <Valor_veiculo>321048.2400</Valor_veiculo>
-<OS_especial>NÃO</OS_especial>
-</Veiculo>
-<Veiculo>
-<Código>10032</Código>
-<CRM>049.423-00</CRM>
-<Placas>FDR1D88</Placas>
-<Ano>2013</Ano>
-<Cap_DETRAN>19</Cap_DETRAN>
-<Cap_TEG>18</Cap_TEG>
-<VAL_CRM>2027-05-25T00:00:00</VAL_CRM>
-<Seguradora>SOMBRERO</Seguradora>
-<Seguro_inicio>2025-09-03T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-09-03T00:00:00</Seguro_termino>
-<Tipo_de_bancada>CONVENCIONAL</Tipo_de_bancada>
-<Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>FIAT/DUC M APLIKART M20</Marca_modelo>
-<Titular>COOPER -X- COOP.SERV. TRANSP. ESCOLAR SP</Titular>
-<CNPJ_CPF>08.468.071/0001-25</CNPJ_CPF>
-<Valor_veiculo>304006.9200</Valor_veiculo>
-<OS_especial>SIM</OS_especial>
-</Veiculo>
-<Veiculo>
-<Código>10034</Código>
-<CRM>049.012-00</CRM>
-<Placas>TIT5B96</Placas>
-<Ano>2025</Ano>
-<Cap_DETRAN>09</Cap_DETRAN>
-<Cap_TEG>08</Cap_TEG>
-<VAL_CRM>2026-07-21T00:00:00</VAL_CRM>
-<Seguradora>EZZE SEGUROS</Seguradora>
-<Seguro_inicio>2025-10-19T00:00:00</Seguro_inicio>
-<Seguro_termino>2026-10-19T00:00:00</Seguro_termino>
-<Tipo_de_bancada>ACESSÍVEL</Tipo_de_bancada>
-<Tipo_de_veiculo>MICRO-ÔNIBUS</Tipo_de_veiculo>
-<Marca_modelo>RENAULT/MASTER FFORMA.ES</Marca_modelo>
-<Titular>KELLY CRISTINA OLIVEIRA (PREPOSTO)</Titular>
-<CNPJ_CPF>345.939.138-37</CNPJ_CPF>
-<Valor_veiculo>335148.2400</Valor_veiculo>
 <OS_especial>NÃO</OS_especial>
 </Veiculo>
 </dataroot>

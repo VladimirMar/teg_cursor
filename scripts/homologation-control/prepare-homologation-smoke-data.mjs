@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { access } from 'node:fs/promises'
+import { access, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -30,6 +30,7 @@ let runSmoke = false
 let shouldSkipApontamento = false
 let shouldSkipVeiculo = !defaults.restoreVeiculo
 let shouldPrintHelp = false
+const requestTimeoutMs = Number(process.env.HOMOLOG_REQUEST_TIMEOUT_MS ?? 20000)
 
 for (let index = 0; index < rawArgs.length; index += 1) {
   const currentArg = String(rawArgs[index] ?? '').trim()
@@ -165,14 +166,28 @@ Variaveis de ambiente:
 }
 
 const requestJson = async (targetPath, options = {}) => {
-  const response = await fetch(`${baseUrl}${targetPath}`, {
-    ...options,
-    headers: {
-      Accept: 'application/json',
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers ?? {}),
-    },
-  })
+  const controller = new AbortController()
+  const timeoutHandle = setTimeout(() => controller.abort(), requestTimeoutMs)
+
+  let response
+  try {
+    response = await fetch(`${baseUrl}${targetPath}`, {
+      ...options,
+      headers: {
+        Accept: 'application/json',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers ?? {}),
+      },
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Tempo limite de ${requestTimeoutMs}ms excedido para ${targetPath}.`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutHandle)
+  }
 
   const payload = await response.json().catch(() => null)
 
@@ -193,24 +208,96 @@ const assert = (condition, message) => {
   }
 }
 
-const resolveApontamentoWorkbookPath = async () => {
+const parseMesAno = (value) => {
+  const normalized = String(value ?? '').trim()
+  const match = normalized.match(/^(\d{2})\/(\d{4})$/)
+
+  if (!match) {
+    return null
+  }
+
+  return {
+    month: match[1],
+    year: match[2],
+  }
+}
+
+const listExcelFilesInDirectory = async (directoryPath) => {
+  const entries = await access(directoryPath)
+    .then(async () => readdir(directoryPath, { withFileTypes: true }))
+    .catch(() => [])
+
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((fileName) => !fileName.startsWith('~$'))
+    .filter((fileName) => path.extname(fileName).toLowerCase() === '.xlsx')
+    .map((fileName) => path.join(directoryPath, fileName))
+}
+
+const resolveApontamentoWorkbookCandidates = async () => {
   const requestedPath = path.resolve(apontamentoWorkbookPath)
-  const fallbackPaths = [
-    requestedPath,
-    path.join(workspaceRoot, 'planilha pgto old', 'old', path.basename(requestedPath)),
-    path.join(workspaceRoot, 'planilha pgto old', path.basename(requestedPath)),
+  const requestedBaseName = path.basename(requestedPath)
+  const candidates = []
+  const pushCandidate = (candidatePath) => {
+    const normalized = path.resolve(candidatePath)
+    if (!candidates.includes(normalized)) {
+      candidates.push(normalized)
+    }
+  }
+
+  pushCandidate(requestedPath)
+  pushCandidate(path.join(workspaceRoot, 'planilha pgto old', 'old', path.basename(requestedPath)))
+  pushCandidate(path.join(workspaceRoot, 'planilha pgto old', path.basename(requestedPath)))
+  pushCandidate(path.join(workspaceRoot, '.homolog', 'runtime', 'documento', requestedBaseName))
+  pushCandidate(path.join(workspaceRoot, 'documento', requestedBaseName))
+
+  const mesAnoParts = parseMesAno(mesAno)
+  if (mesAnoParts) {
+    pushCandidate(path.join(workspaceRoot, 'pgtos', `${mesAnoParts.year}-${mesAnoParts.month} Pgto`, path.basename(requestedPath)))
+  }
+
+  const searchDirectories = [
+    path.join(workspaceRoot, '.homolog', 'runtime', 'documento'),
+    path.join(workspaceRoot, 'documento'),
+    ...(mesAnoParts
+      ? [
+        path.join(workspaceRoot, 'pgtos', `${mesAnoParts.year}-${mesAnoParts.month} Pgto`),
+        path.join(workspaceRoot, 'pgtos', `${mesAnoParts.year}-${mesAnoParts.month} Pgto`, 'old'),
+      ]
+      : []),
   ]
 
-  for (const candidatePath of fallbackPaths) {
+  for (const directoryPath of searchDirectories) {
+    const files = await listExcelFilesInDirectory(directoryPath)
+    for (const filePath of files) {
+      const baseName = path.basename(filePath).toUpperCase()
+      const hasAteste = baseName.includes('ATESTE')
+      const hasTipoPessoa = baseName.includes(` ${tipoPessoa} `)
+      const hasCalculo = baseName.includes('CALCULO')
+
+      if (hasAteste && hasTipoPessoa && !hasCalculo) {
+        pushCandidate(filePath)
+      }
+    }
+  }
+
+  const existingCandidates = []
+
+  for (const candidatePath of candidates) {
     try {
       await access(candidatePath)
-      return candidatePath
+      existingCandidates.push(candidatePath)
     } catch {
       continue
     }
   }
 
-  throw new Error(`Nao foi possivel localizar a planilha informada: ${requestedPath}.`)
+  if (!existingCandidates.length) {
+    throw new Error(`Nao foi possivel localizar a planilha informada: ${requestedPath}.`)
+  }
+
+  return existingCandidates
 }
 
 const listApuracaoFinanceira = async () => {
@@ -223,6 +310,15 @@ const listApuracaoFinanceira = async () => {
   })
 
   return requestJson(`/api/apuracao-financeira?${query.toString()}`)
+}
+
+const listAllDreCodigos = async () => {
+  const payload = await requestJson('/api/dre?page=1&pageSize=500')
+  const items = Array.isArray(payload.items) ? payload.items : []
+
+  return items
+    .map((item) => String(item?.codigo ?? '').trim())
+    .filter(Boolean)
 }
 
 const verifyEditableStatus = async () => {
@@ -239,12 +335,16 @@ const verifyEditableStatus = async () => {
   }
 }
 
-const updateBatchStatus = async () => {
+const updateBatchStatus = async (dreCodigos) => {
+  const normalizedDreCodigos = Array.isArray(dreCodigos)
+    ? dreCodigos.map((item) => String(item ?? '').trim()).filter(Boolean)
+    : [dreCodigo]
+
   const summary = await requestJson('/api/apuracao-financeira/alterar-situacao-lote', {
     method: 'POST',
     body: JSON.stringify({
       mesAno,
-      dreCodigos: [dreCodigo],
+      dreCodigos: normalizedDreCodigos,
       tipoPessoa,
       situacao,
     }),
@@ -254,21 +354,103 @@ const updateBatchStatus = async () => {
 }
 
 const importApontamentoWorkbook = async () => {
-  const normalizedWorkbookPath = await resolveApontamentoWorkbookPath()
-  const directoryPath = path.dirname(normalizedWorkbookPath)
-  const fileName = path.basename(normalizedWorkbookPath)
+  const candidateWorkbookPaths = await resolveApontamentoWorkbookCandidates()
+  let lastPayload = null
+  let hasRetriedEditableConflict = false
+  const attemptedResults = []
 
-  const payload = await requestJson('/api/apontamento-servicos/import-excel', {
-    method: 'POST',
-    body: JSON.stringify({
-      directoryPath,
-      fileName,
-    }),
-  })
+  for (const workbookPath of candidateWorkbookPaths) {
+    const directoryPath = path.dirname(workbookPath)
+    const fileName = path.basename(workbookPath)
 
-  assert(Number(payload.processedFiles ?? 0) >= 1, 'Importacao de apontamento nao processou nenhum arquivo.')
-  assert(Number(payload.processedItems ?? 0) >= 1, 'Importacao de apontamento nao processou nenhuma linha.')
-  return payload
+    try {
+      const payload = await requestJson('/api/apontamento-servicos/import-excel', {
+        method: 'POST',
+        body: JSON.stringify({
+          directoryPath,
+          fileName,
+        }),
+      })
+
+      lastPayload = payload
+      const processedFiles = Number(payload.processedFiles ?? 0)
+      const processedItems = Number(payload.processedItems ?? 0)
+      const processedDates = Number(payload.processedDates ?? 0)
+      const skippedRecords = Array.isArray(payload.skippedRecords)
+        ? payload.skippedRecords.length
+        : Number(payload.skippedRecords ?? 0)
+      const hasMeaningfulProcessedData = processedItems >= 1 || processedDates >= 1 || skippedRecords >= 1
+
+      attemptedResults.push(`${path.basename(workbookPath)}: arquivos=${processedFiles}, linhas=${processedItems}, datas=${processedDates}, recusas=${skippedRecords}`)
+
+      if (processedFiles >= 1 && hasMeaningfulProcessedData) {
+        return {
+          ...payload,
+          workbookPath,
+          attemptedResults,
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+
+      if (!hasRetriedEditableConflict && message.includes('A digitacao da apuracao de servicos so e permitida quando a apuracao financeira estiver com status Em digitacao.')) {
+        const allDres = await listAllDreCodigos()
+        await updateBatchStatus(allDres)
+        hasRetriedEditableConflict = true
+
+        try {
+          const retryPayload = await requestJson('/api/apontamento-servicos/import-excel', {
+            method: 'POST',
+            body: JSON.stringify({
+              directoryPath,
+              fileName,
+            }),
+          })
+
+          lastPayload = retryPayload
+          const retryProcessedFiles = Number(retryPayload.processedFiles ?? 0)
+          const retryProcessedItems = Number(retryPayload.processedItems ?? 0)
+          const retryProcessedDates = Number(retryPayload.processedDates ?? 0)
+          const retrySkippedRecords = Array.isArray(retryPayload.skippedRecords)
+            ? retryPayload.skippedRecords.length
+            : Number(retryPayload.skippedRecords ?? 0)
+          const retryHasMeaningfulProcessedData = retryProcessedItems >= 1 || retryProcessedDates >= 1 || retrySkippedRecords >= 1
+
+          attemptedResults.push(`${path.basename(workbookPath)}: retry arquivos=${retryProcessedFiles}, linhas=${retryProcessedItems}, datas=${retryProcessedDates}, recusas=${retrySkippedRecords}`)
+
+          if (retryProcessedFiles >= 1 && retryHasMeaningfulProcessedData) {
+            return {
+              ...retryPayload,
+              workbookPath,
+              attemptedResults,
+            }
+          }
+        } catch (retryError) {
+          const retryMessage = retryError instanceof Error ? retryError.message : String(retryError)
+          attemptedResults.push(`${path.basename(workbookPath)}: retry erro=${retryMessage}`)
+        }
+
+        continue
+      }
+
+      attemptedResults.push(`${path.basename(workbookPath)}: erro=${message}`)
+    }
+  }
+
+  const detailMessage = attemptedResults.length
+    ? ` Tentativas: ${attemptedResults.join(' | ')}`
+    : ''
+
+  if (lastPayload && Number(lastPayload.processedFiles ?? 0) >= 1) {
+    return {
+      ...lastPayload,
+      workbookPath: candidateWorkbookPaths[candidateWorkbookPaths.length - 1],
+      attemptedResults,
+      warning: `Importacao finalizou sem linhas inseridas.${detailMessage}`,
+    }
+  }
+
+  throw new Error(`Importacao de apontamento nao processou nenhum arquivo.${detailMessage}`)
 }
 
 const importVeiculoXml = async () => {
@@ -326,13 +508,17 @@ const runSmokeSuite = async () => {
 const main = async () => {
   console.log(`Preparando massa operacional de homologacao em ${baseUrl}...`)
 
-  const batchStatusSummary = await updateBatchStatus()
+  const batchStatusSummary = await updateBatchStatus([dreCodigo])
   const apuracaoStatusSummary = await verifyEditableStatus()
   console.log(`- Apuracao financeira liberada para ${situacao}: ${batchStatusSummary.totalUpdated ?? 0} registro(s) atualizados, ${apuracaoStatusSummary.total} validado(s), revisao(oes) ${apuracaoStatusSummary.revisoes.join(', ') || '-'}.`)
 
   if (!shouldSkipApontamento) {
     const apontamentoSummary = await importApontamentoWorkbook()
-    console.log(`- Apontamento Servicos restaurado: arquivos=${apontamentoSummary.processedFiles ?? 0}, linhas=${apontamentoSummary.processedItems ?? 0}, datas=${apontamentoSummary.processedDates ?? 0}.`)
+    const workbookLabel = apontamentoSummary.workbookPath ? path.basename(apontamentoSummary.workbookPath) : 'arquivo nao identificado'
+    console.log(`- Apontamento Servicos restaurado (${workbookLabel}): arquivos=${apontamentoSummary.processedFiles ?? 0}, linhas=${apontamentoSummary.processedItems ?? 0}, datas=${apontamentoSummary.processedDates ?? 0}.`)
+    if (apontamentoSummary.warning) {
+      console.log(`  Aviso: ${apontamentoSummary.warning}`)
+    }
   } else {
     console.log('- Reimportacao de Apontamento Servicos ignorada por opcao.')
   }

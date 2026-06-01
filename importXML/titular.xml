@@ -4,12 +4,12 @@
  <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
   <Author>export-access-xmls</Author>
   <LastAuthor>export-access-xmls</LastAuthor>
-  <Created>2026-06-01T16:21:47Z</Created>
-  <LastSaved>2026-06-01T16:21:47Z</LastSaved>
+  <Created>2026-06-01T19:06:29Z</Created>
+  <LastSaved>2026-06-01T19:06:29Z</LastSaved>
   <Version>16.00</Version>
  </DocumentProperties>
  <Worksheet ss:Name="Planilha1">
-  <Table ss:ExpandedColumnCount="3" ss:ExpandedRowCount="2960" x:FullColumns="1" x:FullRows="1">
+  <Table ss:ExpandedColumnCount="3" ss:ExpandedRowCount="2949" x:FullColumns="1" x:FullRows="1">
    <Row>
     <Cell><Data ss:Type="String">CODIGO</Data></Cell>
     <Cell><Data ss:Type="String">CNPJ_CPF</Data></Cell>
@@ -11548,7 +11548,7 @@
    <Row>
     <Cell><Data ss:Type="String">4583</Data></Cell>
     <Cell><Data ss:Type="String">24.776.835/0001-04</Data></Cell>
-    <Cell><Data ss:Type="String">FRANCISCO DE ASSIS DA SILVA TRANSPORTE ESCOLAR LTDA</Data></Cell>
+    <Cell><Data ss:Type="String">FRANCISCO DE ASSIS DA SILVA 49063626487</Data></Cell>
    </Row>
    <Row>
     <Cell><Data ss:Type="String">4584</Data></Cell>
@@ -12198,7 +12198,7 @@
    <Row>
     <Cell><Data ss:Type="String">4716</Data></Cell>
     <Cell><Data ss:Type="String">97.524.274/0001-11</Data></Cell>
-    <Cell><Data ss:Type="String">C.A.X TRANSPORTES AND PHOENNIX LTDA</Data></Cell>
+    <Cell><Data ss:Type="String">CASSIO ALVES XAVIER 37856680822</Data></Cell>
    </Row>
    <Row>
     <Cell><Data ss:Type="String">4717</Data></Cell>
@@ -13193,7 +13193,7 @@
    <Row>
     <Cell><Data ss:Type="String">4923</Data></Cell>
     <Cell><Data ss:Type="String">43.868.909/0001-79</Data></Cell>
-    <Cell><Data ss:Type="String">ROCHA TRANSPORTE LTDA</Data></Cell>
+    <Cell><Data ss:Type="String">GILBERTO VIEIRA DA ROCHA 96143657491</Data></Cell>
    </Row>
    <Row>
     <Cell><Data ss:Type="String">4924</Data></Cell>
@@ -14754,61 +14754,6 @@
     <Cell><Data ss:Type="String">5241</Data></Cell>
     <Cell><Data ss:Type="String">64.342.976/0001-25</Data></Cell>
     <Cell><Data ss:Type="String">LSA TRANSPORTES E MOBILIDADE LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5242</Data></Cell>
-    <Cell><Data ss:Type="String">34.656.638/0001-05</Data></Cell>
-    <Cell><Data ss:Type="String">LIRIO LUZ TRANSPORTES LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5244</Data></Cell>
-    <Cell><Data ss:Type="String">64.729.369/0001-12</Data></Cell>
-    <Cell><Data ss:Type="String">IRG TRANSPORTES LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5245</Data></Cell>
-    <Cell><Data ss:Type="String">62.689.632/0001-61</Data></Cell>
-    <Cell><Data ss:Type="String">LUIS &amp; JULIANA TRANSPORTE ESCOLAR LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5246</Data></Cell>
-    <Cell><Data ss:Type="String">63.170.223/0001-17</Data></Cell>
-    <Cell><Data ss:Type="String">DSTOUR TRANSPORTES LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5247</Data></Cell>
-    <Cell><Data ss:Type="String">65.810.677/0001-30</Data></Cell>
-    <Cell><Data ss:Type="String">SILVELYN TRANSPORTES LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5248</Data></Cell>
-    <Cell><Data ss:Type="String">65.618.783/0001-17</Data></Cell>
-    <Cell><Data ss:Type="String">JUH TRANSPORTES LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5249</Data></Cell>
-    <Cell><Data ss:Type="String">64.344.386/0001-31</Data></Cell>
-    <Cell><Data ss:Type="String">RDOPRADO TRANSPORTES LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5250</Data></Cell>
-    <Cell><Data ss:Type="String">63.595.340/0001-22</Data></Cell>
-    <Cell><Data ss:Type="String">KAIROS TRANSPORTES LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5251</Data></Cell>
-    <Cell><Data ss:Type="String">61.904.995/0001-00</Data></Cell>
-    <Cell><Data ss:Type="String">E.G.DANIEL LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5252</Data></Cell>
-    <Cell><Data ss:Type="String">65.652.962/0001-70</Data></Cell>
-    <Cell><Data ss:Type="String">EVOLUCAO TRANSPORTE LTDA</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">5253</Data></Cell>
-    <Cell><Data ss:Type="String">32.826.123/0001-72</Data></Cell>
-    <Cell><Data ss:Type="String">LAERTE SANTOS TRANSPORTES LTDA</Data></Cell>
    </Row>
   </Table>
  </Worksheet>

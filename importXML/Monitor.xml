@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:noNamespaceSchemaLocation="Monitor.xsd" generated="2026-06-01T13:21:03">
+<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:noNamespaceSchemaLocation="Monitor.xsd" generated="2026-06-01T16:05:37">
 <Monitor>
 <Código>11009</Código>
 <Monitor>CELINA ALVES DE OLIVEIRA VICENTE</Monitor>
@@ -1706,16 +1706,6 @@
 <VCurso_monitor>2021-03-20T00:00:00</VCurso_monitor>
 </Monitor>
 <Monitor>
-<Código>19025</Código>
-<Monitor>ROSALINA EMILIA VALERIO</Monitor>
-<RG_monitor>11.302.385-6</RG_monitor>
-<CPF_monitor>021.997.808-56</CPF_monitor>
-<Curso_monitor>2026-05-18T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-18T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1959-11-06T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>8590</Código>
 <Monitor>EDNALVA BATISTA</Monitor>
 <RG_monitor>16.625.613-4</RG_monitor>
@@ -2226,16 +2216,6 @@
 <CPF_monitor>027.501.368-57</CPF_monitor>
 <Curso_monitor>2017-02-05T00:00:00</Curso_monitor>
 <VCurso_monitor>2022-02-05T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>18969</Código>
-<Monitor>MARIA JOSE DA SILVA</Monitor>
-<RG_monitor>59.961.760</RG_monitor>
-<CPF_monitor>027.568.044-44</CPF_monitor>
-<Curso_monitor>2026-04-26T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-26T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1970-11-26T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>13098</Código>
@@ -3797,16 +3777,6 @@
 <VCurso_monitor>2023-01-14T00:00:00</VCurso_monitor>
 </Monitor>
 <Monitor>
-<Código>18994</Código>
-<Monitor>MARIA DOS ANJOS OLIVEIRA MOTA</Monitor>
-<RG_monitor>16.306.649-8</RG_monitor>
-<CPF_monitor>042.624.868-69</CPF_monitor>
-<Curso_monitor>2026-01-21T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-01-21T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1962-07-24T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>18400</Código>
 <Monitor>JOSIANE PASSOS DOURADO</Monitor>
 <RG_monitor>54.245.703-9</RG_monitor>
@@ -3825,16 +3795,6 @@
 <VCurso_monitor>2023-03-25T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>1956-03-15T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19033</Código>
-<Monitor>LIVIA FRANCISCA DA SILVA</Monitor>
-<RG_monitor>50.403.841-2</RG_monitor>
-<CPF_monitor>043.077.141-05</CPF_monitor>
-<Curso_monitor>2023-07-16T00:00:00</Curso_monitor>
-<VCurso_monitor>2028-07-16T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2005-06-05T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11784</Código>
@@ -4917,7 +4877,7 @@
 <CPF_monitor>052.436.785-03</CPF_monitor>
 <Curso_monitor>2023-05-14T00:00:00</Curso_monitor>
 <VCurso_monitor>2028-05-14T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1989-11-30T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -6258,16 +6218,6 @@
 <CPF_monitor>066.295.058-59</CPF_monitor>
 <Curso_monitor>2015-05-10T00:00:00</Curso_monitor>
 <VCurso_monitor>2020-05-10T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>18967</Código>
-<Monitor>MARIA VILMA PEREIRA SILVA OLIVEIRA</Monitor>
-<RG_monitor>69.552.144-5</RG_monitor>
-<CPF_monitor>066.378.853-63</CPF_monitor>
-<Curso_monitor>2026-02-07T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-02-07T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1994-12-18T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11223</Código>
@@ -8017,8 +7967,8 @@
 <Monitor>ROSEMEIRE ANDREOSI SILVA</Monitor>
 <RG_monitor>19.146.556-2</RG_monitor>
 <CPF_monitor>082.016.868-88</CPF_monitor>
-<Curso_monitor>2026-04-25T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-25T00:00:00</VCurso_monitor>
+<Curso_monitor>2021-05-01T00:00:00</Curso_monitor>
+<VCurso_monitor>2026-05-01T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1965-01-02T00:00:00</Nascimento>
 </Monitor>
@@ -10214,16 +10164,6 @@
 <Nascimento>1966-01-24T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18975</Código>
-<Monitor>IREUDES PRADO DE JESUS</Monitor>
-<RG_monitor>22.191.200-9</RG_monitor>
-<CPF_monitor>094.441.488-58</CPF_monitor>
-<Curso_monitor>2026-04-27T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-27T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1969-07-02T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>10504</Código>
 <Monitor>CARLON CARLOS DOS ANJOS</Monitor>
 <RG_monitor>21.826.703-4</RG_monitor>
@@ -11125,7 +11065,7 @@
 <CPF_monitor>104.331.228-54</CPF_monitor>
 <Curso_monitor>2024-01-28T00:00:00</Curso_monitor>
 <VCurso_monitor>2029-01-28T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1968-04-18T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -12768,7 +12708,7 @@
 <CPF_monitor>117.649.368-09</CPF_monitor>
 <Curso_monitor>2025-10-01T00:00:00</Curso_monitor>
 <VCurso_monitor>2030-10-01T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1971-08-21T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -13550,16 +13490,6 @@
 <Nascimento>1968-08-10T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18986</Código>
-<Monitor>MARIA DA GLORIA TEIXEIRA</Monitor>
-<RG_monitor>28.666.193-7</RG_monitor>
-<CPF_monitor>126.704.078-54</CPF_monitor>
-<Curso_monitor>2026-04-13T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-13T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1967-04-13T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>9137</Código>
 <Monitor>EDNA PEREIRA ROCHA</Monitor>
 <RG_monitor>16.638.948-1</RG_monitor>
@@ -13638,16 +13568,6 @@
 <VCurso_monitor>2027-06-25T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1971-03-19T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18968</Código>
-<Monitor>ALZIRA SELMA CORREA RIBEIRO</Monitor>
-<RG_monitor>20.376.509-6</RG_monitor>
-<CPF_monitor>127.116.488-42</CPF_monitor>
-<Curso_monitor>2026-03-01T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-01T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1969-04-02T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11353</Código>
@@ -14554,16 +14474,6 @@
 <VCurso_monitor>2029-02-02T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>1972-10-10T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18972</Código>
-<Monitor>ROSANGELA APARECIDA NAVAS MIRANDA</Monitor>
-<RG_monitor>23.625.100-4</RG_monitor>
-<CPF_monitor>131.897.668-51</CPF_monitor>
-<Curso_monitor>2026-02-23T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-02-23T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1968-07-05T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>7847</Código>
@@ -17258,15 +17168,6 @@
 <VCurso_monitor>2029-12-15T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1974-02-05T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18973</Código>
-<Monitor>ELAINE CRISTINA BARRETO DA LUZ</Monitor>
-<CPF_monitor>152.058.208-02</CPF_monitor>
-<Curso_monitor>2022-06-12T00:00:00</Curso_monitor>
-<VCurso_monitor>2027-06-12T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1975-09-17T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>16234</Código>
@@ -22069,8 +21970,8 @@
 <Monitor>ADRIANA DE CASSIA SCODELARIO</Monitor>
 <RG_monitor>33.566.692-9</RG_monitor>
 <CPF_monitor>213.431.248-32</CPF_monitor>
-<Curso_monitor>2026-04-12T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-12T00:00:00</VCurso_monitor>
+<Curso_monitor>2020-02-02T00:00:00</Curso_monitor>
+<VCurso_monitor>2025-02-02T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1974-10-12T00:00:00</Nascimento>
 </Monitor>
@@ -23230,16 +23131,6 @@
 <Nascimento>1980-09-12T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18998</Código>
-<Monitor>JOYCE CARLA DOS SANTOS</Monitor>
-<RG_monitor>29.423.790-2</RG_monitor>
-<CPF_monitor>223.775.298-28</CPF_monitor>
-<Curso_monitor>2026-04-26T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-26T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1983-04-08T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>9041</Código>
 <Monitor>MARCO ANTONIO FREDERICO</Monitor>
 <RG_monitor>33.312.528-9</RG_monitor>
@@ -23580,16 +23471,6 @@
 <CPF_monitor>225.475.068-23</CPF_monitor>
 <Curso_monitor>2016-07-31T00:00:00</Curso_monitor>
 <VCurso_monitor>2021-07-31T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>18979</Código>
-<Monitor>RENATA DA SILVA DUTRA ARAUJO</Monitor>
-<RG_monitor>34.092.466</RG_monitor>
-<CPF_monitor>225.534.788-10</CPF_monitor>
-<Curso_monitor>2026-04-12T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-12T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1982-01-30T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>8236</Código>
@@ -23938,16 +23819,6 @@
 <VCurso_monitor>2029-04-13T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1981-06-27T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19018</Código>
-<Monitor>CIBELE REGIANE WATANABE FANTINE</Monitor>
-<RG_monitor>27.759.161-2</RG_monitor>
-<CPF_monitor>227.037.578-59</CPF_monitor>
-<Curso_monitor>2026-01-29T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-01-29T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1974-10-12T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>18088</Código>
@@ -25764,8 +25635,8 @@
 <Monitor>TIFFANY DA SILVA BARROS</Monitor>
 <RG_monitor>39.306.619-8</RG_monitor>
 <CPF_monitor>238.878.708-40</CPF_monitor>
-<Curso_monitor>2026-04-16T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-16T00:00:00</VCurso_monitor>
+<Curso_monitor>2021-02-11T00:00:00</Curso_monitor>
+<VCurso_monitor>2026-02-11T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>2003-01-04T00:00:00</Nascimento>
 </Monitor>
@@ -26360,15 +26231,6 @@
 <VCurso_monitor>2029-05-19T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>2006-04-23T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19037</Código>
-<Monitor>ALINE BRITO ALENCAR FERREIRA</Monitor>
-<CPF_monitor>241.297.958-80</CPF_monitor>
-<Curso_monitor>2026-05-03T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-03T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2005-02-27T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>17803</Código>
@@ -27234,16 +27096,6 @@
 <RG_monitor>30.084.833-X</RG_monitor>
 <CPF_monitor>247.532.058-35</CPF_monitor>
 <Curso_monitor>2012-08-27T00:00:00</Curso_monitor>
-</Monitor>
-<Monitor>
-<Código>19035</Código>
-<Monitor>ANDRESSA DANIELA DOS SANTOS GREGORIO</Monitor>
-<RG_monitor>30.082.108-6</RG_monitor>
-<CPF_monitor>247.599.218-26</CPF_monitor>
-<Curso_monitor>2026-05-20T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-20T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1976-01-14T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>7551</Código>
@@ -28840,7 +28692,7 @@
 <CPF_monitor>259.340.728-03</CPF_monitor>
 <Curso_monitor>2022-08-07T00:00:00</Curso_monitor>
 <VCurso_monitor>2027-08-07T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1977-06-13T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -31302,16 +31154,6 @@
 <Nascimento>1978-03-06T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19011</Código>
-<Monitor>LILIANE LIMA DA SILVA</Monitor>
-<RG_monitor>28.623.353-8</RG_monitor>
-<CPF_monitor>276.972.198-40</CPF_monitor>
-<Curso_monitor>2026-05-02T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-02T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1979-03-31T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>11534</Código>
 <Monitor>LUIZA DAMEAO DA SILVA</Monitor>
 <RG_monitor>33.302.995-1</RG_monitor>
@@ -31360,16 +31202,6 @@
 <VCurso_monitor>2027-06-12T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
 <Nascimento>1978-01-14T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19028</Código>
-<Monitor>ALESSANDRA FERREIRA GALLOTI DA SILVA</Monitor>
-<RG_monitor>28.978.339-2</RG_monitor>
-<CPF_monitor>277.116.898-70</CPF_monitor>
-<Curso_monitor>2026-04-16T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-16T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1976-11-28T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11074</Código>
@@ -31440,8 +31272,8 @@
 <Monitor>ZITA MARIA BRANDOLIN</Monitor>
 <RG_monitor>4.433.874-0</RG_monitor>
 <CPF_monitor>277.435.028-05</CPF_monitor>
-<Curso_monitor>2026-05-03T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-03T00:00:00</VCurso_monitor>
+<Curso_monitor>2020-11-21T00:00:00</Curso_monitor>
+<VCurso_monitor>2025-11-21T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1950-09-15T00:00:00</Nascimento>
 </Monitor>
@@ -32729,16 +32561,6 @@
 <CPF_monitor>284.482.548-64</CPF_monitor>
 <Curso_monitor>2014-01-23T00:00:00</Curso_monitor>
 <VCurso_monitor>2019-01-23T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>19026</Código>
-<Monitor>PATRICIA NIETO</Monitor>
-<RG_monitor>27.855.433-7</RG_monitor>
-<CPF_monitor>284.495.218-66</CPF_monitor>
-<Curso_monitor>2026-03-29T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-29T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1977-03-02T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>12556</Código>
@@ -40018,7 +39840,7 @@
 <CPF_monitor>320.327.758-16</CPF_monitor>
 <Curso_monitor>2022-07-02T00:00:00</Curso_monitor>
 <VCurso_monitor>2027-07-02T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>SÓCIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1984-10-18T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -41314,16 +41136,6 @@
 <Nascimento>1985-10-20T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19031</Código>
-<Monitor>DANIELA ALVES FERNANDES</Monitor>
-<RG_monitor>36.000.236-5</RG_monitor>
-<CPF_monitor>325.552.598-56</CPF_monitor>
-<Curso_monitor>2025-08-24T00:00:00</Curso_monitor>
-<VCurso_monitor>2030-08-24T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1983-09-15T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>13672</Código>
 <Monitor>CRISTIANE ROSALINO</Monitor>
 <RG_monitor>35.477.397-5</RG_monitor>
@@ -42599,16 +42411,6 @@
 <Nascimento>1975-02-03T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19006</Código>
-<Monitor>RAQUEL DE OLIVEIRA HESSEL</Monitor>
-<RG_monitor>42.365.286-2</RG_monitor>
-<CPF_monitor>330.445.158-74</CPF_monitor>
-<Curso_monitor>2025-06-21T00:00:00</Curso_monitor>
-<VCurso_monitor>2030-06-21T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1980-04-20T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>7450</Código>
 <Monitor>TATIANE RODRIGUES DE ALMEIDA</Monitor>
 <RG_monitor>43.782.043-9</RG_monitor>
@@ -43317,16 +43119,6 @@
 <CPF_monitor>333.076.278-05</CPF_monitor>
 <Curso_monitor>2014-01-19T00:00:00</Curso_monitor>
 <VCurso_monitor>2019-01-19T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>19002</Código>
-<Monitor>JULIANA SILVA VIEIRA DE ARAUJO</Monitor>
-<RG_monitor>36.884.578-3</RG_monitor>
-<CPF_monitor>333.087.528-32</CPF_monitor>
-<Curso_monitor>2026-04-13T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-13T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1986-06-15T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11755</Código>
@@ -44403,16 +44195,6 @@
 <CPF_monitor>338.074.978-89</CPF_monitor>
 <Curso_monitor>2015-04-26T00:00:00</Curso_monitor>
 <VCurso_monitor>2020-04-26T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>19009</Código>
-<Monitor>LUCIANA SIQUEIRA REIS</Monitor>
-<RG_monitor>41.311.353-X</RG_monitor>
-<CPF_monitor>338.158.218-60</CPF_monitor>
-<Curso_monitor>2026-03-15T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-15T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1985-07-19T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>14921</Código>
@@ -49321,16 +49103,6 @@
 <VCurso_monitor>2020-03-15T00:00:00</VCurso_monitor>
 </Monitor>
 <Monitor>
-<Código>19019</Código>
-<Monitor>MARIA REGINA DE ALMEIDA CAVALCANTE</Monitor>
-<RG_monitor>46.874.643-2</RG_monitor>
-<CPF_monitor>357.816.948-03</CPF_monitor>
-<Curso_monitor>2026-05-17T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-17T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1990-01-15T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>11127</Código>
 <Monitor>FERNANDA RODRIGUES OLIVEIRA</Monitor>
 <RG_monitor>41.254.384-9</RG_monitor>
@@ -49595,16 +49367,6 @@
 <CPF_monitor>358.663.718-71</CPF_monitor>
 <Curso_monitor>2012-09-05T00:00:00</Curso_monitor>
 <VCurso_monitor>2017-09-05T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>18997</Código>
-<Monitor>AMANDA OLIVEIRA ALVES</Monitor>
-<RG_monitor>32.315.815-8</RG_monitor>
-<CPF_monitor>358.722.018-26</CPF_monitor>
-<Curso_monitor>2026-05-03T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-03T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1989-03-30T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>8670</Código>
@@ -50033,15 +49795,6 @@
 <CPF_monitor>360.136.188-44</CPF_monitor>
 <Curso_monitor>2017-02-12T00:00:00</Curso_monitor>
 <VCurso_monitor>2022-02-12T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>18982</Código>
-<Monitor>ALLINE CONCEICAO SOUSA LIMA</Monitor>
-<CPF_monitor>360.171.648-80</CPF_monitor>
-<Curso_monitor>2026-04-30T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-30T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1988-04-08T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>14074</Código>
@@ -51654,16 +51407,6 @@
 <VCurso_monitor>2023-10-07T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>1993-05-22T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19029</Código>
-<Monitor>FLAVIANI APARECIDA AMBROSIO</Monitor>
-<RG_monitor>33.849.049</RG_monitor>
-<CPF_monitor>367.171.338-05</CPF_monitor>
-<Curso_monitor>2026-05-10T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-10T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1988-06-14T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11242</Código>
@@ -54934,16 +54677,6 @@
 <VCurso_monitor>2017-02-26T00:00:00</VCurso_monitor>
 </Monitor>
 <Monitor>
-<Código>19024</Código>
-<Monitor>JULIANA CRISTINA SOARES</Monitor>
-<RG_monitor>42.577.393-0</RG_monitor>
-<CPF_monitor>379.519.688-46</CPF_monitor>
-<Curso_monitor>2026-05-14T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-14T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1987-06-15T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>9378</Código>
 <Monitor>PATRICIA FRANCO ALBUQUERQUE</Monitor>
 <RG_monitor>42.323.593-X</RG_monitor>
@@ -54966,15 +54699,6 @@
 <CPF_monitor>379.571.468-05</CPF_monitor>
 <Curso_monitor>2020-02-16T00:00:00</Curso_monitor>
 <VCurso_monitor>2025-02-16T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>19014</Código>
-<Monitor>SUELLEM LIMA DUTRA</Monitor>
-<CPF_monitor>379.648.248-13</CPF_monitor>
-<Curso_monitor>2026-05-14T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-14T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1989-10-31T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>13814</Código>
@@ -57487,10 +57211,8 @@
 <Monitor>LUCIANA CARDOSO DE ARAUJO</Monitor>
 <RG_monitor>42.113.908-0</RG_monitor>
 <CPF_monitor>387.335.358-09</CPF_monitor>
-<Curso_monitor>2026-05-10T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-10T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1988-04-27T00:00:00</Nascimento>
+<Curso_monitor>2021-02-07T00:00:00</Curso_monitor>
+<VCurso_monitor>2026-02-07T00:00:00</VCurso_monitor>
 </Monitor>
 <Monitor>
 <Código>8589</Código>
@@ -58455,7 +58177,7 @@
 </Monitor>
 <Monitor>
 <Código>11360</Código>
-<Monitor>JEANE ANGELICA MACEDO DOS SANTOS RODRIGUES CORREIA</Monitor>
+<Monitor>JEANE ANGELICA MACEDO DOS SANTOS</Monitor>
 <RG_monitor>48.372.838-X</RG_monitor>
 <CPF_monitor>390.573.408-79</CPF_monitor>
 <Curso_monitor>2024-01-29T00:00:00</Curso_monitor>
@@ -58814,15 +58536,6 @@
 <Nascimento>2004-08-21T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18993</Código>
-<Monitor>LILIA LIMA RODRIGUES</Monitor>
-<CPF_monitor>391.542.138-35</CPF_monitor>
-<Curso_monitor>2026-05-07T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-07T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1989-12-09T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>17670</Código>
 <Monitor>MICHELLY TALITA DE SOUZA SILVA</Monitor>
 <RG_monitor>44.359.406-5</RG_monitor>
@@ -58899,16 +58612,6 @@
 <VCurso_monitor>2027-06-26T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1989-05-12T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18987</Código>
-<Monitor>LUIZA CRISTINA SOUZA DE FREITAS</Monitor>
-<RG_monitor>39.541.252-3</RG_monitor>
-<CPF_monitor>391.798.178-58</CPF_monitor>
-<Curso_monitor>2025-10-18T00:00:00</Curso_monitor>
-<VCurso_monitor>2030-10-18T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2004-04-12T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11271</Código>
@@ -59435,16 +59138,6 @@
 <VCurso_monitor>2029-02-17T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1990-09-18T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19030</Código>
-<Monitor>VALERIA DE OLIVEIRA IDELFONSO</Monitor>
-<RG_monitor>48.231.307-9</RG_monitor>
-<CPF_monitor>393.488.638-86</CPF_monitor>
-<Curso_monitor>2026-05-17T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-17T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1995-04-10T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>16622</Código>
@@ -62290,16 +61983,6 @@
 <VCurso_monitor>2027-05-14T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>1992-08-18T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19004</Código>
-<Monitor>RAFAELA DO NASCIMENTO SANTOS</Monitor>
-<RG_monitor>36.436.693-X</RG_monitor>
-<CPF_monitor>402.210.238-10</CPF_monitor>
-<Curso_monitor>2026-04-25T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-25T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1991-10-24T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>7593</Código>
@@ -65251,16 +64934,6 @@
 <Nascimento>1997-02-20T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18992</Código>
-<Monitor>RAYANE DA SILVA</Monitor>
-<RG_monitor>53.108.962-9</RG_monitor>
-<CPF_monitor>411.717.188-70</CPF_monitor>
-<Curso_monitor>2026-04-05T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-05T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2003-05-16T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>15056</Código>
 <Monitor>DANIELA ALVES PEREIRA DA SILVA</Monitor>
 <RG_monitor>49.333.217-0</RG_monitor>
@@ -65651,16 +65324,6 @@
 <Nascimento>1992-03-08T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18999</Código>
-<Monitor>JESSICA DIAS JORGE</Monitor>
-<RG_monitor>38.352.868-9</RG_monitor>
-<CPF_monitor>412.834.718-33</CPF_monitor>
-<Curso_monitor>2026-04-19T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-19T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2001-01-24T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>14473</Código>
 <Monitor>CICERA NEURA ALVES DE SOUSA</Monitor>
 <RG_monitor>36.485.083-8</RG_monitor>
@@ -65781,16 +65444,6 @@
 <CPF_monitor>413.225.568-90</CPF_monitor>
 <Curso_monitor>2014-02-09T00:00:00</Curso_monitor>
 <VCurso_monitor>2019-02-09T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>19000</Código>
-<Monitor>PIETRA BORGES DE MELLO</Monitor>
-<RG_monitor>39.599.071-3</RG_monitor>
-<CPF_monitor>413.255.928-97</CPF_monitor>
-<Curso_monitor>2026-02-07T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-02-07T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2002-01-26T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>6925</Código>
@@ -68081,16 +67734,6 @@
 <Nascimento>1958-08-14T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19016</Código>
-<Monitor>KAYLAINE CASSIANE DE JESUS DE SOUZA</Monitor>
-<RG_monitor>53.731.526-3</RG_monitor>
-<CPF_monitor>420.256.028-04</CPF_monitor>
-<Curso_monitor>2026-04-05T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-05T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2003-09-28T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>7449</Código>
 <Monitor>ESTELA MARIA DE LIRA JACINTO</Monitor>
 <RG_monitor>43.681.148-0</RG_monitor>
@@ -68466,16 +68109,6 @@
 <Nascimento>2003-10-19T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18988</Código>
-<Monitor>TANIA GABRIELA DA SILVA NOVAIS</Monitor>
-<RG_monitor>44.030.420-9</RG_monitor>
-<CPF_monitor>421.705.348-73</CPF_monitor>
-<Curso_monitor>2022-07-09T00:00:00</Curso_monitor>
-<VCurso_monitor>2027-07-09T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1994-02-05T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>8033</Código>
 <Monitor>BRUNO FONSECA</Monitor>
 <RG_monitor>43.463.852-3</RG_monitor>
@@ -68601,7 +68234,7 @@
 <CPF_monitor>422.215.318-41</CPF_monitor>
 <Curso_monitor>2024-07-22T00:00:00</Curso_monitor>
 <VCurso_monitor>2029-07-22T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1994-11-11T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -68693,16 +68326,6 @@
 <CPF_monitor>422.443.378-80</CPF_monitor>
 <Curso_monitor>2016-07-17T00:00:00</Curso_monitor>
 <VCurso_monitor>2021-07-17T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>18966</Código>
-<Monitor>LARISSA MATOS DA SILVA</Monitor>
-<RG_monitor>48.551.162-9</RG_monitor>
-<CPF_monitor>422.467.138-70</CPF_monitor>
-<Curso_monitor>2026-03-28T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-28T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1995-01-12T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>8199</Código>
@@ -69505,9 +69128,6 @@
 <Monitor>GIOVANNA ALVES LOPES</Monitor>
 <RG_monitor>50.463.774-5</RG_monitor>
 <CPF_monitor>425.081.548-06</CPF_monitor>
-<Curso_monitor>2026-04-29T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-29T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>1999-04-02T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -72410,16 +72030,6 @@
 <Nascimento>2003-07-03T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19034</Código>
-<Monitor>INGRYD CORREA GIACOMINI CRUZ</Monitor>
-<RG_monitor>54.565.091-4</RG_monitor>
-<CPF_monitor>432.429.988-98</CPF_monitor>
-<Curso_monitor>2026-02-15T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-02-15T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2000-11-20T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>10596</Código>
 <Monitor>LUANA SILVA DO REGO</Monitor>
 <RG_monitor>36.727.497-8</RG_monitor>
@@ -73134,16 +72744,6 @@
 <VCurso_monitor>2030-10-02T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>2005-09-29T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18991</Código>
-<Monitor>ALINE CAMARGO DOS SANTOS</Monitor>
-<RG_monitor>43.951.611-0</RG_monitor>
-<CPF_monitor>434.547.288-19</CPF_monitor>
-<Curso_monitor>2026-04-19T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-19T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1993-12-15T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>10141</Código>
@@ -74938,7 +74538,7 @@
 <CPF_monitor>439.830.358-84</CPF_monitor>
 <Curso_monitor>2022-02-19T00:00:00</Curso_monitor>
 <VCurso_monitor>2027-02-19T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1997-10-12T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -75450,16 +75050,6 @@
 <Monitor>JOSEVAN CANTIDIO DE SOUZA CONCEICAO</Monitor>
 <RG_monitor>43.828.970-5</RG_monitor>
 <CPF_monitor>441.847.688-14</CPF_monitor>
-</Monitor>
-<Monitor>
-<Código>18995</Código>
-<Monitor>VALERIA FERREIRA DE LIMA</Monitor>
-<RG_monitor>52.202.033-1</RG_monitor>
-<CPF_monitor>441.867.678-31</CPF_monitor>
-<Curso_monitor>2026-04-26T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-26T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1996-02-09T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>13594</Código>
@@ -76506,16 +76096,6 @@
 <Nascimento>1989-11-24T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19023</Código>
-<Monitor>BIANCA AMORIM SILVA</Monitor>
-<RG_monitor>49.146.943-3</RG_monitor>
-<CPF_monitor>444.565.598-88</CPF_monitor>
-<Curso_monitor>2024-02-04T00:00:00</Curso_monitor>
-<VCurso_monitor>2029-02-04T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1993-03-26T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>12840</Código>
 <Monitor>BEATRIZ OLIVEIRA DE MACEDO</Monitor>
 <RG_monitor>47.866.440-0</RG_monitor>
@@ -77112,16 +76692,6 @@
 <VCurso_monitor>2030-07-24T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>1993-02-11T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18983</Código>
-<Monitor>BARBARA RAMOS DA SILVA</Monitor>
-<RG_monitor>44.326.143-X</RG_monitor>
-<CPF_monitor>446.380.158-32</CPF_monitor>
-<Curso_monitor>2026-04-26T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-26T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1993-10-09T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>10386</Código>
@@ -79427,15 +78997,6 @@
 <Nascimento>1994-03-16T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19007</Código>
-<Monitor>GEOVANA APARECIDA LEANDRO DA SILVA</Monitor>
-<CPF_monitor>452.776.028-95</CPF_monitor>
-<Curso_monitor>2026-03-16T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-16T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2005-10-10T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>18526</Código>
 <Monitor>ANA PAULA SILVA DE SOUSA</Monitor>
 <RG_monitor>53.633.038-4</RG_monitor>
@@ -79816,16 +79377,6 @@
 <VCurso_monitor>2028-01-07T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>1994-04-01T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19036</Código>
-<Monitor>RAYANNE LOPES DA SILVA</Monitor>
-<RG_monitor>57.384.113-5</RG_monitor>
-<CPF_monitor>453.816.558-19</CPF_monitor>
-<Curso_monitor>2026-05-21T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-21T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2007-06-16T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11961</Código>
@@ -80373,7 +79924,7 @@
 <CPF_monitor>455.123.398-69</CPF_monitor>
 <Curso_monitor>2025-11-30T00:00:00</Curso_monitor>
 <VCurso_monitor>2030-11-30T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1996-05-11T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -80855,7 +80406,7 @@
 <CPF_monitor>456.649.938-39</CPF_monitor>
 <Curso_monitor>2023-06-05T00:00:00</Curso_monitor>
 <VCurso_monitor>2028-06-05T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1996-03-15T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -81069,16 +80620,6 @@
 <VCurso_monitor>2027-05-28T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1997-06-11T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18974</Código>
-<Monitor>GRACE FELIX PIMENTEL</Monitor>
-<RG_monitor>44.696.478-5</RG_monitor>
-<CPF_monitor>457.093.128-60</CPF_monitor>
-<Curso_monitor>2026-03-05T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-05T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1994-07-13T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>16156</Código>
@@ -81395,16 +80936,6 @@
 <VCurso_monitor>2029-05-19T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1997-05-07T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18971</Código>
-<Monitor>TAMIRYS ROSARIO DOS SANTOS</Monitor>
-<RG_monitor>52.559.391-3</RG_monitor>
-<CPF_monitor>458.011.748-42</CPF_monitor>
-<Curso_monitor>2026-04-13T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-13T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1995-01-28T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>8352</Código>
@@ -82944,16 +82475,6 @@
 <Nascimento>1997-07-23T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18977</Código>
-<Monitor>MIKAELLE SANTOS REZENDE</Monitor>
-<RG_monitor>55.308.727-7</RG_monitor>
-<CPF_monitor>463.266.708-02</CPF_monitor>
-<Curso_monitor>2026-04-25T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-25T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2006-12-08T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>9810</Código>
 <Monitor>MARIA LUISA DA SILVA CHAVES</Monitor>
 <RG_monitor>50.257.262-0</RG_monitor>
@@ -83360,16 +82881,6 @@
 <VCurso_monitor>2019-08-31T00:00:00</VCurso_monitor>
 </Monitor>
 <Monitor>
-<Código>18985</Código>
-<Monitor>BRUNA KADRI OLIVEIRA DA SILVA</Monitor>
-<RG_monitor>39.515.065-6</RG_monitor>
-<CPF_monitor>464.496.908-79</CPF_monitor>
-<Curso_monitor>2026-04-25T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-25T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1996-11-10T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>9647</Código>
 <Monitor>GRAZIELLE SOARES FERNANDES</Monitor>
 <RG_monitor>50.443.861-X</RG_monitor>
@@ -83677,16 +83188,6 @@
 <CPF_monitor>465.227.908-66</CPF_monitor>
 <Curso_monitor>2016-01-31T00:00:00</Curso_monitor>
 <VCurso_monitor>2021-01-31T00:00:00</VCurso_monitor>
-</Monitor>
-<Monitor>
-<Código>19003</Código>
-<Monitor>BEATRIZ FERREIRA DE OLIVEIRA</Monitor>
-<RG_monitor>38.139.039-1</RG_monitor>
-<CPF_monitor>465.234.868-18</CPF_monitor>
-<Curso_monitor>2026-04-12T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-12T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1997-06-18T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>14300</Código>
@@ -85362,16 +84863,6 @@
 <Nascimento>1996-09-30T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19012</Código>
-<Monitor>JULIA CANDIDO DE MATOS</Monitor>
-<RG_monitor>52.950.668-3</RG_monitor>
-<CPF_monitor>469.610.698-51</CPF_monitor>
-<Curso_monitor>2026-04-02T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-02T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1996-04-10T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>13946</Código>
 <Monitor>ROSINEI DAMACENO SILVA</Monitor>
 <RG_monitor>58.179.622-6</RG_monitor>
@@ -86222,7 +85713,7 @@
 <CPF_monitor>472.005.138-30</CPF_monitor>
 <Curso_monitor>2025-07-12T00:00:00</Curso_monitor>
 <VCurso_monitor>2030-07-12T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>2001-05-08T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -90056,16 +89547,6 @@
 <Nascimento>2003-07-15T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19017</Código>
-<Monitor>LORENA SOARES COELHO DE MOURA</Monitor>
-<RG_monitor>50.074.727-1</RG_monitor>
-<CPF_monitor>481.796.218-63</CPF_monitor>
-<Curso_monitor>2026-04-12T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-12T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1996-05-04T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>13759</Código>
 <Monitor>LETICIA BARBOSA BERNARDINO</Monitor>
 <RG_monitor>39.185.381-8</RG_monitor>
@@ -92399,16 +91880,6 @@
 <Nascimento>1998-06-05T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19020</Código>
-<Monitor>JOICE SOARES MACEDO</Monitor>
-<RG_monitor>39.618.310-4</RG_monitor>
-<CPF_monitor>487.927.968-42</CPF_monitor>
-<Curso_monitor>2025-07-06T00:00:00</Curso_monitor>
-<VCurso_monitor>2030-07-06T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2003-04-03T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>16953</Código>
 <Monitor>MICHELI SANTOS NOVAIS</Monitor>
 <RG_monitor>56.779.993-1</RG_monitor>
@@ -93515,16 +92986,6 @@
 <VCurso_monitor>2030-09-20T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>2003-01-20T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19022</Código>
-<Monitor>STEPHANY DA SILVA LUIZ</Monitor>
-<RG_monitor>54.373.254</RG_monitor>
-<CPF_monitor>491.547.768-13</CPF_monitor>
-<Curso_monitor>2026-05-20T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-20T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2000-07-31T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>16095</Código>
@@ -98922,7 +98383,7 @@
 <CPF_monitor>507.278.688-96</CPF_monitor>
 <Curso_monitor>2022-07-16T00:00:00</Curso_monitor>
 <VCurso_monitor>2027-07-16T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>2001-10-09T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -99280,25 +98741,6 @@
 <Nascimento>1989-02-23T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18984</Código>
-<Monitor>JULYA CAROLINE MARTINS SILVA</Monitor>
-<CPF_monitor>508.107.308-39</CPF_monitor>
-<Curso_monitor>2025-09-04T00:00:00</Curso_monitor>
-<VCurso_monitor>2030-09-04T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2006-12-19T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19015</Código>
-<Monitor>LARISSA CAETANO DOS SANTOS</Monitor>
-<RG_monitor>52.480.536-2</RG_monitor>
-<CPF_monitor>508.124.748-05</CPF_monitor>
-<Curso_monitor>2025-09-28T00:00:00</Curso_monitor>
-<VCurso_monitor>2030-09-28T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2001-05-31T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>12293</Código>
 <Monitor>LUIZA CAROLINA PRAZERES FRAGOSO</Monitor>
 <RG_monitor>57.409.792-2</RG_monitor>
@@ -99572,15 +99014,6 @@
 <VCurso_monitor>2026-08-28T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>1997-06-07T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19005</Código>
-<Monitor>SARAH TOLENTINO PIERRI</Monitor>
-<CPF_monitor>509.143.568-95</CPF_monitor>
-<Curso_monitor>2026-05-07T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-07T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2008-04-30T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>14615</Código>
@@ -100176,16 +99609,6 @@
 <VCurso_monitor>2027-02-19T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>2002-06-17T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19032</Código>
-<Monitor>KAWANY REBECA NOGUEIRA MACHADO</Monitor>
-<RG_monitor>58.439.519-X</RG_monitor>
-<CPF_monitor>511.153.518-77</CPF_monitor>
-<Curso_monitor>2026-04-05T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-05T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2002-01-05T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>16823</Código>
@@ -101023,7 +100446,7 @@
 <CPF_monitor>514.223.408-13</CPF_monitor>
 <Curso_monitor>2022-07-02T00:00:00</Curso_monitor>
 <VCurso_monitor>2027-07-02T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>2001-10-03T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -102815,15 +102238,6 @@
 <Nascimento>1998-08-10T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18976</Código>
-<Monitor>JAMILLY DA SILVA</Monitor>
-<CPF_monitor>523.440.728-45</CPF_monitor>
-<Curso_monitor>2026-04-12T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-12T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2002-04-29T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>11560</Código>
 <Monitor>BRUNO REIS BRAULIO</Monitor>
 <RG_monitor>39.026.564-0</RG_monitor>
@@ -103096,16 +102510,6 @@
 <VCurso_monitor>2029-03-10T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>2002-07-05T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18980</Código>
-<Monitor>BIANCA SANTOS SILVA</Monitor>
-<RG_monitor>62.062.900-9</RG_monitor>
-<CPF_monitor>524.586.508-48</CPF_monitor>
-<Curso_monitor>2026-04-12T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-12T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2006-06-30T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>14666</Código>
@@ -104528,16 +103932,6 @@
 <Nascimento>2003-04-02T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19010</Código>
-<Monitor>LINDOMARIA BISPO RIBEIRO</Monitor>
-<RG_monitor>52.491.272-5</RG_monitor>
-<CPF_monitor>531.183.298-31</CPF_monitor>
-<Curso_monitor>2025-10-19T00:00:00</Curso_monitor>
-<VCurso_monitor>2030-10-19T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2000-06-09T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>18035</Código>
 <Monitor>THAUANY FERREIRA DA SILVA ROSA</Monitor>
 <RG_monitor>58.850.241-8</RG_monitor>
@@ -104555,16 +103949,6 @@
 <VCurso_monitor>2031-02-22T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>2007-12-31T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18970</Código>
-<Monitor>BRENDA BEZERRA DE CASTRO</Monitor>
-<RG_monitor>50.882.812-0</RG_monitor>
-<CPF_monitor>531.245.928-32</CPF_monitor>
-<Curso_monitor>2026-05-18T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-18T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2004-04-18T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>16871</Código>
@@ -105652,16 +105036,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <Nascimento>1999-03-19T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18981</Código>
-<Monitor>RUTE SARAIVA SILVA</Monitor>
-<RG_monitor>38.102.169-5</RG_monitor>
-<CPF_monitor>538.944.118-48</CPF_monitor>
-<Curso_monitor>2026-04-26T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-26T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2000-12-20T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>16333</Código>
 <Monitor>GIOVANNA MENDES DE OLIVEIRA</Monitor>
 <RG_monitor>53.791.515-1</RG_monitor>
@@ -105950,16 +105324,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <Nascimento>2004-05-09T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19001</Código>
-<Monitor>LETICIA MATOS DA SILVA</Monitor>
-<RG_monitor>50.718.228-5</RG_monitor>
-<CPF_monitor>541.156.168-06</CPF_monitor>
-<Curso_monitor>2026-04-26T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-26T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2003-07-16T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>18772</Código>
 <Monitor>ELLEN SANTOS DA SILVA</Monitor>
 <RG_monitor>54.478.910-6</RG_monitor>
@@ -106033,9 +105397,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <Código>18876</Código>
 <Monitor>TAMILLY FARIAS GOMES DA SILVA</Monitor>
 <CPF_monitor>541.372.308-38</CPF_monitor>
-<Curso_monitor>2026-04-23T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-23T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>2005-09-11T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -106659,16 +106020,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <Nascimento>2005-07-02T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18978</Código>
-<Monitor>INGRID NICOLLY GOMES FRANCA</Monitor>
-<RG_monitor>54.611.197-X</RG_monitor>
-<CPF_monitor>543.845.218-04</CPF_monitor>
-<Curso_monitor>2026-03-14T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-14T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2003-09-17T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>14713</Código>
 <Monitor>JENIFFER SANTANA OLIVEIRA DE SANTANA</Monitor>
 <RG_monitor>64.341.069-7</RG_monitor>
@@ -106807,16 +106158,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <VCurso_monitor>2029-08-31T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>1989-08-11T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18965</Código>
-<Monitor>RUTHE ALEXANDRINA DE JESUS</Monitor>
-<RG_monitor>56.898.896-6</RG_monitor>
-<CPF_monitor>544.642.918-48</CPF_monitor>
-<Curso_monitor>2026-03-28T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-28T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2007-10-22T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>18455</Código>
@@ -107518,16 +106859,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <Nascimento>2006-08-18T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19008</Código>
-<Monitor>LARISSA COELHO DE LIMA</Monitor>
-<RG_monitor>56.623.553-5</RG_monitor>
-<CPF_monitor>548.771.438-07</CPF_monitor>
-<Curso_monitor>2024-05-19T00:00:00</Curso_monitor>
-<VCurso_monitor>2029-05-19T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2005-04-15T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>13938</Código>
 <Monitor>ARIANE BIAGIO SANTOS</Monitor>
 <RG_monitor>58.313.499-3</RG_monitor>
@@ -108164,16 +107495,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <VCurso_monitor>2027-09-25T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>2004-05-20T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18989</Código>
-<Monitor>RAISSA BERTHO GOMES</Monitor>
-<RG_monitor>65.490.410-8</RG_monitor>
-<CPF_monitor>554.764.618-09</CPF_monitor>
-<Curso_monitor>2026-05-02T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-02T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2006-08-23T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>16713</Código>
@@ -109051,16 +108372,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <Nascimento>2006-11-01T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>18990</Código>
-<Monitor>JULIA APARECIDA SANTANA COSTA</Monitor>
-<RG_monitor>53.278.483-2</RG_monitor>
-<CPF_monitor>562.113.158-48</CPF_monitor>
-<Curso_monitor>2026-05-03T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-03T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2007-04-09T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>17405</Código>
 <Monitor>JENNIFER MAIERU ALVES</Monitor>
 <RG_monitor>65.409.550-4</RG_monitor>
@@ -109221,16 +108532,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <VCurso_monitor>2027-08-13T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
 <Nascimento>2001-12-28T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19027</Código>
-<Monitor>ISABELLA DA COSTA GOMES</Monitor>
-<RG_monitor>63.597.833-7</RG_monitor>
-<CPF_monitor>563.778.978-98</CPF_monitor>
-<Curso_monitor>2026-03-29T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-29T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2006-12-09T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>13251</Código>
@@ -109827,16 +109128,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <VCurso_monitor>2027-04-23T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>2002-07-30T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19013</Código>
-<Monitor>MARIA EDUARDA BRAZ DA SILVA</Monitor>
-<RG_monitor>39.681.004-4</RG_monitor>
-<CPF_monitor>569.625.278-88</CPF_monitor>
-<Curso_monitor>2026-05-09T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-09T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2004-11-20T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>11539</Código>
@@ -111378,7 +110669,7 @@ GRAZIELA DOS SANTOS</Monitor>
 <CPF_monitor>590.021.948-89</CPF_monitor>
 <Curso_monitor>2025-06-01T00:00:00</Curso_monitor>
 <VCurso_monitor>2030-06-01T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>2004-10-25T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
@@ -112558,15 +111849,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <VCurso_monitor>2027-07-31T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
 <Nascimento>2004-02-18T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>18996</Código>
-<Monitor>GENESIS ANDREINA MEDINA PERAZA</Monitor>
-<CPF_monitor>713.356.221-95</CPF_monitor>
-<Curso_monitor>2026-03-29T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-03-29T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2005-12-16T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
 <Código>12510</Código>
@@ -114594,15 +113876,6 @@ GRAZIELA DOS SANTOS</Monitor>
 <VCurso_monitor>2023-01-21T00:00:00</VCurso_monitor>
 </Monitor>
 <Monitor>
-<Código>19021</Código>
-<Monitor>MARIA GEILCA DA SILVA</Monitor>
-<CPF_monitor>995.662.304-00</CPF_monitor>
-<Curso_monitor>2026-05-17T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-17T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1977-01-02T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
 <Código>7039</Código>
 <Monitor>CLEIDE SERINO</Monitor>
 <RG_monitor>11.793.001</RG_monitor>
@@ -114611,132 +113884,43 @@ GRAZIELA DOS SANTOS</Monitor>
 <VCurso_monitor>2020-07-05T00:00:00</VCurso_monitor>
 </Monitor>
 <Monitor>
-<Código>19038</Código>
-<Monitor>NATALI VITORIA ALVES DS SANTOS</Monitor>
-<RG_monitor>58.348.257-0</RG_monitor>
-<CPF_monitor>538.267.618-63</CPF_monitor>
-<Curso_monitor>2026-05-14T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-14T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1999-11-25T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19039</Código>
-<Monitor>LEONARDO COSTA DE FREITAS</Monitor>
-<RG_monitor>48.147.727-5</RG_monitor>
-<CPF_monitor>423.276.578-65</CPF_monitor>
-<Curso_monitor>2026-04-11T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-04-11T00:00:00</VCurso_monitor>
+<Código>18965</Código>
+<Monitor>RUTHE ALEXANDRINA DE JESUS</Monitor>
+<RG_monitor>56.898.896-6</RG_monitor>
+<CPF_monitor>544.642.918-48</CPF_monitor>
+<Curso_monitor>2026-03-28T00:00:00</Curso_monitor>
+<VCurso_monitor>2031-03-28T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>1992-07-13T00:00:00</Nascimento>
+<Nascimento>2007-10-22T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19040</Código>
-<Monitor>ELIANE NONATO DA SILVA</Monitor>
-<RG_monitor>33.538.368</RG_monitor>
-<CPF_monitor>319.300.058-22</CPF_monitor>
-<Curso_monitor>2026-05-24T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-24T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1981-03-22T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19041</Código>
-<Monitor>RICARDO JACINTO FORTES</Monitor>
-<RG_monitor>50.203.198</RG_monitor>
-<CPF_monitor>381.059.708-21</CPF_monitor>
-<Curso_monitor>2026-05-24T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-24T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1998-09-03T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19042</Código>
-<Monitor>CAROLINE FERREIRA DA SILVA</Monitor>
-<RG_monitor>39.349.962-5</RG_monitor>
-<CPF_monitor>366.302.958-11</CPF_monitor>
-<Curso_monitor>2026-05-24T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-24T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2000-10-24T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19043</Código>
-<Monitor>KAREN SUELLEN DA SILVA BARBOSA</Monitor>
-<RG_monitor>38.759.122-9</RG_monitor>
-<CPF_monitor>467.865.018-00</CPF_monitor>
-<Curso_monitor>2026-05-17T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-17T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2001-09-29T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19044</Código>
-<Monitor>THAYNA CAROLINA ANGELO MARTINS</Monitor>
-<CPF_monitor>511.825.818-97</CPF_monitor>
-<Curso_monitor>2026-05-24T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-24T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2007-01-11T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19045</Código>
-<Monitor>LAUANNE VITORIA GOMES LEITE</Monitor>
-<RG_monitor>63.625.541-4</RG_monitor>
-<CPF_monitor>555.336.568-63</CPF_monitor>
-<Curso_monitor>2026-05-18T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-18T00:00:00</VCurso_monitor>
+<Código>18966</Código>
+<Monitor>LARISSA MATOS DA SILVA</Monitor>
+<RG_monitor>48.551.162-9</RG_monitor>
+<CPF_monitor>422.467.138-70</CPF_monitor>
+<Curso_monitor>2026-03-28T00:00:00</Curso_monitor>
+<VCurso_monitor>2031-03-28T00:00:00</VCurso_monitor>
 <Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
-<Nascimento>2007-09-22T00:00:00</Nascimento>
+<Nascimento>1995-01-12T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19046</Código>
-<Monitor>NADIR DE ALMEIDA SANTOS SANCHEZ DE OLIVEIRA</Monitor>
-<RG_monitor>29.795.613-9</RG_monitor>
-<CPF_monitor>272.767.278-07</CPF_monitor>
-<Curso_monitor>2026-05-15T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-15T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>1980-03-04T00:00:00</Nascimento>
+<Código>18967</Código>
+<Monitor>MARIA VILMA PEREIRA SILVA OLIVEIRA</Monitor>
+<RG_monitor>69.552.144-5</RG_monitor>
+<CPF_monitor>066.378.853-63</CPF_monitor>
+<Curso_monitor>2026-02-07T00:00:00</Curso_monitor>
+<VCurso_monitor>2031-02-07T00:00:00</VCurso_monitor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Nascimento>1994-12-18T00:00:00</Nascimento>
 </Monitor>
 <Monitor>
-<Código>19047</Código>
-<Monitor>ELEN STEFANI TEOTONIO</Monitor>
-<RG_monitor>59.509.200-7</RG_monitor>
-<CPF_monitor>560.989.358-58</CPF_monitor>
-<Curso_monitor>2026-02-22T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-02-22T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2005-06-17T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19048</Código>
-<Monitor>ALICE VITORIA LOPES GOMES</Monitor>
-<RG_monitor>64.332.429-X</RG_monitor>
-<CPF_monitor>543.870.118-07</CPF_monitor>
-<Curso_monitor>2026-05-13T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-13T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2006-02-03T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19049</Código>
-<Monitor>MARIA LUIZA SANTOS DE JESUS</Monitor>
-<RG_monitor>68.745.196-6</RG_monitor>
-<CPF_monitor>607.209.548-86</CPF_monitor>
-<Curso_monitor>2026-05-17T00:00:00</Curso_monitor>
-<VCurso_monitor>2031-05-17T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2009-02-22T00:00:00</Nascimento>
-</Monitor>
-<Monitor>
-<Código>19050</Código>
-<Monitor>TALITA BEATRIZ DA SILVA DE JESUS</Monitor>
-<RG_monitor>66.670.768-6</RG_monitor>
-<CPF_monitor>582.066.738-73</CPF_monitor>
-<Curso_monitor>2025-11-16T00:00:00</Curso_monitor>
-<VCurso_monitor>2030-11-16T00:00:00</VCurso_monitor>
-<Tipo_de_vinculo>COOPERADO</Tipo_de_vinculo>
-<Nascimento>2007-09-25T00:00:00</Nascimento>
+<Código>18968</Código>
+<Monitor>ALZIRA SELMA CORREA RIBEIRO</Monitor>
+<RG_monitor>20.376.509-6</RG_monitor>
+<CPF_monitor>127.116.488-42</CPF_monitor>
+<Curso_monitor>2026-03-01T00:00:00</Curso_monitor>
+<VCurso_monitor>2031-03-01T00:00:00</VCurso_monitor>
+<Tipo_de_vinculo>FUNCIONÁRIO</Tipo_de_vinculo>
+<Nascimento>1969-04-02T00:00:00</Nascimento>
 </Monitor>
 </dataroot>
