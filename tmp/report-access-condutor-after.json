@@ -1,0 +1,235 @@
+{
+  "startedAt": "2026-06-01T13:50:54.072Z",
+  "finishedAt": "2026-06-01T13:51:52.618Z",
+  "baseUrl": "http://localhost:3001",
+  "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "condutor"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "condutor",
+      "label": "Condutor",
+      "fileName": "Condutor.xml",
+      "endpoint": "http://localhost:3001/api/condutor/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T13:50:54.088Z",
+      "finishedAt": "2026-06-01T13:51:52.612Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 8127,
+        "processed": 5808,
+        "inserted": 0,
+        "updated": 5808,
+        "deleted": 2318,
+        "skipped": 2319
+      },
+      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+      "response": {
+        "message": "Importacao de condutores via Access concluida com sucesso.",
+        "source": "access",
+        "databasePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+        "total": 8127,
+        "processed": 5808,
+        "inserted": 0,
+        "updated": 5808,
+        "deleted": 2318,
+        "skipped": 2319,
+        "skippedRecords": [
+          {
+            "index": 11,
+            "codigoXml": "9251",
+            "condutorXml": "WALDIR PEREIRA LIMA",
+            "cpfCondutorXml": "001.147.358-40",
+            "crmcXml": "043.544-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 11: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 12,
+            "codigoXml": "9252",
+            "condutorXml": "ANTONIO PEREZ",
+            "cpfCondutorXml": "001.217.808-05",
+            "crmcXml": "041.985-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 12: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 17,
+            "codigoXml": "9257",
+            "condutorXml": "VENANCIO APARECIDO DOS ANJOS",
+            "cpfCondutorXml": "001.465.838-09",
+            "crmcXml": "020.169-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 17: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 22,
+            "codigoXml": "9262",
+            "condutorXml": "ADAIR PEREIRA DE CASTRO",
+            "cpfCondutorXml": "003.069.198-26",
+            "crmcXml": "023.756-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 22: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 23,
+            "codigoXml": "9263",
+            "condutorXml": "TANIA MARIA DOS SANTOS",
+            "cpfCondutorXml": "003.179.658-32",
+            "crmcXml": "016.627-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 23: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 28,
+            "codigoXml": "9268",
+            "condutorXml": "DIRCEU CECONI",
+            "cpfCondutorXml": "003.561.998-86",
+            "crmcXml": "028.395-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 28: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 34,
+            "codigoXml": "9274",
+            "condutorXml": "(DESCREDENCIADO) JOSE PEREIRA DOS SANTOS",
+            "cpfCondutorXml": "003.895.628-40",
+            "crmcXml": "033.263-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 34: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 40,
+            "codigoXml": "9280",
+            "condutorXml": "LAERCIO ALVES DA CUNHA",
+            "cpfCondutorXml": "004.249.078-28",
+            "crmcXml": "019.206-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 40: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 48,
+            "codigoXml": "9288",
+            "condutorXml": "WAGNER VIEIRA",
+            "cpfCondutorXml": "006.119.658-44",
+            "crmcXml": "023.935-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 48: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 50,
+            "codigoXml": "9290",
+            "condutorXml": "JURACI TADEU DA SILVA",
+            "cpfCondutorXml": "006.131.998-80",
+            "crmcXml": "024.044-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 50: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 52,
+            "codigoXml": "9292",
+            "condutorXml": "JOSE MAURICIO DE PAULA",
+            "cpfCondutorXml": "006.173.838-71",
+            "crmcXml": "042.467-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 52: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 53,
+            "codigoXml": "9293",
+            "condutorXml": "EDSON FERREIRA DA SILVA",
+            "cpfCondutorXml": "006.249.308-66",
+            "crmcXml": "014.738-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 53: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 54,
+            "codigoXml": "9294",
+            "condutorXml": "EDIMAR DE FREITAS MATOS",
+            "cpfCondutorXml": "006.278.776-48",
+            "crmcXml": "017.649-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 54: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 55,
+            "codigoXml": "9295",
+            "condutorXml": "CARLOS ALBERTO DA SILVA",
+            "cpfCondutorXml": "006.521.258-40",
+            "crmcXml": "028.084-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 55: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 61,
+            "codigoXml": "9301",
+            "condutorXml": "JOSE ANTONIO",
+            "cpfCondutorXml": "006.851.318-66",
+            "crmcXml": "044.608-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 61: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 63,
+            "codigoXml": "9303",
+            "condutorXml": "GERALDO VICENTE DE ANDRADE",
+            "cpfCondutorXml": "006.948.428-77",
+            "crmcXml": "019.712-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 63: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 66,
+            "codigoXml": "9306",
+            "condutorXml": "GILVAN FERNANDES DE OLIVEIRA",
+            "cpfCondutorXml": "006.980.068-52",
+            "crmcXml": "048.450-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 66: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 74,
+            "codigoXml": "9314",
+            "condutorXml": "ERNANDES AUGUSTO DO CARMO",
+            "cpfCondutorXml": "007.333.608-40",
+            "crmcXml": "047.485-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 74: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 76,
+            "codigoXml": "9316",
+            "condutorXml": "CICERO FERREIRA DA SILVA",
+            "cpfCondutorXml": "007.567.568-47",
+            "crmcXml": "039.927-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 76: tipo de vinculo invalido no XML."
+          },
+          {
+            "index": 78,
+            "codigoXml": "9318",
+            "condutorXml": "JOAO DOS SANTOS MACEDO",
+            "cpfCondutorXml": "007.804.678-50",
+            "crmcXml": "007.595-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 78: tipo de vinculo invalido no XML."
+          }
+        ]
+      }
+    }
+  ]
+}

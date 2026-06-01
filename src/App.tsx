@@ -503,6 +503,8 @@ type XmlImportAllSkippedRecord = {
 
 type XmlImportAllStepResponse = {
   message?: string
+  source?: string
+  databasePath?: string
   skippedRecords?: XmlImportAllSkippedRecord[]
 }
 
@@ -510,6 +512,7 @@ type XmlImportAllStepResult = {
   key: string
   label: string
   fileName: string
+  source?: string
   endpoint: string
   startedAt: string
   finishedAt: string
@@ -534,7 +537,9 @@ type XmlImportAllReport = {
   startedAt: string
   finishedAt: string | null
   baseUrl: string
+  source?: string
   logPath?: string
+  accessDbPath?: string
   deleteMissing?: boolean
   continueOnError: boolean
   selectedStepKeys: string[]
@@ -555,6 +560,15 @@ type XmlImportAllRunResponse = {
   stdoutTail: string
   stderrTail: string
   logTail?: string
+  source?: string
+  accessDbPath?: string
+  generateFromAccess?: boolean
+  truncateBeforeImport?: boolean
+  selectedStepKeys?: string[]
+  totalSteps?: number
+  currentStepKey?: string
+  currentStepIndex?: number | null
+  currentStepSource?: string
   isRunning?: boolean
   startedAt?: string
   finishedAt?: string
@@ -1387,6 +1401,8 @@ function App() {
   const [xmlImportAllStatusTone, setXmlImportAllStatusTone] = useState<StatusTone>('idle')
   const [xmlImportAllStdout, setXmlImportAllStdout] = useState('')
   const [xmlImportAllStderr, setXmlImportAllStderr] = useState('')
+  const [xmlImportAllAccessDbPathInput, setXmlImportAllAccessDbPathInput] = useState('')
+  const [xmlImportAllLastUpdatedAt, setXmlImportAllLastUpdatedAt] = useState('')
   const [selectedXmlImportAllLogStream, setSelectedXmlImportAllLogStream] = useState<SmokeLogStream>('stdout')
   const [xmlImportAllResult, setXmlImportAllResult] = useState<XmlImportAllRunResponse | null>(null)
   const [selectedXmlImportAllStepKey, setSelectedXmlImportAllStepKey] = useState('')
@@ -3707,7 +3723,7 @@ function App() {
   const handleRunXmlImportAll = async () => {
     setIsRunningXmlImportAll(true)
     setXmlImportAllStatusTone('idle')
-    setXmlImportAllStatusMessage('Iniciando importacao XML consolidada...')
+    setXmlImportAllStatusMessage('Iniciando importacao XML com geracao a partir do Access...')
     setXmlImportAllStdout('')
     setXmlImportAllStderr('')
 
@@ -3718,6 +3734,9 @@ function App() {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
+        body: JSON.stringify({
+          accessDbPath: xmlImportAllAccessDbPathInput.trim(),
+        }),
       })
 
       const payload = await response.json().catch(() => null) as XmlImportAllRunResponse | null
@@ -3727,6 +3746,7 @@ function App() {
       setXmlImportAllStdout(payload?.logTail || payload?.stdoutTail || '')
       setXmlImportAllStderr(payload?.stderrTail ?? '')
       setSelectedXmlImportAllLogStream(payload?.status === 'failed' ? 'stderr' : 'stdout')
+      setXmlImportAllLastUpdatedAt(new Date().toISOString())
 
       if (!response.ok) {
         throw new Error(payload?.message || 'Falha ao executar a importacao XML consolidada.')
@@ -3741,6 +3761,10 @@ function App() {
       setXmlImportAllStatusMessage(message)
       setIsRunningXmlImportAll(false)
     }
+  }
+
+  const handleClearXmlImportAllAccessDbPath = () => {
+    setXmlImportAllAccessDbPathInput('')
   }
 
   const loadXmlImportAllStatus = useCallback(async () => {
@@ -3761,8 +3785,10 @@ function App() {
     setXmlImportAllStdout(payload.logTail || payload.stdoutTail || '')
     setXmlImportAllStderr(payload.stderrTail || '')
     setIsRunningXmlImportAll(payload.isRunning === true)
+    setXmlImportAllLastUpdatedAt(new Date().toISOString())
 
     if (payload.isRunning) {
+      setSelectedXmlImportAllLogStream('stdout')
       const runningMessage = payload.currentFileName
         ? `Importando ${payload.currentFileName}${payload.currentProgressText ? ` - registro ${payload.currentProgressText}` : ''}`
         : (payload.message || 'Importacao XML consolidada em execucao.')
@@ -3779,7 +3805,7 @@ function App() {
       setXmlImportAllStatusMessage(payload.message || 'Importacao XML consolidada finalizada com falhas.')
     } else {
       setXmlImportAllStatusTone('idle')
-      setXmlImportAllStatusMessage(payload.message || 'Nenhuma importacao XML em lote em execucao.')
+      setXmlImportAllStatusMessage(payload.message || 'Nenhuma importacao Xml/Access em lote em execucao.')
     }
 
     return payload
@@ -3823,6 +3849,35 @@ function App() {
     || selectedXmlImportAllStep?.response?.message
     || selectedXmlImportAllStep?.error?.message
     || selectedXmlImportAllStep?.error?.cause?.message
+  const xmlImportAllAccessDbPath = xmlImportAllResult?.report?.accessDbPath
+    || xmlImportAllResult?.accessDbPath
+    || selectedXmlImportAllStep?.response?.databasePath
+    || ''
+  const xmlImportAllSource = xmlImportAllResult?.report?.source
+    || xmlImportAllResult?.source
+    || selectedXmlImportAllStep?.source
+    || selectedXmlImportAllStep?.response?.source
+    || ''
+  const xmlImportAllSourceLabel = xmlImportAllSource === 'access'
+    ? 'Access direto'
+    : (xmlImportAllResult?.generateFromAccess ? 'XML gerado via Access' : 'XML')
+  const xmlImportAllTotalSteps = xmlImportAllResult?.totalSteps
+    || xmlImportAllResult?.report?.selectedStepKeys.length
+    || xmlImportAllResult?.selectedStepKeys?.length
+    || 0
+  const xmlImportAllCurrentStepIndex = xmlImportAllResult?.currentStepIndex ?? null
+  const xmlImportAllStepProgressText = xmlImportAllCurrentStepIndex && xmlImportAllTotalSteps > 0
+    ? `${xmlImportAllCurrentStepIndex}/${xmlImportAllTotalSteps}`
+    : '-'
+  const xmlImportAllLastUpdatedLabel = xmlImportAllLastUpdatedAt
+    ? new Date(xmlImportAllLastUpdatedAt).toLocaleTimeString('pt-BR')
+    : '-'
+
+  useEffect(() => {
+    if (!xmlImportAllAccessDbPathInput && xmlImportAllAccessDbPath) {
+      setXmlImportAllAccessDbPathInput(xmlImportAllAccessDbPath)
+    }
+  }, [xmlImportAllAccessDbPathInput, xmlImportAllAccessDbPath])
 
   const handleCopySmokeReportPath = async () => {
     if (!smokeResult?.reportPath) {
@@ -7858,7 +7913,7 @@ function App() {
                       className={`menu-subitem menu-subitem-nested ${activeView === 'xmlImportLote' ? 'menu-subitem-active' : ''}`}
                       onClick={() => setActiveView('xmlImportLote')}
                     >
-                      Importacao XML em lote
+                      Importacao Xml/Access em lote
                     </li> : null}
                     {isViewAllowed('financeiroReprocessamento', menuPermissionKeys) ? <li
                       className={`menu-subitem menu-subitem-nested ${activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
@@ -13878,9 +13933,9 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Importacao administrativa</p>
-              <h2 id="content-title">Importacao XML em lote</h2>
+              <h2 id="content-title">Importacao Xml/Access em lote</h2>
               <p className="content-description">
-                Execute a carga consolidada dos XMLs operacionais e acompanhe na tela o arquivo atual e o progresso por registro no formato 1/x.
+                Execute a carga consolidada via XML gerado a partir do Access, acompanhe tabela atual no formato 1/x e veja em tempo real se houve zeragem inicial.
               </p>
             </div>
 
@@ -13894,8 +13949,35 @@ function App() {
                 >
                   {isRunningXmlImportAll
                     ? 'Executando importacao...'
-                    : 'Executar importacao XML em lote'}
+                    : 'Executar importacao Xml/Access em lote'}
                 </button>
+                <div className="xml-import-all-path-field" aria-live="polite">
+                  <div className="xml-import-all-path-field-header">
+                    <label className="smoke-card-label" htmlFor="xml-import-all-access-db-path-input">Arquivo Access (local e nome)</label>
+                    <div className="xml-import-all-path-field-actions">
+                      <span className="xml-import-all-path-field-badge">Editavel</span>
+                      <button
+                        type="button"
+                        className="secondary-button xml-import-all-path-clear-button"
+                        onClick={handleClearXmlImportAllAccessDbPath}
+                        disabled={isRunningXmlImportAll || !xmlImportAllAccessDbPathInput}
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    id="xml-import-all-access-db-path-input"
+                    className="form-input xml-import-all-path-input"
+                    type="text"
+                    value={xmlImportAllAccessDbPathInput}
+                    onChange={(event) => setXmlImportAllAccessDbPathInput(event.target.value)}
+                    placeholder={xmlImportAllAccessDbPath || 'Informe o caminho completo do arquivo .accdb'}
+                  />
+                  <p className="xml-import-all-path-help">
+                    Altere este campo para processar outro arquivo .accdb no proximo clique de execucao.
+                  </p>
+                </div>
               </div>
 
               <div className="management-card smoke-card">
@@ -13903,16 +13985,21 @@ function App() {
                 <p className={`status-message status-${xmlImportAllStatusTone}`} aria-live="polite">
                   {xmlImportAllStatusMessage}
                 </p>
+                <p className="smoke-suite-empty">Atualizacao automatica do log: a cada 1s (ultima leitura: {xmlImportAllLastUpdatedLabel})</p>
 
                 {xmlImportAllResult?.isRunning || xmlImportAllResult?.currentFileName || xmlImportAllResult?.currentProgressText ? (
                   <div className="smoke-summary-grid">
                     <article className="smoke-summary-card smoke-summary-card-wide">
-                      <span className="smoke-card-label">XML atual</span>
+                      <span className="smoke-card-label">Tabela/arquivo atual</span>
                       <strong>{xmlImportAllResult?.currentFileName || 'Aguardando inicio da etapa...'}</strong>
                     </article>
                     <article className="smoke-summary-card">
                       <span className="smoke-card-label">Etapa atual</span>
                       <strong>{xmlImportAllResult?.currentStepLabel || '-'}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Tabela atual</span>
+                      <strong>{xmlImportAllStepProgressText}</strong>
                     </article>
                     <article className="smoke-summary-card">
                       <span className="smoke-card-label">Progresso</span>
@@ -13939,7 +14026,15 @@ function App() {
                     </article>
                     <article className="smoke-summary-card">
                       <span className="smoke-card-label">Etapas</span>
-                      <strong>{xmlImportAllResult.report?.selectedStepKeys.length ?? 0}</strong>
+                      <strong>{xmlImportAllTotalSteps}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Fonte em uso</span>
+                      <strong>{xmlImportAllSourceLabel}</strong>
+                    </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Gerando XML antes</span>
+                      <strong>{xmlImportAllResult?.generateFromAccess ? 'Sim' : 'Nao'}</strong>
                     </article>
                     <article className="smoke-summary-card">
                       <span className="smoke-card-label">Falhas</span>
@@ -13953,10 +14048,20 @@ function App() {
                       <span className="smoke-card-label">Excluir ausentes</span>
                       <strong>{xmlImportAllResult.report?.deleteMissing === false ? 'Nao' : 'Sim'}</strong>
                     </article>
+                    <article className="smoke-summary-card">
+                      <span className="smoke-card-label">Zerou tabelas no inicio</span>
+                      <strong>{xmlImportAllResult?.truncateBeforeImport === false ? 'Nao' : 'Sim'}</strong>
+                    </article>
                     <article className="smoke-summary-card smoke-summary-card-wide">
                       <span className="smoke-card-label">Script</span>
                       <strong>{xmlImportAllResult.scriptName}</strong>
                     </article>
+                    {xmlImportAllAccessDbPath ? (
+                      <article className="smoke-summary-card smoke-summary-card-wide">
+                        <span className="smoke-card-label">Arquivo Access usado</span>
+                        <strong>{xmlImportAllAccessDbPath}</strong>
+                      </article>
+                    ) : null}
                     {xmlImportAllResult.reportPath ? (
                       <article className="smoke-summary-card smoke-summary-card-wide">
                         <span className="smoke-card-label">Relatorio JSON</span>

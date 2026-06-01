@@ -1,0 +1,235 @@
+{
+  "startedAt": "2026-06-01T12:26:25.929Z",
+  "finishedAt": "2026-06-01T12:26:50.270Z",
+  "baseUrl": "http://localhost:3001",
+  "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "condutor"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "condutor",
+      "label": "Condutor",
+      "fileName": "Condutor.xml",
+      "endpoint": "http://localhost:3001/api/condutor/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T12:26:25.938Z",
+      "finishedAt": "2026-06-01T12:26:50.268Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 8127,
+        "processed": 0,
+        "inserted": 0,
+        "updated": 0,
+        "deleted": 0,
+        "skipped": 8127
+      },
+      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+      "response": {
+        "message": "Importacao de condutores via Access concluida com sucesso.",
+        "source": "access",
+        "databasePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+        "total": 8127,
+        "processed": 0,
+        "inserted": 0,
+        "updated": 0,
+        "deleted": 0,
+        "skipped": 8127,
+        "skippedRecords": [
+          {
+            "index": 1,
+            "codigoXml": "",
+            "condutorXml": "CARLOS ROBERTO RODRIGUES",
+            "cpfCondutorXml": "000.182.618-25",
+            "crmcXml": "022.629-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 1: codigo invalido no XML."
+          },
+          {
+            "index": 2,
+            "codigoXml": "",
+            "condutorXml": "JOAO CARLOS ALVES DE LIMA",
+            "cpfCondutorXml": "000.254.228-55",
+            "crmcXml": "039.735-00",
+            "tipoVinculoXml": "COOPERADO",
+            "message": "Registro 2: codigo invalido no XML."
+          },
+          {
+            "index": 3,
+            "codigoXml": "",
+            "condutorXml": "SIDNEY FAHR",
+            "cpfCondutorXml": "000.332.818-07",
+            "crmcXml": "017.861-00",
+            "tipoVinculoXml": "COOPERADO",
+            "message": "Registro 3: codigo invalido no XML."
+          },
+          {
+            "index": 4,
+            "codigoXml": "",
+            "condutorXml": "SERGIO DE BARROS",
+            "cpfCondutorXml": "000.426.558-03",
+            "crmcXml": "006.233-00",
+            "tipoVinculoXml": "COOPERADO",
+            "message": "Registro 4: codigo invalido no XML."
+          },
+          {
+            "index": 5,
+            "codigoXml": "",
+            "condutorXml": "MARIA IGNEZ BALDIN FISCHER",
+            "cpfCondutorXml": "000.578.378-05",
+            "crmcXml": "000.583-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 5: codigo invalido no XML."
+          },
+          {
+            "index": 6,
+            "codigoXml": "",
+            "condutorXml": "APARECIDO DONIZETI TOFANO",
+            "cpfCondutorXml": "000.702.938-13",
+            "crmcXml": "019.256-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 6: codigo invalido no XML."
+          },
+          {
+            "index": 7,
+            "codigoXml": "",
+            "condutorXml": "ADELSON CRUZ PEREIRA",
+            "cpfCondutorXml": "000.809.965-07",
+            "crmcXml": "046.725-00",
+            "tipoVinculoXml": "COOPERADO",
+            "message": "Registro 7: codigo invalido no XML."
+          },
+          {
+            "index": 8,
+            "codigoXml": "",
+            "condutorXml": "APARECIDO FRANCISCO VIEIRA PEREIRA",
+            "cpfCondutorXml": "000.930.398-75",
+            "crmcXml": "036.825-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 8: codigo invalido no XML."
+          },
+          {
+            "index": 9,
+            "codigoXml": "",
+            "condutorXml": "ANTONIO IDVAN ARAUJO MOTA",
+            "cpfCondutorXml": "001.078.738-00",
+            "crmcXml": "014.382-00",
+            "tipoVinculoXml": "COOPERADO",
+            "message": "Registro 9: codigo invalido no XML."
+          },
+          {
+            "index": 10,
+            "codigoXml": "",
+            "condutorXml": "OSVALDO DOS SANTOS ROCHA",
+            "cpfCondutorXml": "001.104.368-73",
+            "crmcXml": "016.941-00",
+            "tipoVinculoXml": "COOPERADO",
+            "message": "Registro 10: codigo invalido no XML."
+          },
+          {
+            "index": 11,
+            "codigoXml": "",
+            "condutorXml": "WALDIR PEREIRA LIMA",
+            "cpfCondutorXml": "001.147.358-40",
+            "crmcXml": "043.544-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 11: codigo invalido no XML."
+          },
+          {
+            "index": 12,
+            "codigoXml": "",
+            "condutorXml": "ANTONIO PEREZ",
+            "cpfCondutorXml": "001.217.808-05",
+            "crmcXml": "041.985-00",
+            "tipoVinculoXml": "FUNCION�RIO",
+            "message": "Registro 12: codigo invalido no XML."
+          },
+          {
+            "index": 13,
+            "codigoXml": "",
+            "condutorXml": "LUIZ ALFREDO MAQUERINI",
+            "cpfCondutorXml": "001.230.068-30",
+            "crmcXml": "040.402-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 13: codigo invalido no XML."
+          },
+          {
+            "index": 14,
+            "codigoXml": "",
+            "condutorXml": "JOSE VICENTE DO NASCIMENTO",
+            "cpfCondutorXml": "001.230.518-94",
+            "crmcXml": "041.739-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 14: codigo invalido no XML."
+          },
+          {
+            "index": 15,
+            "codigoXml": "",
+            "condutorXml": "NICE MACEDO DIAS",
+            "cpfCondutorXml": "001.405.828-60",
+            "crmcXml": "019.687-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 15: codigo invalido no XML."
+          },
+          {
+            "index": 16,
+            "codigoXml": "",
+            "condutorXml": "ROBERTO GARCIA FERNANDES",
+            "cpfCondutorXml": "001.436.318-61",
+            "crmcXml": "017.375-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 16: codigo invalido no XML."
+          },
+          {
+            "index": 17,
+            "codigoXml": "",
+            "condutorXml": "VENANCIO APARECIDO DOS ANJOS",
+            "cpfCondutorXml": "001.465.838-09",
+            "crmcXml": "020.169-00",
+            "tipoVinculoXml": "S�CIO",
+            "message": "Registro 17: codigo invalido no XML."
+          },
+          {
+            "index": 18,
+            "codigoXml": "",
+            "condutorXml": "ILZA TAVARES RIBEIRO",
+            "cpfCondutorXml": "001.471.398-56",
+            "crmcXml": "007.019-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 18: codigo invalido no XML."
+          },
+          {
+            "index": 19,
+            "codigoXml": "",
+            "condutorXml": "FRANCISCO DAS CHAGAS DE CARVALHO",
+            "cpfCondutorXml": "001.663.468-37",
+            "crmcXml": "011.030-00",
+            "tipoVinculoXml": "",
+            "message": "Registro 19: codigo invalido no XML."
+          },
+          {
+            "index": 20,
+            "codigoXml": "",
+            "condutorXml": "JOSE NILSON FERNANDES DOS SANTOS",
+            "cpfCondutorXml": "001.697.028-47",
+            "crmcXml": "046.762-00",
+            "tipoVinculoXml": "COOPERADO",
+            "message": "Registro 20: codigo invalido no XML."
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "startedAt": "2026-06-01T12:28:35.646Z",
+  "finishedAt": "2026-06-01T12:31:02.888Z",
+  "baseUrl": "http://localhost:3001",
+  "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "vinculo-condutor"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "vinculo-condutor",
+      "label": "Vinculo Condutor",
+      "fileName": "Vinculos_condutor.xml",
+      "endpoint": "http://localhost:3001/api/vinculo-condutor/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T12:28:35.654Z",
+      "finishedAt": "2026-06-01T12:31:02.884Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 6506,
+        "processed": 6143,
+        "inserted": 0,
+        "updated": 6143,
+        "deleted": 0,
+        "skipped": 0
+      },
+      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+      "response": {
+        "message": "Importacao de vinculos do condutor via Access concluida com sucesso.",
+        "source": "access",
+        "databasePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+        "total": 6506,
+        "processed": 6143,
+        "inserted": 0,
+        "updated": 6143,
+        "deleted": 0,
+        "skipped": 0,
+        "skippedRecords": []
+      }
+    }
+  ]
+}

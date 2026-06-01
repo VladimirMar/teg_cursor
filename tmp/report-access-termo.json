@@ -1,0 +1,195 @@
+{
+  "startedAt": "2026-06-01T12:26:50.452Z",
+  "finishedAt": "2026-06-01T12:27:08.733Z",
+  "baseUrl": "http://localhost:3001",
+  "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "termo"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "termo",
+      "label": "Credenciamento Termo",
+      "fileName": "Credenciamento_Termo.xml",
+      "endpoint": "http://localhost:3001/api/termo/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T12:26:50.462Z",
+      "finishedAt": "2026-06-01T12:27:08.731Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 4061,
+        "processed": 0,
+        "inserted": 0,
+        "updated": 0,
+        "deleted": 0,
+        "skipped": 4061
+      },
+      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+      "response": {
+        "message": "Importacao de credenciamento termo via Access concluida com sucesso.",
+        "source": "access",
+        "databasePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+        "total": 4061,
+        "processed": 0,
+        "inserted": 0,
+        "updated": 0,
+        "deleted": 0,
+        "skipped": 4061,
+        "skippedRecords": [
+          {
+            "index": 1,
+            "codigoXml": "",
+            "credenciadoXml": "ROBINSON SOARES RIBEIRO",
+            "aditivoXml": "",
+            "message": "Registro 1: codigo invalido no XML."
+          },
+          {
+            "index": 2,
+            "codigoXml": "",
+            "credenciadoXml": "JTI TRANSPORTES LTDA - ME",
+            "aditivoXml": "",
+            "message": "Registro 2: codigo invalido no XML."
+          },
+          {
+            "index": 3,
+            "codigoXml": "",
+            "credenciadoXml": "ROSEMARY DE ABREU COSTA TRANSPORTES - ME",
+            "aditivoXml": "",
+            "message": "Registro 3: codigo invalido no XML."
+          },
+          {
+            "index": 4,
+            "codigoXml": "",
+            "credenciadoXml": "JOSE ALBERTO SANTANA DE LIMA",
+            "aditivoXml": "",
+            "message": "Registro 4: codigo invalido no XML."
+          },
+          {
+            "index": 5,
+            "codigoXml": "",
+            "credenciadoXml": "CLEUBER DE SOUZA GOMES",
+            "aditivoXml": "",
+            "message": "Registro 5: codigo invalido no XML."
+          },
+          {
+            "index": 6,
+            "codigoXml": "",
+            "credenciadoXml": "FELIPE HENRIQUE DA SILVA BEZERRA 41125477814",
+            "aditivoXml": "",
+            "message": "Registro 6: codigo invalido no XML."
+          },
+          {
+            "index": 7,
+            "codigoXml": "",
+            "credenciadoXml": "JTI TRANSPORTES LTDA - ME",
+            "aditivoXml": "",
+            "message": "Registro 7: codigo invalido no XML."
+          },
+          {
+            "index": 8,
+            "codigoXml": "",
+            "credenciadoXml": "JAIR ANDRADE DA SILVA ALMEIDA",
+            "aditivoXml": "",
+            "message": "Registro 8: codigo invalido no XML."
+          },
+          {
+            "index": 9,
+            "codigoXml": "",
+            "credenciadoXml": "LUCIANA NASCIMENTO TAGLIARI",
+            "aditivoXml": "",
+            "message": "Registro 9: codigo invalido no XML."
+          },
+          {
+            "index": 10,
+            "codigoXml": "",
+            "credenciadoXml": "CLEIR MANGUEIRA ANDRIOLA",
+            "aditivoXml": "",
+            "message": "Registro 10: codigo invalido no XML."
+          },
+          {
+            "index": 11,
+            "codigoXml": "",
+            "credenciadoXml": "VBS TRANSPORTES LTDA - ME",
+            "aditivoXml": "",
+            "message": "Registro 11: codigo invalido no XML."
+          },
+          {
+            "index": 12,
+            "codigoXml": "",
+            "credenciadoXml": "MARCELO MARTINS VIEIRA",
+            "aditivoXml": "",
+            "message": "Registro 12: codigo invalido no XML."
+          },
+          {
+            "index": 13,
+            "codigoXml": "",
+            "credenciadoXml": "MARCOS GONCALVES DIAS",
+            "aditivoXml": "",
+            "message": "Registro 13: codigo invalido no XML."
+          },
+          {
+            "index": 14,
+            "codigoXml": "",
+            "credenciadoXml": "MARILEIDE MARIA DA SILVA MOURAO",
+            "aditivoXml": "",
+            "message": "Registro 14: codigo invalido no XML."
+          },
+          {
+            "index": 15,
+            "codigoXml": "",
+            "credenciadoXml": "CLEANDERSON DA SILVA OLIVEIRA",
+            "aditivoXml": "",
+            "message": "Registro 15: codigo invalido no XML."
+          },
+          {
+            "index": 16,
+            "codigoXml": "",
+            "credenciadoXml": "ROBERTO HIRAOKA MARQUES",
+            "aditivoXml": "",
+            "message": "Registro 16: codigo invalido no XML."
+          },
+          {
+            "index": 17,
+            "codigoXml": "",
+            "credenciadoXml": "CENTRAL DO TRANSPORTE - EIRELI - ME",
+            "aditivoXml": "",
+            "message": "Registro 17: codigo invalido no XML."
+          },
+          {
+            "index": 18,
+            "codigoXml": "",
+            "credenciadoXml": "LEAO TUR TRANSPORTES E LOCADORA LTDA - ME",
+            "aditivoXml": "",
+            "message": "Registro 18: codigo invalido no XML."
+          },
+          {
+            "index": 19,
+            "codigoXml": "",
+            "credenciadoXml": "MARCIO JOSE MARQUES LINS",
+            "aditivoXml": "",
+            "message": "Registro 19: codigo invalido no XML."
+          },
+          {
+            "index": 20,
+            "codigoXml": "",
+            "credenciadoXml": "TRANS HELLOS TRANSPORTES LTDA - ME",
+            "aditivoXml": "",
+            "message": "Registro 20: codigo invalido no XML."
+          }
+        ]
+      }
+    }
+  ]
+}

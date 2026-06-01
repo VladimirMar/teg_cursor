@@ -1,6 +1,7 @@
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { access, appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -12,66 +13,88 @@ const defaultReportPath = process.env.XML_IMPORT_ALL_REPORT_PATH?.trim()
 const defaultLogPath = process.env.XML_IMPORT_ALL_LOG_PATH?.trim()
   || path.join(importXmlDirectory, 'xml_import_all.log')
 const requestTimeoutMs = Math.max(Number(process.env.XML_IMPORT_ALL_REQUEST_TIMEOUT_MS ?? 0) || 0, 0)
+const defaultGenerateFromAccess = !/^(0|false|no)$/i.test(process.env.XML_IMPORT_ALL_GENERATE_FROM_ACCESS ?? 'true')
+const defaultAccessDbPath = process.env.XML_IMPORT_ALL_ACCESS_DB_PATH?.trim()
+  || path.join(importXmlDirectory, 'Credenciamento 2022.accdb')
+const defaultAccessExporterScriptPath = process.env.XML_IMPORT_ALL_ACCESS_EXPORTER_SCRIPT_PATH?.trim()
+  || path.join(workspaceRoot, 'scripts', 'export-access-xmls.ps1')
+const defaultSource = /^(access)$/i.test(process.env.XML_IMPORT_ALL_SOURCE ?? '') ? 'access' : 'xml'
 
 const importSteps = [
   {
     key: 'marca-modelo',
     label: 'Marca/Modelo',
-    endpoint: '/api/marca-modelo/import-xml',
+    xmlEndpoint: '/api/marca-modelo/import-xml',
+    accessEndpoint: '/api/marca-modelo/import-access',
     fileName: 'marca-modelo.xml',
+  },
+  {
+    key: 'seguradora',
+    label: 'Seguradora',
+    xmlEndpoint: '/api/seguradora/import-xml',
+    accessEndpoint: '/api/seguradora/import-access',
+    fileName: 'Seguradoras.xml',
   },
   {
     key: 'credenciada',
     label: 'Credenciada',
-    endpoint: '/api/credenciada/import-xml',
+    xmlEndpoint: '/api/credenciada/import-xml',
+    accessEndpoint: '/api/credenciada/import-access',
     fileName: 'Credenciados.xml',
   },
   {
     key: 'termo',
     label: 'Credenciamento Termo',
-    endpoint: '/api/termo/import-xml',
+    xmlEndpoint: '/api/termo/import-xml',
+    accessEndpoint: '/api/termo/import-access',
     fileName: 'Credenciamento_Termo.xml',
   },
   {
     key: 'condutor',
     label: 'Condutor',
-    endpoint: '/api/condutor/import-xml',
+    xmlEndpoint: '/api/condutor/import-xml',
+    accessEndpoint: '/api/condutor/import-access',
     fileName: 'Condutor.xml',
   },
   {
     key: 'monitor',
     label: 'Monitor',
-    endpoint: '/api/monitor/import-xml',
+    xmlEndpoint: '/api/monitor/import-xml',
+    accessEndpoint: '/api/monitor/import-access',
     fileName: 'Monitor.xml',
   },
   {
     key: 'veiculo',
     label: 'Veiculo',
-    endpoint: '/api/veiculo/import-xml',
+    xmlEndpoint: '/api/veiculo/import-xml',
+    accessEndpoint: '/api/veiculo/import-access',
     fileName: 'Veiculo.xml',
   },
   {
     key: 'ordem-servico',
     label: 'OrdemServico',
-    endpoint: '/api/ordem-servico/import-xml',
+    xmlEndpoint: '/api/ordem-servico/import-xml',
+    accessEndpoint: '/api/ordem-servico/import-access',
     fileName: 'OrdemServico.xml',
   },
   {
     key: 'vinculo-condutor',
     label: 'Vinculo Condutor',
-    endpoint: '/api/vinculo-condutor/import-xml',
+    xmlEndpoint: '/api/vinculo-condutor/import-xml',
+    accessEndpoint: '/api/vinculo-condutor/import-access',
     fileName: 'Vinculos_condutor.xml',
   },
   {
     key: 'vinculo-monitor',
     label: 'Vinculo Monitor',
-    endpoint: '/api/vinculo-monitor/import-xml',
+    xmlEndpoint: '/api/vinculo-monitor/import-xml',
+    accessEndpoint: '/api/vinculo-monitor/import-access',
     fileName: 'Vinculos_monitor.xml',
   },
   {
     key: 'cep',
     label: 'CEP',
-    endpoint: '/api/cep/import-xml',
+    xmlEndpoint: '/api/cep/import-xml',
     fileName: 'Ceps.xml',
     optional: true,
   },
@@ -84,6 +107,11 @@ let requestedLogPath = defaultLogPath
 let requestedStepKeys = []
 let continueOnError = /^(1|true|yes)$/i.test(process.env.XML_IMPORT_ALL_CONTINUE_ON_ERROR ?? '')
 let deleteMissing = !/^(0|false|no)$/i.test(process.env.XML_IMPORT_ALL_DELETE_MISSING ?? 'true')
+let generateFromAccess = defaultGenerateFromAccess
+let requestedAccessDbPath = defaultAccessDbPath
+let requestedAccessExporterScriptPath = defaultAccessExporterScriptPath
+let requestedSource = defaultSource
+let generateFromAccessOverridden = false
 let shouldPrintHelp = false
 
 for (let index = 0; index < rawArgs.length; index += 1) {
@@ -149,6 +177,52 @@ for (let index = 0; index < rawArgs.length; index += 1) {
 
   if (currentArg === '--continue-on-error') {
     continueOnError = true
+    continue
+  }
+
+  if (currentArg === '--source') {
+    requestedSource = String(rawArgs[index + 1] ?? defaultSource).trim().toLowerCase() || defaultSource
+    index += 1
+    continue
+  }
+
+  if (currentArg.startsWith('--source=')) {
+    requestedSource = currentArg.slice('--source='.length).trim().toLowerCase() || defaultSource
+    continue
+  }
+
+  if (currentArg === '--generate-from-access') {
+    generateFromAccess = true
+    generateFromAccessOverridden = true
+    continue
+  }
+
+  if (currentArg === '--no-generate-from-access') {
+    generateFromAccess = false
+    generateFromAccessOverridden = true
+    continue
+  }
+
+  if (currentArg === '--access-db') {
+    requestedAccessDbPath = String(rawArgs[index + 1] ?? defaultAccessDbPath).trim() || defaultAccessDbPath
+    index += 1
+    continue
+  }
+
+  if (currentArg.startsWith('--access-db=')) {
+    requestedAccessDbPath = currentArg.slice('--access-db='.length).trim() || defaultAccessDbPath
+    continue
+  }
+
+  if (currentArg === '--access-exporter-script') {
+    requestedAccessExporterScriptPath = String(rawArgs[index + 1] ?? defaultAccessExporterScriptPath).trim() || defaultAccessExporterScriptPath
+    index += 1
+    continue
+  }
+
+  if (currentArg.startsWith('--access-exporter-script=')) {
+    requestedAccessExporterScriptPath = currentArg.slice('--access-exporter-script='.length).trim() || defaultAccessExporterScriptPath
+    continue
   }
 
   if (currentArg === '--delete-missing') {
@@ -171,6 +245,13 @@ Opcoes:
   --only <etapa>           Executa apenas a etapa informada. Pode repetir.
   --step <etapa>           Alias de --only.
   --continue-on-error      Continua nas etapas seguintes quando uma falhar.
+  --source <xml|access>    Define a fonte preferencial do lote. Padrao: ${defaultSource}
+  --generate-from-access   Gera/atualiza os XMLs a partir do Access antes do lote.
+  --no-generate-from-access
+                           Nao gera XMLs do Access antes do lote.
+  --access-db <arquivo>    Caminho do arquivo Access (.accdb) usado na geracao.
+  --access-exporter-script <arquivo>
+                           Caminho do script PowerShell de geracao dos XMLs.
   --delete-missing         Exclui registros importados ausentes do XML onde suportado.
   --no-delete-missing      Desabilita a exclusao de ausentes do XML.
   --help                   Exibe esta ajuda.
@@ -178,6 +259,15 @@ Opcoes:
 Etapas disponiveis:
   ${importSteps.map((step) => `${step.key} (${step.fileName})`).join('\n  ')}`)
   process.exit(0)
+}
+
+if (!['xml', 'access'].includes(requestedSource)) {
+  console.error(`Fonte desconhecida: ${requestedSource}`)
+  process.exit(1)
+}
+
+if (!generateFromAccessOverridden && requestedSource === 'access') {
+  generateFromAccess = false
 }
 
 const normalizedRequestedKeys = requestedStepKeys
@@ -299,6 +389,84 @@ const appendExecutionLog = async (message) => {
   await appendFile(requestedLogPath, `${line}\n`, 'utf8')
 }
 
+const resolveStepExecutionMode = (step) => {
+  if (requestedSource === 'access' && step.accessEndpoint) {
+    return {
+      source: 'access',
+      endpoint: step.accessEndpoint,
+      requiresXmlFile: false,
+    }
+  }
+
+  return {
+    source: 'xml',
+    endpoint: step.xmlEndpoint,
+    requiresXmlFile: true,
+  }
+}
+
+const runAccessXmlGeneration = async () => {
+  const windir = process.env.WINDIR?.trim() || 'C:\\Windows'
+  const powershell32Path = path.join(windir, 'SysWOW64', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+
+  const exporterScriptExists = await fileExists(requestedAccessExporterScriptPath)
+  if (!exporterScriptExists) {
+    throw new Error(`Script de geracao nao encontrado: ${requestedAccessExporterScriptPath}`)
+  }
+
+  const accessDbExists = await fileExists(requestedAccessDbPath)
+  if (!accessDbExists) {
+    throw new Error(`Arquivo Access nao encontrado: ${requestedAccessDbPath}`)
+  }
+
+  await appendExecutionLog(`[xml-import-all] Preparacao: gerando XMLs a partir do Access (${requestedAccessDbPath})`)
+
+  await new Promise((resolve, reject) => {
+    const child = spawn(
+      powershell32Path,
+      [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        requestedAccessExporterScriptPath,
+        '-DbPath',
+        requestedAccessDbPath,
+        '-OutputDir',
+        importXmlDirectory,
+      ],
+      {
+        cwd: workspaceRoot,
+        windowsHide: true,
+      },
+    )
+
+    let stdout = ''
+    let stderr = ''
+
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk)
+    })
+
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk)
+    })
+
+    child.on('error', reject)
+
+    child.on('close', (exitCode) => {
+      if (exitCode === 0) {
+        resolve({ stdout, stderr })
+        return
+      }
+
+      reject(new Error(`Falha ao gerar XMLs via Access (exitCode=${exitCode}). ${stderr || stdout || ''}`.trim()))
+    })
+  })
+
+  await appendExecutionLog('[xml-import-all] Preparacao: geracao de XMLs via Access concluida')
+}
+
 let consumedProgressLogLength = 0
 
 let deferredCredenciadaCleanupResultIndex = -1
@@ -327,6 +495,42 @@ await writeFile(requestedLogPath, '', 'utf8')
 const results = []
 const startedAt = new Date().toISOString()
 let shouldAbort = false
+
+if (generateFromAccess) {
+  const generationStartedAt = new Date().toISOString()
+
+  try {
+    await runAccessXmlGeneration()
+    results.push({
+      key: 'generate-xml-from-access',
+      label: 'Geracao XML Access',
+      startedAt: generationStartedAt,
+      finishedAt: new Date().toISOString(),
+      ok: true,
+      accessDbPath: requestedAccessDbPath,
+      exporterScriptPath: requestedAccessExporterScriptPath,
+      outputDir: importXmlDirectory,
+    })
+  } catch (error) {
+    const errorDetails = serializeError(error)
+    results.push({
+      key: 'generate-xml-from-access',
+      label: 'Geracao XML Access',
+      startedAt: generationStartedAt,
+      finishedAt: new Date().toISOString(),
+      ok: false,
+      accessDbPath: requestedAccessDbPath,
+      exporterScriptPath: requestedAccessExporterScriptPath,
+      outputDir: importXmlDirectory,
+      message: errorDetails.message,
+      error: errorDetails,
+    })
+    await appendExecutionLog(`[xml-import-all] Preparacao: falha na geracao de XMLs via Access - ${errorDetails.message}`)
+    shouldAbort = true
+  }
+} else {
+  await appendExecutionLog('[xml-import-all] Preparacao: geracao via Access desabilitada para esta execucao')
+}
 
 if (shouldTruncateBeforeImport) {
   const resetStartedAt = new Date().toISOString()
@@ -381,8 +585,9 @@ for (const step of selectedSteps) {
   }
 
   const stepStartedAt = new Date().toISOString()
+  const stepExecutionMode = resolveStepExecutionMode(step)
   const xmlPath = path.join(importXmlDirectory, step.fileName)
-  const xmlExists = await fileExists(xmlPath)
+  const xmlExists = stepExecutionMode.requiresXmlFile ? await fileExists(xmlPath) : true
 
   if (!xmlExists) {
     const missingMessage = `Arquivo XML nao encontrado em ${xmlPath}.`
@@ -390,7 +595,8 @@ for (const step of selectedSteps) {
       key: step.key,
       label: step.label,
       fileName: step.fileName,
-      endpoint: `${requestedBaseUrl}${step.endpoint}`,
+      endpoint: `${requestedBaseUrl}${stepExecutionMode.endpoint}`,
+      source: stepExecutionMode.source,
       startedAt: stepStartedAt,
       finishedAt: new Date().toISOString(),
       ok: false,
@@ -413,24 +619,32 @@ for (const step of selectedSteps) {
     continue
   }
 
-  await appendExecutionLog(`[xml-import-all] ${step.label}: iniciando importacao de ${step.fileName}`)
+  await appendExecutionLog(`[xml-import-all] ${step.label}: iniciando importacao via ${stepExecutionMode.source}${stepExecutionMode.requiresXmlFile ? ` de ${step.fileName}` : ` de ${requestedAccessDbPath}`}`)
 
   const shouldDisableDeleteMissingForCurrentStep = shouldDeferCredenciadaDeleteMissing && step.key === 'credenciada'
   const requestDeleteMissing = shouldDisableDeleteMissingForCurrentStep ? false : deleteMissing
-
-  try {
-    const response = await postJson(`${requestedBaseUrl}${step.endpoint}`, {
+  const requestPayload = stepExecutionMode.source === 'access'
+    ? {
+      databasePath: requestedAccessDbPath,
+      deleteMissing: requestDeleteMissing,
+      progressFilePath: requestedLogPath,
+    }
+    : {
       fileName: step.fileName,
       deleteMissing: requestDeleteMissing,
       progressFilePath: requestedLogPath,
-    })
+    }
+
+  try {
+    const response = await postJson(`${requestedBaseUrl}${stepExecutionMode.endpoint}`, requestPayload)
     const payload = await readJsonResponse({ text: async () => response.bodyText })
     await flushProgressLog()
     const stepResult = {
       key: step.key,
       label: step.label,
       fileName: step.fileName,
-      endpoint: `${requestedBaseUrl}${step.endpoint}`,
+      endpoint: `${requestedBaseUrl}${stepExecutionMode.endpoint}`,
+      source: stepExecutionMode.source,
       startedAt: stepStartedAt,
       finishedAt: new Date().toISOString(),
       ok: response.ok,
@@ -472,8 +686,12 @@ for (const step of selectedSteps) {
     if (step.key === 'termo' && deferredCredenciadaCleanupResultIndex >= 0) {
       await appendExecutionLog('[xml-import-all] Credenciada: iniciando exclusao final de ausentes apos Credenciamento Termo')
 
-      const cleanupResponse = await postJson(`${requestedBaseUrl}/api/credenciada/import-xml`, {
-        fileName: 'Credenciados.xml',
+      const credenciadaExecutionMode = resolveStepExecutionMode(importSteps.find((candidate) => candidate.key === 'credenciada'))
+
+      const cleanupResponse = await postJson(`${requestedBaseUrl}${credenciadaExecutionMode.endpoint}`, {
+        ...(credenciadaExecutionMode.source === 'access'
+          ? { databasePath: requestedAccessDbPath }
+          : { fileName: 'Credenciados.xml' }),
         deleteMissing: true,
         progressFilePath: requestedLogPath,
       })
@@ -529,7 +747,8 @@ for (const step of selectedSteps) {
       key: step.key,
       label: step.label,
       fileName: step.fileName,
-      endpoint: `${requestedBaseUrl}${step.endpoint}`,
+      endpoint: `${requestedBaseUrl}${stepExecutionMode.endpoint}`,
+      source: stepExecutionMode.source,
       startedAt: stepStartedAt,
       finishedAt: new Date().toISOString(),
       ok: false,
@@ -557,6 +776,10 @@ const summary = {
   finishedAt,
   baseUrl: requestedBaseUrl,
   logPath: requestedLogPath,
+  source: requestedSource,
+  generateFromAccess,
+  accessDbPath: requestedAccessDbPath,
+  accessExporterScriptPath: requestedAccessExporterScriptPath,
   deleteMissing,
   truncateBeforeImport: shouldTruncateBeforeImport,
   continueOnError,

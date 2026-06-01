@@ -1,0 +1,47 @@
+{
+  "startedAt": "2026-06-01T14:43:48.666Z",
+  "finishedAt": "2026-06-01T14:43:48.860Z",
+  "baseUrl": "http://127.0.0.1:3001",
+  "logPath": "importXML/xml_import_all_v3.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "ordem-servico"
+  ],
+  "ok": false,
+  "failedSteps": [
+    "ordem-servico"
+  ],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "ordem-servico",
+      "label": "OrdemServico",
+      "fileName": "OrdemServico.xml",
+      "endpoint": "http://127.0.0.1:3001/api/ordem-servico/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T14:43:48.685Z",
+      "finishedAt": "2026-06-01T14:43:48.858Z",
+      "ok": false,
+      "status": 500,
+      "statusText": "Internal Server Error",
+      "summary": {
+        "total": null,
+        "processed": null,
+        "inserted": null,
+        "updated": null,
+        "deleted": null,
+        "skipped": null
+      },
+      "logPath": "importXML/xml_import_all_v3.log",
+      "response": {
+        "message": "ENOENT: no such file or directory, access 'C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Credenciamento 2022.accdb'"
+      }
+    }
+  ]
+}

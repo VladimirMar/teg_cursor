@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:noNamespaceSchemaLocation="Vinculos_monitor.xsd" generated="2026-05-20T13:11:09">
+<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  xsi:noNamespaceSchemaLocation="Vinculos_monitor.xsd" generated="2026-06-01T13:21:39">
 <Vinculos_monitor>
 <Código>1</Código>
 <Empregador>ROBINSON SOARES RIBEIRO</Empregador>
@@ -66338,5 +66338,341 @@
 <Data_de_OS>2026-05-18T00:00:00</Data_de_OS>
 <Admissao>2026-04-24T00:00:00</Admissao>
 <CPF_monitor>469.610.698-51</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10126</Código>
+<Empregador>KAIROS TRANSPORTES LTDA</Empregador>
+<Data_de_OS>2026-05-19T00:00:00</Data_de_OS>
+<Admissao>2026-04-02T00:00:00</Admissao>
+<CPF_monitor>264.318.118-28</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10127</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<CPF_monitor>569.625.278-88</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10128</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<CPF_monitor>379.648.248-13</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10129</Código>
+<Empregador>TORRE FORTE TRANSPORTE ESCOLAR E LOCADORA EIRELLI - ME</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<CPF_monitor>508.124.748-05</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10130</Código>
+<Empregador>NELSON RIBEIRO DE SOUZA</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<Admissao>2026-04-10T00:00:00</Admissao>
+<CPF_monitor>420.256.028-04</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10131</Código>
+<Empregador>WELL TRANSPORTE ESCOLAR LTDA - ME</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<Admissao>2026-04-20T00:00:00</Admissao>
+<CPF_monitor>531.245.928-32</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10132</Código>
+<Empregador>SARAIVA TUR TRANSPORTES LTDA</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<Admissao>2018-09-21T00:00:00</Admissao>
+<CPF_monitor>365.951.628-73</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10133</Código>
+<Empregador>COOPERTAIPAS COOPERATIVA DE TRANSPORTE</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<CPF_monitor>481.796.218-63</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10134</Código>
+<Empregador>MPKA TRANSPORTES EIRELI - EPP</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<Admissao>2026-05-04T00:00:00</Admissao>
+<CPF_monitor>227.037.578-59</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10135</Código>
+<Empregador>COOPERTAIPAS COOPERATIVA DE TRANSPORTE</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<CPF_monitor>422.215.318-41</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10136</Código>
+<Empregador>MARIA INEZ DE PAULA</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<Admissao>2026-05-06T00:00:00</Admissao>
+<CPF_monitor>505.740.148-37</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10137</Código>
+<Empregador>JOSEFA MARIA BATISTA DE ARAUJO - ME</Empregador>
+<Data_de_OS>2026-05-20T00:00:00</Data_de_OS>
+<Admissao>2026-04-27T00:00:00</Admissao>
+<CPF_monitor>357.816.948-03</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10138</Código>
+<Empregador>COOPER MAIS - COOPERATIVA DE TRANSPORTES</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>104.331.228-54</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10139</Código>
+<Empregador>COOPER MAIS - COOPERATIVA DE TRANSPORTES</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>487.927.968-42</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10140</Código>
+<Empregador>PIERRE S OLIVEIRA TRANSPORTES LTDA</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>995.662.304-00</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10141</Código>
+<Empregador>COOPERATIVA DE T. E. C. M. - COOTRECM</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>491.547.768-13</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10142</Código>
+<Empregador>COOPERTAIPAS COOPERATIVA DE TRANSPORTE</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>444.565.598-88</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10143</Código>
+<Empregador>COOPEROESTE COOPERATIVA DE TRANSPORTES</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>379.519.688-46</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10144</Código>
+<Empregador>COOPER DIAS - COOPERATIVA DE TRANSPORTES</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>021.997.808-56</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10145</Código>
+<Empregador>COOP DE TRANSP ESC NORTE SAO PAULO - COOPERNORTE</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>284.495.218-66</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10146</Código>
+<Empregador>COOP DE TRANSP ESC NORTE SAO PAULO - COOPERNORTE</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>563.778.978-98</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10147</Código>
+<Empregador>COOP DE TRANSP ESC NORTE SAO PAULO - COOPERNORTE</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>514.223.408-13</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10148</Código>
+<Empregador>COOP DE TRANSP ESC NORTE SAO PAULO - COOPERNORTE</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>277.116.898-70</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10149</Código>
+<Empregador>COOPERATIVA DE T. E. C. M. - COOTRECM</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>367.171.338-05</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10150</Código>
+<Empregador>COOP DE TRANSP ESC DA Z SUL DE SP - COOPERTRES</Empregador>
+<Data_de_OS>2026-05-21T00:00:00</Data_de_OS>
+<CPF_monitor>393.488.638-86</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10151</Código>
+<Empregador>ROGERIO FRANCO DE AS</Empregador>
+<Data_de_OS>2026-05-25T00:00:00</Data_de_OS>
+<Admissao>2026-04-01T00:00:00</Admissao>
+<CPF_monitor>022.293.508-11</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10152</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-25T00:00:00</Data_de_OS>
+<CPF_monitor>325.552.598-56</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10153</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-25T00:00:00</Data_de_OS>
+<CPF_monitor>511.153.518-77</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10154</Código>
+<Empregador>COOPER TRANS MOBILY - C DE T D E M URBANA</Empregador>
+<Data_de_OS>2026-05-25T00:00:00</Data_de_OS>
+<CPF_monitor>515.975.768-67</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10155</Código>
+<Empregador>COOP TRANSP ESC CAP SOC COOPERCAPS</Empregador>
+<Data_de_OS>2026-05-25T00:00:00</Data_de_OS>
+<CPF_monitor>043.077.141-05</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10156</Código>
+<Empregador>STYLO PRIME TRANSPORTES E LOCADORA DE VEICULOS LTDA - ME</Empregador>
+<Data_de_OS>2026-05-25T00:00:00</Data_de_OS>
+<Admissao>2026-05-01T00:00:00</Admissao>
+<CPF_monitor>432.429.988-98</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10157</Código>
+<Empregador>ADNELSON MENDES DA SILVA EIRELI - ME</Empregador>
+<Data_de_OS>2026-05-25T00:00:00</Data_de_OS>
+<Admissao>2026-05-13T00:00:00</Admissao>
+<CPF_monitor>247.599.218-26</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10158</Código>
+<Empregador>COOPERATIVA DE T. E. C. M. - COOTRECM</Empregador>
+<Data_de_OS>2026-05-26T00:00:00</Data_de_OS>
+<CPF_monitor>453.816.558-19</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10159</Código>
+<Empregador>COOPER TRANS MOBILY - C DE T D E M URBANA</Empregador>
+<Data_de_OS>2026-05-26T00:00:00</Data_de_OS>
+<CPF_monitor>241.297.958-80</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10160</Código>
+<Empregador>COOPER DIAS - COOPERATIVA DE TRANSPORTES</Empregador>
+<Data_de_OS>2026-05-26T00:00:00</Data_de_OS>
+<CPF_monitor>391.798.178-58</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10161</Código>
+<Empregador>COOPERATIVA DE T. E. C. M. - COOTRECM</Empregador>
+<Data_de_OS>2026-05-26T00:00:00</Data_de_OS>
+<CPF_monitor>359.253.578-17</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10162</Código>
+<Empregador>E.G.DANIEL LTDA</Empregador>
+<Data_de_OS>2026-05-26T00:00:00</Data_de_OS>
+<Admissao>2026-03-27T00:00:00</Admissao>
+<CPF_monitor>412.069.358-98</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10163</Código>
+<Empregador>COOPER TRANS MOBILY - C DE T D E M URBANA</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<CPF_monitor>538.267.618-63</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10164</Código>
+<Empregador>EVOLUCAO TRANSPORTE LTDA</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<Admissao>2026-05-27T00:00:00</Admissao>
+<CPF_monitor>423.276.578-65</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10165</Código>
+<Empregador>COOPERTAIPAS COOPERATIVA DE TRANSPORTE</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<CPF_monitor>425.081.548-06</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10166</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<CPF_monitor>319.300.058-22</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10167</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<CPF_monitor>381.059.708-21</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10168</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<CPF_monitor>366.302.958-11</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10169</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<CPF_monitor>467.865.018-00</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10170</Código>
+<Empregador>COOPER SAO PAULO C T C P ESC E T DE SP</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<CPF_monitor>511.825.818-97</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10171</Código>
+<Empregador>COOPER TRANS MOBILY - C DE T D E M URBANA</Empregador>
+<Data_de_OS>2026-05-27T00:00:00</Data_de_OS>
+<CPF_monitor>455.123.398-69</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10172</Código>
+<CPF_monitor>451.759.398-31</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10173</Código>
+<Empregador>LAERTE SANTOS TRANSPORTES LTDA</Empregador>
+<Data_de_OS>2026-05-28T00:00:00</Data_de_OS>
+<Admissao>2026-03-24T00:00:00</Admissao>
+<CPF_monitor>412.085.348-90</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10174</Código>
+<Empregador>MOREIRA ROCHA TRANSPORTE EIRELI - ME</Empregador>
+<Data_de_OS>2026-05-28T00:00:00</Data_de_OS>
+<Admissao>2026-05-25T00:00:00</Admissao>
+<CPF_monitor>555.336.568-63</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10175</Código>
+<Empregador>COOPER-X - COOP. SERV. TRANSP. ESCOLAR SP</Empregador>
+<Data_de_OS>2026-05-28T00:00:00</Data_de_OS>
+<CPF_monitor>272.767.278-07</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10176</Código>
+<Empregador>COOPER-X - COOP. SERV. TRANSP. ESCOLAR SP</Empregador>
+<Data_de_OS>2026-05-28T00:00:00</Data_de_OS>
+<CPF_monitor>560.989.358-58</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10177</Código>
+<Empregador>COOPERATIVA DE T. E. C. M. - COOTRECM</Empregador>
+<Data_de_OS>2026-05-28T00:00:00</Data_de_OS>
+<CPF_monitor>543.870.118-07</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10178</Código>
+<Empregador>COOPER MAIS - COOPERATIVA DE TRANSPORTES</Empregador>
+<Data_de_OS>2026-06-01T00:00:00</Data_de_OS>
+<CPF_monitor>607.209.548-86</CPF_monitor>
+</Vinculos_monitor>
+<Vinculos_monitor>
+<Código>10179</Código>
+<Empregador>COOPER MAIS - COOPERATIVA DE TRANSPORTES</Empregador>
+<Data_de_OS>2026-06-01T00:00:00</Data_de_OS>
+<CPF_monitor>582.066.738-73</CPF_monitor>
 </Vinculos_monitor>
 </dataroot>

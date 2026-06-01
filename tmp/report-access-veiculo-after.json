@@ -1,0 +1,215 @@
+{
+  "startedAt": "2026-06-01T13:58:47.332Z",
+  "finishedAt": "2026-06-01T13:59:21.551Z",
+  "baseUrl": "http://localhost:3001",
+  "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "veiculo"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "veiculo",
+      "label": "Veiculo",
+      "fileName": "Veiculo.xml",
+      "endpoint": "http://localhost:3001/api/veiculo/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T13:58:47.345Z",
+      "finishedAt": "2026-06-01T13:59:21.535Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 5862,
+        "processed": 410,
+        "inserted": 0,
+        "updated": 410,
+        "deleted": 0,
+        "skipped": 5452
+      },
+      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+      "response": {
+        "message": "Importacao de veiculos via Access concluida com sucesso.",
+        "source": "access",
+        "databasePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+        "total": 5862,
+        "processed": 410,
+        "inserted": 0,
+        "updated": 410,
+        "deleted": 0,
+        "skipped": 5452,
+        "skippedRecords": [
+          {
+            "index": 1,
+            "codigoXml": "4139",
+            "crmXml": "000.717-00",
+            "placasXml": "DPC1F19",
+            "tipoDeVeiculoXml": "�NIBUS",
+            "message": "Registro 1: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 2,
+            "codigoXml": "4140",
+            "crmXml": "001.002-03",
+            "placasXml": "ELR3499",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 2: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 3,
+            "codigoXml": "4141",
+            "crmXml": "006.174-00",
+            "placasXml": "EFV1847",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 3: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 4,
+            "codigoXml": "4142",
+            "crmXml": "006.203-00",
+            "placasXml": "EVP9C90",
+            "tipoDeVeiculoXml": "�NIBUS",
+            "message": "Registro 4: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 5,
+            "codigoXml": "4143",
+            "crmXml": "006.442-00",
+            "placasXml": "ELM0G26",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 5: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 6,
+            "codigoXml": "4144",
+            "crmXml": "006.846-00",
+            "placasXml": "FAG4G31",
+            "tipoDeVeiculoXml": "�NIBUS",
+            "message": "Registro 6: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 7,
+            "codigoXml": "4145",
+            "crmXml": "007.329-00",
+            "placasXml": "ETZ0541",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 7: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 8,
+            "codigoXml": "4146",
+            "crmXml": "007.351-00",
+            "placasXml": "EMU9F02",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 8: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 9,
+            "codigoXml": "4147",
+            "crmXml": "007.414-00",
+            "placasXml": "EFW2260",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 9: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 10,
+            "codigoXml": "4148",
+            "crmXml": "007.499-00",
+            "placasXml": "DTB8010",
+            "tipoDeVeiculoXml": "�NIBUS",
+            "message": "Registro 10: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 11,
+            "codigoXml": "4149",
+            "crmXml": "008.152-00",
+            "placasXml": "DTA0069",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 11: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 12,
+            "codigoXml": "4150",
+            "crmXml": "008.333-00",
+            "placasXml": "FEG7513",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 12: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 13,
+            "codigoXml": "4151",
+            "crmXml": "008.362-00",
+            "placasXml": "ECT8750",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 13: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 14,
+            "codigoXml": "4152",
+            "crmXml": "008.436-00",
+            "placasXml": "EJW0354",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 14: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 15,
+            "codigoXml": "4153",
+            "crmXml": "008.551-00",
+            "placasXml": "EEL5390",
+            "tipoDeVeiculoXml": "�NIBUS",
+            "message": "Registro 15: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 16,
+            "codigoXml": "4154",
+            "crmXml": "008.564-00",
+            "placasXml": "ELW8914",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 16: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 17,
+            "codigoXml": "4155",
+            "crmXml": "008.589-00",
+            "placasXml": "CYR2310",
+            "tipoDeVeiculoXml": "�NIBUS",
+            "message": "Registro 17: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 18,
+            "codigoXml": "4156",
+            "crmXml": "008.661-00",
+            "placasXml": "DTD3900",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 18: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 19,
+            "codigoXml": "4157",
+            "crmXml": "008.677-00",
+            "placasXml": "CPV2014",
+            "tipoDeVeiculoXml": "�NIBUS",
+            "message": "Registro 19: tipo de veiculo invalido no XML."
+          },
+          {
+            "index": 20,
+            "codigoXml": "4158",
+            "crmXml": "008.688-00",
+            "placasXml": "DSH8891",
+            "tipoDeVeiculoXml": "MICRO-�NIBUS",
+            "message": "Registro 20: tipo de veiculo invalido no XML."
+          }
+        ]
+      }
+    }
+  ]
+}

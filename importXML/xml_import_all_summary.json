@@ -1,392 +1,235 @@
 {
-  "startedAt": "2026-05-20T13:42:18.567Z",
-  "finishedAt": "2026-05-20T13:52:41.092Z",
-  "baseUrl": "http://127.0.0.1:3002",
+  "startedAt": "2026-06-01T12:26:53.200Z",
+  "finishedAt": "2026-06-01T12:30:49.945Z",
+  "baseUrl": "http://localhost:3001",
   "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
   "deleteMissing": true,
-  "truncateBeforeImport": true,
+  "truncateBeforeImport": false,
   "continueOnError": false,
   "selectedStepKeys": [
-    "marca-modelo",
-    "credenciada",
-    "termo",
-    "condutor",
-    "monitor",
-    "veiculo",
-    "ordem-servico",
-    "vinculo-condutor",
-    "vinculo-monitor",
-    "cep"
+    "vinculo-monitor"
   ],
   "ok": true,
   "failedSteps": [],
-  "skippedSteps": [
-    "cep"
-  ],
+  "skippedSteps": [],
   "results": [
-    {
-      "key": "reset",
-      "label": "Preparacao",
-      "endpoint": "http://127.0.0.1:3002/api/xml-import-all/reset",
-      "startedAt": "2026-05-20T13:42:18.569Z",
-      "finishedAt": "2026-05-20T13:42:21.287Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "response": {
-        "message": "Tabelas da importacao XML em lote truncadas com sucesso.",
-        "truncated": true,
-        "tableCount": 22,
-        "tables": [
-          "apuracao_servicos",
-          "ordem_servico_historico",
-          "termo_historico",
-          "ordem_servico_import_recusa",
-          "termo_import_recusa",
-          "vinculo_condutor_import_recusa",
-          "vinculo_monitor_import_recusa",
-          "condutor_import_recusa",
-          "monitor_import_recusa",
-          "veiculo_import_recusa",
-          "credenciada_import_recusa",
-          "cep_import_recusa",
-          "ordem_servico",
-          "vinculo_condutor",
-          "vinculo_monitor",
-          "termo",
-          "veiculo",
-          "monitor",
-          "condutor",
-          "credenciada",
-          "ceps",
-          "marca_modelo"
-        ]
-      }
-    },
-    {
-      "key": "marca-modelo",
-      "label": "Marca/Modelo",
-      "fileName": "marca-modelo.xml",
-      "endpoint": "http://127.0.0.1:3002/api/marca-modelo/import-xml",
-      "startedAt": "2026-05-20T13:42:21.291Z",
-      "finishedAt": "2026-05-20T13:42:21.473Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "summary": {
-        "total": 264,
-        "processed": 264,
-        "inserted": 264,
-        "updated": 0,
-        "deleted": null,
-        "skipped": null
-      },
-      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
-      "response": {
-        "fileName": "marca-modelo.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\marca-modelo.xml",
-        "total": 264,
-        "processed": 264,
-        "inserted": 264,
-        "updated": 0
-      }
-    },
-    {
-      "key": "credenciada",
-      "label": "Credenciada",
-      "fileName": "Credenciados.xml",
-      "endpoint": "http://127.0.0.1:3002/api/credenciada/import-xml",
-      "startedAt": "2026-05-20T13:42:21.474Z",
-      "finishedAt": "2026-05-20T13:45:05.171Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "summary": {
-        "total": 2955,
-        "processed": 2955,
-        "inserted": 2955,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0
-      },
-      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
-      "response": {
-        "message": "Importacao de credenciadas concluida com sucesso.",
-        "fileName": "Credenciados.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\Credenciados.xml",
-        "total": 2955,
-        "processed": 2955,
-        "inserted": 2955,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0,
-        "skippedRecords": []
-      }
-    },
-    {
-      "key": "termo",
-      "label": "Credenciamento Termo",
-      "fileName": "Credenciamento_Termo.xml",
-      "endpoint": "http://127.0.0.1:3002/api/termo/import-xml",
-      "startedAt": "2026-05-20T13:42:26.550Z",
-      "finishedAt": "2026-05-20T13:44:59.866Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "summary": {
-        "total": 4056,
-        "processed": 10500,
-        "inserted": 10500,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0
-      },
-      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
-      "response": {
-        "message": "Importacao de credenciamento termo concluida com sucesso.",
-        "fileName": "Credenciamento_Termo.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\Credenciamento_Termo.xml",
-        "total": 4056,
-        "processed": 10500,
-        "inserted": 10500,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0,
-        "skippedRecords": []
-      }
-    },
-    {
-      "key": "condutor",
-      "label": "Condutor",
-      "fileName": "Condutor.xml",
-      "endpoint": "http://127.0.0.1:3002/api/condutor/import-xml",
-      "startedAt": "2026-05-20T13:45:05.173Z",
-      "finishedAt": "2026-05-20T13:45:14.648Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "summary": {
-        "total": 8101,
-        "processed": 8100,
-        "inserted": 8100,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 1
-      },
-      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
-      "response": {
-        "message": "Importacao de condutores concluida com sucesso.",
-        "fileName": "Condutor.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\Condutor.xml",
-        "total": 8101,
-        "processed": 8100,
-        "inserted": 8100,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 1,
-        "skippedRecords": [
-          {
-            "index": 8089,
-            "codigoXml": "17371",
-            "condutorXml": "",
-            "cpfCondutorXml": "333.087.528-32",
-            "crmcXml": "",
-            "tipoVinculoXml": "",
-            "message": "Registro 8089: nome do condutor invalido no XML."
-          }
-        ]
-      }
-    },
-    {
-      "key": "monitor",
-      "label": "Monitor",
-      "fileName": "Monitor.xml",
-      "endpoint": "http://127.0.0.1:3002/api/monitor/import-xml",
-      "startedAt": "2026-05-20T13:45:14.650Z",
-      "finishedAt": "2026-05-20T13:45:15.913Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "summary": {
-        "total": 12194,
-        "processed": 12194,
-        "inserted": 12194,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0
-      },
-      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
-      "response": {
-        "message": "Importacao de monitores concluida com sucesso.",
-        "fileName": "Monitor.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\Monitor.xml",
-        "total": 12194,
-        "processed": 12194,
-        "inserted": 12194,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0,
-        "skippedRecords": []
-      }
-    },
-    {
-      "key": "veiculo",
-      "label": "Veiculo",
-      "fileName": "Veiculo.xml",
-      "endpoint": "http://127.0.0.1:3002/api/veiculo/import-xml",
-      "startedAt": "2026-05-20T13:45:15.914Z",
-      "finishedAt": "2026-05-20T13:45:50.184Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "summary": {
-        "total": 5708,
-        "processed": 5502,
-        "inserted": 5502,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 1
-      },
-      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
-      "response": {
-        "message": "Importacao de veiculos concluida com sucesso.",
-        "fileName": "Veiculo.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\Veiculo.xml",
-        "total": 5708,
-        "processed": 5502,
-        "inserted": 5502,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 1,
-        "skippedRecords": [
-          {
-            "index": 4862,
-            "codigoXml": "8254",
-            "crmXml": "046.631-00",
-            "placasXml": "PUF1J96",
-            "tipoDeVeiculoXml": "MICRO-ÔNIBUS",
-            "message": "Registro 4862: CNPJ/CPF invalido no XML."
-          }
-        ]
-      }
-    },
-    {
-      "key": "ordem-servico",
-      "label": "OrdemServico",
-      "fileName": "OrdemServico.xml",
-      "endpoint": "http://127.0.0.1:3002/api/ordem-servico/import-xml",
-      "startedAt": "2026-05-20T13:45:50.186Z",
-      "finishedAt": "2026-05-20T13:48:49.479Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "summary": {
-        "total": 7499,
-        "processed": 7499,
-        "inserted": 7499,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0
-      },
-      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
-      "response": {
-        "message": "Importacao de OrdemServico concluida com sucesso.",
-        "fileName": "OrdemServico.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\OrdemServico.xml",
-        "total": 7499,
-        "processed": 7499,
-        "inserted": 7499,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0,
-        "skippedRecords": []
-      }
-    },
-    {
-      "key": "vinculo-condutor",
-      "label": "Vinculo Condutor",
-      "fileName": "Vinculos_condutor.xml",
-      "endpoint": "http://127.0.0.1:3002/api/vinculo-condutor/import-xml",
-      "startedAt": "2026-05-20T13:48:49.481Z",
-      "finishedAt": "2026-05-20T13:49:28.708Z",
-      "ok": true,
-      "status": 200,
-      "statusText": "OK",
-      "summary": {
-        "total": 6467,
-        "processed": 6089,
-        "inserted": 6089,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0
-      },
-      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
-      "response": {
-        "message": "Importacao de vinculos do condutor concluida com sucesso.",
-        "fileName": "Vinculos_condutor.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\Vinculos_condutor.xml",
-        "total": 6467,
-        "processed": 6089,
-        "inserted": 6089,
-        "updated": 0,
-        "deleted": 0,
-        "skipped": 0,
-        "skippedRecords": []
-      }
-    },
     {
       "key": "vinculo-monitor",
       "label": "Vinculo Monitor",
       "fileName": "Vinculos_monitor.xml",
-      "endpoint": "http://127.0.0.1:3002/api/vinculo-monitor/import-xml",
-      "startedAt": "2026-05-20T13:49:28.710Z",
-      "finishedAt": "2026-05-20T13:52:41.083Z",
+      "endpoint": "http://localhost:3001/api/vinculo-monitor/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T12:26:53.208Z",
+      "finishedAt": "2026-06-01T12:30:49.937Z",
       "ok": true,
       "status": 200,
       "statusText": "OK",
       "summary": {
-        "total": 9888,
-        "processed": 9385,
-        "inserted": 9385,
-        "updated": 0,
+        "total": 10167,
+        "processed": 9653,
+        "inserted": 5458,
+        "updated": 4195,
         "deleted": 0,
-        "skipped": 1
+        "skipped": 514
       },
       "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
       "response": {
-        "message": "Importacao de vinculos do monitor concluida com sucesso.",
-        "fileName": "Vinculos_monitor.xml",
-        "filePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\.homolog\\runtime\\importXML\\Vinculos_monitor.xml",
-        "total": 9888,
-        "processed": 9385,
-        "inserted": 9385,
-        "updated": 0,
+        "message": "Importacao de vinculos do monitor via Access concluida com sucesso.",
+        "source": "access",
+        "databasePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+        "total": 10167,
+        "processed": 9653,
+        "inserted": 5458,
+        "updated": 4195,
         "deleted": 0,
-        "skipped": 1,
+        "skipped": 514,
         "skippedRecords": [
           {
-            "index": 9888,
-            "codigoXml": "9899",
-            "empregadorXml": "TRANS-CHILDREN TRANSPORTE ESCOLAR E TURISMO LTDA - ME",
-            "cpfMonitorXml": "123.514.555-15",
-            "dataOsXml": "2026-04-10",
-            "admissaoXml": "2007-12-24",
-            "message": "CPF do monitor nao encontrado na tabela de monitor."
+            "index": 15,
+            "codigoXml": "",
+            "empregadorXml": "FELIPE HENRIQUE DA SILVA BEZERRA 41125477814",
+            "cpfMonitorXml": "491.194.058-12",
+            "dataOsXml": "2022-06-20",
+            "admissaoXml": "2022-05-27",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 60,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "526.033.468-06",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-15",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 62,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "385.612.618-03",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-11-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 63,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "425.788.048-18",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-11-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 64,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "494.893.968-42",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 65,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "398.273.098-89",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-04-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 66,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "458.741.848-05",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-09-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 67,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "423.682.478-74",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-04-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 68,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "408.462.838-75",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2021-01-09",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 69,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "407.906.368-75",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-01-31",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 71,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "128.716.788-80",
+            "dataOsXml": "2022-06-21",
+            "admissaoXml": "2022-06-10",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 108,
+            "codigoXml": "",
+            "empregadorXml": "ELAINE MENDES DIAS - ME",
+            "cpfMonitorXml": "432.205.518-40",
+            "dataOsXml": "2022-06-22",
+            "admissaoXml": "2022-06-20",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 393,
+            "codigoXml": "",
+            "empregadorXml": "SONIA MARIA DE GOUVEIA BONTEMPO - ME",
+            "cpfMonitorXml": "070.831.698-02",
+            "dataOsXml": "2022-06-28",
+            "admissaoXml": "2016-12-16",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 404,
+            "codigoXml": "",
+            "empregadorXml": "OSMAR ALVES JUNIOR 18741651812",
+            "cpfMonitorXml": "632.882.573-00",
+            "dataOsXml": "2022-06-29",
+            "admissaoXml": "2022-06-01",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 463,
+            "codigoXml": "",
+            "empregadorXml": "HELLEN CRISTINA DE SOUZA SANT ANA",
+            "cpfMonitorXml": "213.806.028-40",
+            "dataOsXml": "2022-06-29",
+            "admissaoXml": "2020-03-02",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 512,
+            "codigoXml": "",
+            "empregadorXml": "PL DE OLIVEIRA TRANSPORTES - ME",
+            "cpfMonitorXml": "163.818.608-12",
+            "dataOsXml": "2022-06-30",
+            "admissaoXml": "2020-12-18",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 574,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "422.883.668-26",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-06-02",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 577,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "431.920.428-00",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-03-12",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 578,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "225.332.288-18",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-04-29",
+            "message": "Empregador nao encontrado na tabela de credenciada."
+          },
+          {
+            "index": 579,
+            "codigoXml": "",
+            "empregadorXml": "COOPERATIVA DE TRABALHO DE TRANSPORTE ESCOLAR DE ITAPECERICA DA SERRA - COOPERTREIS",
+            "cpfMonitorXml": "092.462.188-50",
+            "dataOsXml": "2022-07-01",
+            "admissaoXml": "2022-02-23",
+            "message": "Empregador nao encontrado na tabela de credenciada."
           }
         ]
       }
-    },
-    {
-      "key": "cep",
-      "label": "CEP",
-      "fileName": "Ceps.xml",
-      "endpoint": "http://127.0.0.1:3002/api/cep/import-xml",
-      "startedAt": "2026-05-20T13:52:41.086Z",
-      "finishedAt": "2026-05-20T13:52:41.087Z",
-      "ok": false,
-      "skipped": true,
-      "optional": true,
-      "message": "Arquivo XML nao encontrado em C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\Ceps.xml."
     }
   ]
 }

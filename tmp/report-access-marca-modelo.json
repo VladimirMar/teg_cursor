@@ -1,0 +1,47 @@
+{
+  "startedAt": "2026-06-01T12:26:19.379Z",
+  "finishedAt": "2026-06-01T12:26:25.594Z",
+  "baseUrl": "http://localhost:3001",
+  "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "marca-modelo"
+  ],
+  "ok": false,
+  "failedSteps": [
+    "marca-modelo"
+  ],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "marca-modelo",
+      "label": "Marca/Modelo",
+      "fileName": "marca-modelo.xml",
+      "endpoint": "http://localhost:3001/api/marca-modelo/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T12:26:19.386Z",
+      "finishedAt": "2026-06-01T12:26:25.593Z",
+      "ok": false,
+      "status": 400,
+      "statusText": "Bad Request",
+      "summary": {
+        "total": null,
+        "processed": null,
+        "inserted": null,
+        "updated": null,
+        "deleted": null,
+        "skipped": null
+      },
+      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+      "response": {
+        "message": "Registro 22: descricao de marca/modelo invalida no XML."
+      }
+    }
+  ]
+}

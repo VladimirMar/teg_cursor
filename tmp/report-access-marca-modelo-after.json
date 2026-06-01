@@ -1,0 +1,51 @@
+{
+  "startedAt": "2026-06-01T14:23:02.085Z",
+  "finishedAt": "2026-06-01T14:23:13.987Z",
+  "baseUrl": "http://127.0.0.1:3001",
+  "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "marca-modelo"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "marca-modelo",
+      "label": "Marca/Modelo",
+      "fileName": "marca-modelo.xml",
+      "endpoint": "http://127.0.0.1:3001/api/marca-modelo/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T14:23:02.140Z",
+      "finishedAt": "2026-06-01T14:23:13.984Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 5862,
+        "processed": 264,
+        "inserted": 0,
+        "updated": 264,
+        "deleted": null,
+        "skipped": 211
+      },
+      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+      "response": {
+        "source": "access",
+        "databasePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+        "total": 5862,
+        "processed": 264,
+        "inserted": 0,
+        "updated": 264,
+        "skipped": 211
+      }
+    }
+  ]
+}

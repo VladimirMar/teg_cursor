@@ -1,0 +1,100 @@
+{
+  "startedAt": "2026-06-01T14:12:32.326Z",
+  "finishedAt": "2026-06-01T14:21:08.675Z",
+  "baseUrl": "http://127.0.0.1:3001",
+  "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+  "source": "access",
+  "generateFromAccess": false,
+  "accessDbPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+  "accessExporterScriptPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\scripts\\export-access-xmls.ps1",
+  "deleteMissing": true,
+  "truncateBeforeImport": false,
+  "continueOnError": false,
+  "selectedStepKeys": [
+    "ordem-servico"
+  ],
+  "ok": true,
+  "failedSteps": [],
+  "skippedSteps": [],
+  "results": [
+    {
+      "key": "ordem-servico",
+      "label": "OrdemServico",
+      "fileName": "OrdemServico.xml",
+      "endpoint": "http://127.0.0.1:3001/api/ordem-servico/import-access",
+      "source": "access",
+      "startedAt": "2026-06-01T14:12:32.338Z",
+      "finishedAt": "2026-06-01T14:21:08.671Z",
+      "ok": true,
+      "status": 200,
+      "statusText": "OK",
+      "summary": {
+        "total": 7504,
+        "processed": 7501,
+        "inserted": 113,
+        "updated": 7388,
+        "deleted": 3,
+        "skipped": 3
+      },
+      "logPath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\importXML\\xml_import_all.log",
+      "response": {
+        "message": "Importacao de OrdemServico via Access concluida com sucesso.",
+        "source": "access",
+        "databasePath": "C:\\Users\\m089383\\Aplicativos\\teg_financ\\access\\Credenciamento 2022.accdb",
+        "total": 7504,
+        "processed": 7501,
+        "inserted": 113,
+        "updated": 7388,
+        "deleted": 3,
+        "skipped": 3,
+        "skippedRecords": [
+          {
+            "index": 1405,
+            "codigoAccess": "1411",
+            "codigo_access": "1411",
+            "codigoXml": "1411",
+            "osXml": "2022/0028543-001A",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "WILLIAM SALLA RAMOS",
+            "dreXml": "PJ",
+            "cpfCondutorXml": "144.020.828-03",
+            "cpfMonitorXml": "076.713.628-40",
+            "crmXml": "034.610-00",
+            "message": "Tipo de troca nao encontrado na tabela tipo_troca."
+          },
+          {
+            "index": 1406,
+            "codigoAccess": "1412",
+            "codigo_access": "1412",
+            "codigoXml": "1412",
+            "osXml": "2022/0028549-001A",
+            "numOsXml": "001",
+            "num_os_xml": "001",
+            "credenciadoXml": "WALDIR VIVIAN CAGNE",
+            "dreXml": "PJ",
+            "cpfCondutorXml": "040.173.328-97",
+            "cpfMonitorXml": "112.150.638-06",
+            "crmXml": "018.497-00",
+            "message": "Tipo de troca nao encontrado na tabela tipo_troca."
+          },
+          {
+            "index": 2849,
+            "codigoAccess": "2865",
+            "codigo_access": "2865",
+            "codigoXml": "2865",
+            "osXml": "2022/0043140-002E",
+            "numOsXml": "002",
+            "num_os_xml": "002",
+            "credenciadoXml": "PARIS TRANSPORTE ESCOLAR LTDA",
+            "dreXml": "CL",
+            "cpfCondutorXml": "290.447.288-65",
+            "cpfMonitorXml": "534.755.828-80",
+            "crmXml": "043.992-00",
+            "message": "Tipo de troca nao encontrado na tabela tipo_troca."
+          }
+        ]
+      }
+    }
+  ]
+}
