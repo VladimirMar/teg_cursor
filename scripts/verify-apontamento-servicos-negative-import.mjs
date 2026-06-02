@@ -146,22 +146,88 @@ const requestJson = async (url, options = {}) => {
   return payload
 }
 
+const wait = (milliseconds) => new Promise((resolve) => {
+  setTimeout(resolve, milliseconds)
+})
+
+const isDeadlockError = (error) => {
+  const message = error instanceof Error ? error.message : String(error)
+  return /impasse detectado|deadlock detected/i.test(message)
+}
+
+const requestJsonWithRetry = async (url, options = {}, { attempts = 4, delayMs = 300 } = {}) => {
+  let lastError = null
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await requestJson(url, options)
+    } catch (error) {
+      lastError = error
+
+      if (!isDeadlockError(error) || attempt === attempts) {
+        throw error
+      }
+
+      await wait(delayMs * attempt)
+    }
+  }
+
+  throw lastError
+}
+
 const buildQueryUrl = (params) => {
   const query = new URLSearchParams(params)
   return `${baseUrl}/api/apontamento-servicos?${query.toString()}`
 }
 
-const getRowsForScenario = (payload) => {
+const fetchAllApontamentoPages = async (params) => {
+  const aggregatedItems = []
+  let page = 1
+  let totalPages = 1
+
+  while (page <= totalPages) {
+    const payload = await requestJson(buildQueryUrl({
+      ...params,
+      page: String(page),
+      pageSize: '50',
+    }))
+
+    const pageItems = Array.isArray(payload?.items) ? payload.items : []
+    aggregatedItems.push(...pageItems)
+
+    const parsedTotalPages = Number(payload?.totalPages)
+    totalPages = Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
+      ? parsedTotalPages
+      : 1
+    page += 1
+  }
+
+  return {
+    items: aggregatedItems,
+    total: aggregatedItems.length,
+    page: 1,
+    pageSize: aggregatedItems.length,
+    totalPages: 1,
+  }
+}
+
+const getRowsForScenario = (payload, currentScenario) => {
   return (payload.items ?? []).filter(
-    (item) => String(item.ordemServicoOsConcat ?? '').trim() === scenario.ordemServico,
+    (item) => (
+      String(item.ordemServicoOsConcat ?? '').trim() === currentScenario.ordemServico
+      && String(item.dreCodigo ?? '').trim() === String(currentScenario.dreCodigo ?? '').trim()
+      && String(item.placa ?? '').trim() === String(currentScenario.placa ?? '').trim()
+      && String(item.tipoPessoa ?? '').trim() === String(currentScenario.tipoPessoa ?? '').trim()
+      && Number(item.revisao ?? 0) === Number(currentScenario.revisao ?? 0)
+    ),
   )
 }
 
-const toRestoreItems = (payload) => {
-  const rows = getRowsForScenario(payload)
+const toRestoreItems = (payload, currentScenario) => {
+  const rows = getRowsForScenario(payload, currentScenario)
 
   return rows
-    .filter((item) => scenario.rows.some((row) => row.tipoEscolaSigla === item.tipoEscolaSigla))
+    .filter((item) => currentScenario.rows.some((row) => row.tipoEscolaSigla === item.tipoEscolaSigla))
     .map((item) => ({
       dreCodigo: item.dreCodigo,
       ordemServicoCodigo: item.ordemServicoCodigo,
@@ -178,6 +244,99 @@ const toRestoreItems = (payload) => {
     }))
 }
 
+const buildScenarioKey = (item) => [
+  String(item.ordemServicoOsConcat ?? '').trim(),
+  String(item.dreCodigo ?? '').trim(),
+  String(item.placa ?? '').trim(),
+  String(item.tipoPessoa ?? '').trim(),
+  String(Number(item.revisao ?? 0)),
+].join('|')
+
+const buildScenarioGroupsByDate = (items) => {
+  const groups = new Map()
+
+  for (const item of items) {
+    const key = buildScenarioKey(item)
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        ordemServico: String(item.ordemServicoOsConcat ?? '').trim(),
+        dreCodigo: String(item.dreCodigo ?? '').trim(),
+        placa: String(item.placa ?? '').trim(),
+        tipoPessoa: String(item.tipoPessoa ?? '').trim() || 'PF',
+        revisao: Number(item.revisao ?? 0),
+        tipos: new Set(),
+      })
+    }
+
+    groups.get(key).tipos.add(String(item.tipoEscolaSigla ?? '').trim())
+  }
+
+  return groups
+}
+
+const hasExpectedTypes = (tiposSet) => expectedTypeSequence.every((type) => tiposSet.has(type))
+
+const resolveScenarioFromAvailableData = (firstDayItems, secondDayItems, lastDayItems) => {
+  const firstDayGroups = buildScenarioGroupsByDate(firstDayItems)
+  const secondDayGroups = buildScenarioGroupsByDate(secondDayItems)
+  const lastDayGroups = buildScenarioGroupsByDate(lastDayItems)
+
+  const candidates = []
+
+  for (const [key, firstDayGroup] of firstDayGroups.entries()) {
+    const secondDayGroup = secondDayGroups.get(key)
+    const lastDayGroup = lastDayGroups.get(key)
+
+    if (!secondDayGroup || !lastDayGroup) {
+      continue
+    }
+
+    if (!hasExpectedTypes(firstDayGroup.tipos) || !hasExpectedTypes(secondDayGroup.tipos) || !hasExpectedTypes(lastDayGroup.tipos)) {
+      continue
+    }
+
+    candidates.push(firstDayGroup)
+  }
+
+  if (!candidates.length) {
+    throw new Error('Nao foi encontrado cenario com EMEI/EMEF/EMEE/CEI/CCA disponivel nos dias 1, 2 e 30 para executar o teste negativo.')
+  }
+
+  const preferredOs = String(scenario.ordemServico ?? '').trim()
+  const preferredDre = String(scenario.dreCodigo ?? '').trim()
+  const preferredPlaca = String(scenario.placa ?? '').trim()
+
+  const candidatesWithinPreferredDre = preferredDre
+    ? candidates.filter((candidate) => candidate.dreCodigo === preferredDre)
+    : candidates
+
+  if (preferredDre && !candidatesWithinPreferredDre.length) {
+    throw new Error(`Nao foi encontrado cenario elegivel na DRE ${preferredDre} para o teste negativo.`)
+  }
+
+  const eligibleCandidates = candidatesWithinPreferredDre
+
+  const strictPreferred = eligibleCandidates.find((candidate) => (
+    candidate.ordemServico === preferredOs
+    && candidate.dreCodigo === preferredDre
+    && candidate.placa === preferredPlaca
+  ))
+
+  if (strictPreferred) {
+    return strictPreferred
+  }
+
+  const osPreferred = eligibleCandidates.find((candidate) => candidate.ordemServico === preferredOs)
+
+  if (osPreferred) {
+    return osPreferred
+  }
+
+  return [...eligibleCandidates].sort((left, right) => left.ordemServico.localeCompare(right.ordemServico))[0]
+}
+
 const sumMetrics = (left, right) => ({
   naoCadeirantePresencial: left.naoCadeirantePresencial + right.naoCadeirantePresencial,
   cadeirante: left.cadeirante + right.cadeirante,
@@ -188,24 +347,24 @@ const sumMetrics = (left, right) => ({
 })
 
 const assertItemMetrics = (item, metrics, label) => {
-  assert(item.naoCadeirantePresencial === metrics.naoCadeirantePresencial, `${label}: Nao cadeirante presencial divergente: ${item.naoCadeirantePresencial}`)
-  assert(item.cadeirante === metrics.cadeirante, `${label}: Cadeirante divergente: ${item.cadeirante}`)
-  assert(item.atendimentoComplementarNaoCadeirante === metrics.atendimentoComplementarNaoCadeirante, `${label}: Atendimento complementar N CAD divergente: ${item.atendimentoComplementarNaoCadeirante}`)
-  assert(item.atendimentoComplementarCadeirante === metrics.atendimentoComplementarCadeirante, `${label}: Atendimento complementar CAD divergente: ${item.atendimentoComplementarCadeirante}`)
-  assert(item.continuaNaoCadeirante === metrics.continuaNaoCadeirante, `${label}: Continua N CAD divergente: ${item.continuaNaoCadeirante}`)
-  assert(item.continuaCadeirante === metrics.continuaCadeirante, `${label}: Continua CAD divergente: ${item.continuaCadeirante}`)
+  assert(item.naoCadeirantePresencial === metrics.naoCadeirantePresencial, `${label}: Nao cadeirante presencial divergente: atual=${item.naoCadeirantePresencial}, esperado=${metrics.naoCadeirantePresencial}`)
+  assert(item.cadeirante === metrics.cadeirante, `${label}: Cadeirante divergente: atual=${item.cadeirante}, esperado=${metrics.cadeirante}`)
+  assert(item.atendimentoComplementarNaoCadeirante === metrics.atendimentoComplementarNaoCadeirante, `${label}: Atendimento complementar N CAD divergente: atual=${item.atendimentoComplementarNaoCadeirante}, esperado=${metrics.atendimentoComplementarNaoCadeirante}`)
+  assert(item.atendimentoComplementarCadeirante === metrics.atendimentoComplementarCadeirante, `${label}: Atendimento complementar CAD divergente: atual=${item.atendimentoComplementarCadeirante}, esperado=${metrics.atendimentoComplementarCadeirante}`)
+  assert(item.continuaNaoCadeirante === metrics.continuaNaoCadeirante, `${label}: Continua N CAD divergente: atual=${item.continuaNaoCadeirante}, esperado=${metrics.continuaNaoCadeirante}`)
+  assert(item.continuaCadeirante === metrics.continuaCadeirante, `${label}: Continua CAD divergente: atual=${item.continuaCadeirante}, esperado=${metrics.continuaCadeirante}`)
 }
 
 const assertItemAccumulatedMetrics = (item, metrics, label) => {
-  assert(item.naoCadeirantePresencialAcm === metrics.naoCadeirantePresencial, `${label}: Acumulado Nao cadeirante presencial divergente: ${item.naoCadeirantePresencialAcm}`)
-  assert(item.cadeiranteAcm === metrics.cadeirante, `${label}: Acumulado Cadeirante divergente: ${item.cadeiranteAcm}`)
-  assert(item.atendimentoComplementarNaoCadeiranteAcm === metrics.atendimentoComplementarNaoCadeirante, `${label}: Acumulado Atendimento complementar N CAD divergente: ${item.atendimentoComplementarNaoCadeiranteAcm}`)
-  assert(item.atendimentoComplementarCadeiranteAcm === metrics.atendimentoComplementarCadeirante, `${label}: Acumulado Atendimento complementar CAD divergente: ${item.atendimentoComplementarCadeiranteAcm}`)
-  assert(item.continuaNaoCadeiranteAcm === metrics.continuaNaoCadeirante, `${label}: Acumulado Continua N CAD divergente: ${item.continuaNaoCadeiranteAcm}`)
-  assert(item.continuaCadeiranteAcm === metrics.continuaCadeirante, `${label}: Acumulado Continua CAD divergente: ${item.continuaCadeiranteAcm}`)
+  assert(item.naoCadeirantePresencialAcm === metrics.naoCadeirantePresencial, `${label}: Acumulado Nao cadeirante presencial divergente: atual=${item.naoCadeirantePresencialAcm}, esperado=${metrics.naoCadeirantePresencial}`)
+  assert(item.cadeiranteAcm === metrics.cadeirante, `${label}: Acumulado Cadeirante divergente: atual=${item.cadeiranteAcm}, esperado=${metrics.cadeirante}`)
+  assert(item.atendimentoComplementarNaoCadeiranteAcm === metrics.atendimentoComplementarNaoCadeirante, `${label}: Acumulado Atendimento complementar N CAD divergente: atual=${item.atendimentoComplementarNaoCadeiranteAcm}, esperado=${metrics.atendimentoComplementarNaoCadeirante}`)
+  assert(item.atendimentoComplementarCadeiranteAcm === metrics.atendimentoComplementarCadeirante, `${label}: Acumulado Atendimento complementar CAD divergente: atual=${item.atendimentoComplementarCadeiranteAcm}, esperado=${metrics.atendimentoComplementarCadeirante}`)
+  assert(item.continuaNaoCadeiranteAcm === metrics.continuaNaoCadeirante, `${label}: Acumulado Continua N CAD divergente: atual=${item.continuaNaoCadeiranteAcm}, esperado=${metrics.continuaNaoCadeirante}`)
+  assert(item.continuaCadeiranteAcm === metrics.continuaCadeirante, `${label}: Acumulado Continua CAD divergente: atual=${item.continuaCadeiranteAcm}, esperado=${metrics.continuaCadeirante}`)
 }
 
-const buildImportWorkbook = async () => {
+const buildImportWorkbook = async (currentScenario) => {
   await mkdir(outputDirectory, { recursive: true })
 
   const workbook = XLSX.utils.book_new()
@@ -215,9 +374,9 @@ const buildImportWorkbook = async () => {
   mainSheet.A1 = { t: 's', v: 'BUTANTA' }
   mainSheet.F5 = { t: 's', v: '01/04/2026' }
 
-  scenario.rows.forEach((row, index) => {
+  currentScenario.rows.forEach((row, index) => {
     const rowNumber = index + 6
-    mainSheet[`B${rowNumber}`] = { t: 's', v: scenario.ordemServico }
+    mainSheet[`B${rowNumber}`] = { t: 's', v: currentScenario.ordemServico }
     mainSheet[`F${rowNumber}`] = { t: 's', v: '01/04/2026' }
     mainSheet[`G${rowNumber}`] = { t: 's', v: '30/04/2026' }
     mainSheet[`K${rowNumber}`] = { t: 's', v: row.tipoEscolaSigla }
@@ -230,7 +389,7 @@ const buildImportWorkbook = async () => {
     mainSheet[`W${rowNumber}`] = { t: 'n', v: row.secondDayMetrics.atendimentoComplementarNaoCadeirante }
     mainSheet[`X${rowNumber}`] = { t: 'n', v: row.secondDayMetrics.atendimentoComplementarCadeirante }
 
-    continuaSheet[`B${rowNumber}`] = { t: 's', v: scenario.ordemServico }
+    continuaSheet[`B${rowNumber}`] = { t: 's', v: currentScenario.ordemServico }
     continuaSheet[`L${rowNumber}`] = { t: 'n', v: row.firstDayMetrics.continuaNaoCadeirante }
     continuaSheet[`M${rowNumber}`] = { t: 'n', v: row.firstDayMetrics.continuaCadeirante }
     continuaSheet[`N${rowNumber}`] = { t: 'n', v: row.secondDayMetrics.continuaNaoCadeirante }
@@ -249,25 +408,63 @@ const buildImportWorkbook = async () => {
 
 const main = async () => {
   console.log('Preparando planilha temporaria com valores negativos...')
-  const targetWorkbookPath = await buildImportWorkbook()
-
-  const baselineFirstDayPayload = await requestJson(buildQueryUrl({
+  const fullFirstDayPayload = await fetchAllApontamentoPages({
     mesAno: scenario.mesAno,
     dataReferencia: scenario.firstDataReferencia,
-    dreCodigo: scenario.dreCodigo,
-    placa: scenario.placa,
-  }))
-  const baselineSecondDayPayload = await requestJson(buildQueryUrl({
+  })
+  const fullSecondDayPayload = await fetchAllApontamentoPages({
     mesAno: scenario.mesAno,
     dataReferencia: scenario.secondDataReferencia,
-    dreCodigo: scenario.dreCodigo,
-    placa: scenario.placa,
-  }))
-  const restoreFirstDayItems = toRestoreItems(baselineFirstDayPayload)
-  const restoreSecondDayItems = toRestoreItems(baselineSecondDayPayload)
+  })
+  const fullLastDayPayload = await fetchAllApontamentoPages({
+    mesAno: scenario.mesAno,
+    dataReferencia: scenario.lastDataReferencia,
+  })
 
-  assert(restoreFirstDayItems.length === scenario.rows.length, 'Nao foi possivel capturar todos os tipos de atendimento da base para restauracao do dia 1.')
-  assert(restoreSecondDayItems.length === scenario.rows.length, 'Nao foi possivel capturar todos os tipos de atendimento da base para restauracao do dia 2.')
+  const resolvedScenario = {
+    ...scenario,
+    ...resolveScenarioFromAvailableData(
+      fullFirstDayPayload.items ?? [],
+      fullSecondDayPayload.items ?? [],
+      fullLastDayPayload.items ?? [],
+    ),
+  }
+
+  console.log(`- Cenario selecionado: ${resolvedScenario.ordemServico} (DRE ${resolvedScenario.dreCodigo}, placa ${resolvedScenario.placa}, revisao ${resolvedScenario.revisao})`)
+
+  const targetWorkbookPath = await buildImportWorkbook(resolvedScenario)
+
+  const baselineFirstDayPayload = await fetchAllApontamentoPages({
+    mesAno: resolvedScenario.mesAno,
+    dataReferencia: resolvedScenario.firstDataReferencia,
+    dreCodigo: resolvedScenario.dreCodigo,
+    placa: resolvedScenario.placa,
+    tipoPessoa: resolvedScenario.tipoPessoa,
+    revisao: String(resolvedScenario.revisao),
+  })
+  const baselineSecondDayPayload = await fetchAllApontamentoPages({
+    mesAno: resolvedScenario.mesAno,
+    dataReferencia: resolvedScenario.secondDataReferencia,
+    dreCodigo: resolvedScenario.dreCodigo,
+    placa: resolvedScenario.placa,
+    tipoPessoa: resolvedScenario.tipoPessoa,
+    revisao: String(resolvedScenario.revisao),
+  })
+  const baselineLastDayPayload = await fetchAllApontamentoPages({
+    mesAno: resolvedScenario.mesAno,
+    dataReferencia: resolvedScenario.lastDataReferencia,
+    dreCodigo: resolvedScenario.dreCodigo,
+    placa: resolvedScenario.placa,
+    tipoPessoa: resolvedScenario.tipoPessoa,
+    revisao: String(resolvedScenario.revisao),
+  })
+  const restoreFirstDayItems = toRestoreItems(baselineFirstDayPayload, resolvedScenario)
+  const restoreSecondDayItems = toRestoreItems(baselineSecondDayPayload, resolvedScenario)
+  const baselineLastDayRows = getRowsForScenario(baselineLastDayPayload, resolvedScenario)
+
+  assert(restoreFirstDayItems.length === resolvedScenario.rows.length, 'Nao foi possivel capturar todos os tipos de atendimento da base para restauracao do dia 1.')
+  assert(restoreSecondDayItems.length === resolvedScenario.rows.length, 'Nao foi possivel capturar todos os tipos de atendimento da base para restauracao do dia 2.')
+  assert(baselineLastDayRows.length === resolvedScenario.rows.length, 'Nao foi possivel capturar todos os tipos de atendimento da base para restauracao do dia 30.')
 
   try {
     console.log('Importando planilha com negativos...')
@@ -281,28 +478,34 @@ const main = async () => {
 
     console.log(`- Importacao concluida: arquivos=${importResult.processedFiles} linhas=${importResult.processedItems}`)
 
-    const firstDayPayload = await requestJson(buildQueryUrl({
-      mesAno: scenario.mesAno,
-      dataReferencia: scenario.firstDataReferencia,
-      dreCodigo: scenario.dreCodigo,
-      placa: scenario.placa,
-    }))
-    const secondDayPayload = await requestJson(buildQueryUrl({
-      mesAno: scenario.mesAno,
-      dataReferencia: scenario.secondDataReferencia,
-      dreCodigo: scenario.dreCodigo,
-      placa: scenario.placa,
-    }))
-    const lastDayPayload = await requestJson(buildQueryUrl({
-      mesAno: scenario.mesAno,
-      dataReferencia: scenario.lastDataReferencia,
-      dreCodigo: scenario.dreCodigo,
-      placa: scenario.placa,
-    }))
+    const firstDayPayload = await fetchAllApontamentoPages({
+      mesAno: resolvedScenario.mesAno,
+      dataReferencia: resolvedScenario.firstDataReferencia,
+      dreCodigo: resolvedScenario.dreCodigo,
+      placa: resolvedScenario.placa,
+      tipoPessoa: resolvedScenario.tipoPessoa,
+      revisao: String(resolvedScenario.revisao),
+    })
+    const secondDayPayload = await fetchAllApontamentoPages({
+      mesAno: resolvedScenario.mesAno,
+      dataReferencia: resolvedScenario.secondDataReferencia,
+      dreCodigo: resolvedScenario.dreCodigo,
+      placa: resolvedScenario.placa,
+      tipoPessoa: resolvedScenario.tipoPessoa,
+      revisao: String(resolvedScenario.revisao),
+    })
+    const lastDayPayload = await fetchAllApontamentoPages({
+      mesAno: resolvedScenario.mesAno,
+      dataReferencia: resolvedScenario.lastDataReferencia,
+      dreCodigo: resolvedScenario.dreCodigo,
+      placa: resolvedScenario.placa,
+      tipoPessoa: resolvedScenario.tipoPessoa,
+      revisao: String(resolvedScenario.revisao),
+    })
 
-    const firstDayRows = getRowsForScenario(firstDayPayload)
-    const secondDayRows = getRowsForScenario(secondDayPayload)
-    const lastDayRows = getRowsForScenario(lastDayPayload)
+    const firstDayRows = getRowsForScenario(firstDayPayload, resolvedScenario)
+    const secondDayRows = getRowsForScenario(secondDayPayload, resolvedScenario)
+    const lastDayRows = getRowsForScenario(lastDayPayload, resolvedScenario)
     const returnedSequence = firstDayRows.map((item) => item.tipoEscolaSigla)
 
     assert(
@@ -310,12 +513,14 @@ const main = async () => {
       `Sequencia de tipos divergente: ${returnedSequence.join(', ') || '-'}.`,
     )
 
-    for (const row of scenario.rows) {
+    for (const row of resolvedScenario.rows) {
       const firstDayItem = firstDayRows.find((item) => item.tipoEscolaSigla === row.tipoEscolaSigla)
       const secondDayItem = secondDayRows.find((item) => item.tipoEscolaSigla === row.tipoEscolaSigla)
       const lastDayItem = lastDayRows.find((item) => item.tipoEscolaSigla === row.tipoEscolaSigla)
+      const baselineLastDayItem = baselineLastDayRows.find((item) => item.tipoEscolaSigla === row.tipoEscolaSigla)
       const secondDayAccumulatedMetrics = sumMetrics(row.firstDayMetrics, row.secondDayMetrics)
 
+      assert(baselineLastDayItem, `Baseline ${row.tipoEscolaSigla} nao encontrado no dia 30.`)
       assert(firstDayItem, `Item ${row.tipoEscolaSigla} nao encontrado apos importar negativos no dia 1.`)
       assert(secondDayItem, `Item ${row.tipoEscolaSigla} nao encontrado apos importar negativos no dia 2.`)
       assert(lastDayItem, `Item ${row.tipoEscolaSigla} nao encontrado apos importar negativos no dia 30.`)
@@ -339,19 +544,19 @@ const main = async () => {
     console.log('- Acumulado validado do dia 1 ao dia 30, somando ou subtraindo conforme o sinal digitado.')
   } finally {
     console.log('Restaurando valores originais...')
-    await requestJson(`${baseUrl}/api/apontamento-servicos`, {
+    await requestJsonWithRetry(`${baseUrl}/api/apontamento-servicos`, {
       method: 'POST',
       body: JSON.stringify({
-        mesAno: scenario.mesAno,
-        dataReferencia: scenario.firstDataReferencia,
+        mesAno: resolvedScenario.mesAno,
+        dataReferencia: resolvedScenario.firstDataReferencia,
         items: restoreFirstDayItems,
       }),
     })
-    await requestJson(`${baseUrl}/api/apontamento-servicos`, {
+    await requestJsonWithRetry(`${baseUrl}/api/apontamento-servicos`, {
       method: 'POST',
       body: JSON.stringify({
-        mesAno: scenario.mesAno,
-        dataReferencia: scenario.secondDataReferencia,
+        mesAno: resolvedScenario.mesAno,
+        dataReferencia: resolvedScenario.secondDataReferencia,
         items: restoreSecondDayItems,
       }),
     })

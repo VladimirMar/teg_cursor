@@ -5,6 +5,7 @@ import AcessoPaginaView from './AcessoPaginaView'
 import ApontamentoServicosView from './ApontamentoServicosView'
 import ApuracaoServicosView from './ApuracaoServicosView'
 import BatchProcessMonitorView from './BatchProcessMonitorView'
+import EnvironmentMonitoringView from './EnvironmentMonitoringView'
 import RemuneracaoServicosView from './RemuneracaoServicosView'
 import PerfilAcessoView from './PerfilAcessoView'
 import PerfilView from './PerfilView'
@@ -190,7 +191,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'remuneracaoServicos' | 'batchProcessMonitor' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'xmlImportLote' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'remuneracaoServicos' | 'batchProcessMonitor' | 'monitoramentoAmbiente' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'xmlImportLote' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -200,7 +201,7 @@ type TitularSortField = 'codigo' | 'cnpj_cpf' | 'titular'
 type MarcaModeloSortField = 'codigo' | 'descricao'
 type SeguradoraSortField = 'codigo' | 'controle' | 'descricao'
 type FormMode = 'create' | 'edit' | 'view'
-type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'operacionalAdministrativo' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro'
+type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'operacionalAdministrativo' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro' | 'monitoramento'
 
 type DashboardDrillDownContext = {
   dreCodigo: string
@@ -356,6 +357,7 @@ const getDefaultCollapsedMenuGroups = (): Record<CollapsedMenuGroup, boolean> =>
   acesso: true,
   cadastrosOperacional: true,
   cadastrosFinanceiro: true,
+  monitoramento: true,
 })
 
 const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
@@ -386,8 +388,12 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'apontamentoServicos':
     case 'remuneracaoServicos':
       return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira', 'apuracaoServicos']
+    case 'monitoramentoAmbiente':
+    case 'batchProcessMonitor':
+    case 'xmlImportLote':
     case 'financeiroReprocessamento':
-      return ['operacional', 'operacionalAdministrativo']
+    case 'smoke':
+      return ['monitoramento']
     case 'dre':
     case 'modalidade':
     case 'tipoBancada':
@@ -396,7 +402,6 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'troca':
     case 'emissaoDocumentoParametro':
     case 'cep':
-    case 'smoke':
       return ['cadastros', 'cadastrosOperacional']
     case 'condicao':
     case 'tipoPgto':
@@ -655,8 +660,6 @@ const operationalAdministrativeViews: ActiveView[] = [
   'ordemServicoHistorico',
   'veiculo',
   'veiculoHistorico',
-  'xmlImportLote',
-  'financeiroReprocessamento',
 ]
 const operationalFinanceiroViews: ActiveView[] = [
   'apuracaoFinanceira',
@@ -664,7 +667,6 @@ const operationalFinanceiroViews: ActiveView[] = [
   'apuracaoServicos',
   'apontamentoServicos',
   'remuneracaoServicos',
-  'batchProcessMonitor',
 ]
 const cadastroOperationalViews: ActiveView[] = [
   'dre',
@@ -675,7 +677,6 @@ const cadastroOperationalViews: ActiveView[] = [
   'troca',
   'emissaoDocumentoParametro',
   'cep',
-  'smoke',
 ]
 const cadastroFinanceiroViews: ActiveView[] = [
   'condicao',
@@ -688,6 +689,13 @@ const cadastroFinanceiroViews: ActiveView[] = [
   'tipoEscola',
   'aliquotaOptante',
   'diasLetivos',
+]
+const monitoramentoViews: ActiveView[] = [
+  'monitoramentoAmbiente',
+  'batchProcessMonitor',
+  'xmlImportLote',
+  'financeiroReprocessamento',
+  'smoke',
 ]
 const accessManagementViews: ActiveView[] = [
   'acessoPagina',
@@ -710,6 +718,7 @@ const menuAccessByView: Record<ActiveView, string> = {
   apontamentoServicos: 'menu_apuracao_servicos',
   remuneracaoServicos: 'menu_apuracao_servicos',
   batchProcessMonitor: 'menu_apuracao_servicos',
+  monitoramentoAmbiente: 'menu_apuracao_servicos',
   modalBancadaTpPagtoCondicao: 'menu_modal_bancada_tp_pagto_condicao',
   modalBancadaTpPagtoCondicaoValor: 'menu_modal_bancada_tp_pagto_condicao_valor',
   kmValor: 'menu_km_valor',
@@ -748,6 +757,7 @@ const orderedMenuViews: ActiveView[] = [
   ...operationalFinanceiroViews,
   ...cadastroOperationalViews,
   ...cadastroFinanceiroViews,
+  ...monitoramentoViews,
   'acesso',
   ...accessManagementViews,
 ]
@@ -1836,6 +1846,7 @@ function App() {
     && cadastroFinanceiroViews.some((view) => isViewAllowed(view, menuPermissionKeys))
   const hasCadastroAccess = isMenuKeyAllowed('menu_cadastros_root', menuPermissionKeys)
     && (hasCadastroOperationalAccess || hasCadastroFinanceiroAccess)
+  const hasMonitoringAccess = monitoramentoViews.some((view) => isViewAllowed(view, menuPermissionKeys))
   const hasAccessManagementAccess = isViewAllowed('acesso', menuPermissionKeys)
 
   useEffect(() => {
@@ -3721,6 +3732,8 @@ function App() {
   }
 
   const handleRunXmlImportAll = async () => {
+    const deleteMissing = window.confirm('Ativar exclusao automatica de ausentes nesta importacao?')
+
     setIsRunningXmlImportAll(true)
     setXmlImportAllStatusTone('idle')
     setXmlImportAllStatusMessage('Iniciando importacao XML com geracao a partir do Access...')
@@ -3736,6 +3749,7 @@ function App() {
         },
         body: JSON.stringify({
           accessDbPath: xmlImportAllAccessDbPathInput.trim(),
+          deleteMissing,
         }),
       })
 
@@ -7711,7 +7725,7 @@ function App() {
               <ul className={`menu-sublist ${collapsedMenuGroups.operacional ? 'menu-sublist-hidden' : ''}`}>
                 {hasOperationalAdministrativeAccess ? <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem menu-subitem-toggle ${activeView === 'titular' || activeView === 'condutor' || activeView === 'vinculoCondutor' || activeView === 'monitor' || activeView === 'vinculoMonitor' || activeView === 'credenciada' || activeView === 'credenciamentoTermo' || activeView === 'termoHistorico' || activeView === 'ordemServico' || activeView === 'ordemServicoHistorico' || activeView === 'veiculo' || activeView === 'veiculoHistorico' || activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'titular' || activeView === 'condutor' || activeView === 'vinculoCondutor' || activeView === 'monitor' || activeView === 'vinculoMonitor' || activeView === 'credenciada' || activeView === 'credenciamentoTermo' || activeView === 'termoHistorico' || activeView === 'ordemServico' || activeView === 'ordemServicoHistorico' || activeView === 'veiculo' || activeView === 'veiculoHistorico' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalAdministrativo')}
                     role="button"
                     aria-expanded={!collapsedMenuGroups.operacionalAdministrativo}
@@ -7909,23 +7923,11 @@ function App() {
                     </li> : null}
                   </ul>
                 </li> : null}
-                    {isViewAllowed('xmlImportLote', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'xmlImportLote' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('xmlImportLote')}
-                    >
-                      Importacao Xml/Access em lote
-                    </li> : null}
-                    {isViewAllowed('financeiroReprocessamento', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('financeiroReprocessamento')}
-                    >
-                      Reprocessar Valores
-                    </li> : null}
                   </ul>
                 </li> : null}
                 {hasOperationalFinanceiroAccess ? <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' || activeView === 'batchProcessMonitor' ? 'menu-subitem-active' : ''}`}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalFinanceiro')}
                     role="button"
                     aria-expanded={!collapsedMenuGroups.operacionalFinanceiro}
@@ -7946,12 +7948,6 @@ function App() {
                       onClick={() => setActiveView('resumoFinanceiro')}
                     >
                       Resumo Financeiro
-                    </li> : null}
-                    {isViewAllowed('batchProcessMonitor', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'batchProcessMonitor' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('batchProcessMonitor')}
-                    >
-                      Monitor de Lotes
                     </li> : null}
                     {isViewAllowed('apuracaoFinanceira', menuPermissionKeys) || isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                       <div
@@ -8091,12 +8087,6 @@ function App() {
                     >
                       CEP
                     </li> : null}
-                    {isViewAllowed('smoke', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'smoke' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('smoke')}
-                    >
-                      Smoke Test
-                    </li> : null}
                   </ul>
                 </li> : null}
                 {hasCadastroFinanceiroAccess ? <li className="menu-group menu-subgroup">
@@ -8171,6 +8161,49 @@ function App() {
                       Dias Letivos
                     </li> : null}
                   </ul>
+                </li> : null}
+              </ul>
+            </li> : null}
+            {hasMonitoringAccess ? <li className="menu-group">
+              <button
+                type="button"
+                className={`menu-item menu-item-static menu-item-toggle ${['monitoramentoAmbiente', 'batchProcessMonitor', 'xmlImportLote', 'financeiroReprocessamento', 'smoke'].includes(activeView) ? 'menu-item-active' : ''}`}
+                onClick={() => toggleMenuGroup('monitoramento')}
+                aria-expanded={!collapsedMenuGroups.monitoramento}
+              >
+                <span>Monitoramento</span>
+                <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.monitoramento ? '▸' : '▾'}</span>
+              </button>
+              <ul className={`menu-sublist ${collapsedMenuGroups.monitoramento ? 'menu-sublist-hidden' : ''}`}>
+                {isViewAllowed('monitoramentoAmbiente', menuPermissionKeys) ? <li
+                  className={`menu-subitem ${activeView === 'monitoramentoAmbiente' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('monitoramentoAmbiente')}
+                >
+                  Tempo de Resposta Web/API/DB
+                </li> : null}
+                {isViewAllowed('batchProcessMonitor', menuPermissionKeys) ? <li
+                  className={`menu-subitem ${activeView === 'batchProcessMonitor' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('batchProcessMonitor')}
+                >
+                  Monitor de Lotes
+                </li> : null}
+                {isViewAllowed('xmlImportLote', menuPermissionKeys) ? <li
+                  className={`menu-subitem ${activeView === 'xmlImportLote' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('xmlImportLote')}
+                >
+                  Importacao Xml/Access em lote
+                </li> : null}
+                {isViewAllowed('financeiroReprocessamento', menuPermissionKeys) ? <li
+                  className={`menu-subitem ${activeView === 'financeiroReprocessamento' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('financeiroReprocessamento')}
+                >
+                  Reprocessamento Valores
+                </li> : null}
+                {isViewAllowed('smoke', menuPermissionKeys) ? <li
+                  className={`menu-subitem ${activeView === 'smoke' ? 'menu-subitem-active' : ''}`}
+                  onClick={() => setActiveView('smoke')}
+                >
+                  Smoke Test
                 </li> : null}
               </ul>
             </li> : null}
@@ -10181,6 +10214,8 @@ function App() {
           <ApontamentoServicosView />
         ) : activeView === 'remuneracaoServicos' ? (
           <RemuneracaoServicosView />
+        ) : activeView === 'monitoramentoAmbiente' ? (
+          <EnvironmentMonitoringView />
         ) : activeView === 'batchProcessMonitor' ? (
           <BatchProcessMonitorView />
         ) : activeView === 'modalBancadaTpPagtoCondicao' ? (
@@ -13076,7 +13111,7 @@ function App() {
               <p className="content-kicker">Operacional financeiro</p>
               <h2 id="content-title">Apuracao Financeira</h2>
               <p className="content-description">
-                Cadastre apuracoes financeiras por mes/ano, DRE e revisao com situacao controlada por tipo pessoa.
+                Realiza a apuracao das Ordem de Servicos ativas no mes/ano registrando todos os contratos existentes no período.
               </p>
             </div>
 

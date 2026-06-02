@@ -1,7 +1,9 @@
 import { createServer } from 'node:http'
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { access, appendFile, mkdir, readFile, readdir, rename } from 'node:fs/promises'
+import { access, appendFile, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
+import net from 'node:net'
+import os from 'node:os'
 import { XMLParser } from 'fast-xml-parser'
 import JSZip from 'jszip'
 import path from 'node:path'
@@ -49,10 +51,81 @@ const allowedSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo',
 const invalidFixtureSmokeSuites = new Set(['all', 'condutor', 'credenciada', 'veiculo'])
 const apontamentoServicosImportRuns = new Map()
 const batchProcessRuns = new Map()
+const apuracaoServicosPostProcessingQueue = new Map()
+let apuracaoServicosPostProcessingRunning = false
+const apuracaoServicosPostProcessingBatchSize = 30
 const batchProcessHistoryLimit = 200
 const batchProcessCollectionPath = '/api/batch-processes'
 const batchProcessActivePath = '/api/batch-processes/active'
 const batchProcessDetailPathPrefix = '/api/batch-processes/'
+const monitoramentoDiagnosticoPath = '/api/monitoramento/diagnostico'
+
+const formatMonitorMetricNumber = (value, precision = 2) => {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+
+  return Number(value.toFixed(precision))
+}
+
+const measureTcpLatency = (host, port, timeoutMs = 2000) => {
+  return new Promise((resolve) => {
+    const startedAt = process.hrtime.bigint()
+    const socket = new net.Socket()
+    let finished = false
+
+    const finish = (value) => {
+      if (finished) {
+        return
+      }
+
+      finished = true
+      socket.destroy()
+      resolve(value)
+    }
+
+    socket.setTimeout(timeoutMs)
+    socket.once('connect', () => {
+      const latencyMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000
+      finish(formatMonitorMetricNumber(latencyMs))
+    })
+    socket.once('timeout', () => finish(null))
+    socket.once('error', () => finish(null))
+
+    try {
+      socket.connect(port, host)
+    } catch {
+      finish(null)
+    }
+  })
+}
+
+const measureDiskIo = async () => {
+  const tempFilePath = path.join(workspaceRoot, 'tmp', `monitoramento-io-${Date.now()}-${Math.random().toString(16).slice(2)}.tmp`)
+  const payload = Buffer.alloc(16 * 1024, 'a')
+
+  try {
+    const writeStartedAt = process.hrtime.bigint()
+    await writeFile(tempFilePath, payload)
+    const writeMs = Number(process.hrtime.bigint() - writeStartedAt) / 1_000_000
+
+    const readStartedAt = process.hrtime.bigint()
+    await readFile(tempFilePath)
+    const readMs = Number(process.hrtime.bigint() - readStartedAt) / 1_000_000
+
+    return {
+      writeMs: formatMonitorMetricNumber(writeMs),
+      readMs: formatMonitorMetricNumber(readMs),
+    }
+  } catch {
+    return {
+      writeMs: 0,
+      readMs: 0,
+    }
+  } finally {
+    await unlink(tempFilePath).catch(() => {})
+  }
+}
 
 const normalizeBatchProcessId = (value) => {
   return String(value ?? '').trim().replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 120)
@@ -339,6 +412,88 @@ const setApontamentoServicosImportStatus = (importId, nextStatus) => {
   return mergedStatus
 }
 
+const buildApuracaoServicosPostProcessingQueueKey = (key) => {
+  if (!key) {
+    return ''
+  }
+
+  const mesAno = normalizeApuracaoFinanceiraMesAno(key.mesAno)
+  const dreCodigo = normalizeRequestValue(key.dreCodigo)
+  const ordemServicoCodigo = normalizeRequestValue(key.ordemServicoCodigo)
+  const revisao = Number.parseInt(String(key.revisao ?? ''), 10)
+  const tipoEscolaCodigo = normalizeRequestValue(key.tipoEscolaCodigo)
+  const tipoPessoa = normalizeApuracaoTipoPessoa(key.tipoPessoa)
+
+  if (!mesAno || !dreCodigo || !ordemServicoCodigo || !Number.isInteger(revisao) || revisao < 0 || !tipoEscolaCodigo || !tipoPessoa) {
+    return ''
+  }
+
+  return [mesAno, dreCodigo, ordemServicoCodigo, revisao, tipoEscolaCodigo, tipoPessoa].join('|')
+}
+
+const runApuracaoServicosPostProcessingQueue = async () => {
+  if (apuracaoServicosPostProcessingRunning) {
+    return
+  }
+
+  apuracaoServicosPostProcessingRunning = true
+
+  try {
+    while (apuracaoServicosPostProcessingQueue.size > 0) {
+      const batchEntries = Array.from(apuracaoServicosPostProcessingQueue.entries()).slice(0, apuracaoServicosPostProcessingBatchSize)
+
+      for (const [queueKey] of batchEntries) {
+        apuracaoServicosPostProcessingQueue.delete(queueKey)
+      }
+
+      const client = await pool.connect()
+
+      try {
+        for (const [, processingKey] of batchEntries) {
+          try {
+            await syncApuracaoServicosDailyTotals(processingKey, client)
+          } catch (error) {
+            console.error('[apuracao-servicos-post-processing] Falha ao sincronizar chave', processingKey, error)
+          }
+        }
+      } finally {
+        client.release()
+      }
+
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+  } finally {
+    apuracaoServicosPostProcessingRunning = false
+
+    if (apuracaoServicosPostProcessingQueue.size > 0) {
+      void runApuracaoServicosPostProcessingQueue()
+    }
+  }
+}
+
+const enqueueApuracaoServicosPostProcessing = (keys) => {
+  for (const key of Array.isArray(keys) ? keys : []) {
+    const queueKey = buildApuracaoServicosPostProcessingQueueKey(key)
+
+    if (!queueKey) {
+      continue
+    }
+
+    apuracaoServicosPostProcessingQueue.set(queueKey, {
+      mesAno: normalizeApuracaoFinanceiraMesAno(key.mesAno),
+      dreCodigo: normalizeRequestValue(key.dreCodigo),
+      ordemServicoCodigo: normalizeRequestValue(key.ordemServicoCodigo),
+      revisao: Number.parseInt(String(key.revisao ?? ''), 10),
+      tipoEscolaCodigo: normalizeRequestValue(key.tipoEscolaCodigo),
+      tipoPessoa: normalizeApuracaoTipoPessoa(key.tipoPessoa),
+    })
+  }
+
+  if (!apuracaoServicosPostProcessingRunning && apuracaoServicosPostProcessingQueue.size > 0) {
+    void runApuracaoServicosPostProcessingQueue()
+  }
+}
+
 const resolveXmlImportProgressFilePath = (filePath) => {
   const normalizedValue = String(filePath ?? '').trim()
 
@@ -348,6 +503,44 @@ const resolveXmlImportProgressFilePath = (filePath) => {
 
   const resolvedPath = path.resolve(normalizedValue)
   return resolvedPath.startsWith(workspaceRoot) ? resolvedPath : ''
+}
+
+const resetXmlImportProgress = async (progressFilePath) => {
+  const resolvedPath = resolveXmlImportProgressFilePath(progressFilePath)
+
+  if (!resolvedPath) {
+    return ''
+  }
+
+  await mkdir(path.dirname(resolvedPath), { recursive: true })
+  await writeFile(resolvedPath, '', 'utf8')
+
+  return resolvedPath
+}
+
+const readXmlImportProgress = async (progressFilePath) => {
+  const resolvedPath = resolveXmlImportProgressFilePath(progressFilePath)
+
+  if (!resolvedPath) {
+    return null
+  }
+
+  try {
+    const fileContent = await readFile(resolvedPath, 'utf8')
+    const lines = String(fileContent ?? '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    const latestLine = lines.at(-1) || ''
+    const match = latestLine.match(/registro\s+(\d+)\/(\d+)(?:\s+-\s+(.*))?/i)
+
+    return {
+      filePath: resolvedPath,
+      line: latestLine,
+      current: match ? Number(match[1]) : 0,
+      total: match ? Number(match[2]) : 0,
+      detail: match ? (match[3] || '') : '',
+    }
+  } catch {
+    return null
+  }
 }
 
 const appendXmlImportProgress = async (progressFilePath, stepLabel, current, total, detail = '') => {
@@ -805,7 +998,7 @@ const buildXmlImportAllExecutionResponse = async () => {
   }
 }
 
-const startXmlImportAllExecution = async ({ accessDbPath = '' } = {}) => {
+const startXmlImportAllExecution = async ({ accessDbPath = '', deleteMissing = false } = {}) => {
   if (xmlImportAllExecution?.running) {
     return buildXmlImportAllExecutionResponse()
   }
@@ -833,6 +1026,7 @@ const startXmlImportAllExecution = async ({ accessDbPath = '' } = {}) => {
       XML_IMPORT_ALL_LOG_PATH: logFilePath,
       XML_IMPORT_ALL_SOURCE: 'xml',
       XML_IMPORT_ALL_GENERATE_FROM_ACCESS: 'true',
+      XML_IMPORT_ALL_DELETE_MISSING: deleteMissing ? 'true' : 'false',
       ...(normalizedAccessDbPath ? { XML_IMPORT_ALL_ACCESS_DB_PATH: normalizedAccessDbPath } : {}),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -853,6 +1047,7 @@ const startXmlImportAllExecution = async ({ accessDbPath = '' } = {}) => {
     accessDbPath: normalizedAccessDbPath || defaultAccessDatabasePath,
     generateFromAccess: true,
     truncateBeforeImport: true,
+    deleteMissing,
     selectedStepKeys: xmlImportAllDefaultStepKeys,
     stdout: '',
     stderr: '',
@@ -872,6 +1067,7 @@ const startXmlImportAllExecution = async ({ accessDbPath = '' } = {}) => {
       source: 'xml',
       generateFromAccess: true,
       truncateBeforeImport: true,
+        deleteMissing,
       selectedStepKeys: xmlImportAllDefaultStepKeys,
       accessDbPath: normalizedAccessDbPath,
     },
@@ -1193,9 +1389,12 @@ const startRemuneracaoServicosBatchExecution = async (body = {}) => {
   return buildRemuneracaoServicosBatchExecutionResponse()
 }
 
+const pgHost = process.env.PGHOST ?? 'localhost'
+const pgPort = Number(process.env.PGPORT ?? 5432)
+
 const pool = new Pool({
-  host: process.env.PGHOST ?? 'localhost',
-  port: Number(process.env.PGPORT ?? 5432),
+  host: pgHost,
+  port: pgPort,
   user: process.env.PGUSER ?? 'postgres',
   password: process.env.PGPASSWORD ?? '12345',
   database: process.env.PGDATABASE ?? 'teg_financ',
@@ -2040,6 +2239,10 @@ const normalizeDreDescription = (value) => {
     .replace(/\s+/g, ' ')
     .toUpperCase()
     .slice(0, 255)
+}
+
+const isTegDreText = (value) => {
+  return /\bTEG\b/i.test(normalizeImportComparableText(value))
 }
 
 const normalizeImportComparableText = (value) => {
@@ -3210,9 +3413,13 @@ const buildApontamentoServicosImportOsLookup = (items) => {
   const lookup = new Map()
 
   for (const item of Array.isArray(items) ? items : []) {
+    const normalizedOsConcatKey = buildApontamentoServicosImportOsLookupKey(item?.osConcat)
+    const normalizedBaseKey = buildApontamentoServicosImportOsLookupKey(`${normalizeRequestValue(item?.termoAdesao)}-${normalizeRequestValue(item?.numOs)}`)
     const keys = [
-      buildApontamentoServicosImportOsLookupKey(item?.osConcat),
-      buildApontamentoServicosImportOsLookupKey(`${normalizeRequestValue(item?.termoAdesao)}-${normalizeRequestValue(item?.numOs)}`),
+      normalizedOsConcatKey,
+      normalizedBaseKey,
+      normalizedOsConcatKey.replace(/-S\/R$/i, ''),
+      normalizedBaseKey.replace(/-S\/R$/i, ''),
     ].filter(Boolean)
 
     for (const key of keys) {
@@ -3384,7 +3591,14 @@ const syncApuracaoServicosMaterializedFields = async (key, executor = pool) => {
   )
 }
 
-const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, preserveExistingKilometragem = false, createApuracaoFinanceiraIfMissing = false }, executor = pool) => {
+const upsertApontamentoServicosItems = async ({
+  mesAno,
+  dataReferencia,
+  items,
+  preserveExistingKilometragem = false,
+  createApuracaoFinanceiraIfMissing = false,
+  runPostProcessingInline = true,
+}, executor = pool) => {
   const touchedKeys = new Map()
   const remunerationSeedItems = []
 
@@ -3531,8 +3745,12 @@ const upsertApontamentoServicosItems = async ({ mesAno, dataReferencia, items, p
     })
   }
 
-  for (const touchedKey of touchedKeys.values()) {
-    await syncApuracaoServicosDailyTotals(touchedKey, executor)
+  if (runPostProcessingInline) {
+    for (const touchedKey of touchedKeys.values()) {
+      await syncApuracaoServicosDailyTotals(touchedKey, executor)
+    }
+  } else {
+    enqueueApuracaoServicosPostProcessing(Array.from(touchedKeys.values()))
   }
 
   if (remunerationSeedItems.length) {
@@ -3571,6 +3789,23 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
   }
 
   const mesAno = `${referenciaMes.slice(5, 7)}/${referenciaMes.slice(0, 4)}`
+
+  if (isTegDreText(dreDescricaoPlanilha)) {
+    return {
+      filePath: resolvedFilePath,
+      fileName: path.basename(resolvedFilePath),
+      mesAno,
+      dreCodigo: '',
+      dreDescricao: normalizeRequestValue(dreDescricaoPlanilha),
+      tipoPessoa,
+      revisao: 0,
+      firstDataReferencia: referenciaMes,
+      totalRecords: 0,
+      itemsByDate: new Map(),
+      skippedRecords: [],
+    }
+  }
+
   const dreRecord = await findDreByComparableDescription(dreDescricaoPlanilha, executor)
 
   if (!dreRecord) {
@@ -3580,7 +3815,7 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
   const tipoEscolaLookup = buildApontamentoServicosImportTipoEscolaLookup(await listTipoEscolaAtivaItems(executor))
   const ordemServicoLookup = buildApontamentoServicosImportOsLookup(await listActiveOrdemServicoOptionsByApuracao({
     mesAno,
-    dreCodigo: dreRecord.codigo,
+    dreCodigo: dreRecord.codigoOperacional,
     tipoPessoa,
   }, executor))
   const lastMainRow = findWorksheetLastDataRow(mainSheet, apontamentoServicosImportMainOsColumnIndex, apontamentoServicosImportFirstDataRow)
@@ -3808,8 +4043,8 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
         MAX(COALESCE(BTRIM(aps.crmc_condutor), '')) AS crmc_condutor,
         MAX(COALESCE(BTRIM(aps.tipo_veiculo), '')) AS tipo_veiculo,
-        MAX(COALESCE(aps.empresa_order, '')) AS empresa_order,
-        MAX(COALESCE(aps.nome_condutor_order, '')) AS nome_condutor_order,
+        MAX(${buildApontamentoServicosLocaleOrderExpression('credenciada_lookup.empresa')}) AS empresa_order,
+        MAX(${buildApontamentoServicosLocaleOrderExpression('os.condutor')}) AS nome_condutor_order,
         MAX(COALESCE(aps.dre_descricao_order, '')) AS dre_descricao_order,
         MAX(COALESCE(aps.termo_adesao_order, '')) AS termo_adesao_order,
         MAX(COALESCE(aps.num_os_order, '')) AS num_os_order,
@@ -3817,6 +4052,8 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         MAX(COALESCE(aps.tipo_escola_descricao_order, '')) AS tipo_escola_descricao_order
       FROM apuracao_servicos aps
       INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+      LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+      LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
       WHERE ${filters.join('\n       AND ')}
         AND ${ordemServicoActiveStartDateExpression} <= $1::date
         AND ${ordemServicoActiveEndDateExpression} >= $1::date
@@ -3859,9 +4096,10 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
          tipo_escola_display_order,
          tipo_escola_descricao_order
        FROM grouped_ordens
-       ORDER BY COALESCE(crmc_condutor, '') ASC,
+        ORDER BY COALESCE(empresa_order, '') ASC,
+          COALESCE(nome_condutor_order, '') ASC,
+          COALESCE(crmc_condutor, '') ASC,
                 COALESCE(tipo_veiculo, '') ASC,
-                COALESCE(empresa_order, '') ASC,
                 COALESCE(termo_adesao_order, '') ASC,
                 COALESCE(num_os_order, '') ASC,
                 revisao ASC,
@@ -3938,9 +4176,10 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
       AND BTRIM(apuracao_financeira.tipo_pessoa) = BTRIM(apontamento_dia.tipo_pessoa)
      WHERE apontamento_dia.data_referencia = $1::date
        AND apontamento_dia.mes_ano = $2
-    ORDER BY COALESCE(BTRIM(apontamento_dia.crmc_condutor), '') ASC,
-              COALESCE(BTRIM(apontamento_dia.tipo_veiculo), '') ASC,
-          empresa_order ASC,
+    ORDER BY empresa_order ASC,
+          nome_condutor_order ASC,
+          COALESCE(BTRIM(apontamento_dia.crmc_condutor), '') ASC,
+          COALESCE(BTRIM(apontamento_dia.tipo_veiculo), '') ASC,
               termo_adesao_order ASC,
               num_os_order ASC,
               apontamento_dia.revisao ASC,
@@ -4030,9 +4269,14 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
         aps.revisao AS revisao,
         COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
         MAX(COALESCE(BTRIM(aps.crmc_condutor), '')) AS crmc_condutor,
-        MAX(COALESCE(BTRIM(aps.tipo_veiculo), '')) AS tipo_veiculo
+        MAX(COALESCE(BTRIM(aps.tipo_veiculo), '')) AS tipo_veiculo,
+        MAX(${buildApontamentoServicosLocaleOrderExpression('credenciada_lookup.empresa')}) AS empresa_order,
+        MAX(${buildApontamentoServicosLocaleOrderExpression('os.condutor')}) AS nome_condutor_order,
+        MAX(COALESCE(BTRIM(os.num_os), '')) AS num_os_order
       FROM apuracao_servicos aps
       INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+      LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+      LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
       INNER JOIN apuracao_financeira
         ON apuracao_financeira.mes_ano = aps.mes_ano
        AND apuracao_financeira.dre_codigo = aps.dre_codigo
@@ -4074,14 +4318,20 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
          revisao,
          tipo_pessoa,
          crmc_condutor,
-         tipo_veiculo
+         tipo_veiculo,
+         empresa_order,
+         nome_condutor_order,
+         num_os_order
        FROM grouped_ordens
-       ORDER BY mes_ano ASC,
-                CAST(dre_codigo AS integer) ASC,
+       ORDER BY COALESCE(empresa_order, '') ASC,
+                COALESCE(nome_condutor_order, '') ASC,
                 crmc_condutor ASC,
                 tipo_veiculo ASC,
+                num_os_order ASC,
                 revisao ASC,
-                ordem_servico_codigo ASC
+                ordem_servico_codigo ASC,
+                CAST(dre_codigo AS integer) ASC,
+                mes_ano ASC
        LIMIT $${pagedValues.length - 1}
        OFFSET $${pagedValues.length}
      )
@@ -4117,11 +4367,14 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
       AND COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') = paged_ordens.tipo_pessoa
      LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
      LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
-     ORDER BY CAST(paged_ordens.dre_codigo AS integer) ASC,
+     ORDER BY COALESCE(paged_ordens.empresa_order, '') ASC,
+              COALESCE(paged_ordens.nome_condutor_order, '') ASC,
               paged_ordens.crmc_condutor ASC,
               paged_ordens.tipo_veiculo ASC,
+              COALESCE(paged_ordens.num_os_order, '') ASC,
               paged_ordens.revisao ASC,
-              CAST(paged_ordens.ordem_servico_codigo AS integer) ASC`,
+              CAST(paged_ordens.ordem_servico_codigo AS integer) ASC,
+              CAST(paged_ordens.dre_codigo AS integer) ASC`,
     pagedValues,
   )
 
@@ -5543,6 +5796,10 @@ const deriveModalidadeDescricaoFromDreDescricao = (dreDescricao) => {
     return ''
   }
 
+  if (normalizedKey.endsWith('C')) {
+    return 'TEG CRECHE'
+  }
+
   if (normalizedKey.includes('CRECHE')) {
     return 'TEG CRECHE'
   }
@@ -5703,6 +5960,7 @@ const compactDreCodes = async () => {
        COALESCE(BTRIM(codigo_operacional), '') AS codigo_operacional,
        BTRIM(CAST(descricao AS text)) AS descricao
      FROM dre
+      WHERE UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
      ORDER BY codigo ASC`,
   )
 
@@ -5804,8 +6062,11 @@ const findDreByCodigo = async (codigo) => {
   const result = await pool.query(
     `SELECT ${dreSelectClause}
      FROM dre
-     WHERE CAST(codigo AS text) = $1
-        OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
+     WHERE (
+       CAST(codigo AS text) = $1
+       OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
+     )
+     AND UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
      LIMIT 1`,
     [normalizedCodigo],
   )
@@ -5824,6 +6085,7 @@ const findDreByDescription = async (descricao) => {
     `SELECT ${dreSelectClause}
      FROM dre
      WHERE UPPER(BTRIM(CAST(descricao AS text))) = $1
+       AND UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
      LIMIT 1`,
     [normalizedDescricao],
   )
@@ -5843,8 +6105,11 @@ const findDreByComparableDescription = async (descricao, executor = pool) => {
     const siglaResult = await executor.query(
       `SELECT ${dreSelectClause}
        FROM dre
-       WHERE UPPER(BTRIM(COALESCE(sigla, ''))) = $1
-          OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
+       WHERE (
+         UPPER(BTRIM(COALESCE(sigla, ''))) = $1
+         OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
+       )
+       AND UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
        ORDER BY codigo ASC
        LIMIT 1`,
       [normalizedSigla],
@@ -5862,6 +6127,7 @@ const findDreByComparableDescription = async (descricao, executor = pool) => {
   const result = await executor.query(
     `SELECT ${dreSelectClause}
      FROM dre
+      WHERE UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
      ORDER BY codigo ASC`,
   )
 
@@ -6190,7 +6456,8 @@ const normalizeDashboardDreDescriptionKey = (value) => {
 const buildDashboardDreLookup = async (executor = pool) => {
   const result = await executor.query(
     `SELECT ${dreSelectClause}
-     FROM dre`,
+     FROM dre
+     WHERE UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'`,
   )
 
   const byCode = new Map()
@@ -6398,9 +6665,12 @@ const findDreByApuracaoIdentifier = async (dreIdentifier, executor = pool) => {
        COALESCE(BTRIM(codigo_operacional), '') AS codigo_operacional,
        BTRIM(CAST(descricao AS text)) AS descricao
      FROM dre
-     WHERE CAST(codigo AS text) = $1
-        OR UPPER(BTRIM(COALESCE(sigla, ''))) = UPPER($1)
-        OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = UPPER($1)
+     WHERE (
+       CAST(codigo AS text) = $1
+       OR UPPER(BTRIM(COALESCE(sigla, ''))) = UPPER($1)
+       OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = UPPER($1)
+     )
+     AND UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
      ORDER BY codigo ASC
      LIMIT 1`,
     [normalizedIdentifier],
@@ -9640,6 +9910,8 @@ const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_
   const xmlContent = await readFile(resolvedPath, 'utf8')
   const parsedRecords = parseOrdemServicoXml(xmlContent)
 
+  await resetXmlImportProgress(progressFilePath)
+
   if (!parsedRecords.length) {
     throw new Error('Nenhum registro de OrdemServico foi encontrado no XML informado.')
   }
@@ -9782,6 +10054,36 @@ const importOrdemServicoXmlFile = async (fileName, { realizadoPor = 'IMPORTACAO_
           skippedRecord.message,
         ],
       )
+    }
+
+    for (const record of normalizedRecords) {
+      if (normalizeModalidadeDescriptionKey(record.modalidadeDescricao) !== normalizeModalidadeDescriptionKey('TEG CRECHE')) {
+        continue
+      }
+
+      if (!Number.isInteger(Number(record.veiculoCodigo)) || Number(record.veiculoCodigo) <= 0) {
+        continue
+      }
+
+      const veiculoAtual = await fetchVeiculoAuditItemByCodigo(client, Number(record.veiculoCodigo))
+
+      if (!veiculoAtual) {
+        continue
+      }
+
+      if (normalizeTipoDeBancada(veiculoAtual.tipo_de_bancada ?? veiculoAtual.tipoDeBancada ?? '') === 'CRECHE') {
+        continue
+      }
+
+      await insertVeiculoHistoricoEntry(client, veiculoAtual, {
+        acao: 'IMPORTACAO_XML_OS_CRECHE',
+        realizadoPor,
+      })
+
+      await updateVeiculoByCodigo(client, Number(record.veiculoCodigo), {
+        ...buildVeiculoComparableSnapshot(veiculoAtual),
+        tipoDeBancada: 'CRECHE',
+      })
     }
 
     for (const record of normalizedRecords) {
@@ -11815,6 +12117,8 @@ const importVeiculoXmlFile = async (fileName, { actor = 'IMPORTACAO_XML', delete
 
   const xmlContent = await readFile(resolvedPath, 'utf8')
   const parsedRecords = parseVeiculoXml(xmlContent)
+
+  await resetXmlImportProgress(progressFilePath)
 
   if (!parsedRecords.length) {
     throw new Error('Nenhum registro de veiculo foi encontrado no XML informado.')
@@ -16653,6 +16957,36 @@ const importOrdemServicoAccessFile = async (databasePath, { realizadoPor = 'IMPO
     }
 
     for (const record of normalizedRecords) {
+      if (normalizeModalidadeDescriptionKey(record.modalidadeDescricao) !== normalizeModalidadeDescriptionKey('TEG CRECHE')) {
+        continue
+      }
+
+      if (!Number.isInteger(Number(record.veiculoCodigo)) || Number(record.veiculoCodigo) <= 0) {
+        continue
+      }
+
+      const veiculoAtual = await fetchVeiculoAuditItemByCodigo(client, Number(record.veiculoCodigo))
+
+      if (!veiculoAtual) {
+        continue
+      }
+
+      if (normalizeTipoDeBancada(veiculoAtual.tipo_de_bancada ?? veiculoAtual.tipoDeBancada ?? '') === 'CRECHE') {
+        continue
+      }
+
+      await insertVeiculoHistoricoEntry(client, veiculoAtual, {
+        acao: 'IMPORTACAO_ACCESS_OS_CRECHE',
+        realizadoPor,
+      })
+
+      await updateVeiculoByCodigo(client, Number(record.veiculoCodigo), {
+        ...buildVeiculoComparableSnapshot(veiculoAtual),
+        tipoDeBancada: 'CRECHE',
+      })
+    }
+
+    for (const record of normalizedRecords) {
       const existingResult = await client.query(
         `SELECT codigo
          FROM ${ordemServicoTableName}
@@ -19772,21 +20106,24 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
   const canonicalDreItem = await resolveCanonicalOrdemServicoDre(dreItem)
 
   const derivedModalidadeDescricao = deriveModalidadeDescricaoFromDreDescricao(dreItem.descricao)
+  const veiculoItem = hasValidCrm ? await findVeiculoByCrm(normalizedCrm) : null
+  const veiculoTipoDeBancada = normalizeTipoDeBancada(veiculoItem?.tipo_de_bancada ?? veiculoItem?.tipoDeBancada ?? '')
+  const effectiveModalidadeDescricao = veiculoTipoDeBancada === 'CRECHE' || derivedModalidadeDescricao === 'TEG CRECHE'
+    ? 'TEG CRECHE'
+    : derivedModalidadeDescricao
 
-  const modalidadeItem = derivedModalidadeDescricao
-    ? await findModalidadeByCodigoOrDescription({ descricao: derivedModalidadeDescricao })
+  const modalidadeItem = effectiveModalidadeDescricao
+    ? await findModalidadeByCodigoOrDescription({ descricao: effectiveModalidadeDescricao })
     : null
 
-  if (derivedModalidadeDescricao && !modalidadeItem) {
-    return { status: 400, payload: { message: `Modalidade derivada da DRE nao encontrada: ${derivedModalidadeDescricao}.` } }
+  if (effectiveModalidadeDescricao && !modalidadeItem) {
+    return { status: 400, payload: { message: `Modalidade derivada da DRE nao encontrada: ${effectiveModalidadeDescricao}.` } }
   }
 
-  const veiculoItem = hasValidCrm ? await findVeiculoByCrm(normalizedCrm) : null
-
-  if (!importMode && derivedModalidadeDescricao && veiculoItem) {
+  if (!importMode && effectiveModalidadeDescricao && veiculoItem) {
     const veiculoOsEspecial = normalizeOsEspecial(veiculoItem.os_especial)
 
-    if (derivedModalidadeDescricao === 'TEG ESPECIAL' && veiculoOsEspecial !== 'Sim') {
+    if (effectiveModalidadeDescricao === 'TEG ESPECIAL' && veiculoOsEspecial !== 'Sim') {
       return {
         status: 400,
         payload: {
@@ -19795,11 +20132,11 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
       }
     }
 
-    if ((derivedModalidadeDescricao === 'TEG REGULAR' || derivedModalidadeDescricao === 'TEG CRECHE') && veiculoOsEspecial !== 'Não') {
+    if (effectiveModalidadeDescricao === 'TEG REGULAR' && veiculoOsEspecial !== 'Não') {
       return {
         status: 400,
         payload: {
-          message: 'TEG REGULAR e TEG CRECHE somente aceitam veiculo com OS especial = Nao.',
+          message: 'TEG REGULAR somente aceita veiculo com OS especial = Nao.',
         },
       }
     }
@@ -19997,7 +20334,7 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
       dreCodigo: normalizeDreOperationalCode(canonicalDreItem.codigo_operacional || canonicalDreItem.codigo),
       dreDescricao: normalizeOperationalCode(canonicalDreItem.descricao, 255),
       modalidadeCodigo: modalidadeItem ? Number(modalidadeItem.codigo) : null,
-      modalidadeDescricao: modalidadeItem ? normalizeOperationalCode(derivedModalidadeDescricao, 255) : normalizedModalidadeDescricao,
+      modalidadeDescricao: modalidadeItem ? normalizeOperationalCode(effectiveModalidadeDescricao, 255) : normalizedModalidadeDescricao,
       cpfCondutor: condutorItem ? normalizeCpf(condutorItem.cpf_condutor) : hasValidCpfCondutor || shouldSkipRelationshipValidation ? normalizedCpfCondutor : '',
       condutor: condutorItem ? normalizeCondutorName(condutorItem.condutor) : shouldSkipRelationshipValidation ? normalizedCondutor : '',
       dataAdmissaoCondutor: normalizedDataAdmissaoCondutor,
@@ -20018,6 +20355,8 @@ if (importMode && !normalizedCredenciado && !normalizedCnpjCpf) {
       dataEol: normalizedDataEol,
       anotacao: normalizedAnotacao,
       uniaoTermos: normalizedUniaoTermos,
+      veiculoCodigo: veiculoItem ? Number(veiculoItem.codigo) : null,
+      veiculoTipoDeBancada,
     },
   }
 }
@@ -23696,6 +24035,113 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === monitoramentoDiagnosticoPath) {
+    const apiStart = process.hrtime.bigint()
+    const cpuUsageStart = process.cpuUsage()
+    const dbStart = process.hrtime.bigint()
+    const [diskIoMetrics, tcpLatencyMs] = await Promise.all([
+      measureDiskIo(),
+      measureTcpLatency(pgHost, pgPort),
+    ])
+
+    try {
+      await pool.query('SELECT 1 AS ok')
+
+      const apiElapsedNs = process.hrtime.bigint() - apiStart
+      const dbDurationMs = Number(process.hrtime.bigint() - dbStart) / 1_000_000
+      const apiDurationMs = Number(apiElapsedNs) / 1_000_000
+      const cpuUsage = process.cpuUsage(cpuUsageStart)
+      const elapsedMicros = Number(apiElapsedNs) / 1000
+      const cpuLoadPercent = elapsedMicros > 0
+        ? Math.min(100, ((cpuUsage.user + cpuUsage.system) / elapsedMicros) * 100)
+        : 0
+      const totalMemoryMb = os.totalmem() / (1024 * 1024)
+      const freeMemoryMb = os.freemem() / (1024 * 1024)
+      const processMemory = process.memoryUsage()
+      const poolInUseCount = Math.max(pool.totalCount - pool.idleCount, 0)
+      const poolUtilizationPercent = pool.totalCount > 0
+        ? (poolInUseCount / pool.totalCount) * 100
+        : 0
+
+      sendJson(response, 200, {
+        collectedAt: new Date().toISOString(),
+        apiProcessingMs: formatMonitorMetricNumber(apiDurationMs),
+        dbResponseMs: formatMonitorMetricNumber(dbDurationMs),
+        dbStatus: 'ok',
+        infrastructure: {
+          cpuLoadPercent: formatMonitorMetricNumber(cpuLoadPercent),
+          memory: {
+            totalMb: formatMonitorMetricNumber(totalMemoryMb),
+            freeMb: formatMonitorMetricNumber(freeMemoryMb),
+            usedPercent: formatMonitorMetricNumber(totalMemoryMb > 0 ? ((totalMemoryMb - freeMemoryMb) / totalMemoryMb) * 100 : 0),
+            processRssMb: formatMonitorMetricNumber(processMemory.rss / (1024 * 1024)),
+            processHeapUsedMb: formatMonitorMetricNumber(processMemory.heapUsed / (1024 * 1024)),
+          },
+          diskIo: diskIoMetrics,
+          network: {
+            tcpLatencyMs,
+            targetHost: pgHost,
+            targetPort: pgPort,
+          },
+          pool: {
+            totalCount: pool.totalCount,
+            idleCount: pool.idleCount,
+            waitingCount: pool.waitingCount,
+            utilizationPercent: formatMonitorMetricNumber(poolUtilizationPercent),
+          },
+        },
+      })
+      return
+    } catch (error) {
+      const apiElapsedNs = process.hrtime.bigint() - apiStart
+      const dbDurationMs = Number(process.hrtime.bigint() - dbStart) / 1_000_000
+      const apiDurationMs = Number(apiElapsedNs) / 1_000_000
+      const cpuUsage = process.cpuUsage(cpuUsageStart)
+      const elapsedMicros = Number(apiElapsedNs) / 1000
+      const cpuLoadPercent = elapsedMicros > 0
+        ? Math.min(100, ((cpuUsage.user + cpuUsage.system) / elapsedMicros) * 100)
+        : 0
+      const totalMemoryMb = os.totalmem() / (1024 * 1024)
+      const freeMemoryMb = os.freemem() / (1024 * 1024)
+      const processMemory = process.memoryUsage()
+      const poolInUseCount = Math.max(pool.totalCount - pool.idleCount, 0)
+      const poolUtilizationPercent = pool.totalCount > 0
+        ? (poolInUseCount / pool.totalCount) * 100
+        : 0
+
+      sendJson(response, 503, {
+        message: error instanceof Error ? error.message : 'Falha ao consultar diagnostico do ambiente.',
+        collectedAt: new Date().toISOString(),
+        apiProcessingMs: formatMonitorMetricNumber(apiDurationMs),
+        dbResponseMs: formatMonitorMetricNumber(dbDurationMs),
+        dbStatus: 'error',
+        infrastructure: {
+          cpuLoadPercent: formatMonitorMetricNumber(cpuLoadPercent),
+          memory: {
+            totalMb: formatMonitorMetricNumber(totalMemoryMb),
+            freeMb: formatMonitorMetricNumber(freeMemoryMb),
+            usedPercent: formatMonitorMetricNumber(totalMemoryMb > 0 ? ((totalMemoryMb - freeMemoryMb) / totalMemoryMb) * 100 : 0),
+            processRssMb: formatMonitorMetricNumber(processMemory.rss / (1024 * 1024)),
+            processHeapUsedMb: formatMonitorMetricNumber(processMemory.heapUsed / (1024 * 1024)),
+          },
+          diskIo: diskIoMetrics,
+          network: {
+            tcpLatencyMs,
+            targetHost: pgHost,
+            targetPort: pgPort,
+          },
+          pool: {
+            totalCount: pool.totalCount,
+            idleCount: pool.idleCount,
+            waitingCount: pool.waitingCount,
+            utilizationPercent: formatMonitorMetricNumber(poolUtilizationPercent),
+          },
+        },
+      })
+      return
+    }
+  }
+
   if (request.method === 'GET' && pathname === '/api/dre') {
     try {
       const search = normalizeRequestValue(requestUrl.searchParams.get('search') ?? '')
@@ -23724,7 +24170,7 @@ const server = createServer(async (request, response) => {
 
       const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
       const countResult = await pool.query(
-        `SELECT COUNT(*)::int AS total FROM dre ${whereClause}`,
+        `SELECT COUNT(*)::int AS total FROM dre ${whereClause}${whereClause ? ' AND' : ' WHERE'} UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'`,
         values,
       )
 
@@ -23733,7 +24179,7 @@ const server = createServer(async (request, response) => {
       const result = await pool.query(
         `SELECT ${dreSelectClause}
          FROM dre
-         ${whereClause}
+         ${whereClause}${whereClause ? ' AND' : ' WHERE'} UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
          ORDER BY ${orderByClause}
          LIMIT $${values.length - 1}
          OFFSET $${values.length}`,
@@ -24884,6 +25330,7 @@ const server = createServer(async (request, response) => {
               items,
               preserveExistingKilometragem: true,
               createApuracaoFinanceiraIfMissing: true,
+              runPostProcessingInline: false,
             }, client)
 
             processedItems += items.length
@@ -29714,7 +30161,7 @@ const server = createServer(async (request, response) => {
         'SELECT codigo::text AS codigo, BTRIM(nome) AS nome FROM login ORDER BY codigo ASC',
       )
       const dreResult = await pool.query(
-        'SELECT CAST(codigo AS text) AS codigo, BTRIM(CAST(descricao AS text)) AS descricao FROM dre ORDER BY codigo ASC',
+        "SELECT CAST(codigo AS text) AS codigo, BTRIM(CAST(descricao AS text)) AS descricao FROM dre WHERE UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%' ORDER BY codigo ASC",
       )
 
       sendJson(response, 200, {
@@ -32441,6 +32888,24 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === '/api/xml-import-progress') {
+    try {
+      const progressFilePath = new URL(request.url, `http://${request.headers.host || 'localhost'}`).searchParams.get('progressFilePath') || ''
+      const progress = await readXmlImportProgress(progressFilePath)
+
+      if (!progress) {
+        sendJson(response, 404, { message: 'Progresso da importacao nao encontrado.' })
+        return
+      }
+
+      sendJson(response, 200, progress)
+    } catch (error) {
+      sendJson(response, 500, { message: error instanceof Error ? error.message : 'Erro ao consultar progresso da importacao.' })
+    }
+
+    return
+  }
+
   if (request.method === 'POST' && pathname === smokeRunPath) {
     const smokeJobId = `${Date.now()}-${randomBytes(4).toString('hex')}`
     const smokeTrackerId = `smoke-api:${smokeJobId}`
@@ -32510,6 +32975,7 @@ const server = createServer(async (request, response) => {
       const body = await readJsonBody(request)
       const result = await startXmlImportAllExecution({
         accessDbPath: normalizeRequestValue(body.accessDbPath),
+        deleteMissing: body.deleteMissing === true,
       })
       const statusCode = result.isRunning ? 202 : (result.status === 'passed' ? 200 : 500)
 
@@ -32746,6 +33212,24 @@ const server = createServer(async (request, response) => {
 
       if (validationResult.status !== 200) {
         sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const crecheVehiclePlaca = normalizeVehiclePlaca(validationResult.payload.veiculoPlacas)
+      const linkedCrecheVehicleItem = crecheVehiclePlaca
+        ? await findVeiculoByPlaca(crecheVehiclePlaca)
+        : null
+      const linkedCrecheVehicleTipo = normalizeTipoDeBancada(linkedCrecheVehicleItem?.tipo_de_bancada ?? linkedCrecheVehicleItem?.tipoDeBancada ?? '')
+      const osWillForceCrecheVehicle = validationResult.payload.modalidadeDescricao === 'TEG CRECHE'
+        && linkedCrecheVehicleItem
+        && linkedCrecheVehicleTipo !== 'CRECHE'
+
+      if (osWillForceCrecheVehicle && body.confirmarSincronizacaoCreche !== true) {
+        sendJson(response, 409, {
+          message: 'A alteracao da OrdemServico vai definir o veiculo como CRECHE. Confirme para continuar.',
+          requiresConfirmation: true,
+          confirmationField: 'confirmarSincronizacaoCreche',
+        })
         return
       }
 
@@ -33081,7 +33565,7 @@ const server = createServer(async (request, response) => {
       const body = await readJsonBody(request)
       const result = await importVeiculoXmlFile(body.fileName, {
         actor: resolveRequestActor(request, 'IMPORTACAO_XML'),
-        deleteMissing: body.deleteMissing !== false,
+        deleteMissing: body.deleteMissing === true,
         progressFilePath: body.progressFilePath,
       })
 
@@ -33105,7 +33589,7 @@ const server = createServer(async (request, response) => {
       const body = await readJsonBody(request)
       const result = await importVeiculoAccessFile(body.databasePath, {
         actor: resolveRequestActor(request, 'IMPORTACAO_ACCESS'),
-        deleteMissing: body.deleteMissing !== false,
+        deleteMissing: body.deleteMissing === true,
         progressFilePath: body.progressFilePath,
       })
 
@@ -33645,6 +34129,33 @@ const server = createServer(async (request, response) => {
 
       if (validationResult.status !== 200) {
         sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const vehiclePlaca = normalizeVehiclePlaca(validationResult.payload.placas || existingItem.placas)
+      const linkedActiveOsItem = vehiclePlaca
+        ? await findActiveOrdemServicoByPlaca(vehiclePlaca, { excludeCodigo: originalCodigo })
+        : null
+      const linkedActiveOsSnapshot = linkedActiveOsItem
+        ? await fetchOrdemServicoItemByCodigo(pool, linkedActiveOsItem.codigo)
+        : null
+      const linkedActiveOsModalidade = normalizeModalidadeDescriptionKey(linkedActiveOsSnapshot?.modalidade_descricao ?? linkedActiveOsItem?.modalidade_descricao ?? '')
+      const vehicleWillForceOsCreche = linkedActiveOsSnapshot
+        && validationResult.payload.tipoDeBancada === 'CRECHE'
+        && linkedActiveOsModalidade !== 'TEG CRECHE'
+      const vehicleWillForceOsReversion = linkedActiveOsSnapshot
+        && validationResult.payload.tipoDeBancada !== 'CRECHE'
+        && linkedActiveOsModalidade === 'TEG CRECHE'
+        && deriveModalidadeDescricaoFromDreDescricao(linkedActiveOsSnapshot.dre_descricao) !== 'TEG CRECHE'
+
+      if ((vehicleWillForceOsCreche || vehicleWillForceOsReversion) && body.confirmarSincronizacaoCreche !== true) {
+        sendJson(response, 409, {
+          message: vehicleWillForceOsCreche
+            ? 'A alteracao do veiculo vai definir a OrdemServico vinculada como TEG CRECHE. Confirme para continuar.'
+            : 'A alteracao do veiculo vai ajustar a OrdemServico vinculada para a modalidade da DRE. Confirme para continuar.',
+          requiresConfirmation: true,
+          confirmationField: 'confirmarSincronizacaoCreche',
+        })
         return
       }
 
@@ -35824,6 +36335,50 @@ const server = createServer(async (request, response) => {
         }
 
         const updatedItem = await updateVeiculoByCodigo(client, originalCodigo, validationResult.payload)
+
+        if (vehicleWillForceOsCreche) {
+          const osSnapshot = await fetchOrdemServicoItemByCodigo(client, linkedActiveOsSnapshot.codigo)
+          const crecheModalidadeItem = await findModalidadeByCodigoOrDescription({ descricao: 'TEG CRECHE' })
+
+          if (osSnapshot && crecheModalidadeItem) {
+            await insertOrdemServicoHistoricoEntry(client, osSnapshot, {
+              acao: 'SINCRONIZACAO_MANUAL_VEICULO_CRECHE',
+              realizadoPor: actor,
+            })
+
+            await client.query(
+              `UPDATE ${ordemServicoTableName}
+               SET modalidade_codigo = $1,
+                   modalidade_descricao = $2,
+                   data_modificacao = NOW()
+               WHERE codigo = $3`,
+              [crecheModalidadeItem.codigo, crecheModalidadeItem.descricao, linkedActiveOsSnapshot.codigo],
+            )
+          }
+        } else if (vehicleWillForceOsReversion) {
+          const osSnapshot = await fetchOrdemServicoItemByCodigo(client, linkedActiveOsSnapshot.codigo)
+          const revertedModalidadeDescricao = deriveModalidadeDescricaoFromDreDescricao(osSnapshot?.dre_descricao)
+          const revertedModalidadeItem = revertedModalidadeDescricao
+            ? await findModalidadeByCodigoOrDescription({ descricao: revertedModalidadeDescricao })
+            : null
+
+          if (osSnapshot && revertedModalidadeItem) {
+            await insertOrdemServicoHistoricoEntry(client, osSnapshot, {
+              acao: 'SINCRONIZACAO_MANUAL_VEICULO_RETORNO',
+              realizadoPor: actor,
+            })
+
+            await client.query(
+              `UPDATE ${ordemServicoTableName}
+               SET modalidade_codigo = $1,
+                   modalidade_descricao = $2,
+                   data_modificacao = NOW()
+               WHERE codigo = $3`,
+              [revertedModalidadeItem.codigo, revertedModalidadeItem.descricao, linkedActiveOsSnapshot.codigo],
+            )
+          }
+        }
+
         const recalculatedVehicles = await recalculateSpecialVehicleValues(client, {
           codigos: [originalCodigo],
         })
@@ -36648,6 +37203,25 @@ const server = createServer(async (request, response) => {
           existingItem.termo_adesao,
           validationResult.payload.termoAdesao,
         ], client)
+
+        if (osWillForceCrecheVehicle) {
+          const vehicleSnapshot = await fetchVeiculoAuditItemByCodigo(client, linkedCrecheVehicleItem.codigo)
+
+          if (vehicleSnapshot) {
+            await insertVeiculoHistoricoEntry(client, vehicleSnapshot, {
+              acao: 'SINCRONIZACAO_MANUAL_OS_CRECHE',
+              realizadoPor: performedBy,
+            })
+
+            await client.query(
+              `UPDATE veiculo
+               SET tipo_de_bancada = 'CRECHE',
+                   data_modificacao = NOW()
+               WHERE codigo = $1`,
+              [linkedCrecheVehicleItem.codigo],
+            )
+          }
+        }
 
         const item = await fetchOrdemServicoItemByCodigo(client, validationResult.payload.codigo)
 

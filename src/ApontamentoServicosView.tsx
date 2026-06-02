@@ -148,6 +148,47 @@ const formatPeriodLabel = (item: Pick<ApontamentoServicosItem, 'periodoInicio' |
 
 const formatDreOptionLabel = (item: DreItem) => `${item.codigo} - ${item.sigla} - ${item.descricao}`
 
+const apontamentoServicosSortCollator = new Intl.Collator('pt-BR', {
+  sensitivity: 'base',
+  numeric: true,
+})
+
+const sortApontamentoServicosItems = (items: ApontamentoServicosItem[]) => {
+  return [...items].sort((left, right) => {
+    const empresaCompare = apontamentoServicosSortCollator.compare(left.empresa || '', right.empresa || '')
+
+    if (empresaCompare !== 0) {
+      return empresaCompare
+    }
+
+    const condutorCompare = apontamentoServicosSortCollator.compare(left.nomeCondutor || '', right.nomeCondutor || '')
+
+    if (condutorCompare !== 0) {
+      return condutorCompare
+    }
+
+    const crmcCompare = apontamentoServicosSortCollator.compare(left.crmcCondutor || '', right.crmcCondutor || '')
+
+    if (crmcCompare !== 0) {
+      return crmcCompare
+    }
+
+    const ordemServicoCompare = apontamentoServicosSortCollator.compare(left.ordemServicoCodigo || '', right.ordemServicoCodigo || '')
+
+    if (ordemServicoCompare !== 0) {
+      return ordemServicoCompare
+    }
+
+    const dataCompare = apontamentoServicosSortCollator.compare(left.dataReferencia || '', right.dataReferencia || '')
+
+    if (dataCompare !== 0) {
+      return dataCompare
+    }
+
+    return apontamentoServicosSortCollator.compare(buildRowKey(left), buildRowKey(right))
+  })
+}
+
 const getApontamentoServicosImportDisplayName = (fileName?: string) => {
   const normalizedFileName = fileName?.trim()
   return normalizedFileName || 'todos os arquivos Excel do diretorio informado'
@@ -421,7 +462,7 @@ export default function ApontamentoServicosView() {
   const loadDreOptions = useCallback(async () => {
     setIsLoadingOptions(true)
     try {
-      const result = await listDreItemsPaginated({ page: 1, pageSize: 500, sortBy: 'descricao', sortDirection: 'asc' })
+      const result = await listDreItemsPaginated({ page: 1, pageSize: 500, sortBy: 'codigo', sortDirection: 'asc' })
       setDreOptions(result.items)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha ao carregar as DREs.'
@@ -467,15 +508,16 @@ export default function ApontamentoServicosView() {
         page: targetPage,
         pageSize: targetPageSize,
       })
+      const sortedItems = sortApontamentoServicosItems(result.items)
 
-      setItems(result.items)
-      setLoadedItemsSnapshot(result.items)
+      setItems(sortedItems)
+      setLoadedItemsSnapshot(sortedItems)
       setPage(result.page)
       setPageSize(result.pageSize)
       setTotalItems(result.total)
       setTotalPages(result.totalPages)
       setStatusTone('idle')
-      setStatusMessage(result.items.length ? '' : 'Nenhum apontamento disponivel para os filtros informados.')
+      setStatusMessage(sortedItems.length ? '' : 'Nenhum apontamento disponivel para os filtros informados.')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha ao carregar o apontamento de servicos.'
       setItems([])
@@ -558,7 +600,7 @@ export default function ApontamentoServicosView() {
 
   const loadImportedFilters = useCallback(async (result: Awaited<ReturnType<typeof importApontamentoServicosExcel>>) => {
     if (!result.mesAno || !result.dataReferencia || !result.dreCodigo || !result.tipoPessoa) {
-      return
+      return null
     }
 
     const importedFilters = {
@@ -580,6 +622,7 @@ export default function ApontamentoServicosView() {
     setTipoPessoa(result.tipoPessoa)
     setAppliedFilters(importedFilters)
     setPage(1)
+    return importedFilters
   }, [])
 
   const handleFilterSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -768,7 +811,11 @@ export default function ApontamentoServicosView() {
         setIsImportDialogVisible(true)
       }
 
-      await loadImportedFilters(result)
+      const importedFilters = await loadImportedFilters(result)
+
+      if (importedFilters) {
+        await loadItems(importedFilters, 1, pageSize)
+      }
     } catch (error) {
       await refreshImportStatus(importId)
       const message = error instanceof Error ? error.message : 'Falha ao importar a planilha de apontamento de servicos.'
@@ -1070,9 +1117,8 @@ export default function ApontamentoServicosView() {
                 className="management-filter-input apontamento-servicos-filter-input"
                 value={dreCodigo}
                 onChange={(event) => setDreCodigo(event.target.value)}
-                disabled={isLoadingOptions}
               >
-                <option value="">Todas as DREs</option>
+                {isLoadingOptions ? <option value="">Carregando DREs...</option> : <option value="">Todas as DREs</option>}
                 {dreOptions.map((item) => (
                   <option key={item.codigo} value={item.codigo}>
                     {formatDreOptionLabel(item)}
@@ -1153,7 +1199,7 @@ export default function ApontamentoServicosView() {
               onClick={openImportRequestDialog}
               disabled={isImporting || isSaving || isLoading}
             >
-              {isImporting ? 'Importando...' : 'Importar planilha'}
+              {isImporting ? 'Importando...' : 'Importar dados digitados SME'}
             </button>
             <button type="button" className="primary-button" onClick={handleSave} disabled={isSaving || isLoading || isImporting || !items.length}>
               {isSaving ? 'Salvando...' : 'Salvar apontamento'}

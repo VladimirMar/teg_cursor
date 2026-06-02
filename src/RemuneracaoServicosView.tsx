@@ -472,7 +472,7 @@ export default function RemuneracaoServicosView() {
       const dreResult = await listDreItemsPaginated({
         page: 1,
         pageSize: 500,
-        sortBy: 'descricao',
+        sortBy: 'codigo',
         sortDirection: 'asc',
       })
 

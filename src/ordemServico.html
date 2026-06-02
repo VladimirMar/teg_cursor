@@ -291,8 +291,8 @@
             <div class="dsc-access-toolbar">
               <form class="dsc-access-filter-form" id="ordem-servico-filter-form">
                 <button type="button" class="dsc-btn dsc-btn-blue dsc-access-insert-button" id="insert-ordem-servico-button">Inserir registro</button>
-                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-ordem-servico-import-button">Importar XML</button>
-                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-ordem-servico-rejections-button">Recusas XML</button>
+                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button dsc-hidden" id="open-ordem-servico-import-button" hidden disabled aria-hidden="true">Importar XML</button>
+                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button dsc-hidden" id="open-ordem-servico-rejections-button" hidden disabled aria-hidden="true">Recusas XML</button>
                 <input class="dsc-form-control dsc-access-filter-input" id="ordem-servico-search" type="text" placeholder="Filtrar por termo, num OS, revisao, OS, credenciado, CPF/CNPJ do credenciado, CPF do condutor, CPF do monitor, DRE, placa ou CRM do veículo" />
                 <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="clear-ordem-servico-filter-button">Limpar</button>
@@ -416,6 +416,24 @@
 
                   <p class="dsc-feedback" id="ordem-servico-import-feedback"></p>
                 </form>
+              </div>
+            </div>
+
+            <div class="dsc-popup-overlay dsc-hidden" id="ordem-servico-creche-sync-modal" aria-hidden="true">
+              <div class="dsc-popup-shell dsc-popup-shell-ordem-servico" role="dialog" aria-modal="true" aria-labelledby="ordem-servico-creche-sync-title">
+                <section class="dsc-card dsc-form dsc-access-form dsc-hidden" id="ordem-servico-creche-sync-panel">
+                  <div class="dsc-popup-header dsc-popup-header-with-compact-close">
+                    <h2 id="ordem-servico-creche-sync-title">Confirmar sincronizacao</h2>
+                    <button type="button" class="dsc-btn dsc-btn-white dsc-popup-close-button dsc-popup-compact-close-button" id="close-ordem-servico-creche-sync-modal-button" aria-label="Fechar confirmacao de sincronizacao">X</button>
+                  </div>
+
+                  <p class="dsc-form-hint" id="ordem-servico-creche-sync-message"></p>
+
+                  <div class="dsc-login-form-buttons dsc-mt20 dsc-access-form-buttons dsc-popup-footer-sticky">
+                    <button type="button" class="dsc-btn dsc-btn-blue" id="confirm-ordem-servico-creche-sync-button">Confirmar</button>
+                    <button type="button" class="dsc-btn dsc-btn-white" id="cancel-ordem-servico-creche-sync-button">Cancelar</button>
+                  </div>
+                </section>
               </div>
             </div>
 
@@ -971,10 +989,17 @@
       const closeFormModalButton = document.getElementById('close-ordem-servico-form-modal-button');
       const importButton = document.getElementById('open-ordem-servico-import-button');
       const closeImportModalButton = document.getElementById('close-ordem-servico-import-modal-button');
+      const crecheSyncModal = document.getElementById('ordem-servico-creche-sync-modal');
+      const crecheSyncPanel = document.getElementById('ordem-servico-creche-sync-panel');
+      const crecheSyncMessage = document.getElementById('ordem-servico-creche-sync-message');
+      const closeCrecheSyncModalButton = document.getElementById('close-ordem-servico-creche-sync-modal-button');
+      const confirmCrecheSyncButton = document.getElementById('confirm-ordem-servico-creche-sync-button');
+      const cancelCrecheSyncButton = document.getElementById('cancel-ordem-servico-creche-sync-button');
       const rejectionButton = document.getElementById('open-ordem-servico-rejections-button');
       const importFileNameInput = document.getElementById('ordem-servico-import-file-name');
       const importFileNameError = document.getElementById('ordem-servico-import-file-name-error');
       const importFeedback = document.getElementById('ordem-servico-import-feedback');
+      const executeImportButton = document.getElementById('execute-ordem-servico-import-button');
       const cancelImportButton = document.getElementById('cancel-ordem-servico-import-button');
       const rejectionFilterForm = document.getElementById('ordem-servico-rejection-filter-form');
       const rejectionSearchInput = document.getElementById('ordem-servico-rejection-search');
@@ -993,6 +1018,7 @@
       let pageSize = 20;
       const rejectionPageSize = 20;
       const defaultImportFileName = 'OrdemServico.xml';
+      const ordemServicoImportProgressFilePath = '.artifacts/import-progress/ordem-servico-import.log';
       let currentPage = 1;
       let totalPages = 1;
       let currentSearch = '';
@@ -1030,6 +1056,7 @@
       let bannerTimeoutId = null;
       let processingOverlayPendingCount = 0;
       let processingOverlayTimerId = null;
+      let crecheSyncConfirmationResolver = null;
       let credenciadaSuggestionRequestId = 0;
       let credenciadaSuggestionTimeoutId = null;
       let condutorSuggestionRequestId = 0;
@@ -3411,6 +3438,50 @@
 
         processingOverlay.classList.add('dsc-hidden');
         processingOverlay.setAttribute('aria-hidden', 'true');
+      };
+
+      const closeCrecheSyncConfirmation = (confirmed = false) => {
+        if (typeof crecheSyncConfirmationResolver === 'function') {
+          const resolver = crecheSyncConfirmationResolver;
+          crecheSyncConfirmationResolver = null;
+          resolver(confirmed);
+        }
+
+        if (crecheSyncModal instanceof HTMLElement) {
+          crecheSyncModal.classList.add('dsc-hidden');
+          crecheSyncModal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (crecheSyncPanel instanceof HTMLElement) {
+          crecheSyncPanel.classList.add('dsc-hidden');
+        }
+      };
+
+      const openCrecheSyncConfirmation = (message) => {
+        if (typeof crecheSyncConfirmationResolver === 'function') {
+          closeCrecheSyncConfirmation(false);
+        }
+
+        return new Promise((resolve) => {
+          crecheSyncConfirmationResolver = resolve;
+
+          if (crecheSyncMessage instanceof HTMLElement) {
+            crecheSyncMessage.textContent = message;
+          }
+
+          if (crecheSyncModal instanceof HTMLElement) {
+            crecheSyncModal.classList.remove('dsc-hidden');
+            crecheSyncModal.setAttribute('aria-hidden', 'false');
+          }
+
+          if (crecheSyncPanel instanceof HTMLElement) {
+            crecheSyncPanel.classList.remove('dsc-hidden');
+          }
+
+          window.setTimeout(() => {
+            confirmCrecheSyncButton?.focus({ preventScroll: true });
+          }, 0);
+        });
       };
 
       const trackProcessingPromise = async (promise) => {
@@ -6565,6 +6636,55 @@
         const isEditingRequest = editingCodigo !== null;
         const isSubstitutionRequest = isSubstitutionInsertion;
         const isActivationRequest = isActivationInsertion;
+        const requestUrl = isEditingRequest ? `/api/ordem-servico/${encodeURIComponent(editingCodigo)}` : '/api/ordem-servico';
+        const requestMethod = isEditingRequest ? 'PUT' : 'POST';
+        const requestHeaders = {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        };
+
+        const sendRequest = async (extraPayload = {}) => {
+          return fetch(requestUrl, {
+            method: requestMethod,
+            headers: requestHeaders,
+            body: JSON.stringify({
+              ...payload,
+              ...extraPayload,
+            }),
+          });
+        };
+
+        const handleCrecheSyncConfirmation = async () => {
+          const initialResponse = await sendRequest();
+          const initialPayload = await readJsonResponse(initialResponse);
+
+          if (initialResponse.ok) {
+            return initialPayload;
+          }
+
+          if (initialResponse.status === 409 && initialPayload?.requiresConfirmation) {
+            const confirmed = await openCrecheSyncConfirmation(initialPayload.message || 'Confirma a sincronizacao automatica entre OrdemServico e veiculo?');
+
+            if (!confirmed) {
+              return null;
+            }
+
+            const confirmedResponse = await sendRequest({ confirmarSincronizacaoCreche: true });
+            const confirmedPayload = await readJsonResponse(confirmedResponse);
+
+            if (!confirmedResponse.ok) {
+              throw Object.assign(new Error(confirmedPayload.message || 'Falha ao salvar OrdemServico.'), {
+                payload: confirmedPayload,
+              });
+            }
+
+            return confirmedPayload;
+          }
+
+          throw Object.assign(new Error(initialPayload.message || 'Falha ao salvar OrdemServico.'), {
+            payload: initialPayload,
+          });
+        };
 
         feedback.textContent = isEditingRequest
           ? 'Salvando alteracao...'
@@ -6575,17 +6695,15 @@
             : 'Salvando OrdemServico...';
 
         try {
-          const response = await fetch(isEditingRequest ? `/api/ordem-servico/${encodeURIComponent(editingCodigo)}` : '/api/ordem-servico', {
-            method: isEditingRequest ? 'PUT' : 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-          const responsePayload = await readJsonResponse(response);
+          const responsePayload = await handleCrecheSyncConfirmation();
 
-          if (!response.ok) {
+          if (!responsePayload) {
+            feedback.textContent = 'Operacao cancelada pelo usuario.';
+            feedback.className = 'dsc-feedback';
+            return;
+          }
+
+          if (responsePayload.errors) {
             if (responsePayload.errors?.cnpjCpf) {
               cnpjCpfError.textContent = responsePayload.errors.cnpjCpf;
             }
@@ -6593,8 +6711,6 @@
             if (responsePayload.errors?.cpfPreposto) {
               cpfPrepostoError.textContent = responsePayload.errors.cpfPreposto;
             }
-
-            throw new Error(responsePayload.message || 'Falha ao salvar OrdemServico.');
           }
 
           const successMessage = isEditingRequest
@@ -6621,6 +6737,16 @@
 
           hideForm();
         } catch (error) {
+          const payloadError = error?.payload?.errors || {};
+
+          if (payloadError.cnpjCpf) {
+            cnpjCpfError.textContent = payloadError.cnpjCpf;
+          }
+
+          if (payloadError.cpfPreposto) {
+            cpfPrepostoError.textContent = payloadError.cpfPreposto;
+          }
+
           const message = getRequestErrorMessage(error, 'Falha ao salvar OrdemServico.');
           feedback.textContent = message;
           feedback.className = 'dsc-feedback dsc-feedback-error';
@@ -6641,7 +6767,51 @@
           return;
         }
 
+        if (executeImportButton instanceof HTMLButtonElement) {
+          executeImportButton.disabled = true;
+          executeImportButton.textContent = 'Importando...';
+        }
+
         importFeedback.textContent = 'Executando importacao...';
+        importFeedback.className = 'dsc-feedback';
+
+        let importProgressTimerId = null;
+
+        const stopImportProgressPolling = () => {
+          if (importProgressTimerId) {
+            window.clearInterval(importProgressTimerId);
+            importProgressTimerId = null;
+          }
+        };
+
+        const updateImportButtonProgress = async () => {
+          try {
+            const response = await fetch(`/api/xml-import-progress?progressFilePath=${encodeURIComponent(ordemServicoImportProgressFilePath)}`, {
+              headers: { Accept: 'application/json' },
+            });
+
+            if (!response.ok) {
+              return;
+            }
+
+            const progress = await readJsonResponse(response);
+            const current = Number(progress.current) || 0;
+            const total = Number(progress.total) || 0;
+
+            if (executeImportButton instanceof HTMLButtonElement) {
+              executeImportButton.textContent = total > 0
+                ? `Importando ${current}/${total}`
+                : 'Importando...';
+            }
+          } catch {
+            // Ignore transient polling failures while the import is running.
+          }
+        };
+
+        importProgressTimerId = window.setInterval(() => {
+          void updateImportButtonProgress();
+        }, 300);
+        void updateImportButtonProgress();
 
         try {
           const response = await fetch('/api/ordem-servico/import-xml', {
@@ -6650,7 +6820,7 @@
               'Content-Type': 'application/json',
               Accept: 'application/json',
             },
-            body: JSON.stringify({ fileName }),
+            body: JSON.stringify({ fileName, progressFilePath: ordemServicoImportProgressFilePath }),
           });
           const payload = await readJsonResponse(response);
 
@@ -6667,6 +6837,12 @@
           const message = getRequestErrorMessage(error, 'Falha ao importar XML.');
           importFeedback.textContent = message;
           importFeedback.className = 'dsc-feedback dsc-feedback-error';
+        } finally {
+          stopImportProgressPolling();
+          if (executeImportButton instanceof HTMLButtonElement) {
+            executeImportButton.disabled = false;
+            executeImportButton.textContent = 'Executar importacao';
+          }
         }
       });
 
@@ -6935,6 +7111,10 @@
         if (!emissaoModal.classList.contains('dsc-hidden')) {
           clearOrdemServicoEmissao();
         }
+
+        if (!crecheSyncModal.classList.contains('dsc-hidden')) {
+          closeCrecheSyncConfirmation(false);
+        }
       });
 
       window.addEventListener('storage', (event) => {
@@ -6942,6 +7122,20 @@
       });
 
       window.addEventListener('resize', syncTopGridScrollbar);
+      closeCrecheSyncModalButton.addEventListener('click', () => {
+        closeCrecheSyncConfirmation(false);
+      });
+      cancelCrecheSyncButton.addEventListener('click', () => {
+        closeCrecheSyncConfirmation(false);
+      });
+      confirmCrecheSyncButton.addEventListener('click', () => {
+        closeCrecheSyncConfirmation(true);
+      });
+      crecheSyncModal.addEventListener('click', (event) => {
+        if (event.target === crecheSyncModal) {
+          closeCrecheSyncConfirmation(false);
+        }
+      });
       importButton.addEventListener('click', () => {
         hideForm();
         showImportForm();
