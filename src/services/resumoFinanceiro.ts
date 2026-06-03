@@ -23,7 +23,7 @@ export type ResumoFinanceiroItem = {
   dataAlteracaoOrigem: string
 }
 
-export type ResumoFinanceiroSortField = 'mesAno' | 'dreDescricao' | 'tipoPessoa' | 'totalRevisoes' | 'totalRegistros' | 'kilometragem' | 'dataAlteracaoOrigem'
+export type ResumoFinanceiroSortField = 'mesAno' | 'dreDescricao' | 'tipoPessoa' | 'maiorRevisao' | 'totalRevisoes' | 'totalRegistros' | 'kilometragem' | 'dataAlteracaoOrigem'
 
 type ResumoFinanceiroListResponse = {
   items: ResumoFinanceiroItem[]
@@ -51,6 +51,25 @@ export type ResumoFinanceiroListResult = {
   totalPages: number
   sortBy: ResumoFinanceiroSortField
   sortDirection: 'asc' | 'desc'
+}
+
+export type ResumoFinanceiroDeleteCascadeRequest = {
+  mesAno: string
+  dreCodigo?: string
+  revisao?: number | null
+  tipoPessoa?: ApuracaoTipoPessoa | null
+}
+
+export type ResumoFinanceiroDeleteCascadeResult = {
+  deletedRemuneracaoServicos: number
+  deletedApuracaoServicos: number
+  deletedApuracaoFinanceira: number
+  filters: {
+    mesAno: string
+    dreCodigo: string
+    revisao: number | null
+    tipoPessoa: ApuracaoTipoPessoa | null
+  }
 }
 
 const getResumoFinanceiroUrl = () => {
@@ -124,4 +143,24 @@ export async function listResumoFinanceiroItemsPaginated(params: ResumoFinanceir
     sortBy: result.sortBy ?? params.sortBy ?? 'mesAno',
     sortDirection: result.sortDirection ?? params.sortDirection ?? 'desc',
   }
+}
+
+export async function deleteResumoFinanceiroCascade(request: ResumoFinanceiroDeleteCascadeRequest): Promise<ResumoFinanceiroDeleteCascadeResult> {
+  const response = await fetch(`${getResumoFinanceiroUrl()}/excluir-cadeia`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(request),
+  })
+
+  const responseText = await response.text()
+  const payload = parseJsonSafely(responseText)
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(payload))
+  }
+
+  return payload as ResumoFinanceiroDeleteCascadeResult
 }

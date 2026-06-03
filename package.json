@@ -45,10 +45,14 @@
     "homol:smoke:documental": "set API_BASE_URL=http://127.0.0.1:3002&& node scripts/smoke-api.mjs documental",
     "smoke:api:ordem-servico": "node scripts/smoke-api.mjs ordem-servico",
     "smoke:api:apontamento-servicos": "node scripts/smoke-api.mjs apontamento-servicos",
+    "smoke:api:apuracao-status-transition": "node scripts/smoke-api.mjs apuracao-status-transition",
     "smoke:api:veiculo": "node scripts/smoke-api.mjs veiculo",
     "smoke:api:marca-modelo": "node scripts/smoke-api.mjs marca-modelo",
     "smoke:api:remuneracao-formula": "node scripts/verify-remuneracao-formula.mjs",
-    "verify:remuneracao:formula": "node scripts/verify-remuneracao-formula.mjs"
+    "verify:remuneracao:formula": "node scripts/verify-remuneracao-formula.mjs",
+    "smoke:api:remuneracao:km-continua": "node scripts/verify-remuneracao-km-continua.mjs",
+    "verify:remuneracao:km-continua": "node scripts/verify-remuneracao-km-continua.mjs",
+    "verify:apuracao:status-transition": "node scripts/verify-apuracao-status-transition.mjs"
   },
   "dependencies": {
     "fast-xml-parser": "^5.5.10",

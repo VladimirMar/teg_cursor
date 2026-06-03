@@ -4706,6 +4706,60 @@ const findLatestRemuneracaoCondicaoValorWithFallback = async ({
   throw createHttpError(409, `Nao foi encontrado valor para ${normalizedCandidates.join(' ou ')} (${tipoBancada}, ${tipoPgtoDescricao}) com quantidade ${quantidade} na data de operacao.`)
 }
 
+const findLatestContinuaValor = async ({ dataReferencia, tipoContinua }, executor = pool) => {
+  const normalizedTipoContinua = normalizeRequestValue(tipoContinua)
+
+  if (!normalizedTipoContinua) {
+    throw createHttpError(400, 'Tipo de continua obrigatorio para buscar valor de continua.')
+  }
+
+  const result = await executor.query(
+    `SELECT continua_valor_item.valor::numeric(14,2) AS valor
+     FROM continua_valor continua_valor_item
+     WHERE ${normalizedSqlTextExpression('continua_valor_item.tipo_continua')} = ${normalizedSqlTextExpression('$1')}
+       AND continua_valor_item.data <= $2::date
+     ORDER BY continua_valor_item.data DESC, continua_valor_item.codigo DESC
+     LIMIT 1`,
+    [normalizedTipoContinua, dataReferencia],
+  )
+
+  if (result.rowCount === 0) {
+    throw createHttpError(409, `Nao foi encontrado valor de continua para ${normalizedTipoContinua} na data de operacao.`)
+  }
+
+  return Number(result.rows[0].valor) || 0
+}
+
+const findLatestKmValorByQuantidade = async ({ dataReferencia, quantidadeKmAdicional }, executor = pool) => {
+  const normalizedQuantidadeKmAdicional = Number(quantidadeKmAdicional)
+
+  if (!Number.isFinite(normalizedQuantidadeKmAdicional) || normalizedQuantidadeKmAdicional <= 0) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT
+       km_valor_item.valor::numeric(14,2) AS valor,
+       condicao_item.qtde_ini::numeric(14,4) AS qtde_ini
+     FROM km_valor km_valor_item
+     INNER JOIN condicao condicao_item ON condicao_item.codigo = km_valor_item.condicao_codigo
+     WHERE km_valor_item.data <= $1::date
+       AND condicao_item.qtde_ini::numeric(14,4) <= $2::numeric(14,4)
+     ORDER BY condicao_item.qtde_ini DESC, km_valor_item.data DESC, km_valor_item.codigo DESC
+     LIMIT 1`,
+    [dataReferencia, normalizedQuantidadeKmAdicional],
+  )
+
+  if (result.rowCount === 0) {
+    return null
+  }
+
+  return {
+    valor: Number(result.rows[0].valor) || 0,
+    qtdeIni: Number(result.rows[0].qtde_ini) || 0,
+  }
+}
+
 const findLatestRemuneracaoCondicaoValorByCondicao = async ({ dataReferencia, modalidadeDescricao, tipoBancada, tipoPgtoDescricao, condicaoDescricao }, executor = pool) => {
   const normalizedCondicaoCandidates = [...new Set((Array.isArray(condicaoDescricao) ? condicaoDescricao : [condicaoDescricao])
     .map((candidate) => normalizeRequestValue(candidate))
@@ -4891,6 +4945,29 @@ const calculateRemuneracaoServicosItems = async ({
     const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
     const currentValue = resultMap.get(groupKey) ?? 0
     resultMap.set(groupKey, currentValue + getCrecheAccumulatedQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const continuaRegularByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + Math.max(0, Number(item.continuaNaoCadeirante) || 0))
+    return resultMap
+  }, new Map())
+
+  const continuaCadeiranteByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + Math.max(0, Number(item.continuaCadeirante) || 0))
+    return resultMap
+  }, new Map())
+
+  const kmAdicionalByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    const kilometragem = normalizeApontamentoServicosKm(item.kilometragem)
+    const kilometragemValue = Number.isFinite(kilometragem) ? kilometragem : 0
+    resultMap.set(groupKey, Number((currentValue + kilometragemValue).toFixed(4)))
     return resultMap
   }, new Map())
 
@@ -5105,6 +5182,67 @@ const calculateRemuneracaoServicosItems = async ({
       ? normalizedTegRegularPercapita
       : Number(item.tegCrechePercapita) || 0
 
+    let nextContinuaRegular = 0
+    let nextContinuaCadeirante = 0
+
+    if (isOrdemServicoTegRegular && tipoBancada === 'CONVENCIONAL') {
+      const quantidadeContinuaRegular = Math.max(0, Number(continuaRegularByGroupKey.get(groupKey) ?? 0))
+
+      if (quantidadeContinuaRegular > 0) {
+        const continuaRegularLookupKey = 'CONTINUA|REGULAR'
+        let continuaRegularValor = valorByLookupKey.get(continuaRegularLookupKey)
+
+        if (!Number.isFinite(continuaRegularValor)) {
+          continuaRegularValor = await findLatestContinuaValor({
+            dataReferencia,
+            tipoContinua: 'Regular',
+          }, executor)
+          valorByLookupKey.set(continuaRegularLookupKey, continuaRegularValor)
+        }
+
+        nextContinuaRegular = normalizeRemuneracaoServicosAmount(quantidadeContinuaRegular * (Number(continuaRegularValor) || 0))
+      }
+    }
+
+    if (isOrdemServicoTegRegular && tipoBancada === 'ACESSIVEL') {
+      const quantidadeContinuaCadeirante = Math.max(0, Number(continuaCadeiranteByGroupKey.get(groupKey) ?? 0))
+
+      if (quantidadeContinuaCadeirante > 0) {
+        const continuaCadeiranteLookupKey = 'CONTINUA|CADEIRANTE'
+        let continuaCadeiranteValor = valorByLookupKey.get(continuaCadeiranteLookupKey)
+
+        if (!Number.isFinite(continuaCadeiranteValor)) {
+          continuaCadeiranteValor = await findLatestContinuaValor({
+            dataReferencia,
+            tipoContinua: 'Cadeirante',
+          }, executor)
+          valorByLookupKey.set(continuaCadeiranteLookupKey, continuaCadeiranteValor)
+        }
+
+        nextContinuaCadeirante = normalizeRemuneracaoServicosAmount(quantidadeContinuaCadeirante * (Number(continuaCadeiranteValor) || 0))
+      }
+    }
+
+    let nextKmValor = 0
+    const quantidadeKmAdicional = Math.max(0, Number(kmAdicionalByGroupKey.get(groupKey) ?? 0))
+
+    if (quantidadeKmAdicional > 0) {
+      const kmValorLookupKey = `KMVALOR|${quantidadeKmAdicional.toFixed(4)}`
+      let kmLookup = valorByLookupKey.get(kmValorLookupKey)
+
+      if (!kmLookup) {
+        kmLookup = await findLatestKmValorByQuantidade({
+          dataReferencia,
+          quantidadeKmAdicional,
+        }, executor)
+        valorByLookupKey.set(kmValorLookupKey, kmLookup)
+      }
+
+      if (kmLookup && quantidadeKmAdicional >= (Number(kmLookup.qtdeIni) || 0)) {
+        nextKmValor = normalizeRemuneracaoServicosAmount(quantidadeKmAdicional * (Number(kmLookup.valor) || 0))
+      }
+    }
+
     const hasAnyValueChange =
       nextTegRegularFixo !== (Number(item.tegRegularFixo) || 0)
       || nextTegRegularPercapita !== (Number(item.tegRegularPercapita) || 0)
@@ -5116,6 +5254,9 @@ const calculateRemuneracaoServicosItems = async ({
       || nextTegEspecialAcessivelPercapita !== (Number(item.tegEspecialAcessivelPercapita) || 0)
       || nextTegCrecheFixo !== (Number(item.tegCrecheFixo) || 0)
       || nextTegCrechePercapita !== (Number(item.tegCrechePercapita) || 0)
+      || nextKmValor !== (Number(item.kmValor) || 0)
+      || nextContinuaRegular !== (Number(item.continuaRegular) || 0)
+      || nextContinuaCadeirante !== (Number(item.continuaCadeirante) || 0)
 
     if (hasAnyValueChange) {
       totalAtualizados += 1
@@ -5136,9 +5277,9 @@ const calculateRemuneracaoServicosItems = async ({
       tegEspecialAcessivelPercapita: nextTegEspecialAcessivelPercapita,
       tegCrecheFixo: nextTegCrecheFixo,
       tegCrechePercapita: nextTegCrechePercapita,
-      kmValor: Number(item.kmValor) || 0,
-      continuaRegular: Number(item.continuaRegular) || 0,
-      continuaCadeirante: Number(item.continuaCadeirante) || 0,
+      kmValor: nextKmValor,
+      continuaRegular: nextContinuaRegular,
+      continuaCadeirante: nextContinuaCadeirante,
     })
   }
 
@@ -5147,6 +5288,10 @@ const calculateRemuneracaoServicosItems = async ({
       mesAno,
       dataReferencia,
       items: itemsToUpsert,
+      allowedApuracaoFinanceiraSituacoes: ['A processar', 'Processado'],
+      // O recálculo deve atuar apenas na remuneração solicitada.
+      // Nao altera status de apuracao nem dados-base do apontamento.
+      markApuracaoFinanceiraAsProcessado: false,
     }, executor)
   }
 
@@ -5158,7 +5303,14 @@ const calculateRemuneracaoServicosItems = async ({
   }
 }
 
-const upsertRemuneracaoServicosItems = async ({ mesAno, dataReferencia, items, insertIfMissingOnly = false }, executor = pool) => {
+const upsertRemuneracaoServicosItems = async ({
+  mesAno,
+  dataReferencia,
+  items,
+  insertIfMissingOnly = false,
+  allowedApuracaoFinanceiraSituacoes = ['Em digitacao'],
+  markApuracaoFinanceiraAsProcessado = false,
+}, executor = pool) => {
   const normalizedItems = []
 
   for (const item of items) {
@@ -5228,6 +5380,7 @@ const upsertRemuneracaoServicosItems = async ({ mesAno, dataReferencia, items, i
       revisao: Number.parseInt(revisaoText, 10),
       tipoPessoa,
       createIfMissing: false,
+      allowedSituacoes: allowedApuracaoFinanceiraSituacoes,
     }, executor)
   }
 
@@ -5360,6 +5513,24 @@ const upsertRemuneracaoServicosItems = async ({ mesAno, dataReferencia, items, i
          data_alteracao = NOW()`}`,
     [payloadJson, mesAno, dataReferencia],
   )
+
+  if (markApuracaoFinanceiraAsProcessado) {
+    for (const editableKey of editableKeys) {
+      const [dreCodigo, revisaoText, tipoPessoa] = editableKey.split('|')
+
+      await executor.query(
+        `UPDATE apuracao_financeira
+         SET situacao = 'Processado',
+             data_alteracao = NOW()
+         WHERE mes_ano = $1
+           AND CAST(dre_codigo AS text) = $2
+           AND revisao = $3
+           AND BTRIM(tipo_pessoa) = $4
+           AND BTRIM(situacao) = 'A processar'`,
+        [mesAno, dreCodigo, Number.parseInt(revisaoText, 10), tipoPessoa],
+      )
+    }
+  }
 }
 
 const syncApuracaoServicosDailyTotals = async (key, executor = pool) => {
@@ -6062,11 +6233,11 @@ const findDreByCodigo = async (codigo) => {
   const result = await pool.query(
     `SELECT ${dreSelectClause}
      FROM dre
-     WHERE (
-       CAST(codigo AS text) = $1
-       OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
-     )
-     AND UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
+     WHERE CAST(codigo AS text) = $1
+        OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
+     ORDER BY
+       CASE WHEN UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1 THEN 0 ELSE 1 END,
+       codigo ASC
      LIMIT 1`,
     [normalizedCodigo],
   )
@@ -6154,6 +6325,19 @@ const ensureDreOperationalEntry = async ({ codigo, descricao }) => {
 
   if (existingItem) {
     if (normalizedCodigo && normalizeDreOperationalCode(existingItem.codigo_operacional) !== normalizedCodigo) {
+      const conflictingOperationalCodeResult = await pool.query(
+        `SELECT codigo
+         FROM dre
+         WHERE UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
+           AND codigo <> $2
+         LIMIT 1`,
+        [normalizedCodigo, existingItem.codigo],
+      )
+
+      if (conflictingOperationalCodeResult.rowCount > 0) {
+        return existingItem
+      }
+
       const updatedResult = await pool.query(
         `UPDATE dre
          SET codigo_operacional = $1
@@ -6836,7 +7020,14 @@ const ensurePreviousApuracaoFinanceiraRevisionIsConcluded = async ({ mesAno, rev
   }
 }
 
-const ensureApuracaoServicosEditable = async ({ mesAno, dreCodigo, revisao, tipoPessoa, createIfMissing = false }, executor = pool) => {
+const ensureApuracaoServicosEditable = async ({
+  mesAno,
+  dreCodigo,
+  revisao,
+  tipoPessoa,
+  createIfMissing = false,
+  allowedSituacoes = ['Em digitacao'],
+}, executor = pool) => {
   const apuracaoFinanceiraResult = await executor.query(
     `SELECT BTRIM(COALESCE(situacao, '')) AS situacao
      FROM apuracao_financeira
@@ -6866,8 +7057,25 @@ const ensureApuracaoServicosEditable = async ({ mesAno, dreCodigo, revisao, tipo
 
   const situacao = normalizeApuracaoFinanceiraStatus(apuracaoFinanceiraResult.rows[0]?.situacao)
 
-  if (situacao !== 'Em digitacao') {
-    throw createHttpError(409, 'A digitacao da apuracao de servicos so e permitida quando a apuracao financeira estiver com status Em digitacao.')
+  const normalizedAllowedSituacoes = [...new Set(
+    (Array.isArray(allowedSituacoes) ? allowedSituacoes : [allowedSituacoes])
+      .map((item) => normalizeApuracaoFinanceiraStatus(item))
+      .filter(Boolean),
+  )]
+
+  const effectiveAllowedSituacoes = normalizedAllowedSituacoes.length > 0
+    ? normalizedAllowedSituacoes
+    : ['Em digitacao']
+
+  if (!effectiveAllowedSituacoes.includes(situacao)) {
+    if (effectiveAllowedSituacoes.length === 1 && effectiveAllowedSituacoes[0] === 'Em digitacao') {
+      throw createHttpError(409, 'A digitacao da apuracao de servicos so e permitida quando a apuracao financeira estiver com status Em digitacao.')
+    }
+
+    throw createHttpError(
+      409,
+      `A operacao so e permitida quando a apuracao financeira estiver com status ${effectiveAllowedSituacoes.join(' ou ')}.`,
+    )
   }
 }
 
@@ -6935,7 +7143,8 @@ const processApuracaoFinanceiraSelections = async ({
   replaceExistingTipoPessoa,
 }, executor = pool) => {
   const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
-  const normalizedSituacao = normalizeApuracaoFinanceiraStatus(situacao)
+  const requestedSituacao = normalizeApuracaoFinanceiraStatus(situacao)
+  const normalizedSituacao = 'Em digitacao'
   const normalizedRevisao = normalizeIntegerValue(revisao)
   const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
   const normalizedDreCodigos = [...new Set(
@@ -6963,8 +7172,8 @@ const processApuracaoFinanceiraSelections = async ({
     throw new Error('Tipo pessoa invalido.')
   }
 
-  if (!['A processar', 'Processado'].includes(normalizedSituacao)) {
-    throw new Error('A situacao deve ser A processar ou Processado para liberar o processamento de dados.')
+  if (requestedSituacao && !['Em digitacao', 'A processar', 'Processado'].includes(requestedSituacao)) {
+    throw new Error('A situacao informada para processamento e invalida.')
   }
 
   if (normalizedDreCodigos.length === 0) {
@@ -7044,8 +7253,9 @@ const processApuracaoFinanceiraSelections = async ({
       dreCodigo: dreRecord.codigo,
       tipoPessoa: normalizedTipoPessoa,
     }, executor)
+    const activeOrdemServicoCodigos = [...new Set(activeOrdemServicoItems.map((item) => normalizeRequestValue(item?.codigo)).filter(Boolean))]
 
-    const createdRows = activeOrdemServicoItems.length > 0
+    const createdRows = activeOrdemServicoCodigos.length > 0
       ? await executor.query(
         `INSERT INTO apuracao_servicos (
            mes_ano,
@@ -7105,6 +7315,7 @@ const processApuracaoFinanceiraSelections = async ({
              END
            ) >= $5::date
            AND BTRIM(COALESCE(os.dre_codigo, '')) = $7
+           AND os.codigo::text = ANY($8::text[])
          ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
          DO NOTHING
          RETURNING 1`,
@@ -7116,6 +7327,7 @@ const processApuracaoFinanceiraSelections = async ({
           monthRange.monthStart,
           monthRange.monthEnd,
           dreRecord.codigoOperacional,
+          activeOrdemServicoCodigos,
         ],
       )
       : { rowCount: 0 }
@@ -24861,6 +25073,8 @@ const server = createServer(async (request, response) => {
         ? `BTRIM(CAST(resumo_financeiro.dre_descricao AS text)) ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
         : sortBy === 'tipoPessoa'
           ? `BTRIM(CAST(resumo_financeiro.tipo_pessoa AS text)) ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
+          : sortBy === 'maiorRevisao'
+            ? `resumo_financeiro.maior_revisao ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
           : sortBy === 'totalRevisoes'
             ? `resumo_financeiro.total_revisoes ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
             : sortBy === 'totalRegistros'
@@ -24993,7 +25207,7 @@ const server = createServer(async (request, response) => {
         page,
         pageSize,
         totalPages: Math.max(Math.ceil(total / pageSize), 1),
-        sortBy: ['mesAno', 'dreDescricao', 'tipoPessoa', 'totalRevisoes', 'totalRegistros', 'kilometragem', 'dataAlteracaoOrigem'].includes(sortBy) ? sortBy : 'mesAno',
+        sortBy: ['mesAno', 'dreDescricao', 'tipoPessoa', 'maiorRevisao', 'totalRevisoes', 'totalRegistros', 'kilometragem', 'dataAlteracaoOrigem'].includes(sortBy) ? sortBy : 'mesAno',
         sortDirection: sortDirection.toLowerCase(),
       })
     } catch (error) {
@@ -25002,6 +25216,98 @@ const server = createServer(async (request, response) => {
         : 'Erro ao consultar o resumo financeiro.'
 
       sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/resumo-financeiro/excluir-cadeia') {
+    const client = await pool.connect()
+
+    try {
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body?.mesAno ?? '')
+      const dreCodigo = normalizeDreOperationalCode(body?.dreCodigo ?? '')
+      const revisaoRaw = normalizeRequestValue(body?.revisao ?? '')
+      const revisao = revisaoRaw === '' ? null : normalizeIntegerValue(revisaoRaw)
+      const tipoPessoa = normalizeApuracaoTipoPessoa(body?.tipoPessoa ?? '')
+
+      if (!isValidApuracaoFinanceiraMesAno(mesAno)) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      if (revisaoRaw !== '' && (!Number.isInteger(revisao) || revisao < 0)) {
+        sendJson(response, 400, { message: 'Revisao invalida. Informe um numero inteiro maior ou igual a zero.' })
+        return
+      }
+
+      const conditions = ['mes_ano = $1']
+      const values = [mesAno]
+
+      if (dreCodigo) {
+        values.push(dreCodigo)
+        conditions.push(`CAST(dre_codigo AS text) = $${values.length}`)
+      }
+
+      if (Number.isInteger(revisao) && revisao !== null) {
+        values.push(revisao)
+        conditions.push(`revisao = $${values.length}`)
+      }
+
+      if (tipoPessoa) {
+        values.push(tipoPessoa)
+        conditions.push(`BTRIM(tipo_pessoa) = $${values.length}`)
+      }
+
+      const whereClause = `WHERE ${conditions.join(' AND ')}`
+
+      await client.query('BEGIN')
+
+      const deleteRemuneracaoResult = await client.query(
+        `DELETE FROM remuneracao_servicos
+         ${whereClause}`,
+        values,
+      )
+
+      const deleteApuracaoServicosResult = await client.query(
+        `DELETE FROM apuracao_servicos
+         ${whereClause}`,
+        values,
+      )
+
+      const deleteApuracaoFinanceiraResult = await client.query(
+        `DELETE FROM apuracao_financeira
+         ${whereClause}`,
+        values,
+      )
+
+      await client.query('COMMIT')
+
+      sendJson(response, 200, {
+        deletedRemuneracaoServicos: deleteRemuneracaoResult.rowCount,
+        deletedApuracaoServicos: deleteApuracaoServicosResult.rowCount,
+        deletedApuracaoFinanceira: deleteApuracaoFinanceiraResult.rowCount,
+        filters: {
+          mesAno,
+          dreCodigo: dreCodigo || '',
+          revisao: Number.isInteger(revisao) ? revisao : null,
+          tipoPessoa: tipoPessoa || null,
+        },
+      })
+    } catch (error) {
+      try {
+        await client.query('ROLLBACK')
+      } catch {
+      }
+
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir a cadeia financeira do resumo financeiro.'
+
+      sendJson(response, 500, { message })
+    } finally {
+      client.release()
     }
 
     return
@@ -34132,27 +34438,18 @@ const server = createServer(async (request, response) => {
         return
       }
 
-      const vehiclePlaca = normalizeVehiclePlaca(validationResult.payload.placas || existingItem.placas)
-      const linkedActiveOsItem = vehiclePlaca
-        ? await findActiveOrdemServicoByPlaca(vehiclePlaca, { excludeCodigo: originalCodigo })
+      const linkedCrecheVehiclePlaca = normalizeVehiclePlaca(validationResult.payload.veiculoPlacas)
+      const linkedCrecheVehicleItem = linkedCrecheVehiclePlaca
+        ? await findVeiculoByPlaca(linkedCrecheVehiclePlaca)
         : null
-      const linkedActiveOsSnapshot = linkedActiveOsItem
-        ? await fetchOrdemServicoItemByCodigo(pool, linkedActiveOsItem.codigo)
-        : null
-      const linkedActiveOsModalidade = normalizeModalidadeDescriptionKey(linkedActiveOsSnapshot?.modalidade_descricao ?? linkedActiveOsItem?.modalidade_descricao ?? '')
-      const vehicleWillForceOsCreche = linkedActiveOsSnapshot
-        && validationResult.payload.tipoDeBancada === 'CRECHE'
-        && linkedActiveOsModalidade !== 'TEG CRECHE'
-      const vehicleWillForceOsReversion = linkedActiveOsSnapshot
-        && validationResult.payload.tipoDeBancada !== 'CRECHE'
-        && linkedActiveOsModalidade === 'TEG CRECHE'
-        && deriveModalidadeDescricaoFromDreDescricao(linkedActiveOsSnapshot.dre_descricao) !== 'TEG CRECHE'
+      const linkedCrecheVehicleTipo = normalizeTipoDeBancada(linkedCrecheVehicleItem?.tipo_de_bancada ?? linkedCrecheVehicleItem?.tipoDeBancada ?? '')
+      const osWillForceCrecheVehicle = validationResult.payload.modalidadeDescricao === 'TEG CRECHE'
+        && linkedCrecheVehicleItem
+        && linkedCrecheVehicleTipo !== 'CRECHE'
 
-      if ((vehicleWillForceOsCreche || vehicleWillForceOsReversion) && body.confirmarSincronizacaoCreche !== true) {
+      if (osWillForceCrecheVehicle && body.confirmarSincronizacaoCreche !== true) {
         sendJson(response, 409, {
-          message: vehicleWillForceOsCreche
-            ? 'A alteracao do veiculo vai definir a OrdemServico vinculada como TEG CRECHE. Confirme para continuar.'
-            : 'A alteracao do veiculo vai ajustar a OrdemServico vinculada para a modalidade da DRE. Confirme para continuar.',
+          message: `Divergencia entre modalidade e tipo de bancada: a OrdemServico esta em TEG CRECHE e o veiculo ${linkedCrecheVehiclePlaca || '(sem placa)'} esta com tipo ${linkedCrecheVehicleTipo || 'NAO INFORMADO'}. Confirme para atualizar o veiculo para CRECHE.`,
           requiresConfirmation: true,
           confirmationField: 'confirmarSincronizacaoCreche',
         })
@@ -36319,6 +36616,24 @@ const server = createServer(async (request, response) => {
 
       if (validationResult.status !== 200) {
         sendJson(response, validationResult.status, validationResult.payload)
+        return
+      }
+
+      const linkedCrecheVehiclePlaca = normalizeVehiclePlaca(validationResult.payload.veiculoPlacas)
+      const linkedCrecheVehicleItem = linkedCrecheVehiclePlaca
+        ? await findVeiculoByPlaca(linkedCrecheVehiclePlaca)
+        : null
+      const linkedCrecheVehicleTipo = normalizeTipoDeBancada(linkedCrecheVehicleItem?.tipo_de_bancada ?? linkedCrecheVehicleItem?.tipoDeBancada ?? '')
+      const osWillForceCrecheVehicle = validationResult.payload.modalidadeDescricao === 'TEG CRECHE'
+        && linkedCrecheVehicleItem
+        && linkedCrecheVehicleTipo !== 'CRECHE'
+
+      if (osWillForceCrecheVehicle && body.confirmarSincronizacaoCreche !== true) {
+        sendJson(response, 409, {
+          message: `Divergencia entre modalidade e tipo de bancada: a OrdemServico esta em TEG CRECHE e o veiculo ${linkedCrecheVehiclePlaca || '(sem placa)'} esta com tipo ${linkedCrecheVehicleTipo || 'NAO INFORMADO'}. Confirme para atualizar o veiculo para CRECHE.`,
+          requiresConfirmation: true,
+          confirmationField: 'confirmarSincronizacaoCreche',
+        })
         return
       }
 

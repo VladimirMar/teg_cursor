@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:3001'
 const reportPath = process.env.SMOKE_REPORT_PATH ?? ''
-const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo', 'apontamento-servicos', 'remuneracao-formula', 'documental'])
+const availableSuites = new Set(['all', 'condutor', 'monitor', 'credenciada', 'ordem-servico', 'veiculo', 'marca-modelo', 'apontamento-servicos', 'remuneracao-formula', 'apuracao-status-transition', 'documental'])
 const suite = (process.argv[2] ?? process.env.SMOKE_SUITE ?? 'all').trim().toLowerCase()
 const shouldRunVeiculoInAll = String(process.env.SMOKE_API_INCLUDE_VEICULO ?? '').trim().toLowerCase() === 'true'
 
@@ -1190,6 +1190,20 @@ const runRemuneracaoFormulaSmoke = async () => {
   }
 }
 
+const runApuracaoStatusTransitionSmoke = async () => {
+  console.log('Smoke test da transicao de status da Apuracao Financeira')
+  const suiteReport = recordSuite('apuracao-status-transition')
+
+  try {
+    await runNodeScript(new URL('./verify-apuracao-status-transition.mjs', import.meta.url))
+    logStep('transicao de status da apuracao validada (A processar -> Processado)')
+    finalizeSuite(suiteReport, 'passed')
+  } catch (error) {
+    finalizeSuite(suiteReport, 'failed')
+    throw error
+  }
+}
+
 try {
   if (suite === 'all' || suite === 'condutor') {
     await runCondutorSmoke()
@@ -1251,6 +1265,14 @@ try {
 
   if (suite === 'all' || suite === 'remuneracao-formula') {
     await runRemuneracaoFormulaSmoke()
+  }
+
+  if (suite === 'all') {
+    console.log('')
+  }
+
+  if (suite === 'all' || suite === 'apuracao-status-transition') {
+    await runApuracaoStatusTransitionSmoke()
   }
 
   if (suite === 'documental') {

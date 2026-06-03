@@ -148,47 +148,6 @@ const formatPeriodLabel = (item: Pick<ApontamentoServicosItem, 'periodoInicio' |
 
 const formatDreOptionLabel = (item: DreItem) => `${item.codigo} - ${item.sigla} - ${item.descricao}`
 
-const apontamentoServicosSortCollator = new Intl.Collator('pt-BR', {
-  sensitivity: 'base',
-  numeric: true,
-})
-
-const sortApontamentoServicosItems = (items: ApontamentoServicosItem[]) => {
-  return [...items].sort((left, right) => {
-    const empresaCompare = apontamentoServicosSortCollator.compare(left.empresa || '', right.empresa || '')
-
-    if (empresaCompare !== 0) {
-      return empresaCompare
-    }
-
-    const condutorCompare = apontamentoServicosSortCollator.compare(left.nomeCondutor || '', right.nomeCondutor || '')
-
-    if (condutorCompare !== 0) {
-      return condutorCompare
-    }
-
-    const crmcCompare = apontamentoServicosSortCollator.compare(left.crmcCondutor || '', right.crmcCondutor || '')
-
-    if (crmcCompare !== 0) {
-      return crmcCompare
-    }
-
-    const ordemServicoCompare = apontamentoServicosSortCollator.compare(left.ordemServicoCodigo || '', right.ordemServicoCodigo || '')
-
-    if (ordemServicoCompare !== 0) {
-      return ordemServicoCompare
-    }
-
-    const dataCompare = apontamentoServicosSortCollator.compare(left.dataReferencia || '', right.dataReferencia || '')
-
-    if (dataCompare !== 0) {
-      return dataCompare
-    }
-
-    return apontamentoServicosSortCollator.compare(buildRowKey(left), buildRowKey(right))
-  })
-}
-
 const getApontamentoServicosImportDisplayName = (fileName?: string) => {
   const normalizedFileName = fileName?.trim()
   return normalizedFileName || 'todos os arquivos Excel do diretorio informado'
@@ -508,16 +467,16 @@ export default function ApontamentoServicosView() {
         page: targetPage,
         pageSize: targetPageSize,
       })
-      const sortedItems = sortApontamentoServicosItems(result.items)
+      const loadedItems = Array.isArray(result.items) ? [...result.items] : []
 
-      setItems(sortedItems)
-      setLoadedItemsSnapshot(sortedItems)
+      setItems(loadedItems)
+      setLoadedItemsSnapshot(loadedItems)
       setPage(result.page)
       setPageSize(result.pageSize)
       setTotalItems(result.total)
       setTotalPages(result.totalPages)
       setStatusTone('idle')
-      setStatusMessage(sortedItems.length ? '' : 'Nenhum apontamento disponivel para os filtros informados.')
+      setStatusMessage(loadedItems.length ? '' : 'Nenhum apontamento disponivel para os filtros informados.')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha ao carregar o apontamento de servicos.'
       setItems([])

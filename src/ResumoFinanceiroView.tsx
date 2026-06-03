@@ -1,12 +1,24 @@
 import { useCallback, useDeferredValue, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { listResumoFinanceiroItemsPaginated } from './services/resumoFinanceiro'
+import { deleteResumoFinanceiroCascade, listResumoFinanceiroItemsPaginated } from './services/resumoFinanceiro'
 import type { ResumoFinanceiroItem, ResumoFinanceiroSortField } from './services/resumoFinanceiro'
+import { listDreItemsPaginated } from './services/dre'
+import type { DreItem } from './services/dre'
 import { formatApuracaoTipoPessoaLabel } from './services/apuracaoTipoPessoa'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 
 const pageSize = 20
+
+const normalizeMonthYearInput = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 6)
+
+  if (digits.length <= 2) {
+    return digits
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`
+}
 
 const formatDreLabel = (item: Pick<ResumoFinanceiroItem, 'dreCodigo' | 'dreSigla' | 'dreDescricao'>) => {
   return `${item.dreCodigo} - ${item.dreSigla} - ${item.dreDescricao}`
@@ -49,6 +61,17 @@ export default function ResumoFinanceiroView() {
   const [isLoading, setIsLoading] = useState(false)
   const [isFormVisible, setIsFormVisible] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ResumoFinanceiroItem | null>(null)
+  const [isDeleteCascadeVisible, setIsDeleteCascadeVisible] = useState(false)
+  const [deleteMesAno, setDeleteMesAno] = useState('')
+  const [deleteDreCodigo, setDeleteDreCodigo] = useState('')
+  const [deleteRevisao, setDeleteRevisao] = useState('')
+  const [deleteTipoPessoa, setDeleteTipoPessoa] = useState<'TODOS' | 'PF' | 'PJ'>('TODOS')
+  const [deleteDreOptions, setDeleteDreOptions] = useState<DreItem[]>([])
+  const [deleteMesAnoError, setDeleteMesAnoError] = useState('')
+  const [deleteRevisaoError, setDeleteRevisaoError] = useState('')
+  const [deleteCascadeFeedbackMessage, setDeleteCascadeFeedbackMessage] = useState('')
+  const [deleteCascadeFeedbackTone, setDeleteCascadeFeedbackTone] = useState<StatusTone>('idle')
+  const [isDeletingCascade, setIsDeletingCascade] = useState(false)
 
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
@@ -88,7 +111,30 @@ export default function ResumoFinanceiroView() {
   }, [loadItems])
 
   useEffect(() => {
-    if (!isFormVisible) {
+    const loadDeleteDreOptions = async () => {
+      try {
+        const result = await listDreItemsPaginated({ page: 1, pageSize: 500, sortBy: 'codigo', sortDirection: 'asc' })
+        const orderedItems = [...result.items].sort((left, right) => {
+          const codeComparison = left.codigo.localeCompare(right.codigo, 'pt-BR', { numeric: true, sensitivity: 'base' })
+
+          if (codeComparison !== 0) {
+            return codeComparison
+          }
+
+          return left.descricao.localeCompare(right.descricao, 'pt-BR', { sensitivity: 'base' })
+        })
+
+        setDeleteDreOptions(orderedItems)
+      } catch {
+        setDeleteDreOptions([])
+      }
+    }
+
+    void loadDeleteDreOptions()
+  }, [])
+
+  useEffect(() => {
+    if (!isFormVisible && !isDeleteCascadeVisible) {
       return
     }
 
@@ -97,6 +143,7 @@ export default function ResumoFinanceiroView() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsFormVisible(false)
+        setIsDeleteCascadeVisible(false)
       }
     }
 
@@ -106,7 +153,7 @@ export default function ResumoFinanceiroView() {
       document.body.classList.remove('management-modal-open')
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isFormVisible])
+  }, [isDeleteCascadeVisible, isFormVisible])
 
   const handleFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -135,6 +182,98 @@ export default function ResumoFinanceiroView() {
     setSelectedItem(null)
   }
 
+  const handleOpenDeleteCascade = () => {
+    setDeleteMesAno('')
+    setDeleteDreCodigo('')
+    setDeleteRevisao('')
+    setDeleteTipoPessoa('TODOS')
+    setDeleteMesAnoError('')
+    setDeleteRevisaoError('')
+    setDeleteCascadeFeedbackTone('idle')
+    setDeleteCascadeFeedbackMessage('')
+    setIsDeleteCascadeVisible(true)
+  }
+
+  const handleCloseDeleteCascade = () => {
+    if (isDeletingCascade) {
+      return
+    }
+
+    setIsDeleteCascadeVisible(false)
+  }
+
+  const handleDeleteCascade = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const normalizedMesAno = deleteMesAno.trim()
+    const normalizedDreCodigo = deleteDreCodigo.trim()
+    const normalizedRevisao = deleteRevisao.trim()
+    const parsedRevisao = normalizedRevisao === '' ? null : Number.parseInt(normalizedRevisao, 10)
+
+    let hasError = false
+    setDeleteMesAnoError('')
+    setDeleteRevisaoError('')
+
+    if (!/^\d{2}\/\d{4}$/.test(normalizedMesAno)) {
+      setDeleteMesAnoError('Mes/ano invalido. Use o formato mm/aaaa.')
+      hasError = true
+    }
+
+    if (normalizedRevisao !== '' && (!Number.isInteger(parsedRevisao) || (parsedRevisao ?? -1) < 0)) {
+      setDeleteRevisaoError('Revisao deve ser um numero inteiro maior ou igual a zero.')
+      hasError = true
+    }
+
+    if (hasError) {
+      return
+    }
+
+    const confirmMessage = [
+      'Excluir os dados financeiros desta selecao?',
+      `Mes/Ano: ${normalizedMesAno}`,
+      `Tipo Pessoa: ${deleteTipoPessoa === 'TODOS' ? 'TODOS' : formatApuracaoTipoPessoaLabel(deleteTipoPessoa)}`,
+      `DRE: ${normalizedDreCodigo || 'TODAS'}`,
+      `Revisao: ${normalizedRevisao || 'TODAS'}`,
+      'A ausencia de filtro remove todos os filhos do nivel informado.',
+    ].join('\n')
+
+    if (!window.confirm(confirmMessage)) {
+      return
+    }
+
+    setDeleteCascadeFeedbackTone('idle')
+    setDeleteCascadeFeedbackMessage('Excluindo cadeia financeira do resumo financeiro...')
+    setIsDeletingCascade(true)
+    setStatusTone('idle')
+    setStatusMessage('Excluindo cadeia financeira do resumo financeiro...')
+
+    try {
+      const result = await deleteResumoFinanceiroCascade({
+        mesAno: normalizedMesAno,
+        dreCodigo: normalizedDreCodigo || undefined,
+        revisao: parsedRevisao,
+        tipoPessoa: deleteTipoPessoa === 'TODOS' ? null : deleteTipoPessoa,
+      })
+
+      const totalDeleted = result.deletedRemuneracaoServicos + result.deletedApuracaoServicos + result.deletedApuracaoFinanceira
+      setDeleteCascadeFeedbackTone('success')
+      setDeleteCascadeFeedbackMessage(
+        `Operacao concluida com sucesso. ${totalDeleted} registros excluidos (${result.deletedRemuneracaoServicos} remuneracao, ${result.deletedApuracaoServicos} apontamento/total e ${result.deletedApuracaoFinanceira} apuracao financeira).`,
+      )
+      setStatusTone('success')
+      setStatusMessage(
+        `Operacao concluida com sucesso. ${totalDeleted} registros excluidos (${result.deletedRemuneracaoServicos} remuneracao, ${result.deletedApuracaoServicos} apontamento/total e ${result.deletedApuracaoFinanceira} apuracao financeira).`,
+      )
+      await loadItems()
+    } catch (error) {
+      setDeleteCascadeFeedbackTone('error')
+      setDeleteCascadeFeedbackMessage(error instanceof Error ? error.message : 'Falha ao excluir a cadeia financeira do resumo financeiro.')
+      setStatusTone('error')
+      setStatusMessage(error instanceof Error ? error.message : 'Falha ao excluir a cadeia financeira do resumo financeiro.')
+    } finally {
+      setIsDeletingCascade(false)
+    }
+  }
+
   return (
     <>
       <div className="content-copy">
@@ -149,6 +288,9 @@ export default function ResumoFinanceiroView() {
         <div className="management-toolbar">
           <button type="button" className="secondary-button dre-insert-button" onClick={() => void loadItems()} disabled={isLoading}>
             {isLoading ? 'Atualizando...' : 'Atualizar'}
+          </button>
+          <button type="button" className="primary-button dre-insert-button" onClick={handleOpenDeleteCascade} disabled={isLoading || isDeletingCascade}>
+            Excluir cadeia financeira
           </button>
 
           <form className="management-filter-form" onSubmit={handleFilterSubmit}>
@@ -291,6 +433,121 @@ export default function ResumoFinanceiroView() {
           </div>
         ) : null}
 
+        {isDeleteCascadeVisible ? (
+          <div
+            className="management-modal-overlay"
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                handleCloseDeleteCascade()
+              }
+            }}
+          >
+            <div
+              className="management-modal-shell"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="resumo-financeiro-delete-cascade-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <form className="management-card management-form dre-form management-modal-form-card" onSubmit={handleDeleteCascade} noValidate>
+                <div className="management-modal-header">
+                  <div>
+                    <p className="management-modal-kicker">Operacional financeiro - RESUFIN025</p>
+                    <h2 id="resumo-financeiro-delete-cascade-title">EXCLUSAO EM CADEIA</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary-button management-modal-close-button"
+                    onClick={handleCloseDeleteCascade}
+                    disabled={isDeletingCascade}
+                    aria-label="Fechar formulario de exclusao em cadeia"
+                  >
+                    X
+                  </button>
+                </div>
+
+                <p className="management-modal-subtitle">
+                  Remove toda a cadeia financeira do resumo: remuneracao, apontamento/total de servicos e apuracao financeira. Campos vazios apagam todos os filhos do nivel.
+                </p>
+
+                <label className="field-group" htmlFor="resumo-financeiro-delete-mes-ano">
+                  <span>Mes/Ano</span>
+                  <input
+                    id="resumo-financeiro-delete-mes-ano"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={7}
+                    placeholder="mm/aaaa"
+                    value={deleteMesAno}
+                    onChange={(event) => setDeleteMesAno(normalizeMonthYearInput(event.target.value))}
+                    disabled={isDeletingCascade}
+                  />
+                  {deleteMesAnoError ? <strong className="field-error">{deleteMesAnoError}</strong> : null}
+                </label>
+
+                <label className="field-group" htmlFor="resumo-financeiro-delete-tipo-pessoa">
+                  <span>Tipo Pessoa</span>
+                  <select
+                    id="resumo-financeiro-delete-tipo-pessoa"
+                    value={deleteTipoPessoa}
+                    onChange={(event) => setDeleteTipoPessoa(event.target.value as 'TODOS' | 'PF' | 'PJ')}
+                    disabled={isDeletingCascade}
+                  >
+                    <option value="TODOS">TODOS</option>
+                    <option value="PF">Pessoa Fisica</option>
+                    <option value="PJ">Pessoa Juridica / Cooperativa</option>
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="resumo-financeiro-delete-dre">
+                  <span>DRE (opcional)</span>
+                  <select
+                    id="resumo-financeiro-delete-dre"
+                    value={deleteDreCodigo}
+                    onChange={(event) => setDeleteDreCodigo(event.target.value)}
+                    disabled={isDeletingCascade}
+                  >
+                    <option value="">TODAS</option>
+                    {deleteDreOptions.map((item) => (
+                      <option key={item.codigo} value={item.codigo}>
+                        {`${item.codigo} - ${item.descricao}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="resumo-financeiro-delete-revisao">
+                  <span>Revisao (opcional)</span>
+                  <input
+                    id="resumo-financeiro-delete-revisao"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={deleteRevisao}
+                    onChange={(event) => setDeleteRevisao(event.target.value)}
+                    disabled={isDeletingCascade}
+                  />
+                  {deleteRevisaoError ? <strong className="field-error">{deleteRevisaoError}</strong> : null}
+                </label>
+
+                <div className="button-row dre-button-row management-modal-footer">
+                  <button type="submit" className="primary-button" disabled={isDeletingCascade}>
+                    {isDeletingCascade ? 'Excluindo...' : 'Excluir cadeia'}
+                  </button>
+                  <button type="button" className="secondary-button" onClick={handleCloseDeleteCascade} disabled={isDeletingCascade}>
+                    Cancelar
+                  </button>
+                </div>
+
+                <p className={`status-message status-${deleteCascadeFeedbackTone}`} aria-live="polite">
+                  {deleteCascadeFeedbackMessage}
+                </p>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
         <div className="management-card management-grid-card dre-list-card">
           <div className="management-grid-header">
             <h2>Registros cadastrados</h2>
@@ -317,8 +574,8 @@ export default function ResumoFinanceiroView() {
                     </button>
                   </th>
                   <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('totalRevisoes')}>
-                      Revisoes <span>{getSortIndicator('totalRevisoes', sortBy, sortDirection)}</span>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('maiorRevisao')}>
+                      Revisao <span>{getSortIndicator('maiorRevisao', sortBy, sortDirection)}</span>
                     </button>
                   </th>
                   <th>Situacoes</th>
@@ -336,7 +593,7 @@ export default function ResumoFinanceiroView() {
                     <td>{item.mesAno}</td>
                     <td>{formatDreLabel(item)}</td>
                     <td>{formatApuracaoTipoPessoaLabel(item.tipoPessoa)}</td>
-                    <td>{formatIntegerValue(item.totalRevisoes)}</td>
+                    <td>{formatIntegerValue(item.maiorRevisao)}</td>
                     <td>{item.situacoesApuracaoFinanceira || 'Sem apuracao financeira'}</td>
                     <td>{formatIntegerValue(item.totalRegistros)}</td>
                     <td>

@@ -1085,7 +1085,10 @@
       const isCredenciamentoTermoPopup = pageSearchParams.get('popupMode') === 'credenciamento-termo';
       const isDashboardPopup = pageSearchParams.get('popupMode') === 'dashboard-ordem-servico';
       const dashboardPopupCodigoParam = pageSearchParams.get('codigo') || '';
-      const dashboardPopupMode = pageSearchParams.get('mode') === 'edit' ? 'edit' : 'view';
+      const dashboardPopupModeParam = String(pageSearchParams.get('mode') || '').trim().toLowerCase();
+      const dashboardPopupMode = ['edit', 'substitute'].includes(dashboardPopupModeParam)
+        ? dashboardPopupModeParam
+        : 'view';
 
       if (isDashboardPopup) {
         document.body.classList.add('dsc-dashboard-popup-mode');
@@ -3350,14 +3353,12 @@
       };
 
       const syncCanceladoOptionVisibility = () => {
-        const shouldShowCancelado = formMode === 'view' && normalizeKey(getSelectedSituacao()) === 'cancelado';
+        const isCanceladoSelected = normalizeKey(getSelectedSituacao()) === 'cancelado';
+        const isCanceladoEnabled = situacaoCanceladoRadio instanceof HTMLInputElement && !situacaoCanceladoRadio.disabled;
+        const shouldShowCancelado = isCanceladoSelected || isCanceladoEnabled;
 
         if (situacaoCanceladoOption) {
           situacaoCanceladoOption.classList.toggle('dsc-hidden', !shouldShowCancelado);
-        }
-
-        if (situacaoCanceladoRadio instanceof HTMLInputElement) {
-          situacaoCanceladoRadio.disabled = true;
         }
       };
 
@@ -5852,7 +5853,7 @@
         }
       };
 
-      const startSubstitution = async (item) => {
+      const openSubstitutionPopup = (item) => {
         const url = `/src/ordemServico.html?popupMode=dashboard-ordem-servico&codigo=${encodeURIComponent(item.codigo)}&mode=substitute`;
         const popupWindow = window.open(
           url,
@@ -5866,6 +5867,84 @@
         }
 
         popupWindow.focus();
+      };
+
+      const startSubstitution = async (item, options = {}) => {
+        const { openInPopup = true } = options;
+
+        if (openInPopup) {
+          openSubstitutionPopup(item);
+          return;
+        }
+
+        const normalizedDre = normalizeOrdemServicoDre(item.dre_codigo || '', item.dre_descricao || '');
+
+        form.reset();
+        clearLookupFields();
+        clearSaveChangeRequirement();
+        editingCodigo = null;
+        isInsertNewTerm = false;
+        isRevisionInsertion = false;
+        isSubstitutionInsertion = true;
+        isActivationInsertion = false;
+        substitutionSourceCodigo = Number(item.codigo) || null;
+        activationSourceEncerramento = null;
+        isDraftSubstitutionReadOnly = false;
+        originalSituacaoValue = item.situacao || '';
+        originalCnpjCpfValue = normalizeCnpjCpf(String(item.cnpj_cpf || ''));
+        originalCpfCondutorValue = normalizeCpf(String(item.cpf_condutor || ''));
+        originalCpfPrepostoValue = normalizeCpf(String(item.cpf_preposto || ''));
+        originalCpfMonitorValue = normalizeCpf(String(item.cpf_monitor || ''));
+        originalCrmValue = normalizeCrm(String(item.crm || ''));
+        originalVeiculoPlacaValue = normalizePlaca(String(item.veiculo_placas || ''));
+        termoAdesaoInput.value = normalizeTermoAdesao(String(item.termo_adesao || ''));
+        numOsInput.value = normalizeNumOs(String(item.num_os || ''));
+        revisaoInput.value = normalizeRevisao(String(item.revisao || ''));
+        vigenciaOsInput.value = item.vigencia_os || '';
+        dataEmissaoInput.value = item.data_emissao || getCurrentDateInputValue();
+        cnpjCpfInput.value = item.cnpj_cpf || '';
+        credenciadoInput.value = item.credenciado || '';
+        dreCodigoInput.value = normalizedDre.dreCodigo;
+        dreDescricaoInput.value = normalizedDre.dreDescricao;
+        modalidadeDescricaoInput.value = item.modalidade_descricao || normalizedDre.modalidadeDescricao;
+        cpfCondutorInput.value = item.cpf_condutor || '';
+        condutorInput.value = item.condutor || '';
+        dataAdmissaoCondutorInput.value = item.data_admissao_condutor || '';
+        possuiPrepostoInput.checked = Boolean(item.cpf_preposto || item.preposto_condutor || item.preposto_inicio || item.preposto_dias);
+        cpfPrepostoInput.value = item.cpf_preposto || '';
+        prepostoCondutorInput.value = item.preposto_condutor || '';
+        prepostoInicioInput.value = item.preposto_inicio || '';
+        prepostoDiasInput.value = item.preposto_dias || '';
+        crmInput.value = item.crm || '';
+        veiculoPlacasInput.value = item.veiculo_placas || '';
+        cpfMonitorInput.value = item.cpf_monitor || '';
+        monitorInput.value = item.monitor || '';
+        dataAdmissaoMonitorInput.value = item.data_admissao_monitor || '';
+        tipoTrocaInput.value = item.tipo_troca_descricao || '';
+        vigenciaOsInput.min = getCurrentDateInputValue();
+        dataEncerramentoInput.value = '';
+        anotacaoInput.value = item.anotacao || '';
+        setSelectedSituacao('Ativo');
+        codigoAccessInput.value = item.codigo_access || '';
+        renderDreOptions(dreCodigoInput.value);
+        renderModalidadeOptions(modalidadeDescricaoInput.value || deriveModalidadeFromDreDescricao(dreDescricaoInput.value));
+        renderTipoTrocaOptions(tipoTrocaInput.value);
+        syncOsConcatInput();
+        resetMessages();
+        setGridMessage('');
+        showForm('substitute');
+        updateInsertTermGuard({ showMissingError: false });
+        applyInsertSpecificRules();
+        applyIdentityFieldLock();
+        syncPrepostoState();
+        syncSituacaoRadioAvailability({ allowRascunho: false, lockAll: false });
+        void refreshRelatedFieldsOnFormEntry();
+        void ensureDreOptionsLoaded(dreCodigoInput.value);
+        void ensureModalidadeOptionsLoaded(modalidadeDescricaoInput.value || deriveModalidadeFromDreDescricao(dreDescricaoInput.value));
+        void ensureTipoTrocaOptionsLoaded(tipoTrocaInput.value);
+        await handleAddRevisao();
+        revisaoInput.focus();
+        revisaoInput.select();
       };
 
       const populateFormFromItem = (item, mode = 'edit') => {
@@ -5999,6 +6078,8 @@
 
           if (dashboardPopupMode === 'edit') {
             populateFormFromItem(payload, 'edit');
+          } else if (dashboardPopupMode === 'substitute') {
+            await startSubstitution(payload, { openInPopup: false });
           } else {
             populateFormFromItem(payload, 'view');
           }

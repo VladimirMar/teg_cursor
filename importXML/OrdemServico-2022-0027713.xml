@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataroot xmlns:od="urn:schemas-microsoft-com:officedata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="OrdemServico.xsd" generated="2026-06-03T00:00:00">
+<Credenciamento_OS>
+<Código>1058</Código>
+<Termo_de_adesao>2022/0027713</Termo_de_adesao>
+<OS>2022/0027713-001B</OS>
+<Vigencia_da_OS>2022-07-07T00:00:00</Vigencia_da_OS>
+<Credenciado>ALEXANDRO CIRINO VIEIRA</Credenciado>
+<DRE>FBE</DRE>
+<DRE_ext>FREGUESIA/BRASILANDIA TEG ESPECIAL</DRE_ext>
+<CPF_condutor>279.621.408-79</CPF_condutor>
+<CRM>016.292-00</CRM>
+<CPF_monitor>052.344.208-41</CPF_monitor>
+<Situacao_de_OS>ATIVO</Situacao_de_OS>
+<Campo_de_Troca></Campo_de_Troca>
+<Conexao>8</Conexao>
+<Busca_veiculo>ECM4497</Busca_veiculo>
+<CNPJ_CPF>279.621.408-79</CNPJ_CPF>
+</Credenciamento_OS>
+</dataroot>
