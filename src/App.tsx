@@ -3594,8 +3594,8 @@ function App() {
 
   useEffect(() => {
     document.title = environmentName
-      ? `${environmentName} - TEG Financ`
-      : 'TEG Financ'
+      ? `${environmentName} - TEG Cursor`
+      : 'TEG Cursor'
   }, [environmentName])
 
   const validateEmail = (value: string) => {
@@ -7349,7 +7349,7 @@ function App() {
       <main className="login-page">
         <section className="login-panel" aria-labelledby="login-title">
           <div className="login-copy">
-            <p className="login-kicker">TEG Financ</p>
+            <p className="login-kicker">TEG Cursor</p>
             {environmentName ? <p className="environment-pill environment-pill-login">{environmentName}</p> : null}
             <h1 id="login-title">Acesse o painel administrativo</h1>
             <p className="login-description">
@@ -7677,7 +7677,7 @@ function App() {
     <div className="app-layout">
       <header className="navbar">
         <h1 className="navbar-title">
-          Sistema TEG
+          Sistema TEG Cursor
         </h1>
         <button
           type="button"
@@ -7699,9 +7699,9 @@ function App() {
             aria-label="Menu principal"
           >
             <div>
-              <p className="sidebar-brand">SISTEMA TEG</p>
+              <p className="sidebar-brand">SISTEMA TEG CURSOR</p>
               {environmentName ? <p className="environment-pill environment-pill-sidebar">{environmentName}</p> : null}
-              <h1 className="sidebar-title">Menu TEG</h1>
+              <h1 className="sidebar-title">Menu TEG Cursor</h1>
             </div>
 
         <nav>

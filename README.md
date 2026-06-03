@@ -61,7 +61,7 @@ ORDEM_SERVICO_PIPELINE_REPORT_PATH=importXML/ordem_servico_pipeline_summary.json
 CHECK_DB_REFERENCES=true
 PIPELINE_MAX_REFERENCE_ERRORS=0
 ```
-# TEG Financ
+# TEG Cursor
 
 Aplicacao React + Vite com API Node para operacoes administrativas, CRUD e importacao XML.
 
