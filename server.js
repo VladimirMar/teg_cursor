@@ -1397,7 +1397,7 @@ const pool = new Pool({
   port: pgPort,
   user: process.env.PGUSER ?? 'postgres',
   password: process.env.PGPASSWORD ?? '12345',
-  database: process.env.PGDATABASE ?? 'teg_financ',
+  database: process.env.PGDATABASE ?? 'teg_cursor',
 })
 
 const ordemServicoTableName = 'ordem_servico'

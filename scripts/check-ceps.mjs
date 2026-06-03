@@ -1,6 +1,12 @@
 import pg from 'pg'
 const { Pool } = pg
-const pool = new Pool({ host: 'localhost', port: 5432, database: 'teg_financ', user: 'postgres', password: '12345' })
+const pool = new Pool({
+  host: process.env.PGHOST ?? 'localhost',
+  port: Number(process.env.PGPORT ?? 5432),
+  database: process.env.PGDATABASE ?? 'teg_cursor',
+  user: process.env.PGUSER ?? 'postgres',
+  password: process.env.PGPASSWORD ?? '12345',
+})
 const r = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='ceps' ORDER BY ordinal_position`)
 console.log('Columns:', r.rows.map(x => x.column_name).join(', ') || '(table not found)')
 

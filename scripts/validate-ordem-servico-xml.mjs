@@ -19,7 +19,7 @@ const pool = shouldCheckDbReferences
     port: Number(process.env.PGPORT ?? 5432),
     user: process.env.PGUSER ?? 'postgres',
     password: process.env.PGPASSWORD ?? '12345',
-    database: process.env.PGDATABASE ?? 'teg_financ',
+    database: process.env.PGDATABASE ?? 'teg_cursor',
   })
   : null
 

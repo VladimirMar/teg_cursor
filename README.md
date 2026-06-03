@@ -108,6 +108,10 @@ Para `Veiculo` e `Marca/Modelo`, a execucao pode ser feita pelos scripts `npm ru
 
 ## Desenvolvimento
 
+- Copie `.env.example` para `.env` e ajuste as credenciais locais do PostgreSQL.
+- O ambiente local deste repositorio usa por padrao `PGDATABASE=teg_cursor` (copia de trabalho de `teg_financ`).
+- `npm run api` carrega automaticamente o arquivo `.env` via `node --env-file=.env`.
+
 - O servidor Vite de desenvolvimento fica fixo em `http://localhost:5173` no host local.
 - Pela rede, use o mesmo host/IP da maquina que iniciou o Vite com a porta `5173`.
 - As telas HTML legadas ficam acessiveis por caminhos diretos em `src`, por exemplo: `http://HOST:5173/src/termoDataAssinatura.html`.
