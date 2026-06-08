@@ -19,6 +19,7 @@ import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
 import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
+type ApontamentoServicosColumnVisibilityMode = 'all' | 'daily-only' | 'acum-only'
 
 type ApontamentoServicosFilters = {
   mesAno: string
@@ -264,7 +265,7 @@ export default function ApontamentoServicosView() {
   const [importDialogSkippedRecords, setImportDialogSkippedRecords] = useState<ApontamentoServicosImportSkippedRecord[]>([])
   const [isImportDialogVisible, setIsImportDialogVisible] = useState(false)
   const [importProgress, setImportProgress] = useState<ApontamentoServicosImportStatus | null>(null)
-  const [showAccumulatedColumns, setShowAccumulatedColumns] = useState(true)
+  const [columnVisibilityMode, setColumnVisibilityMode] = useState<ApontamentoServicosColumnVisibilityMode>('all')
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -275,7 +276,12 @@ export default function ApontamentoServicosView() {
   const importStatusPollTimerRef = useRef<number | null>(null)
   const shouldFocusFirstGridRecordRef = useRef(false)
   const shouldShowKmAdicionalColumn = appliedFilters.dataReferencia.endsWith('-01')
-  const tableColumnCount = (shouldShowKmAdicionalColumn ? 10 : 9) + (showAccumulatedColumns ? 6 : 0)
+  const showDailyMetricColumns = columnVisibilityMode !== 'acum-only'
+  const showAccumulatedColumns = columnVisibilityMode !== 'daily-only'
+  const tableColumnCount = 3
+    + (shouldShowKmAdicionalColumn && showDailyMetricColumns ? 1 : 0)
+    + (showDailyMetricColumns ? 6 : 0)
+    + (showAccumulatedColumns ? 6 : 0)
   const monthYearMismatchMessage = 'A data de operacao deve pertencer ao mes/ano informado.'
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
@@ -862,7 +868,7 @@ export default function ApontamentoServicosView() {
         window.removeEventListener('resize', syncScrollMetrics)
       }
     }
-  }, [items, pageSize, shouldShowKmAdicionalColumn, showAccumulatedColumns])
+  }, [items, pageSize, shouldShowKmAdicionalColumn, columnVisibilityMode])
 
   const handleImportRequestSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -1172,15 +1178,42 @@ export default function ApontamentoServicosView() {
             <span>
               {isLoading ? 'Atualizando...' : `${totalItems} ordem(ns) de servico encontrada(s)`}
             </span>
-            <label className="apontamento-servicos-accumulated-toggle">
-              <input
-                type="checkbox"
-                checked={showAccumulatedColumns}
-                onChange={(event) => setShowAccumulatedColumns(event.target.checked)}
-                disabled={isLoading || isSaving || isImporting}
-              />
-              <span>Mostrar acumulados</span>
-            </label>
+            <div
+              className="apontamento-servicos-column-visibility-toggles"
+              role="radiogroup"
+              aria-label="Exibicao das colunas"
+            >
+              <label className="apontamento-servicos-accumulated-toggle">
+                <input
+                  type="radio"
+                  name="apontamento-servicos-column-visibility"
+                  checked={columnVisibilityMode === 'all'}
+                  onChange={() => setColumnVisibilityMode('all')}
+                  disabled={isLoading || isSaving || isImporting}
+                />
+                <span>Todas</span>
+              </label>
+              <label className="apontamento-servicos-accumulated-toggle">
+                <input
+                  type="radio"
+                  name="apontamento-servicos-column-visibility"
+                  checked={columnVisibilityMode === 'daily-only'}
+                  onChange={() => setColumnVisibilityMode('daily-only')}
+                  disabled={isLoading || isSaving || isImporting}
+                />
+                <span>Sem acumulados</span>
+              </label>
+              <label className="apontamento-servicos-accumulated-toggle">
+                <input
+                  type="radio"
+                  name="apontamento-servicos-column-visibility"
+                  checked={columnVisibilityMode === 'acum-only'}
+                  onChange={() => setColumnVisibilityMode('acum-only')}
+                  disabled={isLoading || isSaving || isImporting}
+                />
+                <span>Somente acumulados</span>
+              </label>
+            </div>
           </div>
 
           <div className="apontamento-servicos-grid-top-actions">
@@ -1207,19 +1240,23 @@ export default function ApontamentoServicosView() {
           </div>
 
           <div ref={tableWrapperRef} className="apontamento-servicos-table-wrapper">
-            <table className={`management-table apontamento-servicos-table${showAccumulatedColumns ? '' : ' apontamento-servicos-table-sem-acumulados'}`}>
+            <table className={`management-table apontamento-servicos-table${columnVisibilityMode === 'all' ? '' : ' apontamento-servicos-table-sem-acumulados'}${columnVisibilityMode === 'acum-only' ? ' apontamento-servicos-table-somente-acumulados' : ''}`}>
               <thead>
                 <tr>
                   <th className="apontamento-servicos-header-detail apontamento-servicos-header-compact">CRMC</th>
                   <th className="apontamento-servicos-header-detail apontamento-servicos-header-compact">Tipo de<br />veiculo</th>
                   <th className="apontamento-servicos-header-detail apontamento-servicos-header-compact">Tipo<br />atendimento</th>
-                  {shouldShowKmAdicionalColumn ? <th className="apontamento-servicos-header-metric-km apontamento-servicos-header-compact">Km<br />adicional</th> : null}
-                  <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">N CAD<br />presencial</th>
-                  <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">CAD</th>
-                  <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">AT. COMPL.<br />N CAD</th>
-                  <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">AT. COMPL.<br />CAD</th>
-                  <th className="apontamento-servicos-header-metric-continua apontamento-servicos-header-compact">Cont<br />N CAD</th>
-                  <th className="apontamento-servicos-header-metric-continua apontamento-servicos-header-compact">Cont<br />CAD</th>
+                  {shouldShowKmAdicionalColumn && showDailyMetricColumns ? <th className="apontamento-servicos-header-metric-km apontamento-servicos-header-compact">Km<br />adicional</th> : null}
+                  {showDailyMetricColumns ? (
+                    <>
+                      <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">N CAD<br />presencial</th>
+                      <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">CAD</th>
+                      <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">AT. COMPL.<br />N CAD</th>
+                      <th className="apontamento-servicos-header-metric-input apontamento-servicos-header-compact">AT. COMPL.<br />CAD</th>
+                      <th className="apontamento-servicos-header-metric-continua apontamento-servicos-header-compact">Cont<br />N CAD</th>
+                      <th className="apontamento-servicos-header-metric-continua apontamento-servicos-header-compact">Cont<br />CAD</th>
+                    </>
+                  ) : null}
                   {showAccumulatedColumns ? (
                     <>
                       <th className="apontamento-servicos-header-metric-acumulado apontamento-servicos-header-compact">Acum.<br />N CAD</th>
@@ -1280,7 +1317,7 @@ export default function ApontamentoServicosView() {
                         <td data-grid-first-record={itemIndex === 0 ? 'true' : undefined} tabIndex={itemIndex === 0 ? -1 : undefined}>{renderMergedPrimaryCell(item, groupRowIndex)}</td>
                         <td className="apontamento-servicos-cell-compact">{item.tipoVeiculo || '-'}</td>
                         <td className="apontamento-servicos-cell-compact">{item.tipoEscolaSigla || item.tipoEscolaDescricao || '-'}</td>
-                        {shouldShowKmAdicionalColumn ? (
+                        {shouldShowKmAdicionalColumn && showDailyMetricColumns ? (
                           <td className="apontamento-servicos-cell-compact">
                             <input
                               className="apontamento-servicos-grid-input apontamento-servicos-grid-input-km"
@@ -1292,66 +1329,70 @@ export default function ApontamentoServicosView() {
                             />
                           </td>
                         ) : null}
-                        <td className="apontamento-servicos-cell-compact">
-                          <input
-                            className="apontamento-servicos-grid-input"
-                            type="number"
-                            step="1"
-                            value={item.naoCadeirantePresencial}
-                            onChange={(event) => updateMetricField(rowKey, 'naoCadeirantePresencial', event.target.value)}
-                            disabled={!isEditableRow || isSaving}
-                          />
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <input
-                            className="apontamento-servicos-grid-input"
-                            type="number"
-                            step="1"
-                            value={item.cadeirante}
-                            onChange={(event) => updateMetricField(rowKey, 'cadeirante', event.target.value)}
-                            disabled={!isEditableRow || isSaving}
-                          />
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <input
-                            className="apontamento-servicos-grid-input"
-                            type="number"
-                            step="1"
-                            value={item.atendimentoComplementarNaoCadeirante}
-                            onChange={(event) => updateMetricField(rowKey, 'atendimentoComplementarNaoCadeirante', event.target.value)}
-                            disabled={!isEditableRow || isSaving}
-                          />
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <input
-                            className="apontamento-servicos-grid-input"
-                            type="number"
-                            step="1"
-                            value={item.atendimentoComplementarCadeirante}
-                            onChange={(event) => updateMetricField(rowKey, 'atendimentoComplementarCadeirante', event.target.value)}
-                            disabled={!isEditableRow || isSaving}
-                          />
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <input
-                            className="apontamento-servicos-grid-input"
-                            type="number"
-                            step="1"
-                            value={item.continuaNaoCadeirante}
-                            onChange={(event) => updateMetricField(rowKey, 'continuaNaoCadeirante', event.target.value)}
-                            disabled={!isEditableRow || isSaving}
-                          />
-                        </td>
-                        <td className="apontamento-servicos-cell-compact">
-                          <input
-                            className="apontamento-servicos-grid-input"
-                            type="number"
-                            step="1"
-                            value={item.continuaCadeirante}
-                            onChange={(event) => updateMetricField(rowKey, 'continuaCadeirante', event.target.value)}
-                            disabled={!isEditableRow || isSaving}
-                          />
-                        </td>
+                        {showDailyMetricColumns ? (
+                          <>
+                            <td className="apontamento-servicos-cell-compact">
+                              <input
+                                className="apontamento-servicos-grid-input"
+                                type="number"
+                                step="1"
+                                value={item.naoCadeirantePresencial}
+                                onChange={(event) => updateMetricField(rowKey, 'naoCadeirantePresencial', event.target.value)}
+                                disabled={!isEditableRow || isSaving}
+                              />
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <input
+                                className="apontamento-servicos-grid-input"
+                                type="number"
+                                step="1"
+                                value={item.cadeirante}
+                                onChange={(event) => updateMetricField(rowKey, 'cadeirante', event.target.value)}
+                                disabled={!isEditableRow || isSaving}
+                              />
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <input
+                                className="apontamento-servicos-grid-input"
+                                type="number"
+                                step="1"
+                                value={item.atendimentoComplementarNaoCadeirante}
+                                onChange={(event) => updateMetricField(rowKey, 'atendimentoComplementarNaoCadeirante', event.target.value)}
+                                disabled={!isEditableRow || isSaving}
+                              />
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <input
+                                className="apontamento-servicos-grid-input"
+                                type="number"
+                                step="1"
+                                value={item.atendimentoComplementarCadeirante}
+                                onChange={(event) => updateMetricField(rowKey, 'atendimentoComplementarCadeirante', event.target.value)}
+                                disabled={!isEditableRow || isSaving}
+                              />
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <input
+                                className="apontamento-servicos-grid-input"
+                                type="number"
+                                step="1"
+                                value={item.continuaNaoCadeirante}
+                                onChange={(event) => updateMetricField(rowKey, 'continuaNaoCadeirante', event.target.value)}
+                                disabled={!isEditableRow || isSaving}
+                              />
+                            </td>
+                            <td className="apontamento-servicos-cell-compact">
+                              <input
+                                className="apontamento-servicos-grid-input"
+                                type="number"
+                                step="1"
+                                value={item.continuaCadeirante}
+                                onChange={(event) => updateMetricField(rowKey, 'continuaCadeirante', event.target.value)}
+                                disabled={!isEditableRow || isSaving}
+                              />
+                            </td>
+                          </>
+                        ) : null}
                         {showAccumulatedColumns ? (
                           <>
                             <td className="apontamento-servicos-cell-compact">

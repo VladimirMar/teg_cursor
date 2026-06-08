@@ -19,8 +19,8 @@
             <div class="dsc-access-toolbar">
               <form class="dsc-access-filter-form" id="monitor-filter-form">
                 <button type="button" class="dsc-btn dsc-btn-blue dsc-access-insert-button" id="insert-monitor-button">Inserir registro</button>
-                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button dsc-hidden" id="open-monitor-import-button" hidden disabled aria-hidden="true">Importar XML</button>
-                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button dsc-hidden" id="open-monitor-rejections-button" hidden disabled aria-hidden="true">Recusas XML</button>
+                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-monitor-import-button">Importar XML</button>
+                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-monitor-rejections-button">Recusas XML</button>
                 <input class="dsc-form-control dsc-access-filter-input" id="monitor-search" type="text" placeholder="Filtrar por codigo, monitor ou CPF" />
                 <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="clear-monitor-filter-button">Limpar</button>
@@ -241,7 +241,6 @@
                           Monitor <span id="sort-monitor-indicator">↑</span>
                         </button>
                       </th>
-                      <th>CPF</th>
                       <th>Curso</th>
                       <th>Validade curso</th>
                       <th>Tipo vinculo</th>
@@ -1217,8 +1216,12 @@
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${item.codigo}</td>
-            <td>${item.monitor}</td>
-            <td>${item.cpf_monitor}</td>
+            <td>
+              <div class="dsc-condutor-grid-main-cell">
+                <strong>${item.monitor || ''}</strong>
+                <span>CPF: ${item.cpf_monitor || '-'}</span>
+              </div>
+            </td>
             <td>${formatDateLabel(item.curso_monitor)}</td>
             <td>${formatDateLabel(item.validade_curso)}</td>
             <td>${item.tipo_vinculo || ''}</td>

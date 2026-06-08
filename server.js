@@ -3135,6 +3135,8 @@ const apontamentoServicosImportMainPeriodStartColumnIndex = XLSX.utils.decode_co
 const apontamentoServicosImportMainPeriodEndColumnIndex = XLSX.utils.decode_col('G')
 const apontamentoServicosImportMainTipoEscolaColumnIndex = XLSX.utils.decode_col('K')
 const apontamentoServicosImportMainKmColumnIndex = XLSX.utils.decode_col('N')
+const apontamentoServicosImportMainTotalContRegColumnIndex = XLSX.utils.decode_col('L')
+const apontamentoServicosImportMainTotalContCadColumnIndex = XLSX.utils.decode_col('M')
 const apontamentoServicosImportMainMetricsStartColumnIndex = XLSX.utils.decode_col('Q')
 const apontamentoServicosImportContinuaMetricsStartColumnIndex = XLSX.utils.decode_col('L')
 const apontamentoServicosImportDayCount = 30
@@ -3903,6 +3905,21 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
     const kmAdicionalPrimeiroDia = normalizeApontamentoServicosKm(
       getWorkbookCell(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainKmColumnIndex, rowNumber))?.v,
     )
+    const mainTotalContReg = normalizeWorkbookMetricInteger(
+      getWorkbookCell(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainTotalContRegColumnIndex, rowNumber))?.v,
+    )
+    const mainTotalContCad = normalizeWorkbookMetricInteger(
+      getWorkbookCell(mainSheet, buildWorksheetCellAddress(apontamentoServicosImportMainTotalContCadColumnIndex, rowNumber))?.v,
+    )
+    const continuaPrimeiroDiaNaoCadeirante = normalizeWorkbookMetricInteger(
+      getWorkbookCell(continuaSheet, buildWorksheetCellAddress(apontamentoServicosImportContinuaMetricsStartColumnIndex, rowNumber))?.v,
+    )
+    const continuaPrimeiroDiaCadeirante = normalizeWorkbookMetricInteger(
+      getWorkbookCell(continuaSheet, buildWorksheetCellAddress(apontamentoServicosImportContinuaMetricsStartColumnIndex + 1, rowNumber))?.v,
+    )
+    const useMainContinuaTotalsOnFirstDay = (mainTotalContReg !== 0 || mainTotalContCad !== 0)
+      && continuaPrimeiroDiaNaoCadeirante === 0
+      && continuaPrimeiroDiaCadeirante === 0
 
     for (let dayIndex = 0; dayIndex < apontamentoServicosImportDayCount; dayIndex += 1) {
       const dayNumber = dayIndex + 1
@@ -3918,13 +3935,26 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
 
       const mainMetricsBaseColumn = apontamentoServicosImportMainMetricsStartColumnIndex + (dayIndex * 4)
       const continuaMetricsBaseColumn = apontamentoServicosImportContinuaMetricsStartColumnIndex + (dayIndex * 2)
+      let continuaNaoCadeirante = 0
+      let continuaCadeirante = 0
+
+      if (useMainContinuaTotalsOnFirstDay) {
+        if (dayIndex === 0) {
+          continuaNaoCadeirante = mainTotalContReg
+          continuaCadeirante = mainTotalContCad
+        }
+      } else {
+        continuaNaoCadeirante = normalizeWorkbookMetricInteger(getWorkbookCell(continuaSheet, buildWorksheetCellAddress(continuaMetricsBaseColumn, rowNumber))?.v)
+        continuaCadeirante = normalizeWorkbookMetricInteger(getWorkbookCell(continuaSheet, buildWorksheetCellAddress(continuaMetricsBaseColumn + 1, rowNumber))?.v)
+      }
+
       const metrics = {
         naoCadeirantePresencial: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn, rowNumber))?.v),
         cadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn + 1, rowNumber))?.v),
         atendimentoComplementarNaoCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn + 2, rowNumber))?.v),
         atendimentoComplementarCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(mainSheet, buildWorksheetCellAddress(mainMetricsBaseColumn + 3, rowNumber))?.v),
-        continuaNaoCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(continuaSheet, buildWorksheetCellAddress(continuaMetricsBaseColumn, rowNumber))?.v),
-        continuaCadeirante: normalizeWorkbookMetricInteger(getWorkbookCell(continuaSheet, buildWorksheetCellAddress(continuaMetricsBaseColumn + 1, rowNumber))?.v),
+        continuaNaoCadeirante,
+        continuaCadeirante,
         kilometragem: dayIndex === 0 ? kmAdicionalPrimeiroDia : 0,
       }
       const dateEntryMap = importedItemsByDate.get(dataReferencia) ?? new Map()
@@ -4450,6 +4480,284 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
     page: normalizedPage,
     pageSize: normalizedPageSize,
     totalPages,
+  }
+}
+
+const mapTotalRemuneracaoServicosRow = (row) => ({
+  mesAno: normalizeRequestValue(row?.mes_ano),
+  dreCodigo: normalizeRequestValue(row?.dre_codigo),
+  dreSigla: normalizeRequestValue(row?.dre_sigla),
+  dreDescricao: normalizeRequestValue(row?.dre_descricao),
+  ordemServicoCodigo: normalizeRequestValue(row?.ordem_servico_codigo),
+  ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
+  ordemServicoTermoAdesao: normalizeRequestValue(row?.ordem_servico_termo_adesao),
+  ordemServicoNumOs: normalizeRequestValue(row?.ordem_servico_num_os),
+  revisao: Number(row?.revisao) || 0,
+  tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa) || 'PF',
+  periodoInicio: normalizeRequestValue(row?.periodo_inicio),
+  periodoFim: normalizeRequestValue(row?.periodo_fim),
+  crmcCondutor: normalizeRequestValue(row?.crmc_condutor),
+  placa: normalizeRequestValue(row?.placa),
+  empresa: normalizeRequestValue(row?.empresa),
+  nomeCondutor: normalizeRequestValue(row?.nome_condutor),
+  tipoVeiculo: normalizeApontamentoTipoVeiculo(row?.tipo_veiculo),
+  apuracaoFinanceiraSituacao: normalizeApuracaoFinanceiraStatus(row?.apuracao_financeira_situacao) || 'A processar',
+  totalDiasReferencia: Number(row?.total_dias_referencia) || 0,
+  tegRegularFixo: Number(row?.teg_regular_fixo) || 0,
+  tegRegularPercapita: Number(row?.teg_regular_percapita) || 0,
+  tegAcessivelFixo: Number(row?.teg_acessivel_fixo) || 0,
+  tegAcessivelPercapita: Number(row?.teg_acessivel_percapita) || 0,
+  tegEspecialRegularFixo: Number(row?.teg_especial_regular_fixo) || 0,
+  tegEspecialRegularPercapita: Number(row?.teg_especial_regular_percapita) || 0,
+  tegEspecialAcessivelFixo: Number(row?.teg_especial_acessivel_fixo) || 0,
+  tegEspecialAcessivelPercapita: Number(row?.teg_especial_acessivel_percapita) || 0,
+  tegCrecheFixo: Number(row?.teg_creche_fixo) || 0,
+  tegCrechePercapita: Number(row?.teg_creche_percapita) || 0,
+  kmValor: Number(row?.km_valor) || 0,
+  continuaRegular: Number(row?.continua_regular) || 0,
+  continuaCadeirante: Number(row?.continua_cadeirante) || 0,
+})
+
+const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, placa, revisao, tipoPessoa, page = 1, pageSize = 20 }, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
+  const normalizedPlaca = normalizeRequestValue(placa)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const parsedRevisao = revisao === undefined || revisao === null || revisao === ''
+    ? Number.NaN
+    : Number.parseInt(String(revisao), 10)
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
+
+  if (!normalizedMesAno) {
+    throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  if (!monthRange) {
+    throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  const values = [normalizedMesAno, monthRange.monthStart, monthRange.monthEnd]
+  const filters = [
+    'BTRIM(rs.mes_ano) = $1',
+    'rs.data_referencia >= $2::date',
+    'rs.data_referencia <= $3::date',
+    'EXTRACT(DAY FROM rs.data_referencia) <= 30',
+  ]
+
+  if (normalizedDreCodigo) {
+    values.push(normalizedDreCodigo)
+    filters.push(`CAST(rs.dre_codigo AS text) = $${values.length}`)
+  }
+
+  if (normalizedCrmcCondutor) {
+    const cpfKeys = await listCondutorCpfKeysByCrmc(normalizedCrmcCondutor, executor)
+
+    if (!cpfKeys.length) {
+      filters.push('1 = 0')
+    } else {
+      values.push(cpfKeys)
+      filters.push(`EXISTS (
+        SELECT 1
+        FROM apuracao_servicos aps_filter
+        WHERE aps_filter.mes_ano = rs.mes_ano
+          AND aps_filter.data_referencia = rs.data_referencia
+          AND aps_filter.dre_codigo = rs.dre_codigo
+          AND aps_filter.ordem_servico_codigo = rs.ordem_servico_codigo
+          AND aps_filter.revisao = rs.revisao
+          AND COALESCE(BTRIM(aps_filter.tipo_pessoa), '') = COALESCE(BTRIM(rs.tipo_pessoa), '')
+          AND COALESCE(BTRIM(aps_filter.cpf_condutor_key), '') = ANY($${values.length}::text[])
+      )`)
+    }
+  }
+
+  if (normalizedPlaca) {
+    values.push(`%${normalizedPlaca}%`)
+    filters.push(`COALESCE(BTRIM(os.veiculo_placas), '') ILIKE $${values.length}`)
+  }
+
+  if (Number.isInteger(parsedRevisao) && parsedRevisao >= 0) {
+    values.push(parsedRevisao)
+    filters.push(`rs.revisao = $${values.length}`)
+  }
+
+  if (normalizedTipoPessoa) {
+    values.push(normalizedTipoPessoa)
+    filters.push(`BTRIM(rs.tipo_pessoa) = $${values.length}`)
+  }
+
+  const normalizedPageSize = Math.min(Math.max(Number(pageSize) || 20, 1), 50)
+  const groupedOrdensCte = `
+    WITH remuneracao_summed AS (
+      SELECT
+        BTRIM(rs.mes_ano) AS mes_ano,
+        CAST(rs.dre_codigo AS text) AS dre_codigo,
+        rs.ordem_servico_codigo::text AS ordem_servico_codigo,
+        rs.revisao AS revisao,
+        COALESCE(BTRIM(rs.tipo_pessoa), '') AS tipo_pessoa,
+        COUNT(DISTINCT rs.data_referencia)::int AS total_dias_referencia,
+        SUM(COALESCE(rs.teg_regular_fixo, 0))::numeric(14,2) AS teg_regular_fixo,
+        SUM(COALESCE(rs.teg_regular_percapita, 0))::numeric(14,2) AS teg_regular_percapita,
+        SUM(COALESCE(rs.teg_acessivel_fixo, 0))::numeric(14,2) AS teg_acessivel_fixo,
+        SUM(COALESCE(rs.teg_acessivel_percapita, 0))::numeric(14,2) AS teg_acessivel_percapita,
+        SUM(COALESCE(rs.teg_especial_regular_fixo, 0))::numeric(14,2) AS teg_especial_regular_fixo,
+        SUM(COALESCE(rs.teg_especial_regular_percapita, 0))::numeric(14,2) AS teg_especial_regular_percapita,
+        SUM(COALESCE(rs.teg_especial_acessivel_fixo, 0))::numeric(14,2) AS teg_especial_acessivel_fixo,
+        SUM(COALESCE(rs.teg_especial_acessivel_percapita, 0))::numeric(14,2) AS teg_especial_acessivel_percapita,
+        SUM(COALESCE(rs.teg_creche_fixo, 0))::numeric(14,2) AS teg_creche_fixo,
+        SUM(COALESCE(rs.teg_creche_percapita, 0))::numeric(14,2) AS teg_creche_percapita,
+        SUM(COALESCE(rs.km_valor, 0))::numeric(14,2) AS km_valor,
+        SUM(COALESCE(rs.continua_regular, 0))::numeric(14,2) AS continua_regular,
+        SUM(COALESCE(rs.continua_cadeirante, 0))::numeric(14,2) AS continua_cadeirante
+      FROM remuneracao_servicos rs
+      INNER JOIN ${ordemServicoTableName} os ON os.codigo = rs.ordem_servico_codigo
+      WHERE ${filters.join('\n        AND ')}
+      GROUP BY
+        BTRIM(rs.mes_ano),
+        CAST(rs.dre_codigo AS text),
+        rs.ordem_servico_codigo::text,
+        rs.revisao,
+        COALESCE(BTRIM(rs.tipo_pessoa), '')
+    ),
+    apuracao_metadata AS (
+      SELECT
+        BTRIM(aps.mes_ano) AS mes_ano,
+        CAST(aps.dre_codigo AS text) AS dre_codigo,
+        aps.ordem_servico_codigo::text AS ordem_servico_codigo,
+        aps.revisao AS revisao,
+        COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
+        MAX(COALESCE(BTRIM(aps.crmc_condutor), '')) AS crmc_condutor,
+        MAX(COALESCE(BTRIM(aps.tipo_veiculo), '')) AS tipo_veiculo
+      FROM apuracao_servicos aps
+      WHERE BTRIM(aps.mes_ano) = $1
+        AND aps.data_referencia >= $2::date
+        AND aps.data_referencia <= $3::date
+        AND EXTRACT(DAY FROM aps.data_referencia) <= 30
+      GROUP BY
+        BTRIM(aps.mes_ano),
+        CAST(aps.dre_codigo AS text),
+        aps.ordem_servico_codigo::text,
+        aps.revisao,
+        COALESCE(BTRIM(aps.tipo_pessoa), '')
+    ),
+    grouped_ordens AS (
+      SELECT
+        remuneracao_summed.*,
+        COALESCE(apuracao_metadata.crmc_condutor, '') AS crmc_condutor,
+        COALESCE(apuracao_metadata.tipo_veiculo, '') AS tipo_veiculo,
+        ${buildApontamentoServicosLocaleOrderExpression('credenciada_lookup.empresa')} AS empresa_order,
+        ${buildApontamentoServicosLocaleOrderExpression('os.condutor')} AS nome_condutor_order,
+        COALESCE(BTRIM(os.num_os), '') AS num_os_order
+      FROM remuneracao_summed
+      INNER JOIN ${ordemServicoTableName} os ON os.codigo::text = remuneracao_summed.ordem_servico_codigo
+      LEFT JOIN apuracao_metadata
+        ON apuracao_metadata.mes_ano = remuneracao_summed.mes_ano
+       AND apuracao_metadata.dre_codigo = remuneracao_summed.dre_codigo
+       AND apuracao_metadata.ordem_servico_codigo = remuneracao_summed.ordem_servico_codigo
+       AND apuracao_metadata.revisao = remuneracao_summed.revisao
+       AND apuracao_metadata.tipo_pessoa = remuneracao_summed.tipo_pessoa
+      LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+      LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+      INNER JOIN apuracao_financeira
+        ON apuracao_financeira.mes_ano = remuneracao_summed.mes_ano
+       AND CAST(apuracao_financeira.dre_codigo AS text) = remuneracao_summed.dre_codigo
+       AND apuracao_financeira.revisao = remuneracao_summed.revisao
+       AND COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') = remuneracao_summed.tipo_pessoa
+    )`
+
+  const countResult = await executor.query(
+    `${groupedOrdensCte}
+     SELECT COUNT(*)::int AS total
+     FROM grouped_ordens`,
+    values,
+  )
+
+  const total = countResult.rows[0]?.total ?? 0
+  const totalPages = Math.max(Math.ceil(total / normalizedPageSize), 1)
+  const normalizedPage = Math.min(Math.max(Number(page) || 1, 1), totalPages)
+  const offset = (normalizedPage - 1) * normalizedPageSize
+  const pagedValues = [...values, monthRange.monthStart, monthRange.monthEnd, normalizedPageSize, offset]
+  const monthStartParameterIndex = pagedValues.length - 3
+  const monthEndParameterIndex = pagedValues.length - 2
+
+  const result = await executor.query(
+    `${groupedOrdensCte},
+     paged_ordens AS (
+       SELECT *
+       FROM grouped_ordens
+       ORDER BY COALESCE(empresa_order, '') ASC,
+                COALESCE(nome_condutor_order, '') ASC,
+                crmc_condutor ASC,
+                tipo_veiculo ASC,
+                num_os_order ASC,
+                revisao ASC,
+                ordem_servico_codigo ASC,
+                CAST(dre_codigo AS integer) ASC,
+                mes_ano ASC
+       LIMIT $${pagedValues.length - 1}
+       OFFSET $${pagedValues.length}
+     )
+     SELECT
+       paged_ordens.mes_ano,
+       paged_ordens.dre_codigo,
+       COALESCE(BTRIM(dre.sigla), '') AS dre_sigla,
+       BTRIM(CAST(dre.descricao AS text)) AS dre_descricao,
+       paged_ordens.ordem_servico_codigo,
+       COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
+       COALESCE(BTRIM(os.termo_adesao), '') AS ordem_servico_termo_adesao,
+       COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+       paged_ordens.revisao,
+       paged_ordens.tipo_pessoa,
+       TO_CHAR(GREATEST(${ordemServicoActiveStartDateExpression}, $${monthStartParameterIndex}::date), 'YYYY-MM-DD') AS periodo_inicio,
+       TO_CHAR(LEAST(${ordemServicoActiveEndDateExpression}, $${monthEndParameterIndex}::date), 'YYYY-MM-DD') AS periodo_fim,
+       COALESCE(BTRIM(paged_ordens.crmc_condutor), '') AS crmc_condutor,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
+       COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
+       COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
+       COALESCE(BTRIM(paged_ordens.tipo_veiculo), '') AS tipo_veiculo,
+       paged_ordens.total_dias_referencia,
+       paged_ordens.teg_regular_fixo,
+       paged_ordens.teg_regular_percapita,
+       paged_ordens.teg_acessivel_fixo,
+       paged_ordens.teg_acessivel_percapita,
+       paged_ordens.teg_especial_regular_fixo,
+       paged_ordens.teg_especial_regular_percapita,
+       paged_ordens.teg_especial_acessivel_fixo,
+       paged_ordens.teg_especial_acessivel_percapita,
+       paged_ordens.teg_creche_fixo,
+       paged_ordens.teg_creche_percapita,
+       paged_ordens.km_valor,
+       paged_ordens.continua_regular,
+       paged_ordens.continua_cadeirante
+     FROM paged_ordens
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo::text = paged_ordens.ordem_servico_codigo
+     INNER JOIN dre ON dre.codigo::text = paged_ordens.dre_codigo
+     INNER JOIN apuracao_financeira
+       ON apuracao_financeira.mes_ano = paged_ordens.mes_ano
+      AND CAST(apuracao_financeira.dre_codigo AS text) = paged_ordens.dre_codigo
+      AND apuracao_financeira.revisao = paged_ordens.revisao
+      AND COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') = paged_ordens.tipo_pessoa
+     LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+     LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+     ORDER BY COALESCE(paged_ordens.empresa_order, '') ASC,
+              COALESCE(paged_ordens.nome_condutor_order, '') ASC,
+              paged_ordens.crmc_condutor ASC,
+              paged_ordens.tipo_veiculo ASC,
+              COALESCE(paged_ordens.num_os_order, '') ASC,
+              paged_ordens.revisao ASC,
+              CAST(paged_ordens.ordem_servico_codigo AS integer) ASC,
+              CAST(paged_ordens.dre_codigo AS integer) ASC`,
+    pagedValues,
+  )
+
+  return {
+    items: result.rows.map(mapTotalRemuneracaoServicosRow),
+    total,
+    page: normalizedPage,
+    pageSize: normalizedPageSize,
+    totalPages,
+    mesAno: normalizedMesAno,
   }
 }
 
@@ -5033,26 +5341,36 @@ const calculateRemuneracaoServicosItems = async ({
       ? ['TEG REGULAR']
       : [modalidadeDescricao]
 
-    if (!modalidadeDescricao) {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const hasContinuaOrKmApontamento = Number(continuaRegularByGroupKey.get(groupKey) ?? 0) > 0
+      || Number(continuaCadeiranteByGroupKey.get(groupKey) ?? 0) > 0
+      || Number(kmAdicionalByGroupKey.get(groupKey) ?? 0) > 0
+
+    if (!modalidadeDescricao && !hasContinuaOrKmApontamento) {
       totalIgnorados += 1
       continue
     }
 
-    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
-    const quantidade = Math.max(0, Number(
+    if (!modalidadeDescricao) {
+      totalIgnorados += 1
+    }
+
+    const quantidade = modalidadeDescricao ? Math.max(0, Number(
       tipoBancada === 'ACESSIVEL'
         ? (accumulatedAcessivelByGroupKey.get(groupKey) ?? 0)
         : tipoBancada === 'CRECHE'
           ? (accumulatedCrecheByGroupKey.get(groupKey) ?? 0)
         : (accumulatedRegularByGroupKey.get(groupKey) ?? 0),
-    ))
+    )) : 0
     const quantidadeConfig = quantidadeConfigByTipoBancada[tipoBancada] ?? quantidadeConfigByTipoBancada.CONVENCIONAL
     const lookupQuantidade = quantidadeConfig.resolveLookupQuantidade(quantidade)
-    const shouldUseSpecialOnlyCalculation = isOrdemServicoTegEspecial && Boolean(specialRulesByTipoBancada[tipoBancada])
+    const shouldUseSpecialOnlyCalculation = Boolean(modalidadeDescricao)
+      && isOrdemServicoTegEspecial
+      && Boolean(specialRulesByTipoBancada[tipoBancada])
     let tegRegularFixo = 0
     let tegRegularPercapita = 0
 
-    if (quantidade > 0 && !shouldUseSpecialOnlyCalculation) {
+    if (modalidadeDescricao && quantidade > 0 && !shouldUseSpecialOnlyCalculation) {
       const fixoLookupKey = `${modalidadeDescricao}|${tipoBancada}|FIXO|${lookupQuantidade}`
       const percapitaLookupKey = `${modalidadeDescricao}|${tipoBancada}|PER CAPITA|${lookupQuantidade}`
 
@@ -5098,7 +5416,7 @@ const calculateRemuneracaoServicosItems = async ({
     let normalizedTegEspecialAcessivelFixo = 0
     let normalizedTegEspecialAcessivelPercapita = 0
 
-    if (isOrdemServicoTegEspecial && specialRule) {
+    if (modalidadeDescricao && isOrdemServicoTegEspecial && specialRule) {
       const specialQuantidade = Math.max(0, Number(specialRule.quantityMap.get(groupKey) ?? 0))
 
       if (specialQuantidade > 0) {
@@ -5157,70 +5475,68 @@ const calculateRemuneracaoServicosItems = async ({
       }
     }
 
-    totalCalculados += 1
+    if (modalidadeDescricao) {
+      totalCalculados += 1
+    }
 
-    const nextTegRegularFixo = tipoBancada === 'CONVENCIONAL'
+    const nextTegRegularFixo = modalidadeDescricao && tipoBancada === 'CONVENCIONAL'
       ? normalizedTegRegularFixo
       : Number(item.tegRegularFixo) || 0
-    const nextTegRegularPercapita = tipoBancada === 'CONVENCIONAL'
+    const nextTegRegularPercapita = modalidadeDescricao && tipoBancada === 'CONVENCIONAL'
       ? normalizedTegRegularPercapita
       : Number(item.tegRegularPercapita) || 0
-    const nextTegAcessivelFixo = tipoBancada === 'ACESSIVEL'
+    const nextTegAcessivelFixo = modalidadeDescricao && tipoBancada === 'ACESSIVEL'
       ? normalizedTegRegularFixo
       : Number(item.tegAcessivelFixo) || 0
-    const nextTegAcessivelPercapita = tipoBancada === 'ACESSIVEL'
+    const nextTegAcessivelPercapita = modalidadeDescricao && tipoBancada === 'ACESSIVEL'
       ? normalizedTegRegularPercapita
       : Number(item.tegAcessivelPercapita) || 0
-    const nextTegEspecialRegularFixo = normalizedTegEspecialRegularFixo
-    const nextTegEspecialRegularPercapita = normalizedTegEspecialRegularPercapita
-    const nextTegEspecialAcessivelFixo = normalizedTegEspecialAcessivelFixo
-    const nextTegEspecialAcessivelPercapita = normalizedTegEspecialAcessivelPercapita
-    const nextTegCrecheFixo = tipoBancada === 'CRECHE'
+    const nextTegEspecialRegularFixo = modalidadeDescricao ? normalizedTegEspecialRegularFixo : Number(item.tegEspecialRegularFixo) || 0
+    const nextTegEspecialRegularPercapita = modalidadeDescricao ? normalizedTegEspecialRegularPercapita : Number(item.tegEspecialRegularPercapita) || 0
+    const nextTegEspecialAcessivelFixo = modalidadeDescricao ? normalizedTegEspecialAcessivelFixo : Number(item.tegEspecialAcessivelFixo) || 0
+    const nextTegEspecialAcessivelPercapita = modalidadeDescricao ? normalizedTegEspecialAcessivelPercapita : Number(item.tegEspecialAcessivelPercapita) || 0
+    const nextTegCrecheFixo = modalidadeDescricao && tipoBancada === 'CRECHE'
       ? normalizedTegRegularFixo
       : Number(item.tegCrecheFixo) || 0
-    const nextTegCrechePercapita = tipoBancada === 'CRECHE'
+    const nextTegCrechePercapita = modalidadeDescricao && tipoBancada === 'CRECHE'
       ? normalizedTegRegularPercapita
       : Number(item.tegCrechePercapita) || 0
 
     let nextContinuaRegular = 0
     let nextContinuaCadeirante = 0
 
-    if (isOrdemServicoTegRegular && tipoBancada === 'CONVENCIONAL') {
-      const quantidadeContinuaRegular = Math.max(0, Number(continuaRegularByGroupKey.get(groupKey) ?? 0))
+    const quantidadeContinuaRegular = Math.max(0, Number(continuaRegularByGroupKey.get(groupKey) ?? 0))
 
-      if (quantidadeContinuaRegular > 0) {
-        const continuaRegularLookupKey = 'CONTINUA|REGULAR'
-        let continuaRegularValor = valorByLookupKey.get(continuaRegularLookupKey)
+    if (quantidadeContinuaRegular > 0) {
+      const continuaRegularLookupKey = 'CONTINUA|REGULAR'
+      let continuaRegularValor = valorByLookupKey.get(continuaRegularLookupKey)
 
-        if (!Number.isFinite(continuaRegularValor)) {
-          continuaRegularValor = await findLatestContinuaValor({
-            dataReferencia,
-            tipoContinua: 'Regular',
-          }, executor)
-          valorByLookupKey.set(continuaRegularLookupKey, continuaRegularValor)
-        }
-
-        nextContinuaRegular = normalizeRemuneracaoServicosAmount(quantidadeContinuaRegular * (Number(continuaRegularValor) || 0))
+      if (!Number.isFinite(continuaRegularValor)) {
+        continuaRegularValor = await findLatestContinuaValor({
+          dataReferencia,
+          tipoContinua: 'Regular',
+        }, executor)
+        valorByLookupKey.set(continuaRegularLookupKey, continuaRegularValor)
       }
+
+      nextContinuaRegular = normalizeRemuneracaoServicosAmount(quantidadeContinuaRegular * (Number(continuaRegularValor) || 0))
     }
 
-    if (isOrdemServicoTegRegular && tipoBancada === 'ACESSIVEL') {
-      const quantidadeContinuaCadeirante = Math.max(0, Number(continuaCadeiranteByGroupKey.get(groupKey) ?? 0))
+    const quantidadeContinuaCadeirante = Math.max(0, Number(continuaCadeiranteByGroupKey.get(groupKey) ?? 0))
 
-      if (quantidadeContinuaCadeirante > 0) {
-        const continuaCadeiranteLookupKey = 'CONTINUA|CADEIRANTE'
-        let continuaCadeiranteValor = valorByLookupKey.get(continuaCadeiranteLookupKey)
+    if (quantidadeContinuaCadeirante > 0) {
+      const continuaCadeiranteLookupKey = 'CONTINUA|CADEIRANTE'
+      let continuaCadeiranteValor = valorByLookupKey.get(continuaCadeiranteLookupKey)
 
-        if (!Number.isFinite(continuaCadeiranteValor)) {
-          continuaCadeiranteValor = await findLatestContinuaValor({
-            dataReferencia,
-            tipoContinua: 'Cadeirante',
-          }, executor)
-          valorByLookupKey.set(continuaCadeiranteLookupKey, continuaCadeiranteValor)
-        }
-
-        nextContinuaCadeirante = normalizeRemuneracaoServicosAmount(quantidadeContinuaCadeirante * (Number(continuaCadeiranteValor) || 0))
+      if (!Number.isFinite(continuaCadeiranteValor)) {
+        continuaCadeiranteValor = await findLatestContinuaValor({
+          dataReferencia,
+          tipoContinua: 'Cadeirante',
+        }, executor)
+        valorByLookupKey.set(continuaCadeiranteLookupKey, continuaCadeiranteValor)
       }
+
+      nextContinuaCadeirante = normalizeRemuneracaoServicosAmount(quantidadeContinuaCadeirante * (Number(continuaCadeiranteValor) || 0))
     }
 
     let nextKmValor = 0
@@ -25481,6 +25797,53 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao consultar o apontamento de servicos.'
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/total-remuneracao-servicos') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const crmcCondutor = normalizeRequestValue(requestUrl.searchParams.get('crmcCondutor') ?? '')
+      const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
+      const revisao = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+      const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      const result = await listTotalRemuneracaoServicosItems({
+        mesAno,
+        dreCodigo,
+        crmcCondutor,
+        placa,
+        revisao: Number.isInteger(revisao) ? revisao : undefined,
+        tipoPessoa,
+        page,
+        pageSize,
+      })
+
+      sendJson(response, 200, {
+        items: result.items,
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize,
+        totalPages: result.totalPages,
+        mesAno: result.mesAno,
+      })
+    } catch (error) {
+      const statusCode = Number(error?.statusCode) || 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar o total de remuneracao de servicos.'
 
       sendJson(response, statusCode, { message })
     }

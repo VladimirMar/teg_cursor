@@ -349,6 +349,7 @@
   accent-color: #795b38;
 }
 
+.apontamento-servicos-column-visibility-toggles,
 .remuneracao-servicos-visibility-toggles {
   display: grid;
   gap: 4px;
@@ -528,6 +529,31 @@
   text-align: left;
   padding-left: 6px;
   padding-right: 4px;
+}
+
+.remuneracao-servicos-table th.remuneracao-servicos-header-valor-total {
+  background: #d9e8f7;
+  color: #17314f;
+}
+
+.total-remuneracao-servicos-valor-total-cell {
+  background: rgba(217, 232, 247, 0.35);
+}
+
+.total-remuneracao-servicos-valor-total-value {
+  font-weight: 600;
+}
+
+.remuneracao-servicos-table.total-remuneracao-servicos-table-valor-total-only {
+  width: 100%;
+  min-width: 280px;
+}
+
+.remuneracao-servicos-table.total-remuneracao-servicos-table-valor-total-only th:nth-child(n + 2),
+.remuneracao-servicos-table.total-remuneracao-servicos-table-valor-total-only td:nth-child(n + 2) {
+  width: 96px;
+  min-width: 96px;
+  text-align: left;
 }
 
 .remuneracao-servicos-table thead tr:nth-child(2) th.remuneracao-servicos-header-detail,

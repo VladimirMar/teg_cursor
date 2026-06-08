@@ -7,6 +7,7 @@ import ApuracaoServicosView from './ApuracaoServicosView'
 import BatchProcessMonitorView from './BatchProcessMonitorView'
 import EnvironmentMonitoringView from './EnvironmentMonitoringView'
 import RemuneracaoServicosView from './RemuneracaoServicosView'
+import TotalRemuneracaoServicosView from './TotalRemuneracaoServicosView'
 import PerfilAcessoView from './PerfilAcessoView'
 import PerfilView from './PerfilView'
 import ResumoFinanceiroView from './ResumoFinanceiroView'
@@ -191,7 +192,7 @@ async function getOrdemServicoCountBySituacao(situacao: string): Promise<number>
   return typeof payload.total === 'number' ? payload.total : 0
 }
 
-type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'remuneracaoServicos' | 'batchProcessMonitor' | 'monitoramentoAmbiente' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'xmlImportLote' | 'smoke'
+type ActiveView = 'inicio' | 'dre' | 'modalidade' | 'condicao' | 'tipoPgto' | 'tipoEscola' | 'aliquotaOptante' | 'diasLetivos' | 'resumoFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'apontamentoServicos' | 'remuneracaoServicos' | 'totalRemuneracaoServicos' | 'batchProcessMonitor' | 'monitoramentoAmbiente' | 'modalBancadaTpPagtoCondicao' | 'modalBancadaTpPagtoCondicaoValor' | 'kmValor' | 'continuaValor' | 'parametroVeiculo' | 'tipoBancada' | 'titular' | 'marcaModelo' | 'seguradora' | 'troca' | 'acesso' | 'acessoPagina' | 'perfil' | 'perfilAcesso' | 'loginDre' | 'condutor' | 'monitor' | 'credenciada' | 'credenciamentoTermo' | 'termoHistorico' | 'ordemServicoHistorico' | 'financeiroReprocessamento' | 'emissaoDocumentoParametro' | 'veiculo' | 'veiculoHistorico' | 'vinculoCondutor' | 'vinculoMonitor' | 'ordemServico' | 'cep' | 'xmlImportLote' | 'smoke'
 type SmokeSuite = 'all' | 'condutor' | 'credenciada' | 'veiculo' | 'marca-modelo'
 type SmokeLogStream = 'stdout' | 'stderr'
 type DreSortField = 'codigo' | 'descricao'
@@ -388,6 +389,8 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'apontamentoServicos':
     case 'remuneracaoServicos':
       return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira', 'apuracaoServicos']
+    case 'totalRemuneracaoServicos':
+      return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira']
     case 'monitoramentoAmbiente':
     case 'batchProcessMonitor':
     case 'xmlImportLote':
@@ -667,6 +670,7 @@ const operationalFinanceiroViews: ActiveView[] = [
   'apuracaoServicos',
   'apontamentoServicos',
   'remuneracaoServicos',
+  'totalRemuneracaoServicos',
 ]
 const cadastroOperationalViews: ActiveView[] = [
   'dre',
@@ -717,6 +721,7 @@ const menuAccessByView: Record<ActiveView, string> = {
   apuracaoServicos: 'menu_apuracao_servicos',
   apontamentoServicos: 'menu_apuracao_servicos',
   remuneracaoServicos: 'menu_apuracao_servicos',
+  totalRemuneracaoServicos: 'menu_apuracao_servicos',
   batchProcessMonitor: 'menu_apuracao_servicos',
   monitoramentoAmbiente: 'menu_apuracao_servicos',
   modalBancadaTpPagtoCondicao: 'menu_modal_bancada_tp_pagto_condicao',
@@ -7927,7 +7932,7 @@ function App() {
                 </li> : null}
                 {hasOperationalFinanceiroAccess ? <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' ? 'menu-subitem-active' : ''}`}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' || activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalFinanceiro')}
                     role="button"
                     aria-expanded={!collapsedMenuGroups.operacionalFinanceiro}
@@ -7951,7 +7956,7 @@ function App() {
                     </li> : null}
                     {isViewAllowed('apuracaoFinanceira', menuPermissionKeys) || isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                       <div
-                        className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
+                        className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
                         onClick={() => {
                           if (isViewAllowed('apuracaoFinanceira', menuPermissionKeys)) {
                             setActiveView('apuracaoFinanceira')
@@ -8010,6 +8015,12 @@ function App() {
                               Remuneracao Servicos
                             </li> : null}
                           </ul>
+                        </li> : null}
+                        {isViewAllowed('totalRemuneracaoServicos', menuPermissionKeys) ? <li
+                          className={`menu-subitem menu-subitem-nested ${activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
+                          onClick={() => setActiveView('totalRemuneracaoServicos')}
+                        >
+                          Total Remuneracao
                         </li> : null}
                       </ul>
                     </li> : null}
@@ -8288,7 +8299,7 @@ function App() {
               <div className="management-card dashboard-controls-card">
                 <form className="dashboard-filter-form" onSubmit={handleDashboardSubmit}>
                   <label className="field-group dashboard-month-group" htmlFor="dashboard-month">
-                    <span>Mes de referência</span>
+                    <span>Mês de referência</span>
                     <input
                       id="dashboard-month"
                       type="month"
@@ -8376,7 +8387,7 @@ function App() {
                   <strong className="dashboard-summary-value dashboard-summary-value--positive">{dashboardData?.totals.totalDres ?? 0}</strong>
                 </article>
                 <article className="dashboard-summary-card dashboard-summary-card--positive">
-                  <span className="dashboard-summary-label">Modalidades no mes</span>
+                  <span className="dashboard-summary-label">Modalidades no mês</span>
                   <strong className="dashboard-summary-value dashboard-summary-value--positive">{dashboardData?.totals.totalModalidades ?? 0}</strong>
                 </article>
               </div>
@@ -10214,6 +10225,8 @@ function App() {
           <ApontamentoServicosView />
         ) : activeView === 'remuneracaoServicos' ? (
           <RemuneracaoServicosView />
+        ) : activeView === 'totalRemuneracaoServicos' ? (
+          <TotalRemuneracaoServicosView />
         ) : activeView === 'monitoramentoAmbiente' ? (
           <EnvironmentMonitoringView />
         ) : activeView === 'batchProcessMonitor' ? (

@@ -2385,7 +2385,7 @@ body:has(#vinculo-grid-body) .dsc-access-grid td {
   white-space: nowrap;
 }
 
-/* Admissão */
+/* AdmissÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o */
 .dsc-vinculo-tab-panel .dsc-vinculo-grid th:nth-child(5),
 .dsc-vinculo-tab-panel .dsc-vinculo-grid td:nth-child(5) {
   width: 13%;
@@ -2417,6 +2417,66 @@ body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(2) {
   width: 34ch;
   min-width: 34ch;
   max-width: 34ch;
+}
+
+
+body:has(#monitor-grid-body) .dsc-access-grid th:nth-child(1),
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(1) {
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+}
+
+body:has(#monitor-grid-body) .dsc-access-grid th:nth-child(2),
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(2) {
+  width: 34ch;
+  min-width: 34ch;
+  max-width: 34ch;
+}
+
+body:has(#monitor-grid-body) .dsc-access-grid th:nth-child(3),
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(3),
+body:has(#monitor-grid-body) .dsc-access-grid th:nth-child(4),
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(4) {
+  width: 136px;
+  min-width: 136px;
+  max-width: 136px;
+}
+
+body:has(#monitor-grid-body) .dsc-access-grid th:nth-child(3),
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(3),
+body:has(#monitor-grid-body) .dsc-access-grid th:nth-child(4),
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(4) {
+  font-size: 0.78rem;
+}
+
+
+body:has(#veiculo-grid-body) .dsc-access-grid th:nth-child(1),
+body:has(#veiculo-grid-body) .dsc-access-grid td:nth-child(1) {
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+}
+
+body:has(#veiculo-grid-body) .dsc-access-grid th:nth-child(2),
+body:has(#veiculo-grid-body) .dsc-access-grid td:nth-child(2) {
+  width: 34ch;
+  min-width: 34ch;
+  max-width: 34ch;
+}
+
+body:has(#veiculo-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell span {
+  white-space: normal;
+}
+
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell span {
+  white-space: normal;
 }
 
 body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(3),
@@ -2514,6 +2574,18 @@ body:has(#credenciada-grid-body) .dsc-grid-action-button {
   line-height: 1.1;
 }
 
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#veiculo-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell span,
 body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(2),
 body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell strong,
 body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell span {
@@ -2574,6 +2646,8 @@ body:has(#condutor-grid-body) .dsc-grid-actions-column {
   max-width: 228px;
 }
 
+
+
 body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(3),
 body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(4),
 body:has(#condutor-grid-body) .dsc-access-grid th:nth-child(5) {
@@ -2594,7 +2668,9 @@ body:has(#condutor-grid-body) .dsc-grid-action-button {
   line-height: 1.1;
 }
 
-body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell {
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell {
   display: grid;
   gap: 1px;
   min-width: 0;
@@ -2602,21 +2678,30 @@ body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell {
 }
 
 body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell strong,
-body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span {
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span {
+body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell span {
   display: block;
   color: #556761;
   font-size: 0.74rem;
 }
 
-body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(2) {
+body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#monitor-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#veiculo-grid-body) .dsc-access-grid td:nth-child(2) {
   white-space: normal;
 }
+
 
 body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(3),
 body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(4) {
@@ -2638,10 +2723,6 @@ body:has(#ordem-servico-rejection-grid-body) .dsc-access-grid td {
   white-space: nowrap;
 }
 
-body:has(#condutor-grid-body) .dsc-access-grid td:nth-child(2),
-body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell,
-body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell strong,
-body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span,
 body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(2),
 body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell,
 body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell strong,

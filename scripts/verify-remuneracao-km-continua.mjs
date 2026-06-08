@@ -33,24 +33,20 @@ const calculateKmValorByThreshold = ({ quantidadeKmAdicional, aPartirDoKm, valor
   return round2(normalizedQuantidade * normalizedValorKm)
 }
 
-const calculateContinuaRegular = ({ modalidadeDescricao, tipoBancada, quantidade, valorUnitario }) => {
-  const normalizedModalidade = String(modalidadeDescricao || '').trim().toUpperCase()
-  const normalizedTipoBancada = String(tipoBancada || '').trim().toUpperCase()
+const calculateContinuaRegular = ({ quantidade, valorUnitario }) => {
   const normalizedQuantidade = parseNumber(quantidade)
 
-  if (normalizedModalidade !== 'TEG REGULAR' || normalizedTipoBancada !== 'CONVENCIONAL' || normalizedQuantidade <= 0) {
+  if (normalizedQuantidade <= 0) {
     return 0
   }
 
   return round2(normalizedQuantidade * parseNumber(valorUnitario))
 }
 
-const calculateContinuaCadeirante = ({ modalidadeDescricao, tipoBancada, quantidade, valorUnitario }) => {
-  const normalizedModalidade = String(modalidadeDescricao || '').trim().toUpperCase()
-  const normalizedTipoBancada = String(tipoBancada || '').trim().toUpperCase()
+const calculateContinuaCadeirante = ({ quantidade, valorUnitario }) => {
   const normalizedQuantidade = parseNumber(quantidade)
 
-  if (normalizedModalidade !== 'TEG REGULAR' || normalizedTipoBancada !== 'ACESSIVEL' || normalizedQuantidade <= 0) {
+  if (normalizedQuantidade <= 0) {
     return 0
   }
 
@@ -120,8 +116,6 @@ const run = async () => {
 
     const continuaRegularUnitario = parseNumber(continuaRegularBase.valor)
     const continuaRegularQuantidadeUm = calculateContinuaRegular({
-      modalidadeDescricao: 'TEG REGULAR',
-      tipoBancada: 'CONVENCIONAL',
       quantidade: 1,
       valorUnitario: continuaRegularUnitario,
     })
@@ -132,8 +126,6 @@ const run = async () => {
 
     const continuaCadeiranteUnitario = parseNumber(continuaCadeiranteBase.valor)
     const continuaCadeiranteQuantidadeUm = calculateContinuaCadeirante({
-      modalidadeDescricao: 'TEG REGULAR',
-      tipoBancada: 'ACESSIVEL',
       quantidade: 1,
       valorUnitario: continuaCadeiranteUnitario,
     })
