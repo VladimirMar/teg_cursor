@@ -40,7 +40,9 @@
         padding: 0;
         border: 0;
         box-shadow: none;
-        background: #ffffff;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
         color: #111827;
         font-family: Aptos, Arial, Helvetica, sans-serif;
         font-size: 12pt;
@@ -245,10 +247,147 @@
         white-space: nowrap;
       }
 
-      body:has(#credenciamento-termo-grid-body) .dsc-access-grid-card {
-        min-height: 860px;
+      html:has(#credenciamento-termo-grid-body),
+      body:has(#credenciamento-termo-grid-body) {
+        overflow: hidden;
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100%;
       }
 
+      body:has(#credenciamento-termo-grid-body) .dsc-container,
+      body:has(#credenciamento-termo-grid-body) .dsc-access-toolbar,
+      body:has(#credenciamento-termo-grid-body) .dsc-access-grid-card {
+        width: 100%;
+        max-width: none;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #credenciamento-termo-grid {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+      }
+
+      body:has(#credenciamento-termo-grid-body) .dsc-access-page {
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+        width: 100%;
+        max-width: 100%;
+        padding: 4px 10px;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #login-section,
+      body:has(#credenciamento-termo-grid-body) .dsc-access-layout,
+      body:has(#credenciamento-termo-grid-body) .dsc-access-management-layout {
+        height: 100%;
+        min-height: 0;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #login-section {
+        margin: 0;
+        padding: 0;
+      }
+
+      body:has(#credenciamento-termo-grid-body) .dsc-access-layout,
+      body:has(#credenciamento-termo-grid-body) .dsc-access-management-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      body:has(#credenciamento-termo-grid-body) .dsc-access-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        margin-bottom: 0;
+        padding-bottom: 4px;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
+      }
+
+      body:has(#credenciamento-termo-grid-body) .dsc-access-grid-card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 118px);
+        min-height: 0;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #credenciamento-termo-grid-wrapper {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #credenciamento-termo-grid-wrapper thead th {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
+        box-shadow: inset 0 -1px 0 rgba(33, 49, 57, 0.12);
+      }
+
+      body:has(#credenciamento-termo-grid-body) #credenciamento-termo-grid .dsc-grid-actions-column {
+        text-align: center;
+        padding: 0;
+        width: 220px;
+        min-width: 220px;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #credenciamento-termo-grid .dsc-grid-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        width: 100%;
+        justify-content: center;
+        align-items: center;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #credenciamento-termo-grid .dsc-grid-action-button {
+        flex: 0 0 auto;
+        min-width: 36px;
+        width: 36px;
+        height: 36px;
+        padding: 6px;
+        font-size: 0;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #credenciamento-termo-grid .dsc-grid-action-button svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      body:has(#credenciamento-termo-grid-body) #credenciamento-termo-grid-feedback {
+        min-height: 0;
+        margin: 0;
+      }
+
+      body:has(#credenciamento-termo-grid-body) .dsc-access-grid-card > .dsc-access-pagination {
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      body:has(#credenciamento-termo-grid-body) .dsc-access-grid-card > .dsc-access-pagination .dsc-btn {
+        flex: 0 0 20%;
+        width: 20%;
+        max-width: 64px;
+        min-width: 44px;
+        min-height: 34px;
+        padding: 4px 0;
+        font-size: 0.84rem;
+      }
       #credenciamento-termo-grid thead th:nth-child(5),
       #credenciamento-termo-grid thead th:nth-child(6),
       #credenciamento-termo-grid tbody td:nth-child(5),
@@ -275,8 +414,8 @@
             <div class="dsc-access-toolbar">
               <form class="dsc-access-filter-form" id="credenciamento-termo-filter-form">
                 <button type="button" class="dsc-btn dsc-btn-blue dsc-access-insert-button" id="insert-credenciamento-termo-button">Inserir registro</button>
-                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button dsc-hidden" id="open-credenciamento-termo-import-button" hidden disabled aria-hidden="true">Importar XML</button>
-                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button dsc-hidden" id="open-credenciamento-termo-rejections-button" hidden disabled aria-hidden="true">Recusas XML</button>
+                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-credenciamento-termo-import-button">Importar XML</button>
+                <button type="button" class="dsc-btn dsc-btn-white dsc-access-import-button" id="open-credenciamento-termo-rejections-button">Recusas XML</button>
                 <input class="dsc-form-control dsc-access-filter-input" id="credenciamento-termo-search" type="text" placeholder="Filtrar por codigo, termo, credenciado, SEI ou aditivo" />
                 <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="clear-credenciamento-termo-filter-button">Limpar</button>
@@ -880,7 +1019,7 @@
                 </div>
               </div>
 
-              <div class="dsc-access-grid-wrapper">
+              <div class="dsc-access-grid-wrapper" id="credenciamento-termo-grid-wrapper">
                 <table class="dsc-access-grid" id="credenciamento-termo-grid">
                   <thead>
                     <tr>
@@ -2834,7 +2973,9 @@
       body {
         margin: 0;
         padding: 12px;
-        background: #ffffff;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
         color: #111827;
         font-family: Aptos, Arial, Helvetica, sans-serif;
         font-size: 12pt;
@@ -2876,7 +3017,9 @@
       body {
         margin: 0;
         padding: 0;
-        background: #ffffff;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
         color: #000000;
         font-family: Tahoma, Arial, Helvetica, sans-serif;
         font-size: 9pt;
@@ -3403,7 +3546,9 @@
       body {
         margin: 0;
         padding: 12px;
-        background: #ffffff;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
         color: #111827;
         font-family: Aptos, Arial, Helvetica, sans-serif;
         font-size: 12pt;
@@ -3452,7 +3597,9 @@
       body {
         margin: 0;
         padding: 12px;
-        background: #ffffff;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
         color: #111827;
         font-family: Aptos, Arial, Helvetica, sans-serif;
         font-size: 12pt;
@@ -3498,7 +3645,9 @@
       body {
         margin: 0;
         padding: 0;
-        background: #ffffff;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
         color: #000000;
         font-family: Tahoma, Arial, Helvetica, sans-serif;
         font-size: 9pt;
@@ -3550,7 +3699,9 @@
       body {
         margin: 0;
         padding: 0;
-        background: #ffffff;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
         color: #000000;
         font-family: Tahoma, Arial, Helvetica, sans-serif;
         font-size: 9pt;
@@ -4740,6 +4891,19 @@
           : '↕';
       };
 
+
+      const GRID_ICON_VIEW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>';
+      const GRID_ICON_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5 20.5 7.5 7 21H3v-4L16.5 3.5Z"/></svg>';
+      const GRID_ICON_DELETE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+      const GRID_ICON_HISTORY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5l3 3"/><path d="M21 12a9 9 0 1 1-9-9"/></svg>';
+      const GRID_ICON_ADITIVOS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg>';
+      const buildGridViewButton = (codigo) => `<button type="button" class="dsc-grid-action-button dsc-grid-action-consulta" data-action="view" data-codigo="${codigo}" title="Consulta" aria-label="Consulta">${GRID_ICON_VIEW}</button>`;
+      const buildGridEditButton = (codigo, label = 'Alterar') => hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${codigo}" title="${label}" aria-label="${label}">${GRID_ICON_EDIT}</button>` : '';
+      const buildGridDeleteButton = (codigo) => hasDeletePermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${codigo}" title="Excluir" aria-label="Excluir">${GRID_ICON_DELETE}</button>` : '';
+      const buildGridAditivosButton = (codigo) => `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="linked-aditivos" data-codigo="${codigo}" title="Aditivos" aria-label="Aditivos">${GRID_ICON_ADITIVOS}</button>`;
+      const buildGridHistoryButton = (codigo) => `<button type="button" class="dsc-grid-action-button dsc-grid-action-view" data-action="history" data-codigo="${codigo}" title="Historico" aria-label="Historico">${GRID_ICON_HISTORY}</button>`;
+      const buildGridCorrigirButton = (codigo) => buildGridEditButton(codigo, 'Corrigir');
+
       const renderGrid = (items) => {
         currentGridItems = items;
         gridBody.innerHTML = '';
@@ -4759,12 +4923,12 @@
             <td>${item.aditivo || ''}</td>
             <td>${item.status_termo || ''}</td>
             <td>
-              <div class="dsc-grid-actions">
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="linked-aditivos" data-codigo="${item.codigo}">Aditivos</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-view" data-action="history" data-codigo="${item.codigo}">Historico</button>
-                <button type="button" class="dsc-grid-action-button dsc-grid-action-view" data-action="view" data-codigo="${item.codigo}">Consulta</button>
-                ${hasEditPermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-edit" data-action="edit" data-codigo="${item.codigo}">Corrigir</button>` : ''}
-                ${hasDeletePermission() ? `<button type="button" class="dsc-grid-action-button dsc-grid-action-delete" data-action="delete" data-codigo="${item.codigo}">Excluir</button>` : ''}
+                            <div class="dsc-grid-actions">
+                ${buildGridAditivosButton(item.codigo)}
+                ${buildGridHistoryButton(item.codigo)}
+                ${buildGridViewButton(item.codigo)}
+                ${buildGridCorrigirButton(item.codigo)}
+                ${buildGridDeleteButton(item.codigo)}
               </div>
             </td>
           `;
@@ -5398,14 +5562,14 @@
 
         if (formMode === 'create' && isExistingTermCreateBlocked) {
           errors.termoAdesao.textContent = 'O cadastro principal aceita somente termo novo com aditivo 0.';
-          feedback.textContent = 'Este termo ja existe. Para incluir aditivo, abra Aditivos no grid e use o botao Novo Aditivo na lista de aditivos vinculados.';
+          feedback.textContent = 'Este termo ja existe. Para incluir aditivo, use o botao Aditivos no grid.';
           revealFirstFormError({ termoAdesao: errors.termoAdesao.textContent });
           return;
         }
 
         if (formMode === 'create' && payload.aditivo !== '0') {
           errors.aditivo.textContent = 'Inserir registro aceita somente termo novo com aditivo 0. Para incluir aditivo, use o botao Aditivos.';
-          feedback.textContent = `Inclusao de aditivo ${payload.aditivo} bloqueada no cadastro principal. Para o termo ${payload.termoAdesao || 'informado'}, abra Aditivos no grid e use o botao Novo Aditivo na lista de aditivos vinculados.`;
+          feedback.textContent = 'Corrija os campos do credenciamento termo para continuar.';
           revealFirstFormError({ aditivo: errors.aditivo.textContent });
           return;
         }

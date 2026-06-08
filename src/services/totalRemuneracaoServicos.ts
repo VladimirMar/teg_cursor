@@ -34,6 +34,7 @@ export type TotalRemuneracaoServicosItem = {
   kmValor: number
   continuaRegular: number
   continuaCadeirante: number
+  ccaValor: number
 }
 
 type TotalRemuneracaoServicosListResponse = {

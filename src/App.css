@@ -508,6 +508,10 @@
   background: #ef9ea8;
 }
 
+.remuneracao-servicos-table th.remuneracao-servicos-header-cca {
+  background: #f6c56b;
+}
+
 .remuneracao-servicos-table.remuneracao-servicos-table-only-continua {
   width: 100%;
   min-width: 300px;

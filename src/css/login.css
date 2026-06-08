@@ -194,17 +194,17 @@ body:has(#credenciada-search) #credenciada-search {
 }
 
 body:has(#ordem-servico-search) #ordem-servico-search {
-  flex: 1 1 220px;
-  min-width: 180px;
-  max-width: none;
+  flex: 0 1 220px;
+  min-width: 220px;
+  max-width: 300px;
 }
 
 body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
-  flex: 0 0 190px;
-  min-width: 190px;
-  min-height: 52px;
-  padding-top: 12px;
-  padding-bottom: 12px;
+  flex: 0 0 170px;
+  min-width: 170px;
+  min-height: 38px;
+  padding: 10px 14px;
+  border-radius: 14px;
 }
 
 .dsc-access-filter-form .dsc-btn {
@@ -2586,6 +2586,13 @@ body:has(#veiculo-grid-body) .dsc-access-grid td:nth-child(2),
 body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell,
 body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell strong,
 body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(2),
+body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(3),
+body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(4),
+body:has(#ordem-servico-grid-body) .dsc-access-grid td:nth-child(5),
+body:has(#ordem-servico-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#ordem-servico-grid-body) .dsc-condutor-grid-main-cell strong,
+body:has(#ordem-servico-grid-body) .dsc-condutor-grid-main-cell span,
 body:has(#credenciada-grid-body) .dsc-access-grid td:nth-child(2),
 body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell strong,
 body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell span {
@@ -2670,6 +2677,7 @@ body:has(#condutor-grid-body) .dsc-grid-action-button {
 
 body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell,
 body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell,
+body:has(#ordem-servico-grid-body) .dsc-condutor-grid-main-cell,
 body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell {
   display: grid;
   gap: 1px;
@@ -2690,6 +2698,7 @@ body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell span {
 
 body:has(#condutor-grid-body) .dsc-condutor-grid-main-cell span,
 body:has(#monitor-grid-body) .dsc-condutor-grid-main-cell span,
+body:has(#ordem-servico-grid-body) .dsc-condutor-grid-main-cell span,
 body:has(#veiculo-grid-body) .dsc-condutor-grid-main-cell span {
   display: block;
   color: #556761;
@@ -3147,7 +3156,7 @@ body:has(#credenciada-grid-body) .dsc-credenciada-grid-main-cell span {
 
   body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
     flex: 1 1 100%;
-    min-width: 100%;
+    min-width: 0;
   }
 
   .dsc-access-filter-form .dsc-btn {

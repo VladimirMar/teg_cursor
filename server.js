@@ -3044,6 +3044,7 @@ const mapRemuneracaoServicosRow = (baseItem, remuneracaoItem) => ({
   kmValor: Number(remuneracaoItem?.km_valor) || 0,
   continuaRegular: Number(remuneracaoItem?.continua_regular) || 0,
   continuaCadeirante: Number(remuneracaoItem?.continua_cadeirante) || 0,
+  ccaValor: Number(remuneracaoItem?.cca_valor) || 0,
 })
 
 const buildRemuneracaoServicosBaseGroupKey = (item) => [
@@ -3744,6 +3745,7 @@ const upsertApontamentoServicosItems = async ({
       kmValor: 0,
       continuaRegular: 0,
       continuaCadeirante: 0,
+      ccaValor: 0,
     })
   }
 
@@ -4464,7 +4466,8 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
        COALESCE(teg_creche_percapita, 0) AS teg_creche_percapita,
        COALESCE(km_valor, 0) AS km_valor,
        COALESCE(continua_regular, 0) AS continua_regular,
-       COALESCE(continua_cadeirante, 0) AS continua_cadeirante
+       COALESCE(continua_cadeirante, 0) AS continua_cadeirante,
+       COALESCE(cca_valor, 0) AS cca_valor
      FROM remuneracao_servicos
      WHERE mes_ano = $1
        AND data_referencia = $2::date
@@ -4516,6 +4519,7 @@ const mapTotalRemuneracaoServicosRow = (row) => ({
   kmValor: Number(row?.km_valor) || 0,
   continuaRegular: Number(row?.continua_regular) || 0,
   continuaCadeirante: Number(row?.continua_cadeirante) || 0,
+  ccaValor: Number(row?.cca_valor) || 0,
 })
 
 const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, placa, revisao, tipoPessoa, page = 1, pageSize = 20 }, executor = pool) => {
@@ -4608,7 +4612,8 @@ const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondut
         SUM(COALESCE(rs.teg_creche_percapita, 0))::numeric(14,2) AS teg_creche_percapita,
         SUM(COALESCE(rs.km_valor, 0))::numeric(14,2) AS km_valor,
         SUM(COALESCE(rs.continua_regular, 0))::numeric(14,2) AS continua_regular,
-        SUM(COALESCE(rs.continua_cadeirante, 0))::numeric(14,2) AS continua_cadeirante
+        SUM(COALESCE(rs.continua_cadeirante, 0))::numeric(14,2) AS continua_cadeirante,
+        SUM(COALESCE(rs.cca_valor, 0))::numeric(14,2) AS cca_valor
       FROM remuneracao_servicos rs
       INNER JOIN ${ordemServicoTableName} os ON os.codigo = rs.ordem_servico_codigo
       WHERE ${filters.join('\n        AND ')}
@@ -4729,7 +4734,8 @@ const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondut
        paged_ordens.teg_creche_percapita,
        paged_ordens.km_valor,
        paged_ordens.continua_regular,
-       paged_ordens.continua_cadeirante
+       paged_ordens.continua_cadeirante,
+       paged_ordens.cca_valor
      FROM paged_ordens
      INNER JOIN ${ordemServicoTableName} os ON os.codigo::text = paged_ordens.ordem_servico_codigo
      INNER JOIN dre ON dre.codigo::text = paged_ordens.dre_codigo
@@ -4822,6 +4828,64 @@ const getRegularAccumulatedQuantity = (item) => {
   const ncPresAcm = Number(item?.naoCadeirantePresencialAcm) || 0
   const atCompNcAcm = Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0
   return Math.max(0, ncPresAcm + atCompNcAcm)
+}
+
+const getRegularNcPresAccumulatedQuantity = (item) => {
+  if (isExcludedTipoEscolaFromRegular(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.naoCadeirantePresencialAcm) || 0)
+}
+
+const getRegularAtComplNcAccumulatedQuantity = (item) => {
+  if (isExcludedTipoEscolaFromRegular(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0)
+}
+
+const isTipoEscolaCca = (item) => {
+  const tipoEscolaCodigo = normalizeRequestValue(item?.tipoEscolaCodigo ?? item?.tipo_escola_codigo)
+
+  if (tipoEscolaCodigo === '7') {
+    return true
+  }
+
+  return normalizeTipoEscolaLabel(item?.tipoEscolaSigla ?? item?.tipo_escola_sigla) === 'CCA'
+}
+
+const getCcaNcPresQuantity = (item) => {
+  if (!isTipoEscolaCca(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.naoCadeirantePresencial) || 0)
+}
+
+const getCcaAtComplNcQuantity = (item) => {
+  if (!isTipoEscolaCca(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.atendimentoComplementarNaoCadeirante) || 0)
+}
+
+const getCcaCadQuantity = (item) => {
+  if (!isTipoEscolaCca(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.cadeirante) || 0)
+}
+
+const getCcaAtComplCadQuantity = (item) => {
+  if (!isTipoEscolaCca(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.atendimentoComplementarCadeirante) || 0)
 }
 
 const isIncludedTipoEscolaForAcessivel = (item) => {
@@ -5105,6 +5169,105 @@ const findLatestRemuneracaoCondicaoValorByCondicao = async ({ dataReferencia, mo
   throw createHttpError(409, `Nao foi encontrado valor para ${modalidadeDescricao} (${tipoBancada}, ${tipoPgtoDescricao}) nas condicoes ${normalizedCondicaoCandidates.join(' ou ')} na data de operacao.`)
 }
 
+const findLatestCcaValorRates = async ({ dataReferencia }, executor = pool) => {
+  const convencionalLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
+    dataReferencia,
+    modalidadeDescricaoCandidates: ['TEG REGULAR'],
+    tipoBancada: 'CONVENCIONAL',
+    tipoPgtoDescricao: 'PER CAPITA',
+    quantidade: 1,
+  }, executor)
+  const acessivelLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
+    dataReferencia,
+    modalidadeDescricaoCandidates: ['TEG REGULAR'],
+    tipoBancada: 'ACESSIVEL',
+    tipoPgtoDescricao: 'PER CAPITA',
+    quantidade: 1,
+  }, executor)
+
+  return {
+    ncUnitMonthlyValor: Number(convencionalLookup.valor) || 0,
+    cadUnitMonthlyValor: Number(acessivelLookup.valor) || 0,
+  }
+}
+
+const calculateCcaValorAmount = ({
+  ncQuantidade,
+  cadQuantidade,
+  ncUnitMonthlyValor,
+  cadUnitMonthlyValor,
+}) => {
+  const normalizedNcQuantidade = Math.max(0, Number(ncQuantidade) || 0)
+  const normalizedCadQuantidade = Math.max(0, Number(cadQuantidade) || 0)
+
+  if (normalizedNcQuantidade <= 0 && normalizedCadQuantidade <= 0) {
+    return 0
+  }
+
+  return normalizeRemuneracaoServicosAmount(
+    ((normalizedNcQuantidade * (Number(ncUnitMonthlyValor) || 0)) / 30)
+    + ((normalizedCadQuantidade * (Number(cadUnitMonthlyValor) || 0)) / 30),
+  )
+}
+
+const resolveNormalizedTegModalidadeDailyAmounts = async ({
+  quantidade,
+  dataReferencia,
+  modalidadeDescricaoCandidates,
+  tipoBancada,
+  quantidadeConfig,
+  valorByLookupKey,
+}, executor = pool) => {
+  const normalizedQuantidade = Math.max(0, Number(quantidade) || 0)
+
+  if (normalizedQuantidade <= 0) {
+    return { fixo: 0, percapita: 0 }
+  }
+
+  const lookupQuantidade = quantidadeConfig.resolveLookupQuantidade(normalizedQuantidade)
+  const modalidadeLookupKey = (Array.isArray(modalidadeDescricaoCandidates) ? modalidadeDescricaoCandidates : [modalidadeDescricaoCandidates]).join('|')
+  const fixoLookupKey = `${modalidadeLookupKey}|${tipoBancada}|FIXO|${lookupQuantidade}`
+  const percapitaLookupKey = `${modalidadeLookupKey}|${tipoBancada}|PER CAPITA|${lookupQuantidade}`
+
+  let tegFixo = valorByLookupKey.get(fixoLookupKey)
+  if (!Number.isFinite(tegFixo)) {
+    const fixoLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
+      dataReferencia,
+      modalidadeDescricaoCandidates,
+      tipoBancada,
+      tipoPgtoDescricao: 'FIXO',
+      quantidade: lookupQuantidade,
+    }, executor)
+    tegFixo = Number(fixoLookup.valor) || 0
+    valorByLookupKey.set(fixoLookupKey, tegFixo)
+  }
+
+  let tegPercapita = valorByLookupKey.get(percapitaLookupKey)
+  if (!Number.isFinite(tegPercapita)) {
+    const percapitaLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
+      dataReferencia,
+      modalidadeDescricaoCandidates,
+      tipoBancada,
+      tipoPgtoDescricao: 'PER CAPITA',
+      quantidade: lookupQuantidade,
+    }, executor)
+    tegPercapita = Number(percapitaLookup.valor) || 0
+    valorByLookupKey.set(percapitaLookupKey, tegPercapita)
+  }
+
+  const percapitaBaseQuantity = normalizedQuantidade
+  const percapitaQuantity = percapitaBaseQuantity <= quantidadeConfig.faixa1Limite
+    ? percapitaBaseQuantity
+    : percapitaBaseQuantity === quantidadeConfig.faixa2Quantidade
+      ? percapitaBaseQuantity
+      : Math.max(percapitaBaseQuantity - quantidadeConfig.faixa3Inicio + 1, 0)
+
+  return {
+    fixo: normalizeRemuneracaoServicosAmount((Number(tegFixo) || 0) / 30),
+    percapita: normalizeRemuneracaoServicosAmount(((Number(tegPercapita) || 0) * percapitaQuantity) / 30),
+  }
+}
+
 const listAllApontamentoServicosItems = async ({
   mesAno,
   dreCodigo,
@@ -5225,7 +5388,8 @@ const calculateRemuneracaoServicosItems = async ({
        COALESCE(teg_creche_percapita, 0) AS teg_creche_percapita,
        COALESCE(km_valor, 0) AS km_valor,
        COALESCE(continua_regular, 0) AS continua_regular,
-       COALESCE(continua_cadeirante, 0) AS continua_cadeirante
+       COALESCE(continua_cadeirante, 0) AS continua_cadeirante,
+       COALESCE(cca_valor, 0) AS cca_valor
      FROM remuneracao_servicos
      WHERE mes_ano = $1
        AND data_referencia = $2::date
@@ -5239,6 +5403,20 @@ const calculateRemuneracaoServicosItems = async ({
     const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
     const currentValue = resultMap.get(groupKey) ?? 0
     resultMap.set(groupKey, currentValue + getRegularAccumulatedQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const accumulatedNcPresRegularByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getRegularNcPresAccumulatedQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const accumulatedAtComplNcRegularByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getRegularAtComplNcAccumulatedQuantity(item))
     return resultMap
   }, new Map())
 
@@ -5276,6 +5454,20 @@ const calculateRemuneracaoServicosItems = async ({
     const kilometragem = normalizeApontamentoServicosKm(item.kilometragem)
     const kilometragemValue = Number.isFinite(kilometragem) ? kilometragem : 0
     resultMap.set(groupKey, Number((currentValue + kilometragemValue).toFixed(4)))
+    return resultMap
+  }, new Map())
+
+  const ccaNcQuantidadeByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getCcaNcPresQuantity(item) + getCcaAtComplNcQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const ccaCadQuantidadeByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getCcaCadQuantity(item) + getCcaAtComplCadQuantity(item))
     return resultMap
   }, new Map())
 
@@ -5345,8 +5537,11 @@ const calculateRemuneracaoServicosItems = async ({
     const hasContinuaOrKmApontamento = Number(continuaRegularByGroupKey.get(groupKey) ?? 0) > 0
       || Number(continuaCadeiranteByGroupKey.get(groupKey) ?? 0) > 0
       || Number(kmAdicionalByGroupKey.get(groupKey) ?? 0) > 0
+    const ccaNcQuantidade = Math.max(0, Number(ccaNcQuantidadeByGroupKey.get(groupKey) ?? 0))
+    const ccaCadQuantidade = Math.max(0, Number(ccaCadQuantidadeByGroupKey.get(groupKey) ?? 0))
+    const hasCcaApontamento = ccaNcQuantidade > 0 || ccaCadQuantidade > 0
 
-    if (!modalidadeDescricao && !hasContinuaOrKmApontamento) {
+    if (!modalidadeDescricao && !hasContinuaOrKmApontamento && !hasCcaApontamento) {
       totalIgnorados += 1
       continue
     }
@@ -5363,52 +5558,68 @@ const calculateRemuneracaoServicosItems = async ({
         : (accumulatedRegularByGroupKey.get(groupKey) ?? 0),
     )) : 0
     const quantidadeConfig = quantidadeConfigByTipoBancada[tipoBancada] ?? quantidadeConfigByTipoBancada.CONVENCIONAL
-    const lookupQuantidade = quantidadeConfig.resolveLookupQuantidade(quantidade)
     const shouldUseSpecialOnlyCalculation = Boolean(modalidadeDescricao)
       && isOrdemServicoTegEspecial
       && Boolean(specialRulesByTipoBancada[tipoBancada])
-    let tegRegularFixo = 0
-    let tegRegularPercapita = 0
+    let normalizedTegRegularFixo = 0
+    let normalizedTegRegularPercapita = 0
+    let normalizedTegAcessivelFixo = 0
+    let normalizedTegAcessivelPercapita = 0
 
-    if (modalidadeDescricao && quantidade > 0 && !shouldUseSpecialOnlyCalculation) {
-      const fixoLookupKey = `${modalidadeDescricao}|${tipoBancada}|FIXO|${lookupQuantidade}`
-      const percapitaLookupKey = `${modalidadeDescricao}|${tipoBancada}|PER CAPITA|${lookupQuantidade}`
+    if (modalidadeDescricao && !shouldUseSpecialOnlyCalculation) {
+      if (tipoBancada === 'ACESSIVEL') {
+        const acessivelNcPresQuantidade = Math.max(0, Number(accumulatedNcPresRegularByGroupKey.get(groupKey) ?? 0))
+        const acessivelAtComplNcQuantidade = Math.max(0, Number(accumulatedAtComplNcRegularByGroupKey.get(groupKey) ?? 0))
+        const acessivelRegularModalidadeCandidates = ['TEG REGULAR']
+        const convencionalQuantidadeConfig = quantidadeConfigByTipoBancada.CONVENCIONAL
 
-      tegRegularFixo = valorByLookupKey.get(fixoLookupKey)
-      if (!Number.isFinite(tegRegularFixo)) {
-        const fixoLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
+        const ncPresAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
+          quantidade: acessivelNcPresQuantidade,
+          dataReferencia,
+          modalidadeDescricaoCandidates: acessivelRegularModalidadeCandidates,
+          tipoBancada: 'CONVENCIONAL',
+          quantidadeConfig: convencionalQuantidadeConfig,
+          valorByLookupKey,
+        }, executor)
+        const atComplNcAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
+          quantidade: acessivelAtComplNcQuantidade,
+          dataReferencia,
+          modalidadeDescricaoCandidates: acessivelRegularModalidadeCandidates,
+          tipoBancada: 'CONVENCIONAL',
+          quantidadeConfig: convencionalQuantidadeConfig,
+          valorByLookupKey,
+        }, executor)
+
+        normalizedTegRegularFixo = normalizeRemuneracaoServicosAmount(ncPresAmounts.fixo + atComplNcAmounts.fixo)
+        normalizedTegRegularPercapita = normalizeRemuneracaoServicosAmount(ncPresAmounts.percapita + atComplNcAmounts.percapita)
+
+        if (quantidade > 0) {
+          const acessivelCadAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
+            quantidade,
+            dataReferencia,
+            modalidadeDescricaoCandidates,
+            tipoBancada: 'ACESSIVEL',
+            quantidadeConfig: quantidadeConfigByTipoBancada.ACESSIVEL,
+            valorByLookupKey,
+          }, executor)
+
+          normalizedTegAcessivelFixo = acessivelCadAmounts.fixo
+          normalizedTegAcessivelPercapita = acessivelCadAmounts.percapita
+        }
+      } else if (quantidade > 0) {
+        const tegModalidadeAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
+          quantidade,
           dataReferencia,
           modalidadeDescricaoCandidates,
           tipoBancada,
-          tipoPgtoDescricao: 'FIXO',
-          quantidade: lookupQuantidade,
+          quantidadeConfig,
+          valorByLookupKey,
         }, executor)
-        tegRegularFixo = Number(fixoLookup.valor) || 0
-        valorByLookupKey.set(fixoLookupKey, tegRegularFixo)
-      }
 
-      tegRegularPercapita = valorByLookupKey.get(percapitaLookupKey)
-      if (!Number.isFinite(tegRegularPercapita)) {
-        const percapitaLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
-          dataReferencia,
-          modalidadeDescricaoCandidates,
-          tipoBancada,
-          tipoPgtoDescricao: 'PER CAPITA',
-          quantidade: lookupQuantidade,
-        }, executor)
-        tegRegularPercapita = Number(percapitaLookup.valor) || 0
-        valorByLookupKey.set(percapitaLookupKey, tegRegularPercapita)
+        normalizedTegRegularFixo = tegModalidadeAmounts.fixo
+        normalizedTegRegularPercapita = tegModalidadeAmounts.percapita
       }
     }
-
-    const normalizedTegRegularFixo = normalizeRemuneracaoServicosAmount((Number(tegRegularFixo) || 0) / 30)
-    const percapitaBaseQuantity = Math.max(quantidade, 0)
-    const percapitaQuantity = percapitaBaseQuantity <= quantidadeConfig.faixa1Limite
-      ? percapitaBaseQuantity
-      : percapitaBaseQuantity === quantidadeConfig.faixa2Quantidade
-        ? percapitaBaseQuantity
-        : Math.max(percapitaBaseQuantity - quantidadeConfig.faixa3Inicio + 1, 0)
-    const normalizedTegRegularPercapita = normalizeRemuneracaoServicosAmount(((Number(tegRegularPercapita) || 0) * percapitaQuantity) / 30)
 
     const specialRule = specialRulesByTipoBancada[tipoBancada] ?? null
     let normalizedTegEspecialRegularFixo = 0
@@ -5479,17 +5690,17 @@ const calculateRemuneracaoServicosItems = async ({
       totalCalculados += 1
     }
 
-    const nextTegRegularFixo = modalidadeDescricao && tipoBancada === 'CONVENCIONAL'
+    const nextTegRegularFixo = modalidadeDescricao && (tipoBancada === 'CONVENCIONAL' || tipoBancada === 'ACESSIVEL')
       ? normalizedTegRegularFixo
       : Number(item.tegRegularFixo) || 0
-    const nextTegRegularPercapita = modalidadeDescricao && tipoBancada === 'CONVENCIONAL'
+    const nextTegRegularPercapita = modalidadeDescricao && (tipoBancada === 'CONVENCIONAL' || tipoBancada === 'ACESSIVEL')
       ? normalizedTegRegularPercapita
       : Number(item.tegRegularPercapita) || 0
     const nextTegAcessivelFixo = modalidadeDescricao && tipoBancada === 'ACESSIVEL'
-      ? normalizedTegRegularFixo
+      ? normalizedTegAcessivelFixo
       : Number(item.tegAcessivelFixo) || 0
     const nextTegAcessivelPercapita = modalidadeDescricao && tipoBancada === 'ACESSIVEL'
-      ? normalizedTegRegularPercapita
+      ? normalizedTegAcessivelPercapita
       : Number(item.tegAcessivelPercapita) || 0
     const nextTegEspecialRegularFixo = modalidadeDescricao ? normalizedTegEspecialRegularFixo : Number(item.tegEspecialRegularFixo) || 0
     const nextTegEspecialRegularPercapita = modalidadeDescricao ? normalizedTegEspecialRegularPercapita : Number(item.tegEspecialRegularPercapita) || 0
@@ -5559,6 +5770,27 @@ const calculateRemuneracaoServicosItems = async ({
       }
     }
 
+    let nextCcaValor = 0
+
+    if (hasCcaApontamento) {
+      const ccaValorRatesLookupKey = 'CCA|VALOR_RATES'
+      let ccaValorRates = valorByLookupKey.get(ccaValorRatesLookupKey)
+
+      if (!ccaValorRates) {
+        ccaValorRates = await findLatestCcaValorRates({
+          dataReferencia,
+        }, executor)
+        valorByLookupKey.set(ccaValorRatesLookupKey, ccaValorRates)
+      }
+
+      nextCcaValor = calculateCcaValorAmount({
+        ncQuantidade: ccaNcQuantidade,
+        cadQuantidade: ccaCadQuantidade,
+        ncUnitMonthlyValor: ccaValorRates.ncUnitMonthlyValor,
+        cadUnitMonthlyValor: ccaValorRates.cadUnitMonthlyValor,
+      })
+    }
+
     const hasAnyValueChange =
       nextTegRegularFixo !== (Number(item.tegRegularFixo) || 0)
       || nextTegRegularPercapita !== (Number(item.tegRegularPercapita) || 0)
@@ -5573,6 +5805,7 @@ const calculateRemuneracaoServicosItems = async ({
       || nextKmValor !== (Number(item.kmValor) || 0)
       || nextContinuaRegular !== (Number(item.continuaRegular) || 0)
       || nextContinuaCadeirante !== (Number(item.continuaCadeirante) || 0)
+      || nextCcaValor !== (Number(item.ccaValor) || 0)
 
     if (hasAnyValueChange) {
       totalAtualizados += 1
@@ -5596,6 +5829,7 @@ const calculateRemuneracaoServicosItems = async ({
       kmValor: nextKmValor,
       continuaRegular: nextContinuaRegular,
       continuaCadeirante: nextContinuaCadeirante,
+      ccaValor: nextCcaValor,
     })
   }
 
@@ -5648,6 +5882,7 @@ const upsertRemuneracaoServicosItems = async ({
       kmValor: normalizeRemuneracaoServicosAmount(item.kmValor),
       continuaRegular: normalizeRemuneracaoServicosAmount(item.continuaRegular),
       continuaCadeirante: normalizeRemuneracaoServicosAmount(item.continuaCadeirante),
+      ccaValor: normalizeRemuneracaoServicosAmount(item.ccaValor),
     }
 
     if (!dreCodigo || !ordemServicoCodigo || !tipoPessoa || !Number.isInteger(revisao) || revisao < 0) {
@@ -5678,6 +5913,7 @@ const upsertRemuneracaoServicosItems = async ({
       km_valor: metrics.kmValor,
       continua_regular: metrics.continuaRegular,
       continua_cadeirante: metrics.continuaCadeirante,
+      cca_valor: metrics.ccaValor,
     })
   }
 
@@ -5721,7 +5957,8 @@ const upsertRemuneracaoServicosItems = async ({
          teg_creche_percapita numeric,
          km_valor numeric,
          continua_regular numeric,
-         continua_cadeirante numeric
+         continua_cadeirante numeric,
+         cca_valor numeric
        )
      )
      SELECT 1
@@ -5762,7 +5999,8 @@ const upsertRemuneracaoServicosItems = async ({
          teg_creche_percapita numeric,
          km_valor numeric,
          continua_regular numeric,
-         continua_cadeirante numeric
+         continua_cadeirante numeric,
+         cca_valor numeric
        )
      )
      INSERT INTO remuneracao_servicos (
@@ -5785,6 +6023,7 @@ const upsertRemuneracaoServicosItems = async ({
        km_valor,
        continua_regular,
        continua_cadeirante,
+       cca_valor,
        data_alteracao
      )
      SELECT
@@ -5807,6 +6046,7 @@ const upsertRemuneracaoServicosItems = async ({
        input_rows.km_valor,
        input_rows.continua_regular,
        input_rows.continua_cadeirante,
+       input_rows.cca_valor,
        NOW()
      FROM input_rows
      ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
@@ -5826,6 +6066,7 @@ const upsertRemuneracaoServicosItems = async ({
          km_valor = EXCLUDED.km_valor,
          continua_regular = EXCLUDED.continua_regular,
          continua_cadeirante = EXCLUDED.continua_cadeirante,
+         cca_valor = EXCLUDED.cca_valor,
          data_alteracao = NOW()`}`,
     [payloadJson, mesAno, dataReferencia],
   )
@@ -24375,6 +24616,7 @@ const ensureDatabaseSchema = async () => {
       km_valor numeric(14, 2) NOT NULL DEFAULT 0,
       continua_regular numeric(14, 2) NOT NULL DEFAULT 0,
       continua_cadeirante numeric(14, 2) NOT NULL DEFAULT 0,
+      cca_valor numeric(14, 2) NOT NULL DEFAULT 0,
       data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
       data_alteracao timestamp without time zone,
       CONSTRAINT remuneracao_servicos_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
@@ -24399,6 +24641,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS km_valor numeric(14, 2) DEFAULT 0')
   await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS continua_regular numeric(14, 2) DEFAULT 0')
   await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS continua_cadeirante numeric(14, 2) DEFAULT 0')
+  await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS cca_valor numeric(14, 2) DEFAULT 0')
   await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
   await pool.query('ALTER TABLE remuneracao_servicos ADD COLUMN IF NOT EXISTS data_alteracao timestamp without time zone')
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN mes_ano TYPE varchar(7)')
@@ -24417,6 +24660,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN km_valor TYPE numeric(14, 2) USING COALESCE(km_valor, 0)::numeric(14, 2)')
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN continua_regular TYPE numeric(14, 2) USING COALESCE(continua_regular, 0)::numeric(14, 2)')
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN continua_cadeirante TYPE numeric(14, 2) USING COALESCE(continua_cadeirante, 0)::numeric(14, 2)')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN cca_valor TYPE numeric(14, 2) USING COALESCE(cca_valor, 0)::numeric(14, 2)')
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN data_inclusao SET DEFAULT NOW()')
   await pool.query('UPDATE remuneracao_servicos SET mes_ano = BTRIM(mes_ano) WHERE mes_ano IS NOT NULL')
   await pool.query("UPDATE remuneracao_servicos SET tipo_pessoa = 'PF' WHERE COALESCE(BTRIM(tipo_pessoa), '') = ''")
@@ -24434,6 +24678,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('UPDATE remuneracao_servicos SET km_valor = 0 WHERE km_valor IS NULL OR km_valor < 0')
   await pool.query('UPDATE remuneracao_servicos SET continua_regular = 0 WHERE continua_regular IS NULL OR continua_regular < 0')
   await pool.query('UPDATE remuneracao_servicos SET continua_cadeirante = 0 WHERE continua_cadeirante IS NULL OR continua_cadeirante < 0')
+  await pool.query('UPDATE remuneracao_servicos SET cca_valor = 0 WHERE cca_valor IS NULL OR cca_valor < 0')
   await pool.query('ALTER TABLE remuneracao_servicos DROP CONSTRAINT IF EXISTS remuneracao_servicos_apuracao_servicos_fk')
   await pool.query('ALTER TABLE remuneracao_servicos DROP CONSTRAINT IF EXISTS remuneracao_servicos_pk')
   await pool.query('DROP INDEX IF EXISTS remuneracao_servicos_chave_uk')
@@ -24458,6 +24703,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN km_valor SET NOT NULL')
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN continua_regular SET NOT NULL')
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN continua_cadeirante SET NOT NULL')
+  await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN cca_valor SET NOT NULL')
   await pool.query('ALTER TABLE remuneracao_servicos ALTER COLUMN data_inclusao SET NOT NULL')
   await pool.query(`
     WITH ranked_rows AS (

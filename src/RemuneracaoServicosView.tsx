@@ -261,6 +261,7 @@ const buildSavePayloadItem = (item: RemuneracaoServicosItem): RemuneracaoServico
   kmValor: item.kmValor,
   continuaRegular: item.continuaRegular,
   continuaCadeirante: item.continuaCadeirante,
+  ccaValor: item.ccaValor,
 })
 
 const areSavePayloadItemsEqual = (left: RemuneracaoServicosSaveItem, right: RemuneracaoServicosSaveItem) => {
@@ -281,6 +282,7 @@ const areSavePayloadItemsEqual = (left: RemuneracaoServicosSaveItem, right: Remu
     && left.kmValor === right.kmValor
     && left.continuaRegular === right.continuaRegular
     && left.continuaCadeirante === right.continuaCadeirante
+    && left.ccaValor === right.ccaValor
 }
 
 const monetaryColumns = [
@@ -297,6 +299,7 @@ const monetaryColumns = [
   { key: 'kmValor', groupTitle: 'KM', columnTitle: 'Valor', headerClass: 'remuneracao-servicos-header-km' },
   { key: 'continuaRegular', groupTitle: 'Continua', columnTitle: 'Reg.', headerClass: 'remuneracao-servicos-header-continua' },
   { key: 'continuaCadeirante', groupTitle: 'Continua', columnTitle: 'Cadeirante', headerClass: 'remuneracao-servicos-header-continua' },
+  { key: 'ccaValor', groupTitle: 'CCA', columnTitle: 'Valor', headerClass: 'remuneracao-servicos-header-cca' },
 ] as const
 
 type MonetaryColumnKey = (typeof monetaryColumns)[number]['key']

@@ -136,6 +136,7 @@ const monetaryColumns = [
   { key: 'kmValor', groupTitle: 'KM', columnTitle: 'Valor', headerClass: 'remuneracao-servicos-header-km' },
   { key: 'continuaRegular', groupTitle: 'Continua', columnTitle: 'Reg.', headerClass: 'remuneracao-servicos-header-continua' },
   { key: 'continuaCadeirante', groupTitle: 'Continua', columnTitle: 'Cadeirante', headerClass: 'remuneracao-servicos-header-continua' },
+  { key: 'ccaValor', groupTitle: 'CCA', columnTitle: 'Valor', headerClass: 'remuneracao-servicos-header-cca' },
 ] as const
 
 type MonetaryColumnKey = (typeof monetaryColumns)[number]['key']

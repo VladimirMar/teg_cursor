@@ -36,6 +36,7 @@ export type RemuneracaoServicosItem = {
   kmValor: number
   continuaRegular: number
   continuaCadeirante: number
+  ccaValor: number
 }
 
 export type RemuneracaoServicosSaveItem = Pick<
@@ -57,6 +58,7 @@ export type RemuneracaoServicosSaveItem = Pick<
   | 'kmValor'
   | 'continuaRegular'
   | 'continuaCadeirante'
+  | 'ccaValor'
 >
 
 type RemuneracaoServicosListResponse = {
