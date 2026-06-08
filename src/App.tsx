@@ -8277,9 +8277,9 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Dashboard operacional</p>
-              <h2 id="content-title">Ordens de Servico Ativas por Mes</h2>
+              <h2 id="content-title">Ordens de Servico Ativas por Mês</h2>
               <p className="content-description">
-                Consulte a quantidade de Ordens de Servico que ficaram ativas ao menos um dia no mes selecionado,
+                Consulte a quantidade de Ordens de Servico que ficaram ativas ao menos um dia no mês selecionado,
                 agrupadas por DRE e modalidade.
               </p>
             </div>
@@ -8288,7 +8288,7 @@ function App() {
               <div className="management-card dashboard-controls-card">
                 <form className="dashboard-filter-form" onSubmit={handleDashboardSubmit}>
                   <label className="field-group dashboard-month-group" htmlFor="dashboard-month">
-                    <span>Mes de referencia</span>
+                    <span>Mes de referência</span>
                     <input
                       id="dashboard-month"
                       type="month"
