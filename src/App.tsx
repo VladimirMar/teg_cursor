@@ -202,7 +202,7 @@ type TitularSortField = 'codigo' | 'cnpj_cpf' | 'titular'
 type MarcaModeloSortField = 'codigo' | 'descricao'
 type SeguradoraSortField = 'codigo' | 'controle' | 'descricao'
 type FormMode = 'create' | 'edit' | 'view'
-type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'operacionalAdministrativo' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro' | 'monitoramento'
+type CollapsedMenuGroup = 'cadastros' | 'operacional' | 'operacionalAdministrativo' | 'condutor' | 'monitor' | 'termo' | 'ordemServico' | 'veiculo' | 'operacionalFinanceiro' | 'resumoFinanceiroMenu' | 'apuracaoFinanceira' | 'apuracaoServicos' | 'acesso' | 'cadastrosOperacional' | 'cadastrosFinanceiro' | 'monitoramento'
 
 type DashboardDrillDownContext = {
   dreCodigo: string
@@ -353,6 +353,7 @@ const getDefaultCollapsedMenuGroups = (): Record<CollapsedMenuGroup, boolean> =>
   ordemServico: true,
   veiculo: true,
   operacionalFinanceiro: true,
+  resumoFinanceiroMenu: true,
   apuracaoFinanceira: true,
   apuracaoServicos: true,
   acesso: true,
@@ -382,15 +383,15 @@ const getExpandedGroupsForView = (view: ActiveView): CollapsedMenuGroup[] => {
     case 'veiculoHistorico':
       return ['operacional', 'operacionalAdministrativo', 'veiculo']
     case 'resumoFinanceiro':
-      return ['operacional', 'operacionalFinanceiro']
+      return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira', 'resumoFinanceiroMenu']
     case 'apuracaoFinanceira':
       return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira']
     case 'apuracaoServicos':
     case 'apontamentoServicos':
     case 'remuneracaoServicos':
-      return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira', 'apuracaoServicos']
+      return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira', 'resumoFinanceiroMenu']
     case 'totalRemuneracaoServicos':
-      return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira']
+      return ['operacional', 'operacionalFinanceiro', 'apuracaoFinanceira', 'resumoFinanceiroMenu']
     case 'monitoramentoAmbiente':
     case 'batchProcessMonitor':
     case 'xmlImportLote':
@@ -7932,7 +7933,7 @@ function App() {
                 </li> : null}
                 {hasOperationalFinanceiroAccess ? <li className="menu-group menu-subgroup">
                   <div
-                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' || activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
+                    className={`menu-subitem menu-subitem-toggle ${activeView === 'resumoFinanceiro' || activeView === 'apuracaoFinanceira' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' || activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
                     onClick={() => toggleMenuGroup('operacionalFinanceiro')}
                     role="button"
                     aria-expanded={!collapsedMenuGroups.operacionalFinanceiro}
@@ -7948,15 +7949,9 @@ function App() {
                     <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.operacionalFinanceiro ? '▸' : '▾'}</span>
                   </div>
                   <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.operacionalFinanceiro ? 'menu-sublist-hidden' : ''}`}>
-                    {isViewAllowed('resumoFinanceiro', menuPermissionKeys) ? <li
-                      className={`menu-subitem menu-subitem-nested ${activeView === 'resumoFinanceiro' ? 'menu-subitem-active' : ''}`}
-                      onClick={() => setActiveView('resumoFinanceiro')}
-                    >
-                      Resumo Financeiro
-                    </li> : null}
-                    {isViewAllowed('apuracaoFinanceira', menuPermissionKeys) || isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
+                    {isViewAllowed('resumoFinanceiro', menuPermissionKeys) || isViewAllowed('apuracaoFinanceira', menuPermissionKeys) || isViewAllowed('apontamentoServicos', menuPermissionKeys) || isViewAllowed('remuneracaoServicos', menuPermissionKeys) || isViewAllowed('totalRemuneracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                       <div
-                        className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoFinanceira' || activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
+                        className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoFinanceira' || activeView === 'resumoFinanceiro' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' || activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
                         onClick={() => {
                           if (isViewAllowed('apuracaoFinanceira', menuPermissionKeys)) {
                             setActiveView('apuracaoFinanceira')
@@ -7980,28 +7975,32 @@ function App() {
                         <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.apuracaoFinanceira ? '▸' : '▾'}</span>
                       </div>
                       <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.apuracaoFinanceira ? 'menu-sublist-hidden' : ''}`}>
-                        {isViewAllowed('apuracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
+                        {isViewAllowed('resumoFinanceiro', menuPermissionKeys) || isViewAllowed('apontamentoServicos', menuPermissionKeys) || isViewAllowed('remuneracaoServicos', menuPermissionKeys) || isViewAllowed('totalRemuneracaoServicos', menuPermissionKeys) ? <li className="menu-group menu-subgroup">
                           <div
-                            className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'apuracaoServicos' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' ? 'menu-subitem-active' : ''}`}
+                            className={`menu-subitem menu-subitem-toggle menu-subitem-nested ${activeView === 'resumoFinanceiro' || activeView === 'apontamentoServicos' || activeView === 'remuneracaoServicos' || activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
                             onClick={() => {
-                              setActiveView('apuracaoServicos')
-                              toggleMenuGroup('apuracaoServicos')
+                              if (isViewAllowed('resumoFinanceiro', menuPermissionKeys)) {
+                                setActiveView('resumoFinanceiro')
+                              }
+                              toggleMenuGroup('resumoFinanceiroMenu')
                             }}
                             role="button"
-                            aria-expanded={!collapsedMenuGroups.apuracaoServicos}
+                            aria-expanded={!collapsedMenuGroups.resumoFinanceiroMenu}
                             tabIndex={0}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter' || event.key === ' ') {
                                 event.preventDefault()
-                                setActiveView('apuracaoServicos')
-                                toggleMenuGroup('apuracaoServicos')
+                                if (isViewAllowed('resumoFinanceiro', menuPermissionKeys)) {
+                                  setActiveView('resumoFinanceiro')
+                                }
+                                toggleMenuGroup('resumoFinanceiroMenu')
                               }
                             }}
                           >
-                            <span className="menu-subitem-label">Total Servicos</span>
-                            <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.apuracaoServicos ? '▸' : '▾'}</span>
+                            <span className="menu-subitem-label">Resumo financeiro</span>
+                            <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.resumoFinanceiroMenu ? '▸' : '▾'}</span>
                           </div>
-                          <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.apuracaoServicos ? 'menu-sublist-hidden' : ''}`}>
+                          <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.resumoFinanceiroMenu ? 'menu-sublist-hidden' : ''}`}>
                             {isViewAllowed('apontamentoServicos', menuPermissionKeys) ? <li
                               className={`menu-subitem menu-subitem-nested ${activeView === 'apontamentoServicos' ? 'menu-subitem-active' : ''}`}
                               onClick={() => setActiveView('apontamentoServicos')}
@@ -8012,15 +8011,15 @@ function App() {
                               className={`menu-subitem menu-subitem-nested ${activeView === 'remuneracaoServicos' ? 'menu-subitem-active' : ''}`}
                               onClick={() => setActiveView('remuneracaoServicos')}
                             >
-                              Remuneracao Servicos
+                              Ateste Servicos
+                            </li> : null}
+                            {isViewAllowed('totalRemuneracaoServicos', menuPermissionKeys) ? <li
+                              className={`menu-subitem menu-subitem-nested ${activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
+                              onClick={() => setActiveView('totalRemuneracaoServicos')}
+                            >
+                              Total Remuneracao
                             </li> : null}
                           </ul>
-                        </li> : null}
-                        {isViewAllowed('totalRemuneracaoServicos', menuPermissionKeys) ? <li
-                          className={`menu-subitem menu-subitem-nested ${activeView === 'totalRemuneracaoServicos' ? 'menu-subitem-active' : ''}`}
-                          onClick={() => setActiveView('totalRemuneracaoServicos')}
-                        >
-                          Total Remuneracao
                         </li> : null}
                       </ul>
                     </li> : null}

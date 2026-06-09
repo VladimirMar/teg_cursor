@@ -2990,6 +2990,7 @@ const mapApontamentoServicosRow = (row) => ({
   empresa: normalizeRequestValue(row?.empresa),
   nomeCondutor: normalizeRequestValue(row?.nome_condutor),
   tipoVeiculo: normalizeApontamentoTipoVeiculo(row?.tipo_veiculo),
+  veiculoOsEspecial: normalizeOsEspecial(row?.veiculo_os_especial) ?? 'Não',
   apuracaoFinanceiraSituacao: normalizeApuracaoFinanceiraStatus(row?.apuracao_financeira_situacao) || 'A processar',
   dataReferencia: normalizeRequestValue(row?.data_referencia),
   isAtivoNaData: Boolean(row?.ativo_na_data),
@@ -3028,6 +3029,7 @@ const mapRemuneracaoServicosRow = (baseItem, remuneracaoItem) => ({
   empresa: baseItem.empresa,
   nomeCondutor: baseItem.nomeCondutor,
   tipoVeiculo: baseItem.tipoVeiculo,
+  veiculoOsEspecial: baseItem.veiculoOsEspecial,
   apuracaoFinanceiraSituacao: baseItem.apuracaoFinanceiraSituacao,
   dataReferencia: baseItem.dataReferencia,
   isAtivoNaData: baseItem.isAtivoNaData,
@@ -3475,6 +3477,10 @@ const buildApontamentoServicosLocaleOrderExpression = (valueExpression) => {
 
   return `BTRIM(REGEXP_REPLACE(REGEXP_REPLACE(UPPER(BTRIM(COALESCE(${normalizedExpression}, ''))), '[[:punct:]]+', ' ', 'g'), '\\s+', ' ', 'g'))`
 }
+
+const buildVeiculoOsEspecialSqlExpression = (ordemServicoAlias = 'os') => (
+  `COALESCE(BTRIM((SELECT v.os_especial FROM veiculo v WHERE BTRIM(v.crm) = BTRIM(${ordemServicoAlias}.crm) LIMIT 1)), '')`
+)
 
 const listCondutorCpfKeysByCrmc = async (crmcCondutor, executor = pool) => {
   const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
@@ -4166,6 +4172,7 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
        COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
        COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
        COALESCE(BTRIM(apontamento_dia.tipo_veiculo), '') AS tipo_veiculo,
+       ${buildVeiculoOsEspecialSqlExpression('os')} AS veiculo_os_especial,
        COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
        TRUE AS ativo_na_data,
        $1::date::text AS data_referencia,
@@ -4387,6 +4394,7 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
        COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
        COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
        COALESCE(BTRIM(paged_ordens.tipo_veiculo), '') AS tipo_veiculo,
+       ${buildVeiculoOsEspecialSqlExpression('os')} AS veiculo_os_especial,
        $1::date::text AS data_referencia,
        TRUE AS ativo_na_data
      FROM paged_ordens
@@ -4429,6 +4437,7 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
     empresa: normalizeRequestValue(row?.empresa),
     nomeCondutor: normalizeRequestValue(row?.nome_condutor),
     tipoVeiculo: normalizeApontamentoTipoVeiculo(row?.tipo_veiculo),
+    veiculoOsEspecial: normalizeOsEspecial(row?.veiculo_os_especial) ?? 'Não',
     apuracaoFinanceiraSituacao: normalizeApuracaoFinanceiraStatus(row?.apuracao_financeira_situacao) || 'A processar',
     dataReferencia: normalizeRequestValue(row?.data_referencia),
     isAtivoNaData: Boolean(row?.ativo_na_data),
@@ -4504,6 +4513,7 @@ const mapTotalRemuneracaoServicosRow = (row) => ({
   empresa: normalizeRequestValue(row?.empresa),
   nomeCondutor: normalizeRequestValue(row?.nome_condutor),
   tipoVeiculo: normalizeApontamentoTipoVeiculo(row?.tipo_veiculo),
+  veiculoOsEspecial: normalizeOsEspecial(row?.veiculo_os_especial) ?? 'Não',
   apuracaoFinanceiraSituacao: normalizeApuracaoFinanceiraStatus(row?.apuracao_financeira_situacao) || 'A processar',
   totalDiasReferencia: Number(row?.total_dias_referencia) || 0,
   tegRegularFixo: Number(row?.teg_regular_fixo) || 0,
@@ -4721,6 +4731,7 @@ const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondut
        COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
        COALESCE(BTRIM(apuracao_financeira.situacao), '') AS apuracao_financeira_situacao,
        COALESCE(BTRIM(paged_ordens.tipo_veiculo), '') AS tipo_veiculo,
+       ${buildVeiculoOsEspecialSqlExpression('os')} AS veiculo_os_especial,
        paged_ordens.total_dias_referencia,
        paged_ordens.teg_regular_fixo,
        paged_ordens.teg_regular_percapita,
@@ -4846,6 +4857,40 @@ const getRegularAtComplNcAccumulatedQuantity = (item) => {
   return Math.max(0, Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0)
 }
 
+const isIncludedTipoEscolaForEspecialRegularPercapitaAcrescimo = (item) => {
+  const tipoEscolaSigla = normalizeTipoEscolaLabel(item?.tipoEscolaSigla ?? item?.tipo_escola_sigla)
+
+  if (tipoEscolaSigla === 'EMEI' || tipoEscolaSigla === 'EMEF' || tipoEscolaSigla === 'EMEE') {
+    return true
+  }
+
+  const tipoEscolaDescricao = normalizeTipoEscolaLabel(item?.tipoEscolaDescricao ?? item?.tipo_escola_descricao)
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO INFANTIL')) {
+    return true
+  }
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE ENSINO FUNDAMENTAL')) {
+    return true
+  }
+
+  if (tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO ESPECIAL')) {
+    return true
+  }
+
+  return false
+}
+
+const getEspecialRegularPercapitaAcrescimoQuantity = (item) => {
+  if (!isIncludedTipoEscolaForEspecialRegularPercapitaAcrescimo(item)) {
+    return 0
+  }
+
+  const ncPresAcm = Number(item?.naoCadeirantePresencialAcm) || 0
+  const atCompNcAcm = Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0
+  return Math.max(0, ncPresAcm + atCompNcAcm)
+}
+
 const isTipoEscolaCca = (item) => {
   const tipoEscolaCodigo = normalizeRequestValue(item?.tipoEscolaCodigo ?? item?.tipo_escola_codigo)
 
@@ -4943,6 +4988,22 @@ const getAcessivelAccumulatedQuantity = (item) => {
   const cadeiranteAcm = Number(item?.cadeiranteAcm) || 0
   const atCompCadAcm = Number(item?.atendimentoComplementarCadeiranteAcm) || 0
   return Math.max(0, cadeiranteAcm + atCompCadAcm)
+}
+
+const getAcessivelTegRegularPercapitaNcPresQuantity = (item) => {
+  if (!isIncludedTipoEscolaForAcessivel(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.naoCadeirantePresencialAcm) || 0)
+}
+
+const getAcessivelTegRegularPercapitaAtComplNcQuantity = (item) => {
+  if (!isIncludedTipoEscolaForAcessivel(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0)
 }
 
 const isIncludedTipoEscolaForCreche = (item) => {
@@ -5268,6 +5329,39 @@ const resolveNormalizedTegModalidadeDailyAmounts = async ({
   }
 }
 
+const resolveAcessivelTegRegularPercapitaAcrescimoDailyAmount = async ({
+  quantidade,
+  dataReferencia,
+  modalidadeDescricaoCandidates,
+  quantidadeConfig,
+  valorByLookupKey,
+}, executor = pool) => {
+  const normalizedQuantidade = Math.max(0, Number(quantidade) || 0)
+
+  if (normalizedQuantidade <= 0) {
+    return 0
+  }
+
+  const lookupQuantidade = quantidadeConfig.faixa1Limite
+  const modalidadeLookupKey = (Array.isArray(modalidadeDescricaoCandidates) ? modalidadeDescricaoCandidates : [modalidadeDescricaoCandidates]).join('|')
+  const percapitaLookupKey = `${modalidadeLookupKey}|CONVENCIONAL|PER CAPITA|${lookupQuantidade}|ACESSIVEL_ACRESCIMO_FAIXA15`
+
+  let tegPercapitaUnitario = valorByLookupKey.get(percapitaLookupKey)
+  if (!Number.isFinite(tegPercapitaUnitario)) {
+    const percapitaLookup = await findLatestRemuneracaoCondicaoValorWithFallback({
+      dataReferencia,
+      modalidadeDescricaoCandidates,
+      tipoBancada: 'CONVENCIONAL',
+      tipoPgtoDescricao: 'PER CAPITA',
+      quantidade: lookupQuantidade,
+    }, executor)
+    tegPercapitaUnitario = Number(percapitaLookup.valor) || 0
+    valorByLookupKey.set(percapitaLookupKey, tegPercapitaUnitario)
+  }
+
+  return normalizeRemuneracaoServicosAmount(((Number(tegPercapitaUnitario) || 0) * normalizedQuantidade) / 30)
+}
+
 const listAllApontamentoServicosItems = async ({
   mesAno,
   dreCodigo,
@@ -5420,6 +5514,27 @@ const calculateRemuneracaoServicosItems = async ({
     return resultMap
   }, new Map())
 
+  const accumulatedAcessivelTegRegularPercapitaNcPresByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getAcessivelTegRegularPercapitaNcPresQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const accumulatedAcessivelTegRegularPercapitaAtComplNcByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getAcessivelTegRegularPercapitaAtComplNcQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const accumulatedEspecialRegularPercapitaAcrescimoByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getEspecialRegularPercapitaAcrescimoQuantity(item))
+    return resultMap
+  }, new Map())
+
   const accumulatedAcessivelByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
     const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
     const currentValue = resultMap.get(groupKey) ?? 0
@@ -5568,30 +5683,28 @@ const calculateRemuneracaoServicosItems = async ({
 
     if (modalidadeDescricao && !shouldUseSpecialOnlyCalculation) {
       if (tipoBancada === 'ACESSIVEL') {
-        const acessivelNcPresQuantidade = Math.max(0, Number(accumulatedNcPresRegularByGroupKey.get(groupKey) ?? 0))
-        const acessivelAtComplNcQuantidade = Math.max(0, Number(accumulatedAtComplNcRegularByGroupKey.get(groupKey) ?? 0))
+        const acessivelNcPresQuantidade = Math.max(0, Number(accumulatedAcessivelTegRegularPercapitaNcPresByGroupKey.get(groupKey) ?? 0))
+        const acessivelAtComplNcQuantidade = Math.max(0, Number(accumulatedAcessivelTegRegularPercapitaAtComplNcByGroupKey.get(groupKey) ?? 0))
         const acessivelRegularModalidadeCandidates = ['TEG REGULAR']
         const convencionalQuantidadeConfig = quantidadeConfigByTipoBancada.CONVENCIONAL
 
-        const ncPresAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
+        const ncPresPercapita = await resolveAcessivelTegRegularPercapitaAcrescimoDailyAmount({
           quantidade: acessivelNcPresQuantidade,
           dataReferencia,
           modalidadeDescricaoCandidates: acessivelRegularModalidadeCandidates,
-          tipoBancada: 'CONVENCIONAL',
           quantidadeConfig: convencionalQuantidadeConfig,
           valorByLookupKey,
         }, executor)
-        const atComplNcAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
+        const atComplNcPercapita = await resolveAcessivelTegRegularPercapitaAcrescimoDailyAmount({
           quantidade: acessivelAtComplNcQuantidade,
           dataReferencia,
           modalidadeDescricaoCandidates: acessivelRegularModalidadeCandidates,
-          tipoBancada: 'CONVENCIONAL',
           quantidadeConfig: convencionalQuantidadeConfig,
           valorByLookupKey,
         }, executor)
 
-        normalizedTegRegularFixo = normalizeRemuneracaoServicosAmount(ncPresAmounts.fixo + atComplNcAmounts.fixo)
-        normalizedTegRegularPercapita = normalizeRemuneracaoServicosAmount(ncPresAmounts.percapita + atComplNcAmounts.percapita)
+        normalizedTegRegularFixo = 0
+        normalizedTegRegularPercapita = normalizeRemuneracaoServicosAmount(ncPresPercapita + atComplNcPercapita)
 
         if (quantidade > 0) {
           const acessivelCadAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
@@ -5683,6 +5796,30 @@ const calculateRemuneracaoServicosItems = async ({
         if (specialRule.outputPercapitaField === 'tegEspecialAcessivelPercapita') {
           normalizedTegEspecialAcessivelPercapita = normalizedSpecialPercapita
         }
+      }
+    }
+
+    if (modalidadeDescricao && isOrdemServicoTegEspecial && tipoBancada === 'ACESSIVEL') {
+      const especialRegularPercapitaAcrescimoQuantidade = Math.max(0, Number(accumulatedEspecialRegularPercapitaAcrescimoByGroupKey.get(groupKey) ?? 0))
+
+      if (especialRegularPercapitaAcrescimoQuantidade > 0) {
+        const especialRegularPercapitaAcrescimoLookupKey = 'TEG ESPECIAL|CONVENCIONAL|PER CAPITA|Per Cap Regular|ACESSIVEL_ACRESCIMO'
+        let tegEspecialRegularPercapitaValor = valorByLookupKey.get(especialRegularPercapitaAcrescimoLookupKey)
+
+        if (!Number.isFinite(tegEspecialRegularPercapitaValor)) {
+          tegEspecialRegularPercapitaValor = await findLatestRemuneracaoCondicaoValorByCondicao({
+            dataReferencia,
+            modalidadeDescricao: 'TEG ESPECIAL',
+            tipoBancada: 'CONVENCIONAL',
+            tipoPgtoDescricao: 'PER CAPITA',
+            condicaoDescricao: 'Per Cap Regular',
+          }, executor)
+          valorByLookupKey.set(especialRegularPercapitaAcrescimoLookupKey, tegEspecialRegularPercapitaValor)
+        }
+
+        normalizedTegEspecialRegularPercapita = normalizeRemuneracaoServicosAmount(
+          ((Number(tegEspecialRegularPercapitaValor) || 0) * especialRegularPercapitaAcrescimoQuantidade) / 30,
+        )
       }
     }
 

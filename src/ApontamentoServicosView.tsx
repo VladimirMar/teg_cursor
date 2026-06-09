@@ -17,6 +17,7 @@ import {
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
 import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
+import { formatVeiculoOsEspecialDisplay } from './utils/veiculoDisplay'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 type ApontamentoServicosColumnVisibilityMode = 'all' | 'daily-only' | 'acum-only'
@@ -1285,6 +1286,7 @@ export default function ApontamentoServicosView() {
                     { key: 'empresa', label: 'Empresa', value: item.empresa || '-' },
                     { key: 'os', label: 'OS', value: item.ordemServicoOsConcat || item.ordemServicoNumOs || item.ordemServicoCodigo },
                     { key: 'placa', label: 'Placa', value: item.placa || '-' },
+                    { key: 'osEspecial', label: 'OS especial', value: formatVeiculoOsEspecialDisplay(item.veiculoOsEspecial) },
                     { key: 'periodo', label: 'Periodo', value: formatPeriodLabel(item) || '-' },
                   ]
 

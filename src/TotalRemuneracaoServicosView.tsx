@@ -10,6 +10,7 @@ import {
   APURACAO_TIPO_PESSOA_FILTER_OPTIONS,
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoaFilter } from './services/apuracaoTipoPessoa'
+import { formatVeiculoOsEspecialDisplay } from './utils/veiculoDisplay'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 type MonetaryColumnVisibilityMode = 'all' | 'continua-only' | 'km-valor-only' | 'valor-total-only'
@@ -659,6 +660,7 @@ export default function TotalRemuneracaoServicosView() {
                                 <span className="apontamento-servicos-subtitle-chip">Empresa: <strong>{item.empresa || 'Empresa nao informada'}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">OS: <strong>{item.ordemServicoOsConcat || item.ordemServicoTermoAdesao || item.ordemServicoCodigo}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">Placa: <strong>{item.placa || '-'}</strong></span>
+                                <span className="apontamento-servicos-subtitle-chip">OS especial: <strong>{formatVeiculoOsEspecialDisplay(item.veiculoOsEspecial)}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">Periodo: <strong>{formatPeriodLabel(item) || '-'}</strong></span>
                               </div>
                               <div className="remuneracao-servicos-subtitle-line-chips">
@@ -677,6 +679,9 @@ export default function TotalRemuneracaoServicosView() {
                           </span>
                           <span className="apontamento-servicos-primary-detail remuneracao-servicos-crmc-detail">
                             <strong>Tipo de Veiculo:</strong> {formatTipoVeiculoDisplay(item.tipoVeiculo)}
+                          </span>
+                          <span className="apontamento-servicos-primary-detail remuneracao-servicos-crmc-detail">
+                            <strong>OS especial:</strong> {formatVeiculoOsEspecialDisplay(item.veiculoOsEspecial)}
                           </span>
                         </td>
                         {visibleMonetaryColumns.map((column) => (

@@ -23,6 +23,7 @@ export type ApontamentoServicosItem = {
   empresa: string
   nomeCondutor: string
   tipoVeiculo: string
+  veiculoOsEspecial: string
   apuracaoFinanceiraSituacao: ApuracaoFinanceiraStatus
   dataReferencia: string
   isAtivoNaData: boolean

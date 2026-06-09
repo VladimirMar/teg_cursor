@@ -16,6 +16,7 @@ import {
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoaFilter } from './services/apuracaoTipoPessoa'
 import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
+import { formatVeiculoOsEspecialDisplay } from './utils/veiculoDisplay'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
 type MonetaryColumnVisibilityMode = 'all' | 'continua-only' | 'km-valor-only'
@@ -528,7 +529,7 @@ export default function RemuneracaoServicosView() {
     options: { silent?: boolean } = {},
   ) => {
     if (!isValidMonthYear(filters.mesAno)) {
-      openValidationDialog('Informe um mes/ano valido para consultar a remuneracao.')
+      openValidationDialog('Informe um mes/ano valido para consultar o ateste.')
       return
     }
 
@@ -545,7 +546,7 @@ export default function RemuneracaoServicosView() {
     if (!options.silent) {
       setIsLoading(true)
       setStatusTone('idle')
-      setStatusMessage('Carregando remuneracao de servicos...')
+      setStatusMessage('Carregando ateste de servicos...')
     }
 
     try {
@@ -570,14 +571,14 @@ export default function RemuneracaoServicosView() {
       setPageSize(result.pageSize)
       if (!options.silent) {
         setStatusTone('idle')
-        setStatusMessage(result.items.length ? '' : 'Nenhum registro de remuneracao encontrado para os filtros informados.')
+        setStatusMessage(result.items.length ? '' : 'Nenhum registro de ateste encontrado para os filtros informados.')
       }
 
       if (result.items.length) {
         shouldFocusFirstGridRecordRef.current = true
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao carregar os registros de remuneracao de servicos.'
+      const message = error instanceof Error ? error.message : 'Falha ao carregar os registros de ateste de servicos.'
       setStatusTone('error')
       setStatusMessage(message)
       setItems([])
@@ -755,7 +756,7 @@ export default function RemuneracaoServicosView() {
   const handleSave = useCallback(async () => {
     if (!hasEditPermission) {
       setStatusTone('error')
-      setStatusMessage(getEditPermissionDeniedMessage('Remuneracao Servicos'))
+      setStatusMessage(getEditPermissionDeniedMessage('Ateste Servicos'))
       return
     }
 
@@ -767,7 +768,7 @@ export default function RemuneracaoServicosView() {
 
     setIsSaving(true)
     setStatusTone('idle')
-    setStatusMessage('Salvando remuneracao de servicos...')
+    setStatusMessage('Salvando ateste de servicos...')
 
     try {
       const payloadItems = items
@@ -800,10 +801,10 @@ export default function RemuneracaoServicosView() {
       })
 
       setStatusTone('success')
-      setStatusMessage(message || 'Remuneracao de servicos gravada com sucesso.')
+      setStatusMessage(message || 'Ateste de servicos gravado com sucesso.')
       await loadItems(appliedFilters, page, pageSize, { silent: true })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao salvar a remuneracao de servicos.'
+      const message = error instanceof Error ? error.message : 'Falha ao salvar o ateste de servicos.'
       setStatusTone('error')
       setStatusMessage(message)
     } finally {
@@ -815,7 +816,7 @@ export default function RemuneracaoServicosView() {
     const currentFilters = buildCurrentFilters()
 
     if (!isValidMonthYear(currentFilters.mesAno)) {
-      openValidationDialog('Informe um mes/ano valido antes de calcular a remuneracao.')
+      openValidationDialog('Informe um mes/ano valido antes de calcular o ateste.')
       return
     }
 
@@ -829,13 +830,13 @@ export default function RemuneracaoServicosView() {
       setPage(1)
     }
 
-    if (!window.confirm('Autoriza a execucao do processamento de remuneracao em lote?')) {
+    if (!window.confirm('Autoriza a execucao do processamento de ateste em lote?')) {
       return
     }
 
     setIsCalculating(true)
     setStatusTone('idle')
-    setStatusMessage('Iniciando processamento em lote da remuneracao de servicos...')
+    setStatusMessage('Iniciando processamento em lote do ateste de servicos...')
 
     try {
       const parsedRevisao = Number.parseInt(currentFilters.revisao, 10)
@@ -858,7 +859,7 @@ export default function RemuneracaoServicosView() {
         void syncBatchStatus()
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao iniciar o processamento em lote da remuneracao de servicos.'
+      const message = error instanceof Error ? error.message : 'Falha ao iniciar o processamento em lote do ateste de servicos.'
       setStatusTone('error')
       setStatusMessage(message)
     } finally {
@@ -893,9 +894,9 @@ export default function RemuneracaoServicosView() {
     <>
       <div className="content-copy">
         <p className="content-kicker">Operacional financeiro</p>
-        <h2 id="content-title">Remuneracao Servicos</h2>
+        <h2 id="content-title">Ateste Servicos</h2>
         <p className="content-description">
-          Informe os valores monetarios da remuneracao por OS ativa, DRE e tipo pessoa na data de referencia.
+          Informe os valores monetarios do ateste por OS ativa, DRE e tipo pessoa na data de referencia.
           O acesso segue o mesmo perfil de Apontamento Servicos.
         </p>
       </div>
@@ -1013,7 +1014,7 @@ export default function RemuneracaoServicosView() {
               onClick={() => void handleSave()}
               disabled={isLoading || isSaving || isProcessingBatch || !hasPendingChanges}
             >
-              {isSaving ? 'Salvando...' : 'Salvar remuneracao'}
+              {isSaving ? 'Salvando...' : 'Salvar ateste'}
             </button>
             <button
               type="button"
@@ -1021,7 +1022,7 @@ export default function RemuneracaoServicosView() {
               onClick={() => void handleCalculate()}
               disabled={isLoading || isSaving || isProcessingBatch}
             >
-              {isCalculating ? 'Iniciando lote...' : 'Calcular remuneracao'}
+              {isCalculating ? 'Iniciando lote...' : 'Calcular ateste'}
             </button>
             <button
               type="button"
@@ -1036,7 +1037,7 @@ export default function RemuneracaoServicosView() {
 
         <div className="management-card apontamento-servicos-table-card">
           <div className="management-grid-header">
-            <h2>Registros de remuneracao</h2>
+            <h2>Registros de ateste</h2>
             <span>{isLoading ? 'Atualizando...' : `${totalItems} item(ns) encontrados`}</span>
             <div className="remuneracao-servicos-visibility-toggles">
               <label className="apontamento-servicos-accumulated-toggle">
@@ -1119,6 +1120,7 @@ export default function RemuneracaoServicosView() {
                                 <span className="apontamento-servicos-subtitle-chip">Empresa: <strong>{item.empresa || 'Empresa nao informada'}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">OS: <strong>{item.ordemServicoOsConcat || item.ordemServicoTermoAdesao || item.ordemServicoCodigo}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">Placa: <strong>{item.placa || '-'}</strong></span>
+                                <span className="apontamento-servicos-subtitle-chip">OS especial: <strong>{formatVeiculoOsEspecialDisplay(item.veiculoOsEspecial)}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">Periodo: <strong>{formatPeriodLabel(item) || '-'}</strong></span>
                               </div>
                               <div className="remuneracao-servicos-subtitle-line-chips">
@@ -1141,6 +1143,9 @@ export default function RemuneracaoServicosView() {
                           <span className="apontamento-servicos-primary-detail remuneracao-servicos-crmc-detail">
                             <strong>Tipo de Veiculo:</strong> {formatTipoVeiculoDisplay(item.tipoVeiculo)}
                           </span>
+                          <span className="apontamento-servicos-primary-detail remuneracao-servicos-crmc-detail">
+                            <strong>OS especial:</strong> {formatVeiculoOsEspecialDisplay(item.veiculoOsEspecial)}
+                          </span>
                         </td>
                         {visibleMonetaryColumns.map((column) => (
                           <td key={`${rowKey}-${column.key}`} className="apontamento-servicos-cell-compact">
@@ -1152,7 +1157,7 @@ export default function RemuneracaoServicosView() {
                               value={formatMoneyValue(item[column.key])}
                               onChange={(event) => handleMoneyFieldChange(rowKey, column.key, event.target.value)}
                               disabled={isLoading || isSaving || isProcessingBatch || !isEditable}
-                              title={!isEditable ? getEditPermissionDeniedMessage('Remuneracao Servicos') : ''}
+                              title={!isEditable ? getEditPermissionDeniedMessage('Ateste Servicos') : ''}
                             />
                           </td>
                         ))}
@@ -1227,7 +1232,7 @@ export default function RemuneracaoServicosView() {
               <div className="management-modal-header">
                 <div>
                   <p className="management-modal-kicker">Validacao dos filtros</p>
-                  <h2 id="remuneracao-servicos-validation-modal-title">Remuneracao Servicos</h2>
+                  <h2 id="remuneracao-servicos-validation-modal-title">Ateste Servicos</h2>
                 </div>
                 <button
                   type="button"
@@ -1262,7 +1267,7 @@ export default function RemuneracaoServicosView() {
               <div className="management-modal-header">
                 <div>
                   <p className="management-modal-kicker">Processamento em lote</p>
-                  <h2 id="remuneracao-servicos-batch-modal-title">Remuneracao Servicos</h2>
+                  <h2 id="remuneracao-servicos-batch-modal-title">Ateste Servicos</h2>
                 </div>
                 <button
                   type="button"

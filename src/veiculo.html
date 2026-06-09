@@ -130,6 +130,7 @@
       body:has(#veiculo-grid-body) #veiculo-grid-table .dsc-grid-action-button svg {
         width: 18px;
         height: 18px;
+        pointer-events: none;
       }
 
       body:has(#veiculo-grid-body) #veiculo-grid-feedback {
@@ -471,7 +472,7 @@
                 <table class="dsc-access-grid" id="veiculo-grid-table">
                   <thead>
                     <tr>
-                      <th>Codigo</th>
+                      <th>CRM</th>
                       <th>
                         <button type="button" class="dsc-grid-sort-button" id="sort-veiculo-button">
                           Placas <span id="sort-veiculo-indicator">↑</span>
@@ -1833,11 +1834,10 @@
         items.forEach((item) => {
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td>${item.codigo}</td>
+            <td>${item.crm || '-'}</td>
             <td>
               <div class="dsc-condutor-grid-main-cell">
                 <strong>${item.placas || ''}</strong>
-                <span>CRM: ${item.crm || '-'}</span>
               </div>
             </td>
             <td>${item.marca_modelo || ''}</td>
@@ -2103,9 +2103,11 @@
       };
 
       gridBody.addEventListener('click', (event) => {
-        const target = event.target;
+        const target = event.target instanceof Element
+          ? event.target.closest('button[data-action]')
+          : null;
 
-        if (!(target instanceof HTMLButtonElement)) {
+        if (!target) {
           return;
         }
 

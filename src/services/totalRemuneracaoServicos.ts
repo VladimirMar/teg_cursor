@@ -19,6 +19,7 @@ export type TotalRemuneracaoServicosItem = {
   empresa: string
   nomeCondutor: string
   tipoVeiculo: string
+  veiculoOsEspecial: string
   apuracaoFinanceiraSituacao: ApuracaoFinanceiraStatus
   totalDiasReferencia: number
   tegRegularFixo: number
