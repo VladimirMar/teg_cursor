@@ -230,7 +230,7 @@ const parseMoneyValue = (value: string) => {
     ? Number(normalizedValue)
     : Number(normalizedValue.replace(/\./g, '').replace(',', '.'))
 
-  return Number.isFinite(parsedValue) ? Number(parsedValue.toFixed(2)) : Number.NaN
+  return Number.isFinite(parsedValue) ? parsedValue : Number.NaN
 }
 
 const formatMoneyValue = (value: number) => {

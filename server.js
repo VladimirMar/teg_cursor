@@ -3103,7 +3103,7 @@ const hasApontamentoServicosMetricValues = (metrics) => {
 
 const normalizeRemuneracaoServicosAmount = (value) => {
   if (typeof value === 'number') {
-    return Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : Number.NaN
+    return Number.isFinite(value) && value >= 0 ? value : Number.NaN
   }
 
   const normalizedValue = normalizeRequestValue(value)
@@ -3117,7 +3117,7 @@ const normalizeRemuneracaoServicosAmount = (value) => {
     : Number(normalizedValue.replace(/\./g, '').replace(',', '.'))
 
   return Number.isFinite(parsedValue) && parsedValue >= 0
-    ? Number(parsedValue.toFixed(2))
+    ? parsedValue
     : Number.NaN
 }
 
@@ -4610,20 +4610,20 @@ const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondut
         rs.revisao AS revisao,
         COALESCE(BTRIM(rs.tipo_pessoa), '') AS tipo_pessoa,
         COUNT(DISTINCT rs.data_referencia)::int AS total_dias_referencia,
-        SUM(COALESCE(rs.teg_regular_fixo, 0))::numeric(14,2) AS teg_regular_fixo,
-        SUM(COALESCE(rs.teg_regular_percapita, 0))::numeric(14,2) AS teg_regular_percapita,
-        SUM(COALESCE(rs.teg_acessivel_fixo, 0))::numeric(14,2) AS teg_acessivel_fixo,
-        SUM(COALESCE(rs.teg_acessivel_percapita, 0))::numeric(14,2) AS teg_acessivel_percapita,
-        SUM(COALESCE(rs.teg_especial_regular_fixo, 0))::numeric(14,2) AS teg_especial_regular_fixo,
-        SUM(COALESCE(rs.teg_especial_regular_percapita, 0))::numeric(14,2) AS teg_especial_regular_percapita,
-        SUM(COALESCE(rs.teg_especial_acessivel_fixo, 0))::numeric(14,2) AS teg_especial_acessivel_fixo,
-        SUM(COALESCE(rs.teg_especial_acessivel_percapita, 0))::numeric(14,2) AS teg_especial_acessivel_percapita,
-        SUM(COALESCE(rs.teg_creche_fixo, 0))::numeric(14,2) AS teg_creche_fixo,
-        SUM(COALESCE(rs.teg_creche_percapita, 0))::numeric(14,2) AS teg_creche_percapita,
-        SUM(COALESCE(rs.km_valor, 0))::numeric(14,2) AS km_valor,
-        SUM(COALESCE(rs.continua_regular, 0))::numeric(14,2) AS continua_regular,
-        SUM(COALESCE(rs.continua_cadeirante, 0))::numeric(14,2) AS continua_cadeirante,
-        SUM(COALESCE(rs.cca_valor, 0))::numeric(14,2) AS cca_valor
+        SUM(COALESCE(rs.teg_regular_fixo, 0)) AS teg_regular_fixo,
+        SUM(COALESCE(rs.teg_regular_percapita, 0)) AS teg_regular_percapita,
+        SUM(COALESCE(rs.teg_acessivel_fixo, 0)) AS teg_acessivel_fixo,
+        SUM(COALESCE(rs.teg_acessivel_percapita, 0)) AS teg_acessivel_percapita,
+        SUM(COALESCE(rs.teg_especial_regular_fixo, 0)) AS teg_especial_regular_fixo,
+        SUM(COALESCE(rs.teg_especial_regular_percapita, 0)) AS teg_especial_regular_percapita,
+        SUM(COALESCE(rs.teg_especial_acessivel_fixo, 0)) AS teg_especial_acessivel_fixo,
+        SUM(COALESCE(rs.teg_especial_acessivel_percapita, 0)) AS teg_especial_acessivel_percapita,
+        SUM(COALESCE(rs.teg_creche_fixo, 0)) AS teg_creche_fixo,
+        SUM(COALESCE(rs.teg_creche_percapita, 0)) AS teg_creche_percapita,
+        SUM(COALESCE(rs.km_valor, 0)) AS km_valor,
+        SUM(COALESCE(rs.continua_regular, 0)) AS continua_regular,
+        SUM(COALESCE(rs.continua_cadeirante, 0)) AS continua_cadeirante,
+        SUM(COALESCE(rs.cca_valor, 0)) AS cca_valor
       FROM remuneracao_servicos rs
       INNER JOIN ${ordemServicoTableName} os ON os.codigo = rs.ordem_servico_codigo
       WHERE ${filters.join('\n        AND ')}

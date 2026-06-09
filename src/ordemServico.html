@@ -183,6 +183,7 @@
       body:has(#ordem-servico-grid-body) #ordem-servico-grid-table .dsc-grid-action-button svg {
         width: 18px;
         height: 18px;
+        pointer-events: none;
       }
 
       body:has(#ordem-servico-grid-body) #ordem-servico-grid-feedback {
@@ -6052,18 +6053,20 @@
 
       gridBody.addEventListener('click', (event) => {
         const target = event.target;
+        const actionButton = target instanceof Element ? target.closest('button[data-action]') : null;
         const row = target instanceof Element ? target.closest('tr') : null;
 
         if (row instanceof HTMLTableRowElement) {
           applyGridRowSelection(row);
         }
 
-        if (!(target instanceof HTMLButtonElement)) {
+        if (!(actionButton instanceof HTMLButtonElement)) {
           return;
         }
 
-        const action = target.dataset.action;
-        const rawItem = row ? row.dataset.item : '';
+        const action = actionButton.dataset.action;
+        const actionRow = actionButton.closest('tr');
+        const rawItem = actionRow ? actionRow.dataset.item : '';
 
         if (!rawItem) {
           return;
