@@ -697,7 +697,7 @@ export default function ApontamentoServicosView() {
 
     setIsSaving(true)
     setStatusTone('idle')
-    setStatusMessage('Gravando apontamento de servicos...')
+    setStatusMessage('Gravando apontamento digitado...')
 
     try {
       const message = await saveApontamentoServicosItems({
@@ -1168,7 +1168,7 @@ export default function ApontamentoServicosView() {
               {isImporting ? 'Importando...' : 'Importar dados digitados SME'}
             </button>
             <button type="button" className="primary-button" onClick={handleSave} disabled={isSaving || isLoading || isImporting || !items.length}>
-              {isSaving ? 'Salvando...' : 'Salvar apontamento'}
+              {isSaving ? 'Salvando...' : 'Salvar apontamento digitado'}
             </button>
           </div>
         </div>

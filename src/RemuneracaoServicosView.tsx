@@ -118,6 +118,22 @@ const doesDateBelongToMonthYear = (dateValue: string, monthYear: string) => {
   return dateValue.startsWith(`${year}-${month}`)
 }
 
+const parseApuracaoRevisao = (value: string) => {
+  const trimmedValue = value.trim()
+
+  if (!trimmedValue) {
+    return 0
+  }
+
+  const parsedRevisao = Number.parseInt(trimmedValue, 10)
+
+  if (!Number.isInteger(parsedRevisao) || parsedRevisao < 0) {
+    return null
+  }
+
+  return parsedRevisao
+}
+
 const formatDateLabel = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value
@@ -549,15 +565,21 @@ export default function RemuneracaoServicosView() {
       setStatusMessage('Carregando ateste de servicos...')
     }
 
+    const parsedRevisao = parseApuracaoRevisao(filters.revisao)
+
+    if (parsedRevisao === null) {
+      openValidationDialog('Informe uma revisao valida.')
+      return
+    }
+
     try {
-      const parsedRevisao = Number.parseInt(filters.revisao, 10)
       const result = await listRemuneracaoServicosItems({
         mesAno: filters.mesAno,
         dataReferencia: filters.dataReferencia,
         dreCodigo: filters.dreCodigo,
         crmcCondutor: filters.crmcCondutor,
         placa: filters.placa,
-        revisao: Number.isInteger(parsedRevisao) ? parsedRevisao : undefined,
+        revisao: parsedRevisao,
         tipoPessoa: filters.tipoPessoa,
         page: pageToLoad,
         pageSize: pageSizeToLoad,
@@ -813,22 +835,34 @@ export default function RemuneracaoServicosView() {
   }, [appliedFilters, hasEditPermission, hasPendingChanges, items, loadItems, loadedItemsByRowKey, page, pageSize])
 
   const handleCalculate = useCallback(async () => {
-    const currentFilters = buildCurrentFilters()
-
-    if (!isValidMonthYear(currentFilters.mesAno)) {
+    if (!isValidMonthYear(mesAno)) {
       openValidationDialog('Informe um mes/ano valido antes de calcular o ateste.')
       return
     }
 
-    if (currentFilters.dataReferencia && !doesDateBelongToMonthYear(currentFilters.dataReferencia, currentFilters.mesAno)) {
-      openValidationDialog(monthYearMismatchMessage)
+    const parsedRevisao = parseApuracaoRevisao(revisao)
+
+    if (parsedRevisao === null) {
+      openValidationDialog('Informe uma revisao valida antes de calcular o ateste.')
       return
     }
 
-    if (currentFilters.dataReferencia) {
-      setAppliedFilters(currentFilters)
-      setPage(1)
+    setDataOperacaoInput('')
+    setCrmcCondutor('')
+    setPlaca('')
+
+    const calculateFilters: RemuneracaoServicosFilters = {
+      mesAno,
+      dataReferencia: '',
+      dreCodigo,
+      crmcCondutor: '',
+      placa: '',
+      revisao: String(parsedRevisao),
+      tipoPessoa,
     }
+
+    setAppliedFilters(calculateFilters)
+    setPage(1)
 
     if (!window.confirm('Autoriza a execucao do processamento de ateste em lote?')) {
       return
@@ -839,15 +873,14 @@ export default function RemuneracaoServicosView() {
     setStatusMessage('Iniciando processamento em lote do ateste de servicos...')
 
     try {
-      const parsedRevisao = Number.parseInt(currentFilters.revisao, 10)
       const result = await startRemuneracaoServicosBatch({
-        mesAno: currentFilters.mesAno,
-        dataReferencia: currentFilters.dataReferencia,
-        dreCodigo: currentFilters.dreCodigo,
-        crmcCondutor: currentFilters.crmcCondutor,
-        placa: currentFilters.placa,
-        revisao: Number.isInteger(parsedRevisao) ? parsedRevisao : undefined,
-        tipoPessoa: currentFilters.tipoPessoa,
+        mesAno: calculateFilters.mesAno,
+        dataReferencia: '',
+        dreCodigo: calculateFilters.dreCodigo,
+        crmcCondutor: '',
+        placa: '',
+        revisao: parsedRevisao,
+        tipoPessoa: calculateFilters.tipoPessoa,
       })
 
       setRemuneracaoBatchStatus(result)
@@ -865,7 +898,7 @@ export default function RemuneracaoServicosView() {
     } finally {
       setIsCalculating(false)
     }
-  }, [buildCurrentFilters, monthYearMismatchMessage, openValidationDialog, syncBatchStatus])
+  }, [dreCodigo, mesAno, openValidationDialog, revisao, syncBatchStatus, tipoPessoa])
 
   useEffect(() => {
     if (!isBatchStatusDialogVisible || !remuneracaoBatchStatus?.isRunning) {

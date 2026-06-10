@@ -78,7 +78,7 @@ type RemuneracaoServicosListParams = {
   dreCodigo?: string
   crmcCondutor?: string
   placa?: string
-  revisao?: number
+  revisao: number
   tipoPessoa?: ApuracaoTipoPessoaFilter
   page?: number
   pageSize?: number
@@ -90,7 +90,7 @@ export type RemuneracaoServicosCalculateParams = {
   dreCodigo?: string
   crmcCondutor?: string
   placa?: string
-  revisao?: number
+  revisao: number
   tipoPessoa?: ApuracaoTipoPessoaFilter
   page?: number
   pageSize?: number
@@ -251,9 +251,7 @@ export async function listRemuneracaoServicosItems(params: RemuneracaoServicosLi
     queryParams.set('placa', params.placa.trim())
   }
 
-  if (typeof params.revisao === 'number') {
-    queryParams.set('revisao', String(params.revisao))
-  }
+  queryParams.set('revisao', String(params.revisao))
 
   if (params.tipoPessoa?.trim()) {
     queryParams.set('tipoPessoa', params.tipoPessoa.trim())

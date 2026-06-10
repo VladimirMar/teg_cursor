@@ -1149,7 +1149,7 @@ const normalizeRemuneracaoServicosBatchRequest = (body = {}) => {
   const dreCodigo = normalizeRequestValue(body.dreCodigo)
   const crmcCondutor = normalizeRequestValue(body.crmcCondutor)
   const placa = normalizeRequestValue(body.placa)
-  const revisao = normalizeIntegerValue(body.revisao)
+  const revisao = normalizeApuracaoRevisao(body.revisao)
   const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa)
 
   if (!mesAno) {
@@ -1172,7 +1172,7 @@ const normalizeRemuneracaoServicosBatchRequest = (body = {}) => {
     dreCodigo,
     crmcCondutor,
     placa,
-    revisao: Number.isInteger(revisao) ? revisao : undefined,
+    revisao,
     tipoPessoa,
   }
 }
@@ -2752,6 +2752,22 @@ const normalizeApuracaoTipoPessoa = (value) => {
   return ''
 }
 
+const normalizeApuracaoRevisao = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return 0
+  }
+
+  const parsedRevisao = normalizeIntegerValue(normalizedValue)
+
+  if (!Number.isInteger(parsedRevisao) || parsedRevisao < 0) {
+    throw createHttpError(400, 'Revisao invalida.')
+  }
+
+  return parsedRevisao
+}
+
 const resolveApuracaoProcessingTipoPessoa = (tipoPessoa, cnpjCpf) => {
   const normalized = normalizeCredenciadaTipoPessoaValue(tipoPessoa)
 
@@ -3144,7 +3160,21 @@ const apontamentoServicosImportMainMetricsStartColumnIndex = XLSX.utils.decode_c
 const apontamentoServicosImportContinuaMetricsStartColumnIndex = XLSX.utils.decode_col('L')
 const apontamentoServicosImportDayCount = 30
 const apontamentoServicosImportAllowedExtensions = new Set(['.xls', '.xlsx', '.xlsm'])
+const apontamentoServicosImportDreSiglaFileNamePattern = /\bATESTE\s+([A-Z0-9]+)\s+(?:PJ|PF)\b/i
 const apontamentoServicosTipoEscolaDisplayOrder = ['EMEI', 'EMEF', 'EMEE', 'CEI', 'CCA']
+
+const extractApontamentoServicosImportDreSiglaFromFileName = (fileName) => {
+  const normalizedFileName = normalizeRequestValue(fileName)
+
+  if (!normalizedFileName) {
+    return ''
+  }
+
+  const baseName = path.basename(normalizedFileName, path.extname(normalizedFileName))
+  const match = baseName.match(apontamentoServicosImportDreSiglaFileNamePattern)
+
+  return match ? String(match[1]).trim().toUpperCase() : ''
+}
 
 const buildWorksheetCellAddress = (columnIndex, rowNumber) => {
   return XLSX.utils.encode_cell({ c: columnIndex, r: rowNumber - 1 })
@@ -3816,11 +3846,10 @@ const importApontamentoServicosWorkbook = async ({ filePath = apontamentoServico
     }
   }
 
-  const dreRecord = await findDreByComparableDescription(dreDescricaoPlanilha, executor)
-
-  if (!dreRecord) {
-    throw createHttpError(404, `DRE nao encontrada para o valor informado na planilha: ${dreDescricaoPlanilha || '-'}.`)
-  }
+  const dreRecord = await resolveApontamentoServicosImportDreRecord({
+    fileName: path.basename(resolvedFilePath),
+    dreDescricaoPlanilha,
+  }, executor)
 
   const tipoEscolaLookup = buildApontamentoServicosImportTipoEscolaLookup(await listTipoEscolaAtivaItems(executor))
   const ordemServicoLookup = buildApontamentoServicosImportOsLookup(await listActiveOrdemServicoOptionsByApuracao({
@@ -4019,9 +4048,7 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
   const normalizedPlaca = normalizeRequestValue(placa)
   const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
-  const parsedRevisao = revisao === undefined || revisao === null || revisao === ''
-    ? Number.NaN
-    : Number.parseInt(String(revisao), 10)
+  const normalizedRevisao = normalizeApuracaoRevisao(revisao)
   const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
 
   if (!monthRange) {
@@ -4060,10 +4087,8 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
     filters.push(`COALESCE(BTRIM(os.veiculo_placas), '') ILIKE $${values.length}`)
   }
 
-  if (Number.isInteger(parsedRevisao) && parsedRevisao >= 0) {
-    values.push(parsedRevisao)
-    filters.push(`aps.revisao = $${values.length}`)
-  }
+  values.push(normalizedRevisao)
+  filters.push(`aps.revisao = $${values.length}`)
 
   if (normalizedTipoPessoa) {
     values.push(normalizedTipoPessoa)
@@ -4247,9 +4272,7 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
   const normalizedPlaca = normalizeRequestValue(placa)
   const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
-  const parsedRevisao = revisao === undefined || revisao === null || revisao === ''
-    ? Number.NaN
-    : Number.parseInt(String(revisao), 10)
+  const normalizedRevisao = normalizeApuracaoRevisao(revisao)
   const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
 
   if (!monthRange) {
@@ -4288,10 +4311,8 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
     filters.push(`COALESCE(BTRIM(os.veiculo_placas), '') ILIKE $${values.length}`)
   }
 
-  if (Number.isInteger(parsedRevisao) && parsedRevisao >= 0) {
-    values.push(parsedRevisao)
-    filters.push(`aps.revisao = $${values.length}`)
-  }
+  values.push(normalizedRevisao)
+  filters.push(`aps.revisao = $${values.length}`)
 
   if (normalizedTipoPessoa) {
     values.push(normalizedTipoPessoa)
@@ -4538,9 +4559,7 @@ const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondut
   const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
   const normalizedPlaca = normalizeRequestValue(placa)
   const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
-  const parsedRevisao = revisao === undefined || revisao === null || revisao === ''
-    ? Number.NaN
-    : Number.parseInt(String(revisao), 10)
+  const normalizedRevisao = normalizeApuracaoRevisao(revisao)
   const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
 
   if (!normalizedMesAno) {
@@ -4590,10 +4609,8 @@ const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondut
     filters.push(`COALESCE(BTRIM(os.veiculo_placas), '') ILIKE $${values.length}`)
   }
 
-  if (Number.isInteger(parsedRevisao) && parsedRevisao >= 0) {
-    values.push(parsedRevisao)
-    filters.push(`rs.revisao = $${values.length}`)
-  }
+  values.push(normalizedRevisao)
+  filters.push(`rs.revisao = $${values.length}`)
 
   if (normalizedTipoPessoa) {
     values.push(normalizedTipoPessoa)
@@ -6958,12 +6975,155 @@ const findDreByDescription = async (descricao) => {
   return result.rows[0] ?? null
 }
 
+const findDrePrefixDescriptionMatches = (dreRows, normalizedDescricao) => {
+  if (!normalizedDescricao) {
+    return []
+  }
+
+  return dreRows.filter((row) => {
+    const dreDescricao = normalizeImportComparableText(row?.descricao)
+
+    if (!dreDescricao) {
+      return false
+    }
+
+    return dreDescricao === normalizedDescricao
+      || dreDescricao.startsWith(`${normalizedDescricao} `)
+      || dreDescricao.startsWith(normalizedDescricao)
+      || normalizedDescricao.startsWith(`${dreDescricao} `)
+      || normalizedDescricao.startsWith(dreDescricao)
+  })
+}
+
+const mapImportDreRecord = (row) => {
+  if (!row) {
+    return null
+  }
+
+  return {
+    codigo: normalizeRequestValue(row?.codigo),
+    sigla: normalizeRequestValue(row?.sigla),
+    codigoOperacional: normalizeDreOperationalCode(row?.codigo_operacional || row?.sigla || row?.codigo),
+    descricao: normalizeRequestValue(row?.descricao),
+  }
+}
+
+const findDreByImportSigla = async (sigla, executor = pool) => {
+  const normalizedSigla = normalizeRequestValue(sigla)?.toUpperCase()
+
+  if (!normalizedSigla) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${dreSelectClause}
+     FROM dre
+     WHERE (
+       UPPER(BTRIM(COALESCE(sigla, ''))) = $1
+       OR UPPER(BTRIM(COALESCE(codigo_operacional, ''))) = $1
+     )
+     AND UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
+     ORDER BY codigo ASC`,
+    [normalizedSigla],
+  )
+
+  if (result.rowCount === 0) {
+    return null
+  }
+
+  if (result.rowCount === 1) {
+    return mapImportDreRecord(result.rows[0])
+  }
+
+  const [bestMatch] = [...result.rows].sort((left, right) => {
+    const leftLength = normalizeImportComparableText(left?.descricao).length
+    const rightLength = normalizeImportComparableText(right?.descricao).length
+
+    if (leftLength !== rightLength) {
+      return leftLength - rightLength
+    }
+
+    return Number(left?.codigo) - Number(right?.codigo)
+  })
+
+  return mapImportDreRecord(bestMatch)
+}
+
+const resolveApontamentoServicosImportDreRecord = async ({ fileName, dreDescricaoPlanilha }, executor = pool) => {
+  const siglaFromFileName = extractApontamentoServicosImportDreSiglaFromFileName(fileName)
+
+  if (siglaFromFileName) {
+    const dreBySigla = await findDreByImportSigla(siglaFromFileName, executor)
+
+    if (!dreBySigla) {
+      throw createHttpError(404, `DRE nao encontrada para a sigla informada no nome do arquivo: ${siglaFromFileName}.`)
+    }
+
+    if (dreDescricaoPlanilha) {
+      const dreByPlanilha = mapImportDreRecord(await findDreByComparableDescription(dreDescricaoPlanilha, executor))
+
+      if (dreByPlanilha && dreByPlanilha.codigo !== dreBySigla.codigo) {
+        throw createHttpError(
+          409,
+          `A sigla ${siglaFromFileName} no arquivo indica a DRE ${dreBySigla.codigo} (${dreBySigla.descricao}), mas a planilha informa ${dreDescricaoPlanilha} (DRE ${dreByPlanilha.codigo}).`,
+        )
+      }
+    }
+
+    return dreBySigla
+  }
+
+  const dreRecord = mapImportDreRecord(await findDreByComparableDescription(dreDescricaoPlanilha, executor))
+
+  if (!dreRecord) {
+    throw createHttpError(404, `DRE nao encontrada para o valor informado na planilha: ${dreDescricaoPlanilha || '-'}.`)
+  }
+
+  return dreRecord
+}
+
 const findDreByComparableDescription = async (descricao, executor = pool) => {
   const normalizedDescricao = normalizeImportComparableText(descricao)
   const normalizedSigla = buildComparableDreSigla(descricao)
 
   if (!normalizedDescricao && !normalizedSigla) {
     return null
+  }
+
+  const result = await executor.query(
+    `SELECT ${dreSelectClause}
+     FROM dre
+     WHERE UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
+     ORDER BY codigo ASC`,
+  )
+  const nonTegDreRows = result.rows
+
+  const exactMatch = nonTegDreRows.find((row) => {
+    return normalizeImportComparableText(row?.descricao) === normalizedDescricao
+      || normalizeImportComparableText(row?.codigo) === normalizedDescricao
+  })
+
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  const prefixMatches = findDrePrefixDescriptionMatches(nonTegDreRows, normalizedDescricao)
+
+  if (prefixMatches.length === 1) {
+    return prefixMatches[0]
+  }
+
+  if (prefixMatches.length > 1) {
+    return [...prefixMatches].sort((left, right) => {
+      const leftLength = normalizeImportComparableText(left?.descricao).length
+      const rightLength = normalizeImportComparableText(right?.descricao).length
+
+      if (leftLength !== rightLength) {
+        return leftLength - rightLength
+      }
+
+      return Number(left?.codigo) - Number(right?.codigo)
+    })[0]
   }
 
   if (normalizedSigla) {
@@ -6985,21 +7145,7 @@ const findDreByComparableDescription = async (descricao, executor = pool) => {
     }
   }
 
-  if (!normalizedDescricao) {
-    return null
-  }
-
-  const result = await executor.query(
-    `SELECT ${dreSelectClause}
-     FROM dre
-      WHERE UPPER(BTRIM(CAST(descricao AS text))) NOT LIKE '%TEG%'
-     ORDER BY codigo ASC`,
-  )
-
-  return result.rows.find((row) => {
-    return normalizeImportComparableText(row?.descricao) === normalizedDescricao
-      || normalizeImportComparableText(row?.codigo) === normalizedDescricao
-  }) ?? null
+  return null
 }
 
 const ensureDreOperationalEntry = async ({ codigo, descricao }) => {
@@ -7771,6 +7917,36 @@ const ensureApuracaoServicosEditable = async ({
       `A operacao so e permitida quando a apuracao financeira estiver com status ${effectiveAllowedSituacoes.join(' ou ')}.`,
     )
   }
+}
+
+const markApuracaoFinanceiraAsReadyToProcessAfterImport = async ({
+  mesAno,
+  dreCodigo,
+  revisao,
+  tipoPessoa,
+}, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedRevisao = normalizeIntegerValue(revisao)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+
+  if (!normalizedMesAno || !normalizedDreCodigo || !Number.isInteger(normalizedRevisao) || normalizedRevisao < 0 || !normalizedTipoPessoa) {
+    return false
+  }
+
+  const updateResult = await executor.query(
+    `UPDATE apuracao_financeira
+     SET situacao = 'A processar',
+         data_alteracao = NOW()
+     WHERE mes_ano = $1
+       AND CAST(dre_codigo AS text) = $2
+       AND revisao = $3
+       AND BTRIM(tipo_pessoa) = $4
+       AND BTRIM(situacao) = 'Em digitacao'`,
+    [normalizedMesAno, normalizedDreCodigo, normalizedRevisao, normalizedTipoPessoa],
+  )
+
+  return (updateResult.rowCount ?? 0) > 0
 }
 
 const acquireApuracaoFinanceiraProcessingLock = async ({ mesAno, usuario }) => {
@@ -24696,7 +24872,41 @@ const ensureDatabaseSchema = async () => {
     CREATE UNIQUE INDEX IF NOT EXISTS apuracao_servicos_chave_uk
     ON apuracao_servicos (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)
   `)
-  await pool.query('ALTER TABLE apuracao_servicos ADD CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa)')
+  await pool.query(`
+    DO $$
+    DECLARE existing_pk_columns text[];
+    DECLARE expected_pk_columns text[] := ARRAY['mes_ano', 'data_referencia', 'dre_codigo', 'ordem_servico_codigo', 'revisao', 'tipo_escola_codigo', 'tipo_pessoa'];
+    DECLARE dependent_fk record;
+    BEGIN
+      SELECT array_agg(att.attname ORDER BY key_position.ordinality)
+        INTO existing_pk_columns
+      FROM pg_constraint con
+      JOIN unnest(con.conkey) WITH ORDINALITY AS key_position(attnum, ordinality) ON TRUE
+      JOIN pg_attribute att
+        ON att.attrelid = con.conrelid
+       AND att.attnum = key_position.attnum
+      WHERE con.conrelid = 'apuracao_servicos'::regclass
+        AND con.contype = 'p';
+
+      IF existing_pk_columns IS NULL THEN
+        ALTER TABLE apuracao_servicos
+          ADD CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa);
+      ELSIF existing_pk_columns <> expected_pk_columns THEN
+        FOR dependent_fk IN
+          SELECT conrelid::regclass AS table_name, conname
+          FROM pg_constraint
+          WHERE contype = 'f'
+            AND confrelid = 'apuracao_servicos'::regclass
+        LOOP
+          EXECUTE format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %I', dependent_fk.table_name, dependent_fk.conname);
+        END LOOP;
+
+        ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_pk;
+        ALTER TABLE apuracao_servicos
+          ADD CONSTRAINT apuracao_servicos_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_escola_codigo, tipo_pessoa);
+      END IF;
+    END $$;
+  `)
   await pool.query('ALTER TABLE apuracao_servicos DROP CONSTRAINT IF EXISTS apuracao_servicos_apuracao_financeira_fk')
   await pool.query(`
     ALTER TABLE apuracao_servicos
@@ -26138,7 +26348,7 @@ const server = createServer(async (request, response) => {
       const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
       const crmcCondutor = normalizeRequestValue(requestUrl.searchParams.get('crmcCondutor') ?? '')
       const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
-      const revisao = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const revisao = normalizeApuracaoRevisao(requestUrl.searchParams.get('revisao') ?? '')
       const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
       const dataReferencia = normalizeApontamentoServicosDate(requestUrl.searchParams.get('dataReferencia') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
@@ -26159,7 +26369,7 @@ const server = createServer(async (request, response) => {
         dreCodigo,
         crmcCondutor,
         placa,
-        revisao: Number.isInteger(revisao) ? revisao : undefined,
+        revisao,
         tipoPessoa,
         dataReferencia,
         page,
@@ -26193,7 +26403,7 @@ const server = createServer(async (request, response) => {
       const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
       const crmcCondutor = normalizeRequestValue(requestUrl.searchParams.get('crmcCondutor') ?? '')
       const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
-      const revisao = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const revisao = normalizeApuracaoRevisao(requestUrl.searchParams.get('revisao') ?? '')
       const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
       const pageSize = Math.min(Math.max(Number(requestUrl.searchParams.get('pageSize') ?? 20) || 20, 1), 50)
@@ -26208,7 +26418,7 @@ const server = createServer(async (request, response) => {
         dreCodigo,
         crmcCondutor,
         placa,
-        revisao: Number.isInteger(revisao) ? revisao : undefined,
+        revisao,
         tipoPessoa,
         page,
         pageSize,
@@ -26240,7 +26450,7 @@ const server = createServer(async (request, response) => {
       const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
       const crmcCondutor = normalizeRequestValue(requestUrl.searchParams.get('crmcCondutor') ?? '')
       const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
-      const revisao = normalizeIntegerValue(requestUrl.searchParams.get('revisao') ?? '')
+      const revisao = normalizeApuracaoRevisao(requestUrl.searchParams.get('revisao') ?? '')
       const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
       const dataReferencia = normalizeApontamentoServicosDate(requestUrl.searchParams.get('dataReferencia') ?? '')
       const page = Math.max(Number(requestUrl.searchParams.get('page') ?? 1) || 1, 1)
@@ -26261,7 +26471,7 @@ const server = createServer(async (request, response) => {
         dreCodigo,
         crmcCondutor,
         placa,
-        revisao: Number.isInteger(revisao) ? revisao : undefined,
+        revisao,
         tipoPessoa,
         dataReferencia,
         page,
@@ -26369,6 +26579,8 @@ const server = createServer(async (request, response) => {
             hasSharedImportContext = false
           }
 
+          let fileProcessedItems = 0
+
           for (const [dataReferencia, itemsMap] of importResult.itemsByDate.entries()) {
             const items = Array.from(itemsMap.values())
 
@@ -26385,6 +26597,7 @@ const server = createServer(async (request, response) => {
               runPostProcessingInline: false,
             }, client)
 
+            fileProcessedItems += items.length
             processedItems += items.length
           }
 
@@ -26396,6 +26609,15 @@ const server = createServer(async (request, response) => {
               ...skippedRecord,
               fileName: importResult.fileName,
             })
+          }
+
+          if (fileProcessedItems > 0 && importResult.dreCodigo) {
+            await markApuracaoFinanceiraAsReadyToProcessAfterImport({
+              mesAno: importResult.mesAno,
+              dreCodigo: importResult.dreCodigo,
+              revisao: importResult.revisao,
+              tipoPessoa: importResult.tipoPessoa,
+            }, client)
           }
 
           await client.query('COMMIT')
@@ -32493,8 +32715,32 @@ const server = createServer(async (request, response) => {
         items,
       }, client)
 
+      const touchedApuracaoKeys = new Map()
+
+      for (const item of items) {
+        const dreCodigo = normalizeRequestValue(item?.dreCodigo)
+        const revisao = normalizeIntegerValue(item?.revisao)
+        const tipoPessoa = normalizeApuracaoTipoPessoa(item?.tipoPessoa)
+        const apuracaoKey = [mesAno, dreCodigo, revisao, tipoPessoa].join('|')
+
+        if (!dreCodigo || !Number.isInteger(revisao) || revisao < 0 || !tipoPessoa || touchedApuracaoKeys.has(apuracaoKey)) {
+          continue
+        }
+
+        touchedApuracaoKeys.set(apuracaoKey, {
+          mesAno,
+          dreCodigo,
+          revisao,
+          tipoPessoa,
+        })
+      }
+
+      for (const apuracaoKey of touchedApuracaoKeys.values()) {
+        await markApuracaoFinanceiraAsReadyToProcessAfterImport(apuracaoKey, client)
+      }
+
       await client.query('COMMIT')
-      sendJson(response, 200, { message: 'Apontamento de servicos gravado com sucesso.' })
+      sendJson(response, 200, { message: 'Apontamento digitado gravado com sucesso.' })
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {})
 
