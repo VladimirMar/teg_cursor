@@ -1,4 +1,5 @@
 import type { ApuracaoTipoPessoa } from './apuracaoTipoPessoa'
+import { listTotalRemuneracaoServicosItems } from './totalRemuneracaoServicos'
 
 export type ResumoFinanceiroItem = {
   mesAno: string
@@ -21,9 +22,41 @@ export type ResumoFinanceiroItem = {
   continuaCadeirante: number
   kilometragem: string
   dataAlteracaoOrigem: string
+  tegRegularFixo: number
+  tegRegularPercapita: number
+  tegAcessivelFixo: number
+  tegAcessivelPercapita: number
+  tegEspecialRegularFixo: number
+  tegEspecialRegularPercapita: number
+  tegEspecialAcessivelFixo: number
+  tegEspecialAcessivelPercapita: number
+  tegCrecheFixo: number
+  tegCrechePercapita: number
+  kmValor: number
+  continuaRegularValor: number
+  continuaCadeiranteValor: number
+  ccaValor: number
 }
 
-export type ResumoFinanceiroSortField = 'mesAno' | 'dreDescricao' | 'tipoPessoa' | 'maiorRevisao' | 'totalRevisoes' | 'totalRegistros' | 'kilometragem' | 'dataAlteracaoOrigem'
+export type ResumoFinanceiroRemuneracaoTotals = Pick<
+  ResumoFinanceiroItem,
+  | 'tegRegularFixo'
+  | 'tegRegularPercapita'
+  | 'tegAcessivelFixo'
+  | 'tegAcessivelPercapita'
+  | 'tegEspecialRegularFixo'
+  | 'tegEspecialRegularPercapita'
+  | 'tegEspecialAcessivelFixo'
+  | 'tegEspecialAcessivelPercapita'
+  | 'tegCrecheFixo'
+  | 'tegCrechePercapita'
+  | 'kmValor'
+  | 'continuaRegularValor'
+  | 'continuaCadeiranteValor'
+  | 'ccaValor'
+>
+
+export type ResumoFinanceiroSortField = 'mesAno' | 'dreDescricao' | 'tipoPessoa' | 'maiorRevisao' | 'totalRevisoes' | 'totalRegistros' | 'totalOrdensServico' | 'kilometragem' | 'dataAlteracaoOrigem'
 
 type ResumoFinanceiroListResponse = {
   items: ResumoFinanceiroItem[]
@@ -92,6 +125,66 @@ const getErrorMessage = (payload: Record<string, unknown>) => {
   return typeof payload.message === 'string' && payload.message.trim()
     ? payload.message
     : 'Falha ao processar o resumo financeiro.'
+}
+
+const createEmptyResumoFinanceiroRemuneracaoTotals = (): ResumoFinanceiroRemuneracaoTotals => ({
+  tegRegularFixo: 0,
+  tegRegularPercapita: 0,
+  tegAcessivelFixo: 0,
+  tegAcessivelPercapita: 0,
+  tegEspecialRegularFixo: 0,
+  tegEspecialRegularPercapita: 0,
+  tegEspecialAcessivelFixo: 0,
+  tegEspecialAcessivelPercapita: 0,
+  tegCrecheFixo: 0,
+  tegCrechePercapita: 0,
+  kmValor: 0,
+  continuaRegularValor: 0,
+  continuaCadeiranteValor: 0,
+  ccaValor: 0,
+})
+
+export async function fetchRemuneracaoTotalsForResumoItem(
+  item: Pick<ResumoFinanceiroItem, 'mesAno' | 'dreCodigo' | 'tipoPessoa' | 'maiorRevisao'>,
+): Promise<ResumoFinanceiroRemuneracaoTotals> {
+  const totals = createEmptyResumoFinanceiroRemuneracaoTotals()
+  let page = 1
+  let totalPages = 1
+  const pageSize = 50
+
+  while (page <= totalPages) {
+    const result = await listTotalRemuneracaoServicosItems({
+      mesAno: item.mesAno,
+      dreCodigo: item.dreCodigo,
+      tipoPessoa: item.tipoPessoa,
+      revisao: item.maiorRevisao,
+      page,
+      pageSize,
+    })
+
+    totalPages = result.totalPages
+
+    for (const row of result.items) {
+      totals.tegRegularFixo += row.tegRegularFixo || 0
+      totals.tegRegularPercapita += row.tegRegularPercapita || 0
+      totals.tegAcessivelFixo += row.tegAcessivelFixo || 0
+      totals.tegAcessivelPercapita += row.tegAcessivelPercapita || 0
+      totals.tegEspecialRegularFixo += row.tegEspecialRegularFixo || 0
+      totals.tegEspecialRegularPercapita += row.tegEspecialRegularPercapita || 0
+      totals.tegEspecialAcessivelFixo += row.tegEspecialAcessivelFixo || 0
+      totals.tegEspecialAcessivelPercapita += row.tegEspecialAcessivelPercapita || 0
+      totals.tegCrecheFixo += row.tegCrecheFixo || 0
+      totals.tegCrechePercapita += row.tegCrechePercapita || 0
+      totals.kmValor += row.kmValor || 0
+      totals.continuaRegularValor += row.continuaRegular || 0
+      totals.continuaCadeiranteValor += row.continuaCadeirante || 0
+      totals.ccaValor += row.ccaValor || 0
+    }
+
+    page += 1
+  }
+
+  return totals
 }
 
 export async function listResumoFinanceiroItemsPaginated(params: ResumoFinanceiroListParams): Promise<ResumoFinanceiroListResult> {

@@ -1,6 +1,10 @@
 import { useCallback, useDeferredValue, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { deleteResumoFinanceiroCascade, listResumoFinanceiroItemsPaginated } from './services/resumoFinanceiro'
+import {
+  deleteResumoFinanceiroCascade,
+  fetchRemuneracaoTotalsForResumoItem,
+  listResumoFinanceiroItemsPaginated,
+} from './services/resumoFinanceiro'
 import type { ResumoFinanceiroItem, ResumoFinanceiroSortField } from './services/resumoFinanceiro'
 import { listDreItemsPaginated } from './services/dre'
 import type { DreItem } from './services/dre'
@@ -47,6 +51,206 @@ const getSortIndicator = (field: ResumoFinanceiroSortField, currentField: Resumo
   return currentDirection === 'asc' ? '↑' : '↓'
 }
 
+const monetaryColumns = [
+  { key: 'tegRegularFixo', groupTitle: 'TEG Regular', columnTitle: 'Fixo', headerClass: 'remuneracao-servicos-header-teg-regular' },
+  { key: 'tegRegularPercapita', groupTitle: 'TEG Regular', columnTitle: 'Percapita', headerClass: 'remuneracao-servicos-header-teg-regular' },
+  { key: 'tegAcessivelFixo', groupTitle: 'TEG Acessível', columnTitle: 'Fixo', headerClass: 'remuneracao-servicos-header-teg-acessivel' },
+  { key: 'tegAcessivelPercapita', groupTitle: 'TEG Acessível', columnTitle: 'Percapita', headerClass: 'remuneracao-servicos-header-teg-acessivel' },
+  { key: 'tegEspecialRegularFixo', groupTitle: 'TEG Especial', columnTitle: 'Reg. Fixo', headerClass: 'remuneracao-servicos-header-teg-especial' },
+  { key: 'tegEspecialRegularPercapita', groupTitle: 'TEG Especial', columnTitle: 'Reg. Percapita', headerClass: 'remuneracao-servicos-header-teg-especial' },
+  { key: 'tegEspecialAcessivelFixo', groupTitle: 'TEG Especial', columnTitle: 'Acess. Fixo', headerClass: 'remuneracao-servicos-header-teg-especial' },
+  { key: 'tegEspecialAcessivelPercapita', groupTitle: 'TEG Especial', columnTitle: 'Acess. Percapita', headerClass: 'remuneracao-servicos-header-teg-especial' },
+  { key: 'tegCrecheFixo', groupTitle: 'TEG Creche', columnTitle: 'Fixo', headerClass: 'remuneracao-servicos-header-teg-creche' },
+  { key: 'tegCrechePercapita', groupTitle: 'TEG Creche', columnTitle: 'Percapita', headerClass: 'remuneracao-servicos-header-teg-creche' },
+  { key: 'kmValor', groupTitle: 'KM', columnTitle: 'Valor', headerClass: 'remuneracao-servicos-header-km' },
+  { key: 'continuaRegularValor', groupTitle: 'Continua', columnTitle: 'Reg.', headerClass: 'remuneracao-servicos-header-continua' },
+  { key: 'continuaCadeiranteValor', groupTitle: 'Continua', columnTitle: 'Cadeirante', headerClass: 'remuneracao-servicos-header-continua' },
+  { key: 'ccaValor', groupTitle: 'CCA', columnTitle: 'Valor', headerClass: 'remuneracao-servicos-header-cca' },
+] as const
+
+type MonetaryColumnKey = (typeof monetaryColumns)[number]['key']
+
+const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
+
+const formatMoneyValue = (value: number) => {
+  if (!Number.isFinite(value)) {
+    return currencyFormatter.format(0)
+  }
+
+  return currencyFormatter.format(value)
+}
+
+const calculateRemuneracaoValorTotal = (item: Pick<ResumoFinanceiroItem, MonetaryColumnKey>) => {
+  return monetaryColumns.reduce((sum, column) => sum + (item[column.key] || 0), 0)
+}
+
+const buildMonetaryHeaderGroups = () => {
+  const groups: Array<{ title: string; colSpan: number }> = []
+  let currentTitle = ''
+  let currentColSpan = 0
+
+  for (const column of monetaryColumns) {
+    if (column.groupTitle !== currentTitle) {
+      if (currentColSpan > 0) {
+        groups.push({ title: currentTitle, colSpan: currentColSpan })
+      }
+
+      currentTitle = column.groupTitle
+      currentColSpan = 1
+    } else {
+      currentColSpan += 1
+    }
+  }
+
+  if (currentColSpan > 0) {
+    groups.push({ title: currentTitle, colSpan: currentColSpan })
+  }
+
+  return groups
+}
+
+const monetaryHeaderGroups = buildMonetaryHeaderGroups()
+
+const normalizeRemuneracaoFields = (item: ResumoFinanceiroItem): ResumoFinanceiroItem => ({
+  ...item,
+  tegRegularFixo: Number(item.tegRegularFixo) || 0,
+  tegRegularPercapita: Number(item.tegRegularPercapita) || 0,
+  tegAcessivelFixo: Number(item.tegAcessivelFixo) || 0,
+  tegAcessivelPercapita: Number(item.tegAcessivelPercapita) || 0,
+  tegEspecialRegularFixo: Number(item.tegEspecialRegularFixo) || 0,
+  tegEspecialRegularPercapita: Number(item.tegEspecialRegularPercapita) || 0,
+  tegEspecialAcessivelFixo: Number(item.tegEspecialAcessivelFixo) || 0,
+  tegEspecialAcessivelPercapita: Number(item.tegEspecialAcessivelPercapita) || 0,
+  tegCrecheFixo: Number(item.tegCrecheFixo) || 0,
+  tegCrechePercapita: Number(item.tegCrechePercapita) || 0,
+  kmValor: Number(item.kmValor) || 0,
+  continuaRegularValor: Number(item.continuaRegularValor) || 0,
+  continuaCadeiranteValor: Number(item.continuaCadeiranteValor) || 0,
+  ccaValor: Number(item.ccaValor) || 0,
+})
+
+type RemuneracaoTotalsGridProps = {
+  item: ResumoFinanceiroItem
+}
+
+type ApontamentosTotalsGridProps = {
+  item: ResumoFinanceiroItem
+}
+
+type ResumoFinanceiroConsultaResumoGridProps = {
+  item: ResumoFinanceiroItem
+}
+
+function ResumoFinanceiroConsultaResumoGrid({ item }: ResumoFinanceiroConsultaResumoGridProps) {
+  return (
+    <div className="management-grid-wrapper resumo-financeiro-consulta-resumo-wrapper">
+      <table className="dre-table">
+        <tbody>
+          <tr>
+            <th>Total revisoes</th>
+            <td>{formatIntegerValue(item.totalRevisoes)}</td>
+            <th>Maior revisao</th>
+            <td>{formatIntegerValue(item.maiorRevisao)}</td>
+          </tr>
+          <tr>
+            <th>Registros filhos</th>
+            <td>{formatIntegerValue(item.totalRegistros)}</td>
+            <th>Ordens de servico</th>
+            <td>{formatIntegerValue(item.totalOrdensServico)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ApontamentosTotalsGrid({ item }: ApontamentosTotalsGridProps) {
+  return (
+    <div className="management-grid-wrapper resumo-financeiro-apontamentos-table-wrapper">
+      <table className="dre-table resumo-financeiro-apontamentos-table">
+        <thead>
+          <tr>
+            <th>NC pres.</th>
+            <th>Cad.</th>
+            <th>AC NC</th>
+            <th>AC Cad.</th>
+            <th>Cont NC</th>
+            <th>Cont Cad.</th>
+            <th>KM adicional</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{formatIntegerValue(item.naoCadeirantePresencial)}</td>
+            <td>{formatIntegerValue(item.cadeirante)}</td>
+            <td>{formatIntegerValue(item.atendimentoComplementarNaoCadeirante)}</td>
+            <td>{formatIntegerValue(item.atendimentoComplementarCadeirante)}</td>
+            <td>{formatIntegerValue(item.continuaNaoCadeirante)}</td>
+            <td>{formatIntegerValue(item.continuaCadeirante)}</td>
+            <td>{formatFourDecimalValue(item.kilometragem)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function RemuneracaoTotalsGrid({ item }: RemuneracaoTotalsGridProps) {
+  return (
+    <div className="management-grid-wrapper apontamento-servicos-table-wrapper remuneracao-servicos-table-wrapper resumo-financeiro-remuneracao-table-wrapper">
+      <table className="apontamento-servicos-table apontamento-servicos-table-sem-acumulados remuneracao-servicos-table resumo-financeiro-remuneracao-table">
+        <thead>
+          <tr>
+            {monetaryHeaderGroups.map((group, index) => {
+              const groupHeaderClass = monetaryColumns.find((column) => column.groupTitle === group.title)?.headerClass ?? ''
+
+              return (
+                <th
+                  key={`${group.title}-${index}`}
+                  colSpan={group.colSpan}
+                  className={`apontamento-servicos-header-detail remuneracao-servicos-header-detail ${groupHeaderClass}`.trim()}
+                >
+                  <span className="remuneracao-servicos-header-line">{group.title}</span>
+                </th>
+              )
+            })}
+            <th rowSpan={2} className="apontamento-servicos-header-detail remuneracao-servicos-header-detail remuneracao-servicos-header-valor-total">
+              <span className="remuneracao-servicos-header-line">Valor Total</span>
+            </th>
+          </tr>
+          <tr>
+            {monetaryColumns.map((column) => (
+              <th
+                key={column.key}
+                className={`apontamento-servicos-header-detail remuneracao-servicos-header-detail ${column.headerClass}`.trim()}
+              >
+                <span className="remuneracao-servicos-header-line">{column.columnTitle}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {monetaryColumns.map((column) => (
+              <td key={column.key} className="apontamento-servicos-cell-compact">
+                <span className="apontamento-servicos-grid-readonly">{formatMoneyValue(item[column.key])}</span>
+              </td>
+            ))}
+            <td className="apontamento-servicos-cell-compact total-remuneracao-servicos-valor-total-cell">
+              <span className="apontamento-servicos-grid-readonly total-remuneracao-servicos-valor-total-value">
+                {formatMoneyValue(calculateRemuneracaoValorTotal(item))}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function ResumoFinanceiroView() {
   const [items, setItems] = useState<ResumoFinanceiroItem[]>([])
   const [search, setSearch] = useState('')
@@ -72,6 +276,9 @@ export default function ResumoFinanceiroView() {
   const [deleteCascadeFeedbackMessage, setDeleteCascadeFeedbackMessage] = useState('')
   const [deleteCascadeFeedbackTone, setDeleteCascadeFeedbackTone] = useState<StatusTone>('idle')
   const [isDeletingCascade, setIsDeletingCascade] = useState(false)
+  const [detailItem, setDetailItem] = useState<ResumoFinanceiroItem | null>(null)
+  const [isDetailLoading, setIsDetailLoading] = useState(false)
+  const [consultaTab, setConsultaTab] = useState<'remuneracao' | 'apontamentos'>('apontamentos')
 
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
@@ -79,7 +286,7 @@ export default function ResumoFinanceiroView() {
   const loadItems = useCallback(async () => {
     setIsLoading(true)
     setStatusTone('idle')
-    setStatusMessage('Carregando resumo financeiro...')
+    setStatusMessage('Carregando resumo financeiro e totais de remuneracao...')
 
     try {
       const result = await listResumoFinanceiroItemsPaginated({
@@ -90,7 +297,23 @@ export default function ResumoFinanceiroView() {
         sortDirection,
       })
 
-      setItems(result.items)
+      const normalizedItems = result.items.map(normalizeRemuneracaoFields)
+      const itemsWithRemuneracao = await Promise.all(
+        normalizedItems.map(async (item) => {
+          try {
+            const remuneracaoTotals = await fetchRemuneracaoTotalsForResumoItem(item)
+
+            return {
+              ...item,
+              ...remuneracaoTotals,
+            }
+          } catch {
+            return item
+          }
+        }),
+      )
+
+      setItems(itemsWithRemuneracao)
       setTotalItems(result.total)
       setTotalPages(result.totalPages)
       setStatusTone('idle')
@@ -172,14 +395,39 @@ export default function ResumoFinanceiroView() {
     setSortBy(field)
   }
 
+  const loadConsultaRemuneracaoTotals = useCallback(async (item: ResumoFinanceiroItem) => {
+    const normalizedItem = normalizeRemuneracaoFields(item)
+    setDetailItem(normalizedItem)
+    setIsDetailLoading(true)
+
+    try {
+      const remuneracaoTotals = await fetchRemuneracaoTotalsForResumoItem(normalizedItem)
+      setDetailItem({
+        ...normalizedItem,
+        ...remuneracaoTotals,
+      })
+    } catch {
+      setDetailItem(normalizedItem)
+    } finally {
+      setIsDetailLoading(false)
+    }
+  }, [])
+
   const handleStartView = (item: ResumoFinanceiroItem) => {
+    setConsultaTab('apontamentos')
     setSelectedItem(item)
+    setDetailItem(null)
+    setIsDetailLoading(false)
     setIsFormVisible(true)
+    void loadConsultaRemuneracaoTotals(item)
   }
 
   const handleCloseForm = () => {
     setIsFormVisible(false)
     setSelectedItem(null)
+    setDetailItem(null)
+    setIsDetailLoading(false)
+    setConsultaTab('apontamentos')
   }
 
   const handleOpenDeleteCascade = () => {
@@ -321,13 +569,13 @@ export default function ResumoFinanceiroView() {
             }}
           >
             <div
-              className="management-modal-shell"
+              className="management-modal-shell resumo-financeiro-modal-shell"
               role="dialog"
               aria-modal="true"
               aria-labelledby="resumo-financeiro-modal-title"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="management-card management-form dre-form management-modal-form-card">
+              <div className="management-card management-form dre-form management-modal-form-card resumo-financeiro-modal-form-card">
                 <div className="management-modal-header">
                   <div>
                     <p className="management-modal-kicker">Operacional financeiro - RESUFIN025</p>
@@ -367,61 +615,63 @@ export default function ResumoFinanceiroView() {
                   <input type="text" value={selectedItem.situacoesApuracaoFinanceira || 'Sem apuracao financeira'} readOnly disabled />
                 </label>
 
-                <div className="management-grid-wrapper">
-                  <table className="dre-table">
-                    <tbody>
-                      <tr>
-                        <th>Total revisoes</th>
-                        <td>{formatIntegerValue(selectedItem.totalRevisoes)}</td>
-                        <th>Maior revisao</th>
-                        <td>{formatIntegerValue(selectedItem.maiorRevisao)}</td>
-                      </tr>
-                      <tr>
-                        <th>Registros filhos</th>
-                        <td>{formatIntegerValue(selectedItem.totalRegistros)}</td>
-                        <th>Ordens de servico</th>
-                        <td>{formatIntegerValue(selectedItem.totalOrdensServico)}</td>
-                      </tr>
-                      <tr>
-                        <th>Tipos escola</th>
-                        <td>{formatIntegerValue(selectedItem.totalTiposEscola)}</td>
-                        <th>Datas referencia</th>
-                        <td>{formatIntegerValue(selectedItem.totalDatasReferencia)}</td>
-                      </tr>
-                      <tr>
-                        <th>Ultima alteracao origem</th>
-                        <td colSpan={3}>{selectedItem.dataAlteracaoOrigem || 'Nao informada'}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <ResumoFinanceiroConsultaResumoGrid item={selectedItem} />
+
+                <div className="resumo-financeiro-consulta-tabs" role="tablist" aria-label="Detalhes do resumo financeiro">
+                  <button
+                    type="button"
+                    role="tab"
+                    id="resumo-financeiro-tab-apontamentos"
+                    className={`resumo-financeiro-consulta-tab-button ${consultaTab === 'apontamentos' ? 'resumo-financeiro-consulta-tab-button-active' : ''}`}
+                    aria-selected={consultaTab === 'apontamentos'}
+                    aria-controls="resumo-financeiro-tab-panel-apontamentos"
+                    onClick={() => setConsultaTab('apontamentos')}
+                  >
+                    Apontamentos
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="resumo-financeiro-tab-remuneracao"
+                    className={`resumo-financeiro-consulta-tab-button ${consultaTab === 'remuneracao' ? 'resumo-financeiro-consulta-tab-button-active' : ''}`}
+                    aria-selected={consultaTab === 'remuneracao'}
+                    aria-controls="resumo-financeiro-tab-panel-remuneracao"
+                    onClick={() => setConsultaTab('remuneracao')}
+                  >
+                    Totais de remuneracao
+                  </button>
                 </div>
 
-                <div className="management-grid-wrapper">
-                  <table className="dre-table">
-                    <thead>
-                      <tr>
-                        <th>NC pres.</th>
-                        <th>Cad.</th>
-                        <th>AC NC</th>
-                        <th>AC Cad.</th>
-                        <th>Cont NC</th>
-                        <th>Cont Cad.</th>
-                        <th>KM adicional</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>{formatIntegerValue(selectedItem.naoCadeirantePresencial)}</td>
-                        <td>{formatIntegerValue(selectedItem.cadeirante)}</td>
-                        <td>{formatIntegerValue(selectedItem.atendimentoComplementarNaoCadeirante)}</td>
-                        <td>{formatIntegerValue(selectedItem.atendimentoComplementarCadeirante)}</td>
-                        <td>{formatIntegerValue(selectedItem.continuaNaoCadeirante)}</td>
-                        <td>{formatIntegerValue(selectedItem.continuaCadeirante)}</td>
-                        <td>{formatFourDecimalValue(selectedItem.kilometragem)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <section
+                  id="resumo-financeiro-tab-panel-remuneracao"
+                  role="tabpanel"
+                  aria-labelledby="resumo-financeiro-tab-remuneracao"
+                  className={`resumo-financeiro-consulta-tab-panel ${consultaTab === 'remuneracao' ? 'resumo-financeiro-consulta-tab-panel-active' : ''}`}
+                  hidden={consultaTab !== 'remuneracao'}
+                >
+                  <p className="management-modal-subtitle">
+                    Valores aglutinados por mes/ano, DRE, tipo pessoa e revisao {formatIntegerValue(selectedItem.maiorRevisao)}.
+                    {isDetailLoading ? ' Atualizando totais...' : ''}
+                  </p>
+                  {detailItem ? (
+                    <RemuneracaoTotalsGrid item={detailItem} />
+                  ) : (
+                    <p className="management-modal-subtitle">Carregando totais de remuneracao...</p>
+                  )}
+                </section>
+
+                <section
+                  id="resumo-financeiro-tab-panel-apontamentos"
+                  role="tabpanel"
+                  aria-labelledby="resumo-financeiro-tab-apontamentos"
+                  className={`resumo-financeiro-consulta-tab-panel ${consultaTab === 'apontamentos' ? 'resumo-financeiro-consulta-tab-panel-active' : ''}`}
+                  hidden={consultaTab !== 'apontamentos'}
+                >
+                  <p className="management-modal-subtitle">
+                    Totais de apontamento por mes/ano, DRE, tipo pessoa e revisao {formatIntegerValue(selectedItem.maiorRevisao)}.
+                  </p>
+                  <ApontamentosTotalsGrid item={selectedItem} />
+                </section>
 
                 <div className="button-row dre-button-row management-modal-footer">
                   <button type="button" className="secondary-button" onClick={handleCloseForm}>
@@ -573,17 +823,28 @@ export default function ResumoFinanceiroView() {
                       Tipo Pessoa <span>{getSortIndicator('tipoPessoa', sortBy, sortDirection)}</span>
                     </button>
                   </th>
-                  <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('maiorRevisao')}>
-                      Revisao <span>{getSortIndicator('maiorRevisao', sortBy, sortDirection)}</span>
-                    </button>
-                  </th>
                   <th>Situacoes</th>
                   <th>
-                    <button type="button" className="dre-sort-button" onClick={() => handleSort('totalRegistros')}>
-                      Registros <span>{getSortIndicator('totalRegistros', sortBy, sortDirection)}</span>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('totalRevisoes')}>
+                      Total revisoes <span>{getSortIndicator('totalRevisoes', sortBy, sortDirection)}</span>
                     </button>
                   </th>
+                  <th>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('maiorRevisao')}>
+                      Maior revisao <span>{getSortIndicator('maiorRevisao', sortBy, sortDirection)}</span>
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('totalRegistros')}>
+                      Registros filhos <span>{getSortIndicator('totalRegistros', sortBy, sortDirection)}</span>
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="dre-sort-button" onClick={() => handleSort('totalOrdensServico')}>
+                      Ordens de servico <span>{getSortIndicator('totalOrdensServico', sortBy, sortDirection)}</span>
+                    </button>
+                  </th>
+                  <th>Valor total remuneracao</th>
                   <th className="dre-actions-column">Acoes</th>
                 </tr>
               </thead>
@@ -593,9 +854,12 @@ export default function ResumoFinanceiroView() {
                     <td>{item.mesAno}</td>
                     <td>{formatDreLabel(item)}</td>
                     <td>{formatApuracaoTipoPessoaLabel(item.tipoPessoa)}</td>
-                    <td>{formatIntegerValue(item.maiorRevisao)}</td>
                     <td>{item.situacoesApuracaoFinanceira || 'Sem apuracao financeira'}</td>
+                    <td>{formatIntegerValue(item.totalRevisoes)}</td>
+                    <td>{formatIntegerValue(item.maiorRevisao)}</td>
                     <td>{formatIntegerValue(item.totalRegistros)}</td>
+                    <td>{formatIntegerValue(item.totalOrdensServico)}</td>
+                    <td>{formatMoneyValue(calculateRemuneracaoValorTotal(item))}</td>
                     <td>
                       <div className="dre-row-actions">
                         <button type="button" className="row-action-button" onClick={() => handleStartView(item)}>

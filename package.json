@@ -55,6 +55,7 @@
     "verify:apuracao:status-transition": "node scripts/verify-apuracao-status-transition.mjs"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.5.10",
     "jszip": "^3.10.1",
     "pg": "^8.20.0",

@@ -9,6 +9,7 @@ import JSZip from 'jszip'
 import path from 'node:path'
 import { Pool } from 'pg'
 import { fileURLToPath } from 'node:url'
+import ExcelJS from 'exceljs'
 import XLSX from 'xlsx'
 
 const port = Number(process.env.PORT ?? 3001)
@@ -19,6 +20,7 @@ const workspaceRoot = path.dirname(fileURLToPath(import.meta.url))
 const importXmlDirectory = path.join(workspaceRoot, 'importXML')
 const defaultAccessDatabasePath = path.join(importXmlDirectory, 'Credenciamento 2022.accdb')
 const apontamentoServicosImportDefaultFilePath = path.join(workspaceRoot, 'pgtos', '2026-04 Pgto', '04 ATESTE BT PF ABR 26.xlsx')
+const totalRemuneracaoFechamentoTemplatePath = path.join(workspaceRoot, 'documento', 'templates', 'layout-total-remuneracao-fechamento.xlsx')
 const apontamentoServicosImportDefaultDirectoryPath = path.dirname(apontamentoServicosImportDefaultFilePath)
 const apontamentoServicosImportDefaultFileName = path.basename(apontamentoServicosImportDefaultFilePath)
 const xmlParser = new XMLParser({
@@ -1588,6 +1590,17 @@ const sendJson = (response, statusCode, payload) => {
   response.end(JSON.stringify(payload))
 }
 
+const sendBinary = (response, statusCode, buffer, contentType, downloadFileName) => {
+  response.writeHead(statusCode, {
+    'Content-Type': contentType,
+    'Content-Disposition': `attachment; filename="${downloadFileName}"`,
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  })
+  response.end(buffer)
+}
+
 const readJsonBody = (request) => new Promise((resolve, reject) => {
   let body = ''
 
@@ -2172,6 +2185,10 @@ const normalizeTrocaLookupKey = (value) => {
 
   const tipoTrocaNaoDefinidoLista = 'NAO DEFINIDO'
 
+const normalizePlacaKey = (value) => {
+  return String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
 const normalizeOperationalCode = (value, maxLength = 255) => {
   return normalizeRequestValue(value)
     .replace(/\s+/g, ' ')
@@ -2539,7 +2556,7 @@ const acessoPaginaCatalogItems = [
   { chaveSistema: 'menu_reprocessar_valores', sigla: 'Reprocessar Valores', descricao: 'Reprocessamento Financeiro', funcao: 'menu' },
   { chaveSistema: 'menu_operacional_financeiro', sigla: 'Financeiro', descricao: 'Financeiro', funcao: 'menu' },
   { chaveSistema: 'menu_resumo_financeiro', sigla: 'Resumo Financeiro', descricao: 'Resumo Financeiro', funcao: 'menu' },
-  { chaveSistema: 'menu_apuracao_financeira', sigla: 'Apuracao Financeira', descricao: 'Apuracao Financeira', funcao: 'menu' },
+  { chaveSistema: 'menu_apuracao_financeira', sigla: 'Processamento Apontamento', descricao: 'Processamento Apontamento', funcao: 'menu' },
   { chaveSistema: 'menu_apuracao_servicos', sigla: 'Apuracao Servicos', descricao: 'Apuracao Servicos', funcao: 'menu' },
   { chaveSistema: 'menu_cadastros_root', sigla: 'Cadastros', descricao: 'Cadastros', funcao: 'menu' },
   { chaveSistema: 'menu_cadastros_operacional', sigla: 'Operacional', descricao: 'Operacional', funcao: 'menu' },
@@ -2587,7 +2604,7 @@ const acessoPaginaCatalogItems = [
   { chaveSistema: 'form_marcmod016', sigla: 'MARCMOD016', descricao: 'Marca/Modelo', funcao: 'formulario' },
   { chaveSistema: 'form_parveic017', sigla: 'PARVEIC017', descricao: 'Parametro Pgto Veiculo', funcao: 'formulario' },
   { chaveSistema: 'form_segurad018', sigla: 'SEGURAD018', descricao: 'Seguradoras', funcao: 'formulario' },
-  { chaveSistema: 'form_apurfin019', sigla: 'APURFIN019', descricao: 'Apuracao Financeira', funcao: 'formulario' },
+  { chaveSistema: 'form_apurfin019', sigla: 'APURFIN019', descricao: 'Processamento Apontamento', funcao: 'formulario' },
   { chaveSistema: 'form_perfcad020', sigla: 'PERFCAD020', descricao: 'Perfil', funcao: 'formulario' },
   { chaveSistema: 'form_apursvc021', sigla: 'APURSVC021', descricao: 'TOTAL SERVICOS', funcao: 'formulario' },
   { chaveSistema: 'form_resufin025', sigla: 'RESUFIN025', descricao: 'Resumo Financeiro', funcao: 'formulario' },
@@ -2889,7 +2906,9 @@ const apuracaoFinanceiraSelectClause = `
   COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') AS tipo_pessoa,
   BTRIM(apuracao_financeira.situacao) AS situacao,
   COALESCE(CAST(apuracao_financeira.data_inclusao AS text), '') AS data_inclusao,
-  COALESCE(CAST(apuracao_financeira.data_alteracao AS text), '') AS data_alteracao`
+  COALESCE(CAST(apuracao_financeira.data_alteracao AS text), '') AS data_alteracao,
+  COALESCE(BTRIM(apuracao_financeira.usuario_processamento), '') AS usuario_processamento,
+  COALESCE(CAST(apuracao_financeira.data_processamento AS text), '') AS data_processamento`
 
 const apuracaoServicosMesAnoOrderClause = "SUBSTRING(apuracao_servicos.mes_ano FROM 4 FOR 4) || SUBSTRING(apuracao_servicos.mes_ano FROM 1 FOR 2)"
 
@@ -4265,6 +4284,369 @@ const listApontamentoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
   }
 }
 
+const mapDigitacaoFaltasRow = (row) => ({
+  mesAno: normalizeRequestValue(row?.mes_ano),
+  dataReferencia: normalizeRequestValue(row?.data_referencia),
+  dreCodigo: normalizeRequestValue(row?.dre_codigo),
+  ordemServicoCodigo: normalizeRequestValue(row?.ordem_servico_codigo),
+  revisao: Number(row?.revisao) || 0,
+  tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa),
+  placa: normalizeRequestValue(row?.placa),
+  tegRegular: Boolean(row?.teg_regular),
+  tegAcessivel: Boolean(row?.teg_acessivel),
+  tegCreche: Boolean(row?.teg_creche),
+  tegEspecial: Boolean(row?.teg_especial),
+  ausenciaTotal: Boolean(row?.ausencia_total),
+  quantidadeAlunosIntegral: row?.quantidade_alunos_integral == null ? null : Number(row.quantidade_alunos_integral),
+  quantidadeAlunosMeioPeriodo: row?.quantidade_alunos_meio_periodo == null ? null : Number(row.quantidade_alunos_meio_periodo),
+})
+
+const mapDigitacaoFaltasApontamentoMatchRow = (row) => ({
+  ordemServicoCodigo: normalizeRequestValue(row?.ordem_servico_codigo),
+  ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
+  ordemServicoNumOs: normalizeRequestValue(row?.ordem_servico_num_os),
+  revisao: Number(row?.revisao) || 0,
+  placa: normalizeRequestValue(row?.placa),
+  contrato: normalizeRequestValue(row?.contrato),
+  nomeCondutor: normalizeRequestValue(row?.nome_condutor),
+  crmcCondutor: normalizeRequestValue(row?.crmc_condutor),
+  empresa: normalizeRequestValue(row?.empresa),
+  registrosApontamento: Number(row?.registros_apontamento) || 0,
+})
+
+const findApontamentoMatchesForDigitacaoFaltas = async ({
+  mesAno,
+  dreCodigo,
+  tipoPessoa,
+  dataReferencia,
+  placa,
+  revisao,
+}, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const normalizedPlacaKey = normalizePlacaKey(placa)
+  const normalizedRevisao = normalizeApuracaoRevisao(revisao)
+
+  if (!normalizedMesAno || !normalizedDreCodigo || !normalizedTipoPessoa || !normalizedDate || !normalizedPlacaKey) {
+    throw createHttpError(400, 'Informe mes/ano, DRE, tipo pessoa, placa e data de referencia validos.')
+  }
+
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
+
+  if (!monthRange || normalizedDate < monthRange.monthStart || normalizedDate > monthRange.monthEnd) {
+    throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
+  }
+
+  const values = [normalizedDate, normalizedMesAno, normalizedDreCodigo, normalizedTipoPessoa]
+  let revisaoFilter = ''
+
+  if (Number.isInteger(normalizedRevisao)) {
+    values.push(normalizedRevisao)
+    revisaoFilter = `AND aps.revisao = $${values.length}`
+  }
+
+  values.push(normalizedPlacaKey)
+
+  const result = await executor.query(
+    `SELECT
+       aps.ordem_servico_codigo::text AS ordem_servico_codigo,
+       aps.revisao,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
+       COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+       COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
+       COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
+       COALESCE(BTRIM(aps.crmc_condutor), '') AS crmc_condutor,
+       COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
+       COUNT(*)::int AS registros_apontamento
+     FROM apuracao_servicos aps
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+     LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+     LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+     WHERE aps.data_referencia = $1::date
+       AND aps.mes_ano = $2
+       AND CAST(aps.dre_codigo AS text) = $3
+       AND BTRIM(aps.tipo_pessoa) = $4
+       ${revisaoFilter}
+       AND regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g') = $${values.length}
+     GROUP BY
+       aps.ordem_servico_codigo,
+       aps.revisao,
+       os.veiculo_placas,
+       os.os_concat,
+       os.num_os,
+       os.termo_adesao,
+       os.condutor,
+       aps.crmc_condutor,
+       credenciada_lookup.empresa
+     ORDER BY aps.ordem_servico_codigo ASC, aps.revisao ASC`,
+    values,
+  )
+
+  return result.rows.map(mapDigitacaoFaltasApontamentoMatchRow)
+}
+
+const buildDigitacaoFaltasPlacaNotFoundMessage = (placa, mesAno) => {
+  const normalizedPlaca = normalizeRequestValue(placa)
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+
+  if (normalizedPlaca && normalizedMesAno) {
+    return `O veiculo da placa ${normalizedPlaca} nao existe no apontamento do mes ${normalizedMesAno}.`
+  }
+
+  return 'O veiculo da placa informada nao existe no apontamento do mes.'
+}
+
+const lookupDigitacaoFaltasApontamento = async (params, executor = pool) => {
+  const matches = await findApontamentoMatchesForDigitacaoFaltas(params, executor)
+
+  if (!matches.length) {
+    return {
+      matched: false,
+      message: buildDigitacaoFaltasPlacaNotFoundMessage(params.placa, params.mesAno),
+      match: null,
+      item: null,
+    }
+  }
+
+  if (matches.length > 1) {
+    return {
+      matched: false,
+      message: 'Existem multiplos apontamentos para os filtros informados. Refine mes/ano, DRE, tipo pessoa, placa, data de referencia ou revisao.',
+      match: null,
+      item: null,
+    }
+  }
+
+  const match = matches[0]
+  const item = await getDigitacaoFaltasItem({
+    mesAno: params.mesAno,
+    dataReferencia: params.dataReferencia,
+    dreCodigo: params.dreCodigo,
+    ordemServicoCodigo: match.ordemServicoCodigo,
+    revisao: match.revisao,
+    tipoPessoa: params.tipoPessoa,
+  }, executor)
+
+  return {
+    matched: true,
+    message: '',
+    match,
+    item,
+  }
+}
+
+const getDigitacaoFaltasItem = async ({
+  mesAno,
+  dataReferencia,
+  dreCodigo,
+  ordemServicoCodigo,
+  revisao,
+  tipoPessoa,
+}, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedOrdemServicoCodigo = normalizeRequestValue(ordemServicoCodigo)
+  const normalizedRevisao = normalizeApuracaoRevisao(revisao)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+
+  if (!normalizedMesAno || !normalizedDate || !normalizedDreCodigo || !normalizedOrdemServicoCodigo || !Number.isInteger(normalizedRevisao) || !normalizedTipoPessoa) {
+    return null
+  }
+
+  const result = await executor.query(
+    `SELECT
+       BTRIM(df.mes_ano) AS mes_ano,
+       TO_CHAR(df.data_referencia, 'YYYY-MM-DD') AS data_referencia,
+       CAST(df.dre_codigo AS text) AS dre_codigo,
+       df.ordem_servico_codigo::text AS ordem_servico_codigo,
+       df.revisao,
+       COALESCE(BTRIM(df.tipo_pessoa), '') AS tipo_pessoa,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       df.ausencia_total,
+       df.quantidade_alunos_integral,
+       df.quantidade_alunos_meio_periodo,
+       df.teg_regular,
+       df.teg_acessivel,
+       df.teg_creche,
+       df.teg_especial
+     FROM digitacao_faltas df
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo = df.ordem_servico_codigo
+     WHERE df.mes_ano = $1
+       AND df.data_referencia = $2::date
+       AND CAST(df.dre_codigo AS text) = $3
+       AND df.ordem_servico_codigo::text = $4
+       AND df.revisao = $5
+       AND BTRIM(df.tipo_pessoa) = $6`,
+    [
+      normalizedMesAno,
+      normalizedDate,
+      normalizedDreCodigo,
+      normalizedOrdemServicoCodigo,
+      normalizedRevisao,
+      normalizedTipoPessoa,
+    ],
+  )
+
+  return result.rows[0] ? mapDigitacaoFaltasRow(result.rows[0]) : null
+}
+
+const upsertDigitacaoFaltasItem = async ({
+  mesAno,
+  dataReferencia,
+  dreCodigo,
+  ordemServicoCodigo,
+  placa,
+  revisao,
+  tipoPessoa,
+  tegRegular,
+  tegAcessivel,
+  tegCreche,
+  tegEspecial,
+  ausenciaTotal,
+  quantidadeAlunosIntegral,
+  quantidadeAlunosMeioPeriodo,
+}, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const normalizedPlaca = normalizeRequestValue(placa)
+  const normalizedRevisaoInput = normalizeApuracaoRevisao(revisao)
+  const normalizedAusenciaTotal = Boolean(ausenciaTotal)
+  const normalizedTegRegular = Boolean(tegRegular)
+  const normalizedTegAcessivel = Boolean(tegAcessivel)
+  const normalizedTegCreche = Boolean(tegCreche)
+  const normalizedTegEspecial = Boolean(tegEspecial)
+
+  if (!normalizedMesAno || !normalizedDate || !normalizedDreCodigo || !normalizedTipoPessoa) {
+    throw createHttpError(400, 'Informe mes/ano, data de referencia, DRE e tipo pessoa validos.')
+  }
+
+  if (!normalizedPlaca) {
+    throw createHttpError(400, 'Informe a placa.')
+  }
+
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
+
+  if (!monthRange || normalizedDate < monthRange.monthStart || normalizedDate > monthRange.monthEnd) {
+    throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
+  }
+
+  const lookupResult = await lookupDigitacaoFaltasApontamento({
+    mesAno: normalizedMesAno,
+    dreCodigo: normalizedDreCodigo,
+    tipoPessoa: normalizedTipoPessoa,
+    dataReferencia: normalizedDate,
+    placa: normalizedPlaca,
+    revisao: Number.isInteger(normalizedRevisaoInput) ? normalizedRevisaoInput : undefined,
+  }, executor)
+
+  if (!lookupResult.matched || !lookupResult.match) {
+    throw createHttpError(400, lookupResult.message || buildDigitacaoFaltasPlacaNotFoundMessage(normalizedPlaca, normalizedMesAno))
+  }
+
+  const normalizedOrdemServicoCodigo = normalizeRequestValue(ordemServicoCodigo) || lookupResult.match.ordemServicoCodigo
+  const normalizedRevisao = normalizeApuracaoRevisao(
+    Number.isInteger(normalizedRevisaoInput) ? normalizedRevisaoInput : lookupResult.match.revisao,
+  )
+
+  if (!normalizedOrdemServicoCodigo || !Number.isInteger(normalizedRevisao) || normalizedRevisao < 0) {
+    throw createHttpError(400, 'Informe ordem de servico e revisao validos.')
+  }
+
+  if (lookupResult.match.ordemServicoCodigo !== normalizedOrdemServicoCodigo || lookupResult.match.revisao !== normalizedRevisao) {
+    throw createHttpError(400, 'Os dados da ordem de servico nao correspondem ao apontamento informado.')
+  }
+
+  let normalizedQuantidadeIntegral = null
+  let normalizedQuantidadeMeioPeriodo = null
+
+  if (!normalizedAusenciaTotal) {
+    normalizedQuantidadeIntegral = normalizeIntegerValue(quantidadeAlunosIntegral)
+    normalizedQuantidadeMeioPeriodo = normalizeIntegerValue(quantidadeAlunosMeioPeriodo)
+
+    if (!Number.isInteger(normalizedQuantidadeIntegral) || normalizedQuantidadeIntegral < 0) {
+      throw createHttpError(400, 'Quantidade de alunos integral invalida.')
+    }
+
+    if (!Number.isInteger(normalizedQuantidadeMeioPeriodo) || normalizedQuantidadeMeioPeriodo < 0) {
+      throw createHttpError(400, 'Quantidade de alunos meio periodo invalida.')
+    }
+  }
+
+  await executor.query(
+    `INSERT INTO digitacao_faltas (
+       mes_ano,
+       data_referencia,
+       dre_codigo,
+       ordem_servico_codigo,
+       revisao,
+       tipo_pessoa,
+       teg_regular,
+       teg_acessivel,
+       teg_creche,
+       teg_especial,
+       ausencia_total,
+       quantidade_alunos_integral,
+       quantidade_alunos_meio_periodo,
+       data_inclusao
+     ) VALUES (
+       $1,
+       $2::date,
+       $3::integer,
+       $4::integer,
+       $5,
+       $6,
+       $7,
+       $8,
+       $9,
+       $10,
+       $11,
+       $12,
+       $13,
+       NOW()
+     )
+     ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
+     DO UPDATE SET
+       teg_regular = EXCLUDED.teg_regular,
+       teg_acessivel = EXCLUDED.teg_acessivel,
+       teg_creche = EXCLUDED.teg_creche,
+       teg_especial = EXCLUDED.teg_especial,
+       ausencia_total = EXCLUDED.ausencia_total,
+       quantidade_alunos_integral = EXCLUDED.quantidade_alunos_integral,
+       quantidade_alunos_meio_periodo = EXCLUDED.quantidade_alunos_meio_periodo,
+       data_alteracao = NOW()`,
+    [
+      normalizedMesAno,
+      normalizedDate,
+      normalizedDreCodigo,
+      normalizedOrdemServicoCodigo,
+      normalizedRevisao,
+      normalizedTipoPessoa,
+      normalizedTegRegular,
+      normalizedTegAcessivel,
+      normalizedTegCreche,
+      normalizedTegEspecial,
+      normalizedAusenciaTotal,
+      normalizedAusenciaTotal ? null : normalizedQuantidadeIntegral,
+      normalizedAusenciaTotal ? null : normalizedQuantidadeMeioPeriodo,
+    ],
+  )
+
+  return getDigitacaoFaltasItem({
+    mesAno: normalizedMesAno,
+    dataReferencia: normalizedDate,
+    dreCodigo: normalizedDreCodigo,
+    ordemServicoCodigo: normalizedOrdemServicoCodigo,
+    revisao: normalizedRevisao,
+    tipoPessoa: normalizedTipoPessoa,
+  }, executor)
+}
+
 const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, placa, revisao, tipoPessoa, dataReferencia, page = 1, pageSize = 20 }, executor = pool) => {
   const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
   const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
@@ -4515,6 +4897,23 @@ const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, p
     totalPages,
   }
 }
+
+const mapResumoFinanceiroRemuneracaoTotalsFromRow = (row) => ({
+  tegRegularFixo: Number(row?.teg_regular_fixo) || 0,
+  tegRegularPercapita: Number(row?.teg_regular_percapita) || 0,
+  tegAcessivelFixo: Number(row?.teg_acessivel_fixo) || 0,
+  tegAcessivelPercapita: Number(row?.teg_acessivel_percapita) || 0,
+  tegEspecialRegularFixo: Number(row?.teg_especial_regular_fixo) || 0,
+  tegEspecialRegularPercapita: Number(row?.teg_especial_regular_percapita) || 0,
+  tegEspecialAcessivelFixo: Number(row?.teg_especial_acessivel_fixo) || 0,
+  tegEspecialAcessivelPercapita: Number(row?.teg_especial_acessivel_percapita) || 0,
+  tegCrecheFixo: Number(row?.teg_creche_fixo) || 0,
+  tegCrechePercapita: Number(row?.teg_creche_percapita) || 0,
+  kmValor: Number(row?.km_valor) || 0,
+  continuaRegularValor: Number(row?.continua_regular) || 0,
+  continuaCadeiranteValor: Number(row?.continua_cadeirante) || 0,
+  ccaValor: Number(row?.cca_valor) || 0,
+})
 
 const mapTotalRemuneracaoServicosRow = (row) => ({
   mesAno: normalizeRequestValue(row?.mes_ano),
@@ -4795,6 +5194,460 @@ const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondut
   }
 }
 
+const formatTotalRemuneracaoExportIsoDateLabel = (isoDate) => {
+  const normalizedDate = normalizeRequestValue(isoDate)
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
+    return normalizedDate
+  }
+
+  const [year, month, day] = normalizedDate.split('-')
+  return `${day}/${month}/${year}`
+}
+
+const TOTAL_REMUNERACAO_FECHAMENTO_IDENTITY_HEADERS = [
+  'Empresa',
+  'Condutor',
+  'OS',
+  'Placa',
+  'OS especial',
+  'Periodo',
+  'DRE',
+  'CRMC',
+  'Tipo de Veiculo',
+]
+
+const TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_COLUMNS = [
+  { key: 'tegRegularFixo', groupTitle: 'TEG Regular', columnTitle: 'Fixo' },
+  { key: 'tegRegularPercapita', groupTitle: 'TEG Regular', columnTitle: 'Percapita' },
+  { key: 'tegAcessivelFixo', groupTitle: 'TEG Acessível', columnTitle: 'Fixo' },
+  { key: 'tegAcessivelPercapita', groupTitle: 'TEG Acessível', columnTitle: 'Percapita' },
+  { key: 'tegEspecialRegularFixo', groupTitle: 'TEG Especial', columnTitle: 'Reg. Fixo' },
+  { key: 'tegEspecialRegularPercapita', groupTitle: 'TEG Especial', columnTitle: 'Reg. Percapita' },
+  { key: 'tegEspecialAcessivelFixo', groupTitle: 'TEG Especial', columnTitle: 'Acess. Fixo' },
+  { key: 'tegEspecialAcessivelPercapita', groupTitle: 'TEG Especial', columnTitle: 'Acess. Percapita' },
+  { key: 'tegCrecheFixo', groupTitle: 'TEG Creche', columnTitle: 'Fixo' },
+  { key: 'tegCrechePercapita', groupTitle: 'TEG Creche', columnTitle: 'Percapita' },
+  { key: 'kmValor', groupTitle: 'KM', columnTitle: 'Valor' },
+  { key: 'continuaRegular', groupTitle: 'Continua', columnTitle: 'Reg.' },
+  { key: 'continuaCadeirante', groupTitle: 'Continua', columnTitle: 'Cadeirante' },
+  { key: 'ccaValor', groupTitle: 'CCA', columnTitle: 'Valor' },
+]
+
+const calculateTotalRemuneracaoFechamentoValorTotal = (item) => {
+  return TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_COLUMNS.reduce((sum, column) => sum + (Number(item?.[column.key]) || 0), 0)
+}
+
+const formatTotalRemuneracaoFechamentoCrmcDisplay = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+  const digits = normalizedValue.replace(/\D/g, '').slice(0, 8)
+
+  if (!digits) {
+    return '-'
+  }
+
+  if (digits.length === 8) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}-${digits.slice(6, 8)}`
+  }
+
+  return normalizedValue || '-'
+}
+
+const formatTotalRemuneracaoFechamentoTipoVeiculoDisplay = (value) => {
+  const normalizedValue = normalizeRequestValue(value)
+
+  if (!normalizedValue) {
+    return 'NORMAL'
+  }
+
+  const normalizedKey = normalizedValue
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  if (normalizedKey === 'convencional' || normalizedKey === 'normal') {
+    return 'NORMAL'
+  }
+
+  if (normalizedKey === 'adaptado' || normalizedKey === 'acessivel') {
+    return 'ACESSIVEL'
+  }
+
+  if (normalizedKey === 'creche') {
+    return 'CRECHE'
+  }
+
+  return normalizedValue.toUpperCase()
+}
+
+const formatTotalRemuneracaoFechamentoVeiculoOsEspecialDisplay = (value) => {
+  const normalizedValue = normalizeOsEspecial(value)
+
+  if (!normalizedValue) {
+    return normalizeRequestValue(value) || 'Não'
+  }
+
+  return normalizedValue
+}
+
+const formatTotalRemuneracaoFechamentoPeriodoLabel = (item) => {
+  const periodoInicio = formatTotalRemuneracaoExportIsoDateLabel(item?.periodoInicio)
+  const periodoFim = formatTotalRemuneracaoExportIsoDateLabel(item?.periodoFim)
+
+  return [periodoInicio, periodoFim].filter(Boolean).join(' a ')
+}
+
+const formatTotalRemuneracaoFechamentoDreDisplay = (item) => {
+  return normalizeRequestValue(item?.dreSigla)
+    || normalizeRequestValue(item?.dreDescricao)
+    || normalizeRequestValue(item?.dreCodigo)
+    || '-'
+}
+
+const formatTotalRemuneracaoFechamentoOsDisplay = (item) => {
+  return normalizeRequestValue(item?.ordemServicoOsConcat)
+    || normalizeRequestValue(item?.ordemServicoTermoAdesao)
+    || normalizeRequestValue(item?.ordemServicoCodigo)
+    || '-'
+}
+
+const TOTAL_REMUNERACAO_FECHAMENTO_DATA_ROW_INDEX = 7
+const TOTAL_REMUNERACAO_FECHAMENTO_COLUMN_COUNT = TOTAL_REMUNERACAO_FECHAMENTO_IDENTITY_HEADERS.length
+  + TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_COLUMNS.length
+  + 1
+const TOTAL_REMUNERACAO_FECHAMENTO_IDENTITY_COLUMN_COUNT = TOTAL_REMUNERACAO_FECHAMENTO_IDENTITY_HEADERS.length
+const TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_START_COLUMN_NUMBER = TOTAL_REMUNERACAO_FECHAMENTO_IDENTITY_COLUMN_COUNT + 1
+const TOTAL_REMUNERACAO_FECHAMENTO_VALOR_TOTAL_COLUMN_NUMBER = TOTAL_REMUNERACAO_FECHAMENTO_IDENTITY_COLUMN_COUNT
+  + TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_COLUMNS.length
+  + 1
+const TOTAL_REMUNERACAO_FECHAMENTO_SUMMARY_LABEL = 'Resumo Financeiro'
+const TOTAL_REMUNERACAO_FECHAMENTO_DRE_NOT_SELECTED_LABEL = 'DRE não foi apontada'
+
+const buildExcelColumnLetter = (columnNumber) => {
+  let dividend = columnNumber
+  let columnLetter = ''
+
+  while (dividend > 0) {
+    const modulo = (dividend - 1) % 26
+    columnLetter = String.fromCharCode(65 + modulo) + columnLetter
+    dividend = Math.floor((dividend - modulo) / 26)
+  }
+
+  return columnLetter
+}
+
+const buildExcelSumFormula = (columnNumber, startRowIndex, endRowIndex) => {
+  const columnLetter = buildExcelColumnLetter(columnNumber)
+
+  return `SUM(${columnLetter}${startRowIndex}:${columnLetter}${endRowIndex})`
+}
+
+const captureTotalRemuneracaoFechamentoTemplateSummaryStyles = (worksheet) => {
+  const templateSummaryRowIndex = worksheet.rowCount
+  const templateSummaryRow = worksheet.getRow(templateSummaryRowIndex)
+  const summaryCellStyles = {}
+
+  templateSummaryRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    if (colNumber >= TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_START_COLUMN_NUMBER
+      && colNumber <= TOTAL_REMUNERACAO_FECHAMENTO_VALOR_TOTAL_COLUMN_NUMBER) {
+      summaryCellStyles[colNumber] = cloneExcelJsCellStyle(cell.style)
+    }
+  })
+
+  const templateHeaderLabelRow = worksheet.getRow(TOTAL_REMUNERACAO_FECHAMENTO_DATA_ROW_INDEX - 1)
+  const labelStyle = cloneExcelJsCellStyle(templateHeaderLabelRow.getCell(1).style)
+
+  return {
+    summaryCellStyles,
+    labelStyle,
+  }
+}
+
+const buildTotalRemuneracaoFechamentoSummaryTotals = (items) => {
+  const monetaryTotals = TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_COLUMNS.map((column) => {
+    return items.reduce((sum, item) => sum + (Number(item?.[column.key]) || 0), 0)
+  })
+  const valorTotal = items.reduce(
+    (sum, item) => sum + calculateTotalRemuneracaoFechamentoValorTotal(item),
+    0,
+  )
+
+  return {
+    monetaryTotals,
+    valorTotal,
+  }
+}
+
+const appendTotalRemuneracaoFechamentoFinancialSummaryRow = (worksheet, {
+  dataRowCount,
+  summaryTotals,
+  summaryCellStyles,
+  labelStyle,
+}) => {
+  if (dataRowCount <= 0) {
+    return
+  }
+
+  const dataStartRowIndex = TOTAL_REMUNERACAO_FECHAMENTO_DATA_ROW_INDEX
+  const lastDataRowIndex = dataStartRowIndex + dataRowCount - 1
+  const summaryRowIndex = lastDataRowIndex + 2
+  const summaryRow = worksheet.getRow(summaryRowIndex)
+  const labelCell = summaryRow.getCell(1)
+  labelCell.value = TOTAL_REMUNERACAO_FECHAMENTO_SUMMARY_LABEL
+
+  if (labelStyle) {
+    labelCell.style = cloneExcelJsCellStyle(labelStyle)
+  }
+
+  for (let monetaryColumnIndex = 0; monetaryColumnIndex < TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_COLUMNS.length; monetaryColumnIndex += 1) {
+    const columnNumber = TOTAL_REMUNERACAO_FECHAMENTO_IDENTITY_COLUMN_COUNT + monetaryColumnIndex + 1
+    const cell = summaryRow.getCell(columnNumber)
+    cell.value = {
+      formula: buildExcelSumFormula(columnNumber, dataStartRowIndex, lastDataRowIndex),
+      result: summaryTotals?.monetaryTotals?.[monetaryColumnIndex] ?? 0,
+    }
+
+    if (summaryCellStyles[columnNumber]) {
+      cell.style = cloneExcelJsCellStyle(summaryCellStyles[columnNumber])
+    }
+  }
+
+  const valorTotalCell = summaryRow.getCell(TOTAL_REMUNERACAO_FECHAMENTO_VALOR_TOTAL_COLUMN_NUMBER)
+  valorTotalCell.value = {
+    formula: buildExcelSumFormula(
+      TOTAL_REMUNERACAO_FECHAMENTO_VALOR_TOTAL_COLUMN_NUMBER,
+      dataStartRowIndex,
+      lastDataRowIndex,
+    ),
+    result: summaryTotals?.valorTotal ?? 0,
+  }
+
+  if (summaryCellStyles[TOTAL_REMUNERACAO_FECHAMENTO_VALOR_TOTAL_COLUMN_NUMBER]) {
+    valorTotalCell.style = cloneExcelJsCellStyle(
+      summaryCellStyles[TOTAL_REMUNERACAO_FECHAMENTO_VALOR_TOTAL_COLUMN_NUMBER],
+    )
+  }
+}
+
+const formatTotalRemuneracaoFechamentoExportPeriodoLabel = (mesAno) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const [month, year] = normalizedMesAno.split('/')
+  const parsedMonth = Number.parseInt(month, 10)
+  const parsedYear = Number.parseInt(year, 10)
+  const lastDay = Number.isInteger(parsedMonth) && Number.isInteger(parsedYear)
+    ? new Date(parsedYear, parsedMonth, 0).getDate()
+    : 30
+
+  return `01/${month}/${year} a ${String(lastDay).padStart(2, '0')}/${month}/${year}`
+}
+
+const formatTotalRemuneracaoFechamentoExportDreLabel = (dreCodigo, items) => {
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+
+  if (!normalizedDreCodigo) {
+    return TOTAL_REMUNERACAO_FECHAMENTO_DRE_NOT_SELECTED_LABEL
+  }
+
+  const dreItem = items.find((item) => normalizeRequestValue(item?.dreCodigo) === normalizedDreCodigo)
+  const dreSigla = normalizeRequestValue(dreItem?.dreSigla)
+
+  return dreSigla ? `${normalizedDreCodigo} - ${dreSigla}` : normalizedDreCodigo
+}
+
+const formatTotalRemuneracaoFechamentoExportTipoPessoaLabel = (tipoPessoa) => {
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+
+  return normalizedTipoPessoa || 'Todos'
+}
+
+const buildTotalRemuneracaoFechamentoExportTitle = ({
+  mesAno,
+  dreLabel,
+  tipoPessoaLabel,
+  periodoLabel,
+}) => {
+  return `${mesAno}, ${dreLabel}, tipo de pessoa ${tipoPessoaLabel}, período de ${periodoLabel}`
+}
+
+const cloneExcelJsCellStyle = (style) => {
+  if (!style) {
+    return undefined
+  }
+
+  return JSON.parse(JSON.stringify(style))
+}
+
+const buildTotalRemuneracaoFechamentoWorkbookFromTemplate = async ({
+  title,
+  mesAno,
+  dreLabel,
+  tipoPessoaLabel,
+  revisao,
+  periodoLabel,
+  items,
+}) => {
+  try {
+    await access(totalRemuneracaoFechamentoTemplatePath)
+  } catch {
+    throw createHttpError(500, 'Template de exportacao de total de remuneracao nao encontrado.')
+  }
+
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.readFile(totalRemuneracaoFechamentoTemplatePath)
+  const worksheet = workbook.getWorksheet('Totais de remuneracao')
+
+  if (!worksheet) {
+    throw createHttpError(500, 'Template de exportacao de total de remuneracao invalido.')
+  }
+
+  worksheet.getCell('A1').value = title
+  worksheet.getCell('B2').value = mesAno
+  worksheet.getCell('D2').value = dreLabel
+  worksheet.getCell('F2').value = tipoPessoaLabel
+  worksheet.getCell('H2').value = String(revisao)
+  worksheet.getCell('J2').value = periodoLabel
+
+  const templateSummaryStyles = captureTotalRemuneracaoFechamentoTemplateSummaryStyles(worksheet)
+  const templateDataRow = worksheet.getRow(TOTAL_REMUNERACAO_FECHAMENTO_DATA_ROW_INDEX)
+  const templateCellStyles = []
+
+  templateDataRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    if (colNumber <= TOTAL_REMUNERACAO_FECHAMENTO_COLUMN_COUNT) {
+      templateCellStyles[colNumber] = cloneExcelJsCellStyle(cell.style)
+    }
+  })
+  const templateRowHeight = templateDataRow.height
+  const rowsToRemove = worksheet.rowCount - TOTAL_REMUNERACAO_FECHAMENTO_DATA_ROW_INDEX
+
+  if (rowsToRemove > 0) {
+    worksheet.spliceRows(TOTAL_REMUNERACAO_FECHAMENTO_DATA_ROW_INDEX, rowsToRemove)
+  }
+
+  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+    const rowIndex = TOTAL_REMUNERACAO_FECHAMENTO_DATA_ROW_INDEX + itemIndex
+    const row = worksheet.getRow(rowIndex)
+    const rowValues = buildTotalRemuneracaoFechamentoRowValues(items[itemIndex])
+
+    if (templateRowHeight) {
+      row.height = templateRowHeight
+    }
+
+    for (let colIndex = 0; colIndex < rowValues.length; colIndex += 1) {
+      const colNumber = colIndex + 1
+      const cell = row.getCell(colNumber)
+      cell.value = rowValues[colIndex]
+
+      if (templateCellStyles[colNumber]) {
+        cell.style = cloneExcelJsCellStyle(templateCellStyles[colNumber])
+      }
+    }
+  }
+
+  appendTotalRemuneracaoFechamentoFinancialSummaryRow(worksheet, {
+    dataRowCount: items.length,
+    summaryTotals: buildTotalRemuneracaoFechamentoSummaryTotals(items),
+    summaryCellStyles: templateSummaryStyles.summaryCellStyles,
+    labelStyle: templateSummaryStyles.labelStyle,
+  })
+
+  return workbook
+}
+
+const buildTotalRemuneracaoFechamentoRowValues = (item) => {
+  return [
+    normalizeRequestValue(item?.empresa) || 'Empresa nao informada',
+    normalizeRequestValue(item?.nomeCondutor) || '-',
+    formatTotalRemuneracaoFechamentoOsDisplay(item),
+    normalizeRequestValue(item?.placa) || '-',
+    formatTotalRemuneracaoFechamentoVeiculoOsEspecialDisplay(item?.veiculoOsEspecial),
+    formatTotalRemuneracaoFechamentoPeriodoLabel(item) || '-',
+    formatTotalRemuneracaoFechamentoDreDisplay(item),
+    formatTotalRemuneracaoFechamentoCrmcDisplay(item?.crmcCondutor),
+    formatTotalRemuneracaoFechamentoTipoVeiculoDisplay(item?.tipoVeiculo),
+    ...TOTAL_REMUNERACAO_FECHAMENTO_MONETARY_COLUMNS.map((column) => Number(item?.[column.key]) || 0),
+    calculateTotalRemuneracaoFechamentoValorTotal(item),
+  ]
+}
+
+const listAllTotalRemuneracaoServicosItemsForExport = async (params, executor = pool) => {
+  const exportPageSize = 50
+  const firstPageResult = await listTotalRemuneracaoServicosItems({
+    ...params,
+    page: 1,
+    pageSize: exportPageSize,
+  }, executor)
+
+  const allItems = [...firstPageResult.items]
+  const totalPages = Math.max(firstPageResult.totalPages, 1)
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const pageResult = await listTotalRemuneracaoServicosItems({
+      ...params,
+      page,
+      pageSize: exportPageSize,
+    }, executor)
+    allItems.push(...pageResult.items)
+  }
+
+  return {
+    items: allItems,
+    total: firstPageResult.total,
+    mesAno: firstPageResult.mesAno,
+  }
+}
+
+const exportTotalRemuneracaoServicosExcel = async (params, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(params.mesAno)
+  const normalizedDreCodigo = normalizeRequestValue(params.dreCodigo)
+  const normalizedCrmcCondutor = normalizeRequestValue(params.crmcCondutor)
+  const normalizedPlaca = normalizeRequestValue(params.placa)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(params.tipoPessoa)
+  const normalizedRevisao = normalizeApuracaoRevisao(params.revisao)
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
+
+  if (!normalizedMesAno || !monthRange) {
+    throw createHttpError(400, 'Mes/ano invalido. Use o formato mm/aaaa.')
+  }
+
+  const totalResult = await listAllTotalRemuneracaoServicosItemsForExport({
+    mesAno: normalizedMesAno,
+    dreCodigo: normalizedDreCodigo,
+    crmcCondutor: normalizedCrmcCondutor,
+    placa: normalizedPlaca,
+    revisao: normalizedRevisao,
+    tipoPessoa: normalizedTipoPessoa,
+  }, executor)
+
+  const dreLabel = formatTotalRemuneracaoFechamentoExportDreLabel(normalizedDreCodigo, totalResult.items)
+  const tipoPessoaLabel = formatTotalRemuneracaoFechamentoExportTipoPessoaLabel(normalizedTipoPessoa)
+  const periodoLabel = formatTotalRemuneracaoFechamentoExportPeriodoLabel(normalizedMesAno)
+  const title = buildTotalRemuneracaoFechamentoExportTitle({
+    mesAno: normalizedMesAno,
+    dreLabel,
+    tipoPessoaLabel,
+    periodoLabel,
+  })
+  const workbook = await buildTotalRemuneracaoFechamentoWorkbookFromTemplate({
+    title,
+    mesAno: normalizedMesAno,
+    dreLabel,
+    tipoPessoaLabel,
+    revisao: normalizedRevisao,
+    periodoLabel,
+    items: totalResult.items,
+  })
+  const buffer = Buffer.from(await workbook.xlsx.writeBuffer())
+  const safeMesAno = normalizedMesAno.replace('/', '-')
+  const downloadFileName = `total-remuneracao-fechamento_${safeMesAno}_rev${normalizedRevisao}.xlsx`
+
+  return {
+    buffer,
+    downloadFileName,
+    monthRange,
+    normalizedMesAno,
+  }
+}
+
 const resolveTipoBancadaFromRemuneracaoItem = (item) => {
   const normalizedTipoVeiculo = normalizeApontamentoTipoVeiculo(item?.tipoVeiculo ?? item?.tipo_veiculo)
 
@@ -5017,6 +5870,22 @@ const getAcessivelTegRegularPercapitaNcPresQuantity = (item) => {
 
 const getAcessivelTegRegularPercapitaAtComplNcQuantity = (item) => {
   if (!isIncludedTipoEscolaForAcessivel(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.atendimentoComplementarNaoCadeiranteAcm) || 0)
+}
+
+const getCrecheTegRegularPercapitaNcPresQuantity = (item) => {
+  if (!isIncludedTipoEscolaForEspecialRegularPercapitaAcrescimo(item)) {
+    return 0
+  }
+
+  return Math.max(0, Number(item?.naoCadeirantePresencialAcm) || 0)
+}
+
+const getCrecheTegRegularPercapitaAtComplNcQuantity = (item) => {
+  if (!isIncludedTipoEscolaForEspecialRegularPercapitaAcrescimo(item)) {
     return 0
   }
 
@@ -5545,6 +6414,20 @@ const calculateRemuneracaoServicosItems = async ({
     return resultMap
   }, new Map())
 
+  const accumulatedCrecheTegRegularPercapitaNcPresByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getCrecheTegRegularPercapitaNcPresQuantity(item))
+    return resultMap
+  }, new Map())
+
+  const accumulatedCrecheTegRegularPercapitaAtComplNcByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
+    const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
+    const currentValue = resultMap.get(groupKey) ?? 0
+    resultMap.set(groupKey, currentValue + getCrecheTegRegularPercapitaAtComplNcQuantity(item))
+    return resultMap
+  }, new Map())
+
   const accumulatedEspecialRegularPercapitaAcrescimoByGroupKey = allApontamentoItems.reduce((resultMap, item) => {
     const groupKey = buildRemuneracaoServicosBaseGroupKey(item)
     const currentValue = resultMap.get(groupKey) ?? 0
@@ -5697,6 +6580,8 @@ const calculateRemuneracaoServicosItems = async ({
     let normalizedTegRegularPercapita = 0
     let normalizedTegAcessivelFixo = 0
     let normalizedTegAcessivelPercapita = 0
+    let normalizedTegCrecheFixo = 0
+    let normalizedTegCrechePercapita = 0
 
     if (modalidadeDescricao && !shouldUseSpecialOnlyCalculation) {
       if (tipoBancada === 'ACESSIVEL') {
@@ -5735,6 +6620,43 @@ const calculateRemuneracaoServicosItems = async ({
 
           normalizedTegAcessivelFixo = acessivelCadAmounts.fixo
           normalizedTegAcessivelPercapita = acessivelCadAmounts.percapita
+        }
+      } else if (tipoBancada === 'CRECHE') {
+        const crecheNcPresQuantidade = Math.max(0, Number(accumulatedCrecheTegRegularPercapitaNcPresByGroupKey.get(groupKey) ?? 0))
+        const crecheAtComplNcQuantidade = Math.max(0, Number(accumulatedCrecheTegRegularPercapitaAtComplNcByGroupKey.get(groupKey) ?? 0))
+        const crecheRegularModalidadeCandidates = ['TEG REGULAR']
+        const convencionalQuantidadeConfig = quantidadeConfigByTipoBancada.CONVENCIONAL
+
+        const ncPresPercapita = await resolveAcessivelTegRegularPercapitaAcrescimoDailyAmount({
+          quantidade: crecheNcPresQuantidade,
+          dataReferencia,
+          modalidadeDescricaoCandidates: crecheRegularModalidadeCandidates,
+          quantidadeConfig: convencionalQuantidadeConfig,
+          valorByLookupKey,
+        }, executor)
+        const atComplNcPercapita = await resolveAcessivelTegRegularPercapitaAcrescimoDailyAmount({
+          quantidade: crecheAtComplNcQuantidade,
+          dataReferencia,
+          modalidadeDescricaoCandidates: crecheRegularModalidadeCandidates,
+          quantidadeConfig: convencionalQuantidadeConfig,
+          valorByLookupKey,
+        }, executor)
+
+        normalizedTegRegularFixo = 0
+        normalizedTegRegularPercapita = normalizeRemuneracaoServicosAmount(ncPresPercapita + atComplNcPercapita)
+
+        if (quantidade > 0) {
+          const crecheAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
+            quantidade,
+            dataReferencia,
+            modalidadeDescricaoCandidates,
+            tipoBancada: 'CRECHE',
+            quantidadeConfig,
+            valorByLookupKey,
+          }, executor)
+
+          normalizedTegCrecheFixo = crecheAmounts.fixo
+          normalizedTegCrechePercapita = crecheAmounts.percapita
         }
       } else if (quantidade > 0) {
         const tegModalidadeAmounts = await resolveNormalizedTegModalidadeDailyAmounts({
@@ -5844,10 +6766,10 @@ const calculateRemuneracaoServicosItems = async ({
       totalCalculados += 1
     }
 
-    const nextTegRegularFixo = modalidadeDescricao && (tipoBancada === 'CONVENCIONAL' || tipoBancada === 'ACESSIVEL')
+    const nextTegRegularFixo = modalidadeDescricao && (tipoBancada === 'CONVENCIONAL' || tipoBancada === 'ACESSIVEL' || tipoBancada === 'CRECHE')
       ? normalizedTegRegularFixo
       : Number(item.tegRegularFixo) || 0
-    const nextTegRegularPercapita = modalidadeDescricao && (tipoBancada === 'CONVENCIONAL' || tipoBancada === 'ACESSIVEL')
+    const nextTegRegularPercapita = modalidadeDescricao && (tipoBancada === 'CONVENCIONAL' || tipoBancada === 'ACESSIVEL' || tipoBancada === 'CRECHE')
       ? normalizedTegRegularPercapita
       : Number(item.tegRegularPercapita) || 0
     const nextTegAcessivelFixo = modalidadeDescricao && tipoBancada === 'ACESSIVEL'
@@ -5861,10 +6783,10 @@ const calculateRemuneracaoServicosItems = async ({
     const nextTegEspecialAcessivelFixo = modalidadeDescricao ? normalizedTegEspecialAcessivelFixo : Number(item.tegEspecialAcessivelFixo) || 0
     const nextTegEspecialAcessivelPercapita = modalidadeDescricao ? normalizedTegEspecialAcessivelPercapita : Number(item.tegEspecialAcessivelPercapita) || 0
     const nextTegCrecheFixo = modalidadeDescricao && tipoBancada === 'CRECHE'
-      ? normalizedTegRegularFixo
+      ? normalizedTegCrecheFixo
       : Number(item.tegCrecheFixo) || 0
     const nextTegCrechePercapita = modalidadeDescricao && tipoBancada === 'CRECHE'
-      ? normalizedTegRegularPercapita
+      ? normalizedTegCrechePercapita
       : Number(item.tegCrechePercapita) || 0
 
     let nextContinuaRegular = 0
@@ -8011,6 +8933,7 @@ const processApuracaoFinanceiraSelections = async ({
   tipoPessoa,
   replaceExistingDreCodigos,
   replaceExistingTipoPessoa,
+  usuario,
 }, executor = pool) => {
   const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
   const requestedSituacao = normalizeApuracaoFinanceiraStatus(situacao)
@@ -8028,6 +8951,7 @@ const processApuracaoFinanceiraSelections = async ({
       .filter(Boolean),
   )]
   const normalizedReplaceExistingTipoPessoa = normalizeApuracaoTipoPessoa(replaceExistingTipoPessoa) || normalizedTipoPessoa
+  const normalizedUsuarioProcessamento = normalizeAuditActor(usuario || 'USUARIO') || 'USUARIO'
   const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
 
   if (!monthRange) {
@@ -8110,12 +9034,14 @@ const processApuracaoFinanceiraSelections = async ({
 
   for (const dreRecord of dreRecords) {
     await executor.query(
-      `INSERT INTO apuracao_financeira (mes_ano, dre_codigo, revisao, tipo_pessoa, situacao)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO apuracao_financeira (mes_ano, dre_codigo, revisao, tipo_pessoa, situacao, usuario_processamento, data_processamento)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
        ON CONFLICT (mes_ano, dre_codigo, revisao, tipo_pessoa)
        DO UPDATE SET situacao = EXCLUDED.situacao,
-                     data_alteracao = NOW()`,
-      [normalizedMesAno, dreRecord.codigo, normalizedRevisao, normalizedTipoPessoa, normalizedSituacao],
+                     data_alteracao = NOW(),
+                     usuario_processamento = EXCLUDED.usuario_processamento,
+                     data_processamento = EXCLUDED.data_processamento`,
+      [normalizedMesAno, dreRecord.codigo, normalizedRevisao, normalizedTipoPessoa, normalizedSituacao, normalizedUsuarioProcessamento],
     )
 
     const activeOrdemServicoItems = await listActiveOrdemServicoOptionsByApuracao({
@@ -22734,6 +23660,8 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS situacao varchar(40)')
   await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
   await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS data_alteracao timestamp without time zone')
+  await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS usuario_processamento varchar(255)')
+  await pool.query('ALTER TABLE apuracao_financeira ADD COLUMN IF NOT EXISTS data_processamento timestamp without time zone')
   await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN mes_ano TYPE varchar(7)')
   await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN revisao SET DEFAULT 0')
   await pool.query('ALTER TABLE apuracao_financeira ALTER COLUMN tipo_pessoa TYPE varchar(2)')
@@ -24943,6 +25871,48 @@ const ensureDatabaseSchema = async () => {
     )
   `)
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS digitacao_faltas (
+      mes_ano varchar(7) NOT NULL,
+      data_referencia date NOT NULL,
+      dre_codigo integer NOT NULL REFERENCES dre(codigo) ON DELETE RESTRICT,
+      ordem_servico_codigo integer NOT NULL REFERENCES ${ordemServicoTableName}(codigo) ON DELETE RESTRICT,
+      revisao integer NOT NULL DEFAULT 0,
+      tipo_pessoa varchar(2) NOT NULL DEFAULT 'PF',
+      ausencia_total boolean NOT NULL DEFAULT false,
+      quantidade_alunos_integral integer,
+      quantidade_alunos_meio_periodo integer,
+      data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
+      data_alteracao timestamp without time zone,
+      CONSTRAINT digitacao_faltas_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
+    )
+  `)
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS mes_ano varchar(7)')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS data_referencia date')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS dre_codigo integer')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS ordem_servico_codigo integer')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS revisao integer DEFAULT 0')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS tipo_pessoa varchar(2) DEFAULT \'PF\'')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS ausencia_total boolean DEFAULT false')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS quantidade_alunos_integral integer')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS quantidade_alunos_meio_periodo integer')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS teg_regular boolean DEFAULT false')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS teg_acessivel boolean DEFAULT false')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS teg_creche boolean DEFAULT false')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS teg_especial boolean DEFAULT false')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS data_inclusao timestamp without time zone DEFAULT NOW()')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS data_alteracao timestamp without time zone')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN mes_ano SET NOT NULL')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN data_referencia SET NOT NULL')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN dre_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN ordem_servico_codigo SET NOT NULL')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN revisao SET NOT NULL')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN tipo_pessoa SET NOT NULL')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN ausencia_total SET NOT NULL')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN data_inclusao SET NOT NULL')
+  await pool.query('CREATE INDEX IF NOT EXISTS digitacao_faltas_mes_ano_data_referencia_idx ON digitacao_faltas (mes_ano, data_referencia)')
+  await pool.query('CREATE INDEX IF NOT EXISTS digitacao_faltas_dre_idx ON digitacao_faltas (dre_codigo)')
+  await pool.query('CREATE INDEX IF NOT EXISTS digitacao_faltas_ordem_servico_idx ON digitacao_faltas (ordem_servico_codigo)')
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS remuneracao_servicos (
       mes_ano varchar(7) NOT NULL,
       data_referencia date NOT NULL,
@@ -25833,6 +26803,8 @@ const server = createServer(async (request, response) => {
             BTRIM(apuracao_financeira.situacao) AS situacao,
             COALESCE(CAST(apuracao_financeira.data_inclusao AS text), '') AS data_inclusao,
             COALESCE(CAST(apuracao_financeira.data_alteracao AS text), '') AS data_alteracao,
+            COALESCE(BTRIM(apuracao_financeira.usuario_processamento), '') AS usuario_processamento,
+            COALESCE(CAST(apuracao_financeira.data_processamento AS text), '') AS data_processamento,
             COALESCE(TO_CHAR(apuracao_servicos_datas.data_referencia, 'YYYY-MM-DD'), '') AS data_referencia
           FROM apuracao_financeira
           INNER JOIN dre ON dre.codigo = apuracao_financeira.dre_codigo
@@ -25924,7 +26896,9 @@ const server = createServer(async (request, response) => {
            apuracao_financeira_expanded.situacao,
            apuracao_financeira_expanded.data_referencia,
            apuracao_financeira_expanded.data_inclusao,
-           apuracao_financeira_expanded.data_alteracao
+           apuracao_financeira_expanded.data_alteracao,
+           apuracao_financeira_expanded.usuario_processamento,
+           apuracao_financeira_expanded.data_processamento
          FROM apuracao_financeira_expanded
          ${whereClause}
          ORDER BY ${orderByClause}
@@ -25946,6 +26920,8 @@ const server = createServer(async (request, response) => {
           situacao: row.situacao,
           dataInclusao: row.data_inclusao,
           dataAlteracao: row.data_alteracao,
+          usuarioProcessamento: row.usuario_processamento,
+          dataProcessamento: row.data_processamento,
         })),
         total,
         page,
@@ -25988,7 +26964,9 @@ const server = createServer(async (request, response) => {
             ? `resumo_financeiro.total_revisoes ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
             : sortBy === 'totalRegistros'
               ? `resumo_financeiro.total_registros ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
-              : sortBy === 'kilometragem'
+              : sortBy === 'totalOrdensServico'
+                ? `resumo_financeiro.total_ordens_servico ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
+                : sortBy === 'kilometragem'
                 ? `resumo_financeiro.km_total ${sortDirection}, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
                 : sortBy === 'dataAlteracaoOrigem'
                   ? `resumo_financeiro.data_alteracao_origem ${sortDirection} NULLS LAST, ${resumoFinanceiroMesAnoOrderClause} DESC, resumo_financeiro.dre_codigo ASC`
@@ -26012,7 +26990,7 @@ const server = createServer(async (request, response) => {
           SELECT
             BTRIM(aps.mes_ano) AS mes_ano,
             CAST(aps.dre_codigo AS text) AS dre_codigo,
-            COALESCE(BTRIM(aps.tipo_pessoa), 'PF') AS tipo_pessoa,
+            COALESCE(BTRIM(aps.tipo_pessoa), '') AS tipo_pessoa,
             COUNT(*)::int AS total_registros,
             COUNT(DISTINCT aps.ordem_servico_codigo)::int AS total_ordens_servico,
             COUNT(DISTINCT aps.tipo_escola_codigo)::int AS total_tipos_escola,
@@ -26027,18 +27005,82 @@ const server = createServer(async (request, response) => {
             TO_CHAR(COALESCE(SUM(aps.km), 0), 'FM9999999990.0000') AS km,
             COALESCE(MAX(aps.data_alteracao), MAX(aps.data_inclusao)) AS data_alteracao_origem
           FROM apuracao_servicos aps
-          GROUP BY BTRIM(aps.mes_ano), CAST(aps.dre_codigo AS text), COALESCE(BTRIM(aps.tipo_pessoa), 'PF')
+          GROUP BY BTRIM(aps.mes_ano), CAST(aps.dre_codigo AS text), COALESCE(BTRIM(aps.tipo_pessoa), '')
         ),
         financeiro AS (
           SELECT
             BTRIM(af.mes_ano) AS mes_ano,
             CAST(af.dre_codigo AS text) AS dre_codigo,
-            COALESCE(BTRIM(af.tipo_pessoa), 'PF') AS tipo_pessoa,
+            COALESCE(BTRIM(af.tipo_pessoa), '') AS tipo_pessoa,
             COUNT(*)::int AS total_revisoes,
             COALESCE(MAX(af.revisao), 0)::int AS maior_revisao,
             COALESCE(STRING_AGG(DISTINCT BTRIM(CAST(af.situacao AS text)), ' / '), '') AS situacoes_apuracao_financeira
           FROM apuracao_financeira af
-          GROUP BY BTRIM(af.mes_ano), CAST(af.dre_codigo AS text), COALESCE(BTRIM(af.tipo_pessoa), 'PF')
+          GROUP BY BTRIM(af.mes_ano), CAST(af.dre_codigo AS text), COALESCE(BTRIM(af.tipo_pessoa), '')
+        ),
+        remuneracao_ordens AS (
+          SELECT
+            BTRIM(rs.mes_ano) AS mes_ano,
+            CAST(rs.dre_codigo AS text) AS dre_codigo,
+            COALESCE(BTRIM(rs.tipo_pessoa), '') AS tipo_pessoa,
+            rs.revisao AS revisao,
+            SUM(COALESCE(rs.teg_regular_fixo, 0)) AS teg_regular_fixo,
+            SUM(COALESCE(rs.teg_regular_percapita, 0)) AS teg_regular_percapita,
+            SUM(COALESCE(rs.teg_acessivel_fixo, 0)) AS teg_acessivel_fixo,
+            SUM(COALESCE(rs.teg_acessivel_percapita, 0)) AS teg_acessivel_percapita,
+            SUM(COALESCE(rs.teg_especial_regular_fixo, 0)) AS teg_especial_regular_fixo,
+            SUM(COALESCE(rs.teg_especial_regular_percapita, 0)) AS teg_especial_regular_percapita,
+            SUM(COALESCE(rs.teg_especial_acessivel_fixo, 0)) AS teg_especial_acessivel_fixo,
+            SUM(COALESCE(rs.teg_especial_acessivel_percapita, 0)) AS teg_especial_acessivel_percapita,
+            SUM(COALESCE(rs.teg_creche_fixo, 0)) AS teg_creche_fixo,
+            SUM(COALESCE(rs.teg_creche_percapita, 0)) AS teg_creche_percapita,
+            SUM(COALESCE(rs.km_valor, 0)) AS km_valor,
+            SUM(COALESCE(rs.continua_regular, 0)) AS continua_regular,
+            SUM(COALESCE(rs.continua_cadeirante, 0)) AS continua_cadeirante,
+            SUM(COALESCE(rs.cca_valor, 0)) AS cca_valor
+          FROM remuneracao_servicos rs
+          INNER JOIN ${ordemServicoTableName} os ON os.codigo = rs.ordem_servico_codigo
+          WHERE EXTRACT(DAY FROM rs.data_referencia) <= 30
+            AND rs.data_referencia >= TO_DATE(CONCAT('01/', BTRIM(rs.mes_ano)), 'DD/MM/YYYY')
+            AND rs.data_referencia < (TO_DATE(CONCAT('01/', BTRIM(rs.mes_ano)), 'DD/MM/YYYY') + INTERVAL '1 month')
+          GROUP BY
+            BTRIM(rs.mes_ano),
+            CAST(rs.dre_codigo AS text),
+            COALESCE(BTRIM(rs.tipo_pessoa), ''),
+            rs.revisao,
+            rs.ordem_servico_codigo
+        ),
+        remuneracao_totais AS (
+          SELECT
+            remuneracao_ordens.mes_ano,
+            remuneracao_ordens.dre_codigo,
+            remuneracao_ordens.tipo_pessoa,
+            remuneracao_ordens.revisao,
+            SUM(remuneracao_ordens.teg_regular_fixo) AS teg_regular_fixo,
+            SUM(remuneracao_ordens.teg_regular_percapita) AS teg_regular_percapita,
+            SUM(remuneracao_ordens.teg_acessivel_fixo) AS teg_acessivel_fixo,
+            SUM(remuneracao_ordens.teg_acessivel_percapita) AS teg_acessivel_percapita,
+            SUM(remuneracao_ordens.teg_especial_regular_fixo) AS teg_especial_regular_fixo,
+            SUM(remuneracao_ordens.teg_especial_regular_percapita) AS teg_especial_regular_percapita,
+            SUM(remuneracao_ordens.teg_especial_acessivel_fixo) AS teg_especial_acessivel_fixo,
+            SUM(remuneracao_ordens.teg_especial_acessivel_percapita) AS teg_especial_acessivel_percapita,
+            SUM(remuneracao_ordens.teg_creche_fixo) AS teg_creche_fixo,
+            SUM(remuneracao_ordens.teg_creche_percapita) AS teg_creche_percapita,
+            SUM(remuneracao_ordens.km_valor) AS km_valor,
+            SUM(remuneracao_ordens.continua_regular) AS continua_regular,
+            SUM(remuneracao_ordens.continua_cadeirante) AS continua_cadeirante,
+            SUM(remuneracao_ordens.cca_valor) AS cca_valor
+          FROM remuneracao_ordens
+          INNER JOIN apuracao_financeira
+            ON BTRIM(apuracao_financeira.mes_ano) = remuneracao_ordens.mes_ano
+           AND CAST(apuracao_financeira.dre_codigo AS text) = remuneracao_ordens.dre_codigo
+           AND apuracao_financeira.revisao = remuneracao_ordens.revisao
+           AND COALESCE(BTRIM(apuracao_financeira.tipo_pessoa), '') = remuneracao_ordens.tipo_pessoa
+          GROUP BY
+            remuneracao_ordens.mes_ano,
+            remuneracao_ordens.dre_codigo,
+            remuneracao_ordens.tipo_pessoa,
+            remuneracao_ordens.revisao
         )
         SELECT
           servicos.mes_ano,
@@ -26061,13 +27103,32 @@ const server = createServer(async (request, response) => {
           servicos.cont_cad,
           servicos.km_total,
           servicos.km,
-          COALESCE(CAST(servicos.data_alteracao_origem AS text), '') AS data_alteracao_origem
+          COALESCE(CAST(servicos.data_alteracao_origem AS text), '') AS data_alteracao_origem,
+          COALESCE(remuneracao_totais.teg_regular_fixo, 0) AS teg_regular_fixo,
+          COALESCE(remuneracao_totais.teg_regular_percapita, 0) AS teg_regular_percapita,
+          COALESCE(remuneracao_totais.teg_acessivel_fixo, 0) AS teg_acessivel_fixo,
+          COALESCE(remuneracao_totais.teg_acessivel_percapita, 0) AS teg_acessivel_percapita,
+          COALESCE(remuneracao_totais.teg_especial_regular_fixo, 0) AS teg_especial_regular_fixo,
+          COALESCE(remuneracao_totais.teg_especial_regular_percapita, 0) AS teg_especial_regular_percapita,
+          COALESCE(remuneracao_totais.teg_especial_acessivel_fixo, 0) AS teg_especial_acessivel_fixo,
+          COALESCE(remuneracao_totais.teg_especial_acessivel_percapita, 0) AS teg_especial_acessivel_percapita,
+          COALESCE(remuneracao_totais.teg_creche_fixo, 0) AS teg_creche_fixo,
+          COALESCE(remuneracao_totais.teg_creche_percapita, 0) AS teg_creche_percapita,
+          COALESCE(remuneracao_totais.km_valor, 0) AS km_valor,
+          COALESCE(remuneracao_totais.continua_regular, 0) AS continua_regular,
+          COALESCE(remuneracao_totais.continua_cadeirante, 0) AS continua_cadeirante,
+          COALESCE(remuneracao_totais.cca_valor, 0) AS cca_valor
         FROM servicos
         INNER JOIN dre ON CAST(dre.codigo AS text) = servicos.dre_codigo
         LEFT JOIN financeiro
           ON financeiro.mes_ano = servicos.mes_ano
          AND financeiro.dre_codigo = servicos.dre_codigo
-         AND financeiro.tipo_pessoa = servicos.tipo_pessoa`
+         AND financeiro.tipo_pessoa = servicos.tipo_pessoa
+        LEFT JOIN remuneracao_totais
+          ON remuneracao_totais.mes_ano = servicos.mes_ano
+         AND remuneracao_totais.dre_codigo = servicos.dre_codigo
+         AND remuneracao_totais.tipo_pessoa = servicos.tipo_pessoa
+         AND remuneracao_totais.revisao = COALESCE(financeiro.maior_revisao, 0)`
 
       const countResult = await pool.query(
         `SELECT COUNT(*)::int AS total
@@ -26111,12 +27172,13 @@ const server = createServer(async (request, response) => {
           continuaCadeirante: Number(row?.cont_cad) || 0,
           kilometragem: normalizeRequestValue(row?.km),
           dataAlteracaoOrigem: normalizeRequestValue(row?.data_alteracao_origem),
+          ...mapResumoFinanceiroRemuneracaoTotalsFromRow(row),
         })),
         total,
         page,
         pageSize,
         totalPages: Math.max(Math.ceil(total / pageSize), 1),
-        sortBy: ['mesAno', 'dreDescricao', 'tipoPessoa', 'maiorRevisao', 'totalRevisoes', 'totalRegistros', 'kilometragem', 'dataAlteracaoOrigem'].includes(sortBy) ? sortBy : 'mesAno',
+        sortBy: ['mesAno', 'dreDescricao', 'tipoPessoa', 'maiorRevisao', 'totalRevisoes', 'totalRegistros', 'totalOrdensServico', 'kilometragem', 'dataAlteracaoOrigem'].includes(sortBy) ? sortBy : 'mesAno',
         sortDirection: sortDirection.toLowerCase(),
       })
     } catch (error) {
@@ -26342,6 +27404,82 @@ const server = createServer(async (request, response) => {
     return
   }
 
+  if (request.method === 'GET' && pathname === '/api/digitacao-faltas/apontamento') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+      const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
+      const dataReferencia = normalizeApontamentoServicosDate(requestUrl.searchParams.get('dataReferencia') ?? '')
+      const revisao = requestUrl.searchParams.get('revisao')
+
+      const lookupResult = await lookupDigitacaoFaltasApontamento({
+        mesAno,
+        dreCodigo,
+        tipoPessoa,
+        dataReferencia,
+        placa,
+        revisao,
+      })
+
+      sendJson(response, 200, lookupResult)
+    } catch (error) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar o apontamento para digitacao de faltas.'
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'POST' && pathname === '/api/digitacao-faltas') {
+    try {
+      const body = await readJsonBody(request)
+      const mesAno = normalizeApuracaoFinanceiraMesAno(body.mesAno)
+      const dreCodigo = normalizeRequestValue(body.dreCodigo)
+      const tipoPessoa = normalizeApuracaoTipoPessoa(body.tipoPessoa)
+      const dataReferencia = normalizeApontamentoServicosDate(body.dataReferencia)
+      const placa = normalizeRequestValue(body.placa)
+      const ordemServicoCodigo = normalizeRequestValue(body.ordemServicoCodigo)
+      const revisao = normalizeApuracaoRevisao(body.revisao)
+      const ausenciaTotal = Boolean(body.ausenciaTotal)
+
+      const item = await upsertDigitacaoFaltasItem({
+        mesAno,
+        dreCodigo,
+        tipoPessoa,
+        dataReferencia,
+        placa,
+        ordemServicoCodigo,
+        revisao,
+        tegRegular: body.tegRegular,
+        tegAcessivel: body.tegAcessivel,
+        tegCreche: body.tegCreche,
+        tegEspecial: body.tegEspecial,
+        ausenciaTotal,
+        quantidadeAlunosIntegral: body.quantidadeAlunosIntegral,
+        quantidadeAlunosMeioPeriodo: body.quantidadeAlunosMeioPeriodo,
+      })
+
+      sendJson(response, 200, {
+        message: 'Digitacao de faltas gravada com sucesso.',
+        item,
+      })
+    } catch (error) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao gravar a digitacao de faltas.'
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
   if (request.method === 'GET' && pathname === '/api/apontamento-servicos') {
     try {
       const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
@@ -26437,6 +27575,48 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao consultar o total de remuneracao de servicos.'
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/total-remuneracao-servicos/export-excel') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const crmcCondutor = normalizeRequestValue(requestUrl.searchParams.get('crmcCondutor') ?? '')
+      const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
+      const revisao = normalizeApuracaoRevisao(requestUrl.searchParams.get('revisao') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+
+      if (!mesAno) {
+        sendJson(response, 400, { message: 'Mes/ano invalido. Use o formato mm/aaaa.' })
+        return
+      }
+
+      const exportResult = await exportTotalRemuneracaoServicosExcel({
+        mesAno,
+        dreCodigo,
+        crmcCondutor,
+        placa,
+        revisao,
+        tipoPessoa,
+      })
+
+      sendBinary(
+        response,
+        200,
+        exportResult.buffer,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        exportResult.downloadFileName,
+      )
+    } catch (error) {
+      const statusCode = Number(error?.statusCode) || 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao exportar o total de remuneracao de servicos.'
 
       sendJson(response, statusCode, { message })
     }
@@ -32436,6 +33616,8 @@ const server = createServer(async (request, response) => {
           situacao: itemResult.rows[0].situacao,
           dataInclusao: itemResult.rows[0].data_inclusao,
           dataAlteracao: itemResult.rows[0].data_alteracao,
+          usuarioProcessamento: itemResult.rows[0].usuario_processamento,
+          dataProcessamento: itemResult.rows[0].data_processamento,
         },
       })
     } catch (error) {
@@ -32463,7 +33645,7 @@ const server = createServer(async (request, response) => {
 
       upsertBatchProcessRun(trackerId, {
         processType: 'apuracao-financeira-processar',
-        processName: 'Processar Apuracao Financeira',
+        processName: 'Processar Processamento Apontamento',
         source: apuracaoFinanceiraProcessarPath,
         status: 'running',
         message: 'Processamento em lote da apuracao financeira em execucao.',
@@ -32496,6 +33678,7 @@ const server = createServer(async (request, response) => {
         tipoPessoa: body.tipoPessoa,
         replaceExistingDreCodigos: body.replaceExistingDreCodigos,
         replaceExistingTipoPessoa: body.replaceExistingTipoPessoa,
+        usuario: performedBy,
       }, client)
       await client.query('COMMIT')
 
@@ -32559,7 +33742,7 @@ const server = createServer(async (request, response) => {
 
       upsertBatchProcessRun(trackerId, {
         processType: 'apuracao-financeira-alterar-situacao-lote',
-        processName: 'Alterar Situacao da Apuracao Financeira em Lote',
+        processName: 'Alterar Situacao do Processamento Apontamento em Lote',
         source: apuracaoFinanceiraAlterarSituacaoLotePath,
         status: 'running',
         message: 'Alteracao em lote da situacao da apuracao financeira em execucao.',
@@ -36547,6 +37730,8 @@ const server = createServer(async (request, response) => {
           situacao: itemResult.rows[0].situacao,
           dataInclusao: itemResult.rows[0].data_inclusao,
           dataAlteracao: itemResult.rows[0].data_alteracao,
+          usuarioProcessamento: itemResult.rows[0].usuario_processamento,
+          dataProcessamento: itemResult.rows[0].data_processamento,
         },
       })
     } catch (error) {

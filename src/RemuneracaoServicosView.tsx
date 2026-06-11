@@ -19,7 +19,7 @@ import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './uti
 import { formatVeiculoOsEspecialDisplay } from './utils/veiculoDisplay'
 
 type StatusTone = 'idle' | 'error' | 'success' | 'warning'
-type MonetaryColumnVisibilityMode = 'all' | 'continua-only' | 'km-valor-only'
+type MonetaryColumnVisibilityMode = 'all' | 'continua-only' | 'km-valor-only' | 'valor-total-only'
 
 type RemuneracaoServicosFilters = {
   mesAno: string
@@ -329,6 +329,10 @@ const KM_VALOR_MONETARY_COLUMN_KEYS: ReadonlySet<MonetaryColumnKey> = new Set([
   'kmValor',
 ])
 
+const calculateValorTotal = (item: RemuneracaoServicosItem) => {
+  return monetaryColumns.reduce((sum, column) => sum + (item[column.key] || 0), 0)
+}
+
 export default function RemuneracaoServicosView() {
   const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY) || hasEditableFormPermission(LEGACY_FORM_ACCESS_KEY)
   const initialMesAno = getCurrentMonthYear()
@@ -376,7 +380,12 @@ export default function RemuneracaoServicosView() {
   const canGoToPreviousPage = page > 1
   const canGoToNextPage = page < totalPages
   const isProcessingBatch = isCalculating || isLoadingBatchStatus || Boolean(remuneracaoBatchStatus?.isRunning)
+  const showValorTotalColumn = monetaryColumnVisibilityMode === 'all' || monetaryColumnVisibilityMode === 'valor-total-only'
   const visibleMonetaryColumns = useMemo(() => {
+    if (monetaryColumnVisibilityMode === 'valor-total-only') {
+      return []
+    }
+
     if (monetaryColumnVisibilityMode === 'continua-only') {
       return monetaryColumns.filter((column) => CONTINUA_MONETARY_COLUMN_KEYS.has(column.key))
     }
@@ -412,7 +421,12 @@ export default function RemuneracaoServicosView() {
 
     return groupInfoByIndex
   }, [items])
-  const tableColumnCount = 1 + visibleMonetaryColumns.length
+  const tableColumnCount = 1 + visibleMonetaryColumns.length + (showValorTotalColumn ? 1 : 0)
+  const tableVisibilityClassName = monetaryColumnVisibilityMode === 'valor-total-only'
+    ? 'total-remuneracao-servicos-table-valor-total-only'
+    : monetaryColumnVisibilityMode !== 'all'
+      ? 'remuneracao-servicos-table-only-continua'
+      : ''
   const mergedHeaderGroups = useMemo(() => {
     const groups: Array<{
       title: string
@@ -550,7 +564,14 @@ export default function RemuneracaoServicosView() {
     }
 
     if (!filters.dataReferencia) {
-      openValidationDialog('Informe uma data de operacao valida no formato dd/mm/yyyy.')
+      setItems([])
+      setLoadedItemsSnapshot([])
+      setTotalItems(0)
+      setTotalPages(1)
+      if (!options.silent) {
+        setStatusTone('idle')
+        setStatusMessage('')
+      }
       return
     }
 
@@ -704,12 +725,34 @@ export default function RemuneracaoServicosView() {
         window.removeEventListener('resize', syncScrollMetrics)
       }
     }
-  }, [items, pageSize, visibleMonetaryColumns.length])
+  }, [items, pageSize, tableColumnCount])
 
   const handleFilterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const nextFilters = buildCurrentFilters()
+
+    if (!isValidMonthYear(nextFilters.mesAno)) {
+      openValidationDialog('Informe um mes/ano valido para consultar o ateste.')
+      return
+    }
+
+    if (!nextFilters.dataReferencia) {
+      openValidationDialog('Informe uma data de operacao valida no formato dd/mm/yyyy.')
+      return
+    }
+
+    if (!doesDateBelongToMonthYear(nextFilters.dataReferencia, nextFilters.mesAno)) {
+      openValidationDialog(monthYearMismatchMessage)
+      return
+    }
+
+    const parsedRevisao = parseApuracaoRevisao(nextFilters.revisao)
+
+    if (parsedRevisao === null) {
+      openValidationDialog('Informe uma revisao valida.')
+      return
+    }
 
     setAppliedFilters(nextFilters)
     setPage(1)
@@ -1091,6 +1134,15 @@ export default function RemuneracaoServicosView() {
                 />
                 <span>Mostrar somente KM Valor</span>
               </label>
+              <label className="apontamento-servicos-accumulated-toggle">
+                <input
+                  type="checkbox"
+                  checked={monetaryColumnVisibilityMode === 'valor-total-only'}
+                  onChange={(event) => setMonetaryColumnVisibilityMode(event.target.checked ? 'valor-total-only' : 'all')}
+                  disabled={isLoading || isSaving || isProcessingBatch}
+                />
+                <span>Mostrar somente Valor Total</span>
+              </label>
             </div>
           </div>
 
@@ -1116,7 +1168,7 @@ export default function RemuneracaoServicosView() {
           </div>
 
           <div ref={tableWrapperRef} className="apontamento-servicos-table-wrapper remuneracao-servicos-table-wrapper">
-            <table className={`apontamento-servicos-table apontamento-servicos-table-sem-acumulados remuneracao-servicos-table ${monetaryColumnVisibilityMode !== 'all' ? 'remuneracao-servicos-table-only-continua' : ''}`}>
+            <table className={`apontamento-servicos-table apontamento-servicos-table-sem-acumulados remuneracao-servicos-table ${tableVisibilityClassName}`}>
               <thead>
                 <tr>
                   <th rowSpan={2} className="apontamento-servicos-header-compact">DRE/CRMC/Tipo de Veiculo</th>
@@ -1125,6 +1177,11 @@ export default function RemuneracaoServicosView() {
                       <span className="remuneracao-servicos-header-line">{group.title}</span>
                     </th>
                   ))}
+                  {showValorTotalColumn ? (
+                    <th rowSpan={2} className="apontamento-servicos-header-detail remuneracao-servicos-header-detail remuneracao-servicos-header-valor-total">
+                      <span className="remuneracao-servicos-header-line">Valor Total</span>
+                    </th>
+                  ) : null}
                 </tr>
                 <tr>
                   {visibleMonetaryColumns.map((column) => (
@@ -1194,6 +1251,13 @@ export default function RemuneracaoServicosView() {
                             />
                           </td>
                         ))}
+                        {showValorTotalColumn ? (
+                          <td className="apontamento-servicos-cell-compact total-remuneracao-servicos-valor-total-cell">
+                            <span className="apontamento-servicos-grid-readonly total-remuneracao-servicos-valor-total-value">
+                              {formatMoneyValue(calculateValorTotal(item))}
+                            </span>
+                          </td>
+                        ) : null}
                       </tr>
                     </Fragment>
                   )

@@ -16,6 +16,12 @@ import {
   APURACAO_TIPO_PESSOA_OPTIONS,
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
+import {
+  lookupDigitacaoFaltasApontamento,
+  saveDigitacaoFaltas,
+  type DigitacaoFaltasApontamentoMatch,
+  type DigitacaoFaltasItem,
+} from './services/digitacaoFaltas'
 import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
 import { formatVeiculoOsEspecialDisplay } from './utils/veiculoDisplay'
 
@@ -37,8 +43,37 @@ const LEGACY_FORM_ACCESS_KEY = 'form_apursvc021'
 const APURACAO_SERVICOS_EDITABLE_STATUS = 'Em digitacao'
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 30]
 const DEFAULT_PAGE_SIZE = 10
-const DEFAULT_APONTAMENTO_SERVICOS_IMPORT_DIRECTORY_PATH = 'C:/Users/m089383/Aplicativos/teg_financ/pgtos/2026-04 Pgto'
+const DEFAULT_APONTAMENTO_SERVICOS_IMPORT_DIRECTORY_PATH = 'C:\\Users\\m089383\\Aplicativos\\teg_cursor\\pgtos\\2026-04 Pgto'
 const DEFAULT_APONTAMENTO_SERVICOS_IMPORT_FILE_NAME = '04 ATESTE BT PF ABR 26.xlsx'
+const FALTA_QUANTIDADE_OPTIONS = Array.from({ length: 61 }, (_, index) => index)
+type FaltaSimNao = 'SIM' | 'NAO' | ''
+
+const booleanToFaltaSimNao = (value: boolean): FaltaSimNao => (value ? 'SIM' : 'NAO')
+
+const applyDigitacaoFaltasItemToForm = (
+  item: DigitacaoFaltasItem,
+  setters: {
+    setFaltaAusenciaTotal: (value: FaltaSimNao) => void
+    setFaltaQuantidadeIntegral: (value: string) => void
+    setFaltaQuantidadeMeioPeriodo: (value: string) => void
+    setFaltaTegRegular: (value: FaltaSimNao) => void
+    setFaltaTegAcessivel: (value: FaltaSimNao) => void
+    setFaltaTegCreche: (value: FaltaSimNao) => void
+    setFaltaTegEspecial: (value: FaltaSimNao) => void
+  },
+) => {
+  setters.setFaltaAusenciaTotal(item.ausenciaTotal ? 'SIM' : 'NAO')
+  setters.setFaltaQuantidadeIntegral(String(item.quantidadeAlunosIntegral ?? 0))
+  setters.setFaltaQuantidadeMeioPeriodo(String(item.quantidadeAlunosMeioPeriodo ?? 0))
+  setters.setFaltaTegRegular(booleanToFaltaSimNao(item.tegRegular))
+  setters.setFaltaTegAcessivel(booleanToFaltaSimNao(item.tegAcessivel))
+  setters.setFaltaTegCreche(booleanToFaltaSimNao(item.tegCreche))
+  setters.setFaltaTegEspecial(booleanToFaltaSimNao(item.tegEspecial))
+}
+
+const formatDigitacaoFaltasOsDisplay = (match: DigitacaoFaltasApontamentoMatch) => {
+  return match.ordemServicoOsConcat || match.ordemServicoNumOs || match.ordemServicoCodigo || '-'
+}
 
 const normalizeMonthYearInput = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 6)
@@ -271,6 +306,25 @@ export default function ApontamentoServicosView() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [isDigitacaoFaltasVisible, setIsDigitacaoFaltasVisible] = useState(false)
+  const [faltaMesAno, setFaltaMesAno] = useState(initialMesAno)
+  const [faltaDreCodigo, setFaltaDreCodigo] = useState('')
+  const [faltaTipoPessoa, setFaltaTipoPessoa] = useState<ApuracaoTipoPessoa>('PF')
+  const [faltaPlaca, setFaltaPlaca] = useState('')
+  const [faltaDataReferenciaInput, setFaltaDataReferenciaInput] = useState(formatIsoDateToDisplay(initialDataReferencia))
+  const [faltaRevisao, setFaltaRevisao] = useState('0')
+  const [faltaTegRegular, setFaltaTegRegular] = useState<FaltaSimNao>('')
+  const [faltaTegAcessivel, setFaltaTegAcessivel] = useState<FaltaSimNao>('')
+  const [faltaTegCreche, setFaltaTegCreche] = useState<FaltaSimNao>('')
+  const [faltaTegEspecial, setFaltaTegEspecial] = useState<FaltaSimNao>('')
+  const [faltaAusenciaTotal, setFaltaAusenciaTotal] = useState<FaltaSimNao>('')
+  const [faltaQuantidadeIntegral, setFaltaQuantidadeIntegral] = useState('0')
+  const [faltaQuantidadeMeioPeriodo, setFaltaQuantidadeMeioPeriodo] = useState('0')
+  const [faltaMatch, setFaltaMatch] = useState<DigitacaoFaltasApontamentoMatch | null>(null)
+  const [faltaStatusMessage, setFaltaStatusMessage] = useState('')
+  const [faltaStatusTone, setFaltaStatusTone] = useState<StatusTone>('idle')
+  const [isFaltaLookupLoading, setIsFaltaLookupLoading] = useState(false)
+  const [isFaltaSaving, setIsFaltaSaving] = useState(false)
   const topScrollWrapperRef = useRef<HTMLDivElement | null>(null)
   const topScrollContentRef = useRef<HTMLDivElement | null>(null)
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
@@ -325,6 +379,8 @@ export default function ApontamentoServicosView() {
 
   const openImportRequestDialog = useCallback(() => {
     setImportRequestErrorMessage('')
+    setImportDirectoryPath(DEFAULT_APONTAMENTO_SERVICOS_IMPORT_DIRECTORY_PATH)
+    setImportFileName(DEFAULT_APONTAMENTO_SERVICOS_IMPORT_FILE_NAME)
     setIsImportRequestDialogVisible(true)
   }, [])
 
@@ -347,6 +403,271 @@ export default function ApontamentoServicosView() {
     setImportDialogSkippedRecords([])
     setImportProgress(null)
   }, [isImporting])
+
+  const resetDigitacaoFaltasForm = useCallback(() => {
+    setFaltaMesAno(appliedFilters.mesAno)
+    setFaltaDreCodigo(appliedFilters.dreCodigo)
+    setFaltaTipoPessoa(appliedFilters.tipoPessoa)
+    setFaltaPlaca(appliedFilters.placa)
+    setFaltaDataReferenciaInput(formatIsoDateToDisplay(appliedFilters.dataReferencia))
+    setFaltaRevisao(appliedFilters.revisao)
+    setFaltaTegRegular('')
+    setFaltaTegAcessivel('')
+    setFaltaTegCreche('')
+    setFaltaTegEspecial('')
+    setFaltaAusenciaTotal('')
+    setFaltaQuantidadeIntegral('0')
+    setFaltaQuantidadeMeioPeriodo('0')
+    setFaltaMatch(null)
+    setFaltaStatusMessage('')
+    setFaltaStatusTone('idle')
+  }, [appliedFilters])
+
+  const closeDigitacaoFaltasDialog = useCallback(() => {
+    if (isFaltaSaving || isFaltaLookupLoading) {
+      return
+    }
+
+    setIsDigitacaoFaltasVisible(false)
+    resetDigitacaoFaltasForm()
+  }, [isFaltaSaving, isFaltaLookupLoading, resetDigitacaoFaltasForm])
+
+  const lookupFaltaApontamento = useCallback(async () => {
+    const normalizedMesAno = faltaMesAno.trim()
+    const normalizedDreCodigo = faltaDreCodigo.trim()
+    const normalizedPlaca = faltaPlaca.trim()
+    const normalizedDataReferencia = parseDisplayDateToIso(faltaDataReferenciaInput.trim())
+    const normalizedRevisao = faltaRevisao.trim()
+
+    if (!normalizedPlaca) {
+      setFaltaMatch(null)
+      setFaltaStatusMessage('')
+      setFaltaStatusTone('idle')
+      return
+    }
+
+    if (
+      !isValidMonthYear(normalizedMesAno)
+      || !normalizedDreCodigo
+      || !normalizedDataReferencia
+      || !doesDateBelongToMonthYear(normalizedDataReferencia, normalizedMesAno)
+    ) {
+      setFaltaMatch(null)
+      return
+    }
+
+    setIsFaltaLookupLoading(true)
+    setFaltaStatusTone('idle')
+    setFaltaStatusMessage('Consultando ordem de servico...')
+
+    try {
+      const result = await lookupDigitacaoFaltasApontamento({
+        mesAno: normalizedMesAno,
+        dreCodigo: normalizedDreCodigo,
+        tipoPessoa: faltaTipoPessoa,
+        placa: normalizedPlaca,
+        dataReferencia: normalizedDataReferencia,
+        revisao: normalizedRevisao,
+      })
+
+      if (!result.matched || !result.match) {
+        setFaltaMatch(null)
+        setFaltaStatusTone('error')
+        setFaltaStatusMessage(
+          result.message || `O veiculo da placa ${normalizedPlaca} nao existe no apontamento do mes ${normalizedMesAno}.`,
+        )
+        return
+      }
+
+      const match = result.match
+      setFaltaMatch(match)
+      setFaltaStatusTone('success')
+      setFaltaStatusMessage(
+        `Ordem de servico encontrada: ${formatDigitacaoFaltasOsDisplay(match)}, revisao ${match.revisao}, ${match.registrosApontamento} registro(s) de apontamento.`,
+      )
+
+      if (result.item) {
+        applyDigitacaoFaltasItemToForm(result.item, {
+          setFaltaAusenciaTotal,
+          setFaltaQuantidadeIntegral,
+          setFaltaQuantidadeMeioPeriodo,
+          setFaltaTegRegular,
+          setFaltaTegAcessivel,
+          setFaltaTegCreche,
+          setFaltaTegEspecial,
+        })
+      }
+    } catch (error) {
+      setFaltaMatch(null)
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage(error instanceof Error ? error.message : 'Falha ao consultar ordem de servico.')
+    } finally {
+      setIsFaltaLookupLoading(false)
+    }
+  }, [
+    faltaDataReferenciaInput,
+    faltaDreCodigo,
+    faltaMesAno,
+    faltaPlaca,
+    faltaRevisao,
+    faltaTipoPessoa,
+  ])
+
+  const openDigitacaoFaltasDialog = useCallback(() => {
+    const nextDataReferenciaInput = formatIsoDateToDisplay(appliedFilters.dataReferencia)
+    setFaltaMesAno(appliedFilters.mesAno)
+    setFaltaDreCodigo(appliedFilters.dreCodigo)
+    setFaltaTipoPessoa(appliedFilters.tipoPessoa)
+    setFaltaPlaca(appliedFilters.placa)
+    setFaltaDataReferenciaInput(nextDataReferenciaInput)
+    setFaltaRevisao(appliedFilters.revisao)
+    setFaltaTegRegular('')
+    setFaltaTegAcessivel('')
+    setFaltaTegCreche('')
+    setFaltaTegEspecial('')
+    setFaltaAusenciaTotal('')
+    setFaltaQuantidadeIntegral('0')
+    setFaltaQuantidadeMeioPeriodo('0')
+    setFaltaMatch(null)
+    setFaltaStatusMessage('')
+    setFaltaStatusTone('idle')
+    setIsDigitacaoFaltasVisible(true)
+  }, [appliedFilters])
+
+  const handleDigitacaoFaltasSave = useCallback(async () => {
+    if (!hasEditPermission) {
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage(getEditPermissionDeniedMessage('Apontamento Servicos'))
+      return
+    }
+
+    const normalizedMesAno = faltaMesAno.trim()
+    const normalizedDreCodigo = faltaDreCodigo.trim()
+    const normalizedPlaca = faltaPlaca.trim()
+    const normalizedDataReferencia = parseDisplayDateToIso(faltaDataReferenciaInput.trim())
+    const normalizedRevisao = Number.parseInt(faltaRevisao.trim(), 10)
+
+    if (!isValidMonthYear(normalizedMesAno)) {
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage('Mes/ano invalido. Use o formato mm/aaaa.')
+      return
+    }
+
+    if (!normalizedDreCodigo) {
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage('Selecione a DRE.')
+      return
+    }
+
+    if (!normalizedPlaca) {
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage('Informe a placa.')
+      return
+    }
+
+    if (!normalizedDataReferencia) {
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage('Data de referencia invalida. Use o formato dd/mm/aaaa.')
+      return
+    }
+
+    if (!doesDateBelongToMonthYear(normalizedDataReferencia, normalizedMesAno)) {
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage(monthYearMismatchMessage)
+      return
+    }
+
+    if (!faltaAusenciaTotal) {
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage('Selecione a ausencia total.')
+      return
+    }
+
+    setIsFaltaSaving(true)
+    setFaltaStatusTone('idle')
+    setFaltaStatusMessage('Gravando digitacao de faltas...')
+
+    try {
+      const ausenciaTotal = faltaAusenciaTotal === 'SIM'
+      const result = await saveDigitacaoFaltas({
+        mesAno: normalizedMesAno,
+        dreCodigo: normalizedDreCodigo,
+        tipoPessoa: faltaTipoPessoa,
+        dataReferencia: normalizedDataReferencia,
+        placa: normalizedPlaca,
+        revisao: Number.isInteger(normalizedRevisao) ? normalizedRevisao : undefined,
+        ordemServicoCodigo: faltaMatch?.ordemServicoCodigo,
+        tegRegular: faltaTegRegular === 'SIM',
+        tegAcessivel: faltaTegAcessivel === 'SIM',
+        tegCreche: faltaTegCreche === 'SIM',
+        tegEspecial: faltaTegEspecial === 'SIM',
+        ausenciaTotal,
+        quantidadeAlunosIntegral: ausenciaTotal ? undefined : Number.parseInt(faltaQuantidadeIntegral, 10),
+        quantidadeAlunosMeioPeriodo: ausenciaTotal ? undefined : Number.parseInt(faltaQuantidadeMeioPeriodo, 10),
+      })
+
+      if (result.item) {
+        applyDigitacaoFaltasItemToForm(result.item, {
+          setFaltaAusenciaTotal,
+          setFaltaQuantidadeIntegral,
+          setFaltaQuantidadeMeioPeriodo,
+          setFaltaTegRegular,
+          setFaltaTegAcessivel,
+          setFaltaTegCreche,
+          setFaltaTegEspecial,
+        })
+      }
+
+      setFaltaStatusTone('success')
+      setFaltaStatusMessage(result.message)
+      void lookupFaltaApontamento()
+    } catch (error) {
+      setFaltaStatusTone('error')
+      setFaltaStatusMessage(error instanceof Error ? error.message : 'Falha ao gravar digitacao de faltas.')
+    } finally {
+      setIsFaltaSaving(false)
+    }
+  }, [
+    faltaAusenciaTotal,
+    faltaDataReferenciaInput,
+    faltaDreCodigo,
+    faltaMesAno,
+    faltaPlaca,
+    faltaQuantidadeIntegral,
+    faltaQuantidadeMeioPeriodo,
+    faltaRevisao,
+    faltaTegAcessivel,
+    faltaTegCreche,
+    faltaTegEspecial,
+    faltaTegRegular,
+    faltaTipoPessoa,
+    hasEditPermission,
+    lookupFaltaApontamento,
+    monthYearMismatchMessage,
+  ])
+
+  useEffect(() => {
+    if (!isDigitacaoFaltasVisible) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      void lookupFaltaApontamento()
+    }, 400)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [
+    isDigitacaoFaltasVisible,
+    faltaMesAno,
+    faltaDreCodigo,
+    faltaTipoPessoa,
+    faltaPlaca,
+    faltaDataReferenciaInput,
+    faltaRevisao,
+    lookupFaltaApontamento,
+  ])
 
   const stopImportStatusPolling = useCallback(() => {
     if (importStatusPollTimerRef.current !== null) {
@@ -506,7 +827,7 @@ export default function ApontamentoServicosView() {
   }, [appliedFilters, loadItems, page, pageSize])
 
   useEffect(() => {
-    if (!isValidationDialogVisible && !isImportDialogVisible && !isImportRequestDialogVisible) {
+    if (!isValidationDialogVisible && !isImportDialogVisible && !isImportRequestDialogVisible && !isDigitacaoFaltasVisible) {
       return
     }
 
@@ -525,6 +846,10 @@ export default function ApontamentoServicosView() {
         if (isImportDialogVisible) {
           closeImportDialog()
         }
+
+        if (isDigitacaoFaltasVisible) {
+          closeDigitacaoFaltasDialog()
+        }
       }
     }
 
@@ -535,9 +860,11 @@ export default function ApontamentoServicosView() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [
+    closeDigitacaoFaltasDialog,
     closeImportDialog,
     closeImportRequestDialog,
     closeValidationDialog,
+    isDigitacaoFaltasVisible,
     isImportDialogVisible,
     isImportRequestDialogVisible,
     isValidationDialogVisible,
@@ -1057,6 +1384,293 @@ export default function ApontamentoServicosView() {
         </div>
       ) : null}
 
+      {isDigitacaoFaltasVisible ? (
+        <div className="management-modal-overlay" onClick={closeDigitacaoFaltasDialog}>
+          <div
+            className="management-modal-shell"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="apontamento-servicos-digitacao-faltas-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <form
+              className="management-card management-form dre-form management-modal-form-card"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleDigitacaoFaltasSave()
+              }}
+              noValidate
+            >
+              <div className="management-modal-header">
+                <div>
+                  <p className="management-modal-kicker">Operacional financeiro - APNTSVC024</p>
+                  <h2 id="apontamento-servicos-digitacao-faltas-title">DIGITACAO DE FALTAS</h2>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button management-modal-close-button"
+                  onClick={closeDigitacaoFaltasDialog}
+                  disabled={isFaltaSaving || isFaltaLookupLoading}
+                  aria-label="Fechar digitacao de faltas"
+                >
+                  X
+                </button>
+              </div>
+
+              <p className="management-modal-subtitle">
+                Informe mes/ano, DRE, tipo pessoa, placa e data de referencia correspondentes a um apontamento existente.
+              </p>
+
+              <div className="management-modal-form-grid">
+                <label className="field-group" htmlFor="digitacao-faltas-mes-ano">
+                  <span>Mes/Ano</span>
+                  <input
+                    id="digitacao-faltas-mes-ano"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={7}
+                    placeholder="mm/aaaa"
+                    value={faltaMesAno}
+                    onChange={(event) => setFaltaMesAno(normalizeMonthYearInput(event.target.value))}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  />
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-dre">
+                  <span>DRE</span>
+                  <select
+                    id="digitacao-faltas-dre"
+                    value={faltaDreCodigo}
+                    onChange={(event) => setFaltaDreCodigo(event.target.value)}
+                    disabled={isFaltaSaving || isFaltaLookupLoading || isLoadingOptions}
+                  >
+                    <option value="">Selecione</option>
+                    {dreOptions.map((item) => (
+                      <option key={item.codigo} value={item.codigo}>
+                        {formatDreOptionLabel(item)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-tipo-pessoa">
+                  <span>Tipo pessoa</span>
+                  <select
+                    id="digitacao-faltas-tipo-pessoa"
+                    value={faltaTipoPessoa}
+                    onChange={(event) => setFaltaTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  >
+                    {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-placa">
+                  <span>Placa</span>
+                  <input
+                    id="digitacao-faltas-placa"
+                    type="text"
+                    value={faltaPlaca}
+                    onChange={(event) => setFaltaPlaca(event.target.value.toUpperCase())}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                    placeholder="Informe a placa"
+                  />
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-data-referencia">
+                  <span>Data referencia</span>
+                  <input
+                    id="digitacao-faltas-data-referencia"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="dd/mm/aaaa"
+                    value={faltaDataReferenciaInput}
+                    onChange={(event) => setFaltaDataReferenciaInput(normalizeDisplayDateInput(event.target.value))}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  />
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-revisao">
+                  <span>Revisao</span>
+                  <input
+                    id="digitacao-faltas-revisao"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={faltaRevisao}
+                    onChange={(event) => setFaltaRevisao(normalizeIntegerInput(event.target.value))}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  />
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-teg-regular">
+                  <span>TEG Regular</span>
+                  <select
+                    id="digitacao-faltas-teg-regular"
+                    value={faltaTegRegular}
+                    onChange={(event) => setFaltaTegRegular(event.target.value as FaltaSimNao)}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="SIM">Sim</option>
+                    <option value="NAO">Nao</option>
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-teg-acessivel">
+                  <span>TEG Acessivel</span>
+                  <select
+                    id="digitacao-faltas-teg-acessivel"
+                    value={faltaTegAcessivel}
+                    onChange={(event) => setFaltaTegAcessivel(event.target.value as FaltaSimNao)}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="SIM">Sim</option>
+                    <option value="NAO">Nao</option>
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-teg-creche">
+                  <span>TEG Creche</span>
+                  <select
+                    id="digitacao-faltas-teg-creche"
+                    value={faltaTegCreche}
+                    onChange={(event) => setFaltaTegCreche(event.target.value as FaltaSimNao)}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="SIM">Sim</option>
+                    <option value="NAO">Nao</option>
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="digitacao-faltas-teg-especial">
+                  <span>Especial</span>
+                  <select
+                    id="digitacao-faltas-teg-especial"
+                    value={faltaTegEspecial}
+                    onChange={(event) => setFaltaTegEspecial(event.target.value as FaltaSimNao)}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="SIM">Sim</option>
+                    <option value="NAO">Nao</option>
+                  </select>
+                </label>
+              </div>
+
+              {faltaMatch ? (
+                <div className="management-grid-wrapper">
+                  <table className="dre-table">
+                    <tbody>
+                      <tr>
+                        <th>Empresa</th>
+                        <td>{faltaMatch.empresa || '-'}</td>
+                        <th>Condutor</th>
+                        <td>{faltaMatch.nomeCondutor || '-'}</td>
+                      </tr>
+                      <tr>
+                        <th>CRMC</th>
+                        <td>{faltaMatch.crmcCondutor || '-'}</td>
+                        <th>Ordem de servico</th>
+                        <td>{formatDigitacaoFaltasOsDisplay(faltaMatch)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+
+              <div className="management-modal-form-grid">
+                <label className="field-group" htmlFor="digitacao-faltas-ausencia-total">
+                  <span>Ausencia total</span>
+                  <select
+                    id="digitacao-faltas-ausencia-total"
+                    value={faltaAusenciaTotal}
+                    onChange={(event) => {
+                      const nextValue = event.target.value as 'SIM' | 'NAO' | ''
+                      setFaltaAusenciaTotal(nextValue)
+
+                      if (nextValue === 'SIM') {
+                        setFaltaQuantidadeIntegral('0')
+                        setFaltaQuantidadeMeioPeriodo('0')
+                      }
+                    }}
+                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="SIM">Sim</option>
+                    <option value="NAO">Nao</option>
+                  </select>
+                </label>
+
+                {faltaAusenciaTotal !== 'SIM' ? (
+                  <>
+                    <label className="field-group" htmlFor="digitacao-faltas-qtd-integral">
+                      <span>Quantidade de alunos integral</span>
+                      <select
+                        id="digitacao-faltas-qtd-integral"
+                        value={faltaQuantidadeIntegral}
+                        onChange={(event) => setFaltaQuantidadeIntegral(event.target.value)}
+                        disabled={isFaltaSaving || isFaltaLookupLoading}
+                      >
+                        {FALTA_QUANTIDADE_OPTIONS.map((value) => (
+                          <option key={`integral-${value}`} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="field-group" htmlFor="digitacao-faltas-qtd-meio-periodo">
+                      <span>Quantidade de alunos meio periodo</span>
+                      <select
+                        id="digitacao-faltas-qtd-meio-periodo"
+                        value={faltaQuantidadeMeioPeriodo}
+                        onChange={(event) => setFaltaQuantidadeMeioPeriodo(event.target.value)}
+                        disabled={isFaltaSaving || isFaltaLookupLoading}
+                      >
+                        {FALTA_QUANTIDADE_OPTIONS.map((value) => (
+                          <option key={`meio-${value}`} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                ) : null}
+              </div>
+
+              <div className="button-row dre-button-row management-modal-footer">
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={isFaltaSaving || isFaltaLookupLoading || !hasEditPermission}
+                >
+                  {isFaltaSaving ? 'Salvando...' : 'Salvar faltas'}
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={closeDigitacaoFaltasDialog}
+                  disabled={isFaltaSaving || isFaltaLookupLoading}
+                >
+                  Cancelar
+                </button>
+              </div>
+
+              <p className={`status-message status-${faltaStatusTone}`} aria-live="polite">
+                {faltaStatusMessage}
+              </p>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
       <div className="content-copy">
         <p className="content-description">
           Digite os quantitativos diarios do credenciamento com base nas OS ativas de Total Servicos, separados por DRE, revisao, tipo pessoa e tipo de atendimento.
@@ -1169,6 +1783,14 @@ export default function ApontamentoServicosView() {
             </button>
             <button type="button" className="primary-button" onClick={handleSave} disabled={isSaving || isLoading || isImporting || !items.length}>
               {isSaving ? 'Salvando...' : 'Salvar apontamento digitado'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={openDigitacaoFaltasDialog}
+              disabled={isSaving || isLoading || isImporting || isFaltaSaving || isFaltaLookupLoading}
+            >
+              Digitacao de faltas
             </button>
           </div>
         </div>

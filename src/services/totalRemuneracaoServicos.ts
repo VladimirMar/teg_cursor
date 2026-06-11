@@ -98,6 +98,79 @@ const getErrorMessage = (payload: unknown, responseStatus?: number, responseStat
   return 'Falha ao processar dados do total de remuneracao de servicos.'
 }
 
+export type TotalRemuneracaoServicosExportParams = Omit<TotalRemuneracaoServicosListParams, 'page' | 'pageSize'>
+
+const getTotalRemuneracaoServicosExportUrl = () => {
+  return import.meta.env.VITE_TOTAL_REMUNERACAO_SERVICOS_EXPORT_URL?.trim() || '/api/total-remuneracao-servicos/export-excel'
+}
+
+const parseDownloadFileName = (contentDisposition: string | null, fallbackFileName: string) => {
+  if (!contentDisposition) {
+    return fallbackFileName
+  }
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1].trim())
+  }
+
+  const basicMatch = contentDisposition.match(/filename="?([^";]+)"?/i)
+  if (basicMatch?.[1]) {
+    return basicMatch[1].trim()
+  }
+
+  return fallbackFileName
+}
+
+export async function exportTotalRemuneracaoServicosExcel(params: TotalRemuneracaoServicosExportParams): Promise<void> {
+  const queryParams = new URLSearchParams({
+    mesAno: params.mesAno,
+  })
+
+  if (params.dreCodigo?.trim()) {
+    queryParams.set('dreCodigo', params.dreCodigo.trim())
+  }
+
+  if (params.crmcCondutor?.trim()) {
+    queryParams.set('crmcCondutor', params.crmcCondutor.trim())
+  }
+
+  if (params.placa?.trim()) {
+    queryParams.set('placa', params.placa.trim())
+  }
+
+  if (typeof params.revisao === 'number') {
+    queryParams.set('revisao', String(params.revisao))
+  }
+
+  if (params.tipoPessoa?.trim()) {
+    queryParams.set('tipoPessoa', params.tipoPessoa.trim())
+  }
+
+  const fallbackFileName = `total-remuneracao-fechamento_${params.mesAno.replace('/', '-')}.xlsx`
+  const response = await fetch(`${getTotalRemuneracaoServicosExportUrl()}?${queryParams.toString()}`, {
+    method: 'GET',
+  })
+
+  if (!response.ok) {
+    const responseText = await response.text()
+    const payload = parseJsonSafely(responseText)
+    throw new Error(getErrorMessage(payload, response.status, response.statusText))
+  }
+
+  const blob = await response.blob()
+  const downloadFileName = parseDownloadFileName(response.headers.get('Content-Disposition'), fallbackFileName)
+  const downloadUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = downloadFileName
+  link.rel = 'noopener'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(downloadUrl)
+}
+
 export async function listTotalRemuneracaoServicosItems(params: TotalRemuneracaoServicosListParams): Promise<TotalRemuneracaoServicosListResponse> {
   const queryParams = new URLSearchParams({
     mesAno: params.mesAno,

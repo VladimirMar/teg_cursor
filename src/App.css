@@ -2229,6 +2229,79 @@ body.management-modal-open {
   max-height: calc(100vh - 36px);
 }
 
+.resumo-financeiro-modal-shell {
+  width: min(100%, 1680px);
+}
+
+.resumo-financeiro-modal-form-card.management-form,
+.resumo-financeiro-modal-form-card.dre-form {
+  width: 100%;
+  max-width: none;
+}
+
+.resumo-financeiro-consulta-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.resumo-financeiro-consulta-tab-button {
+  border: 1px solid rgba(121, 91, 56, 0.24);
+  background: rgba(255, 255, 255, 0.86);
+  color: #4e635d;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.resumo-financeiro-consulta-tab-button-active {
+  background: linear-gradient(135deg, #c85c2c 0%, #a9481e 100%);
+  border-color: #a9481e;
+  color: #ffffff;
+}
+
+.resumo-financeiro-consulta-tab-panel {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.resumo-financeiro-consulta-tab-panel-active {
+  display: flex;
+}
+
+.resumo-financeiro-apontamentos-table-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.resumo-financeiro-apontamentos-table {
+  min-width: 720px;
+}
+
+.resumo-financeiro-consulta-resumo-wrapper {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.resumo-financeiro-remuneracao-section {
+  margin-top: 18px;
+}
+
+.resumo-financeiro-remuneracao-table-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.resumo-financeiro-remuneracao-table {
+  min-width: 1520px;
+}
+
 .dashboard-page--sidebar-hidden .management-modal-shell {
   margin-inline: auto;
 }

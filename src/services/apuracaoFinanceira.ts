@@ -30,6 +30,8 @@ export type ApuracaoFinanceiraItem = ApuracaoFinanceiraKey & {
   situacao: ApuracaoFinanceiraStatus
   dataInclusao: string
   dataAlteracao: string
+  usuarioProcessamento: string
+  dataProcessamento: string
 }
 
 export type ApuracaoFinanceiraChildTotalsSummary = ApuracaoFinanceiraKey & {

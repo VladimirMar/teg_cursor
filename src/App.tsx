@@ -280,6 +280,22 @@ const formatIntegerValue = (value: number) => {
   return value.toLocaleString('pt-BR')
 }
 
+const formatApuracaoFinanceiraDateTime = (value: string) => {
+  const normalizedValue = value.trim()
+
+  if (!normalizedValue) {
+    return 'Nao informada'
+  }
+
+  const parsedDate = new Date(normalizedValue)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return normalizedValue
+  }
+
+  return parsedDate.toLocaleString('pt-BR')
+}
+
 const formatFourDecimalValue = (value: number | string) => {
   const numericValue = typeof value === 'number'
     ? value
@@ -1613,6 +1629,8 @@ function App() {
   const [apuracaoFinanceiraTipoPessoa, setApuracaoFinanceiraTipoPessoa] = useState<ApuracaoFinanceiraTipoPessoaFormValue>('TODOS')
   const [apuracaoFinanceiraTipoPessoaError, setApuracaoFinanceiraTipoPessoaError] = useState('')
   const [apuracaoFinanceiraSituacao, setApuracaoFinanceiraSituacao] = useState<ApuracaoFinanceiraStatus>(APURACAO_FINANCEIRA_STATUS_OPTIONS[0])
+  const [apuracaoFinanceiraUsuarioProcessamento, setApuracaoFinanceiraUsuarioProcessamento] = useState('')
+  const [apuracaoFinanceiraDataProcessamento, setApuracaoFinanceiraDataProcessamento] = useState('')
   const [apuracaoFinanceiraStatusMessage, setApuracaoFinanceiraStatusMessage] = useState('')
   const [apuracaoFinanceiraStatusTone, setApuracaoFinanceiraStatusTone] = useState<StatusTone>('idle')
   const [apuracaoFinanceiraDreOptions, setApuracaoFinanceiraDreOptions] = useState<DreItem[]>([])
@@ -2255,7 +2273,7 @@ function App() {
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : 'Falha ao carregar as DREs da apuracao financeira.'
+        : 'Falha ao carregar as DREs do processamento apontamento.'
 
       setApuracaoFinanceiraStatusTone('error')
       setApuracaoFinanceiraStatusMessage(message)
@@ -2298,7 +2316,7 @@ function App() {
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : 'Falha ao carregar as DREs ativas da apuracao financeira.'
+        : 'Falha ao carregar as DREs ativas do processamento apontamento.'
 
       setApuracaoFinanceiraActiveDreOptions([])
       setApuracaoFinanceiraSelectedDresError(message)
@@ -2318,7 +2336,7 @@ function App() {
     setIsLoadingApuracaoFinanceira(true)
 
     if (!preserveStatusMessage) {
-      setApuracaoFinanceiraStatusMessage('Carregando registros de apuracao financeira...')
+      setApuracaoFinanceiraStatusMessage('Carregando registros de processamento apontamento...')
       setApuracaoFinanceiraStatusTone('idle')
     }
 
@@ -2338,12 +2356,12 @@ function App() {
       setApuracaoFinanceiraSortDirection(result.sortDirection)
 
       if (!preserveStatusMessage) {
-        setApuracaoFinanceiraStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Apuracao Financeira.')
+        setApuracaoFinanceiraStatusMessage(result.items.length ? '' : 'Nenhum registro encontrado na tabela Processamento Apontamento.')
       }
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : 'Falha ao carregar os registros de apuracao financeira.'
+        : 'Falha ao carregar os registros de processamento apontamento.'
 
       setApuracaoFinanceiraStatusTone('error')
       setApuracaoFinanceiraStatusMessage(message)
@@ -4025,6 +4043,8 @@ function App() {
     setApuracaoFinanceiraTipoPessoa('TODOS')
     setApuracaoFinanceiraTipoPessoaError('')
     setApuracaoFinanceiraSituacao(APURACAO_FINANCEIRA_STATUS_OPTIONS[0])
+    setApuracaoFinanceiraUsuarioProcessamento('')
+    setApuracaoFinanceiraDataProcessamento('')
     setEditingApuracaoFinanceiraKey(null)
     setApuracaoFinanceiraFormMode('create')
   }, [])
@@ -4306,7 +4326,7 @@ function App() {
   const handleFilterApuracaoFinanceiraSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setApuracaoFinanceiraPage(1)
-    setApuracaoFinanceiraStatusMessage('Aplicando filtro da apuracao financeira...')
+    setApuracaoFinanceiraStatusMessage('Aplicando filtro do processamento apontamento...')
     setApuracaoFinanceiraStatusTone('idle')
   }
 
@@ -5114,6 +5134,8 @@ function App() {
     setApuracaoFinanceiraTipoPessoa(row.tipoPessoaFormValue)
     setApuracaoFinanceiraTipoPessoaError('')
     setApuracaoFinanceiraSituacao(item.situacao)
+    setApuracaoFinanceiraUsuarioProcessamento(item.usuarioProcessamento || '')
+    setApuracaoFinanceiraDataProcessamento(item.dataProcessamento || '')
     setApuracaoFinanceiraStatusTone('idle')
     setApuracaoFinanceiraStatusMessage(`Consulta do registro ${item.mesAno} / ${row.dreText} / ${item.revisao} / ${row.tipoPessoaLabel}.`)
     setIsApuracaoFinanceiraFormVisible(true)
@@ -5964,7 +5986,7 @@ function App() {
 
     if (hasError) {
       setApuracaoFinanceiraStatusTone('error')
-      setApuracaoFinanceiraStatusMessage('Corrija os campos da apuracao financeira para continuar.')
+      setApuracaoFinanceiraStatusMessage('Corrija os campos do processamento apontamento para continuar.')
       return null
     }
 
@@ -6020,7 +6042,7 @@ function App() {
 
     if (hasError) {
       setApuracaoFinanceiraStatusTone('error')
-      setApuracaoFinanceiraStatusMessage('Corrija os campos da apuracao financeira para continuar.')
+      setApuracaoFinanceiraStatusMessage('Corrija os campos do processamento apontamento para continuar.')
       return null
     }
 
@@ -6094,8 +6116,8 @@ function App() {
     setApuracaoFinanceiraStatusTone('idle')
     setApuracaoFinanceiraStatusMessage(
       submission.editingKey
-        ? 'Reprocessando dados da apuracao financeira...'
-        : 'Processando dados da apuracao financeira...',
+        ? 'Reprocessando dados do processamento apontamento...'
+        : 'Processando dados do processamento apontamento...',
     )
 
     try {
@@ -6149,7 +6171,7 @@ function App() {
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : 'Falha ao processar dados da apuracao financeira.'
+        : 'Falha ao processar dados do processamento apontamento.'
       const statusCode = error instanceof Error && typeof (error as Error & { statusCode?: number }).statusCode === 'number'
         ? (error as Error & { statusCode?: number }).statusCode
         : null
@@ -6178,7 +6200,7 @@ function App() {
 
     setIsUpdatingApuracaoFinanceiraBatchStatus(true)
     setApuracaoFinanceiraStatusTone('idle')
-    setApuracaoFinanceiraStatusMessage('Atualizando situacao da apuracao financeira em lote...')
+    setApuracaoFinanceiraStatusMessage('Atualizando situacao do processamento apontamento em lote...')
 
     try {
       const pageSize = 50
@@ -6209,7 +6231,7 @@ function App() {
 
       if (uniqueItems.length === 0) {
         setApuracaoFinanceiraStatusTone('warning')
-        setApuracaoFinanceiraStatusMessage('Nenhum registro de apuracao financeira foi encontrado para os filtros informados.')
+        setApuracaoFinanceiraStatusMessage('Nenhum registro de processamento apontamento foi encontrado para os filtros informados.')
         return
       }
 
@@ -6257,7 +6279,7 @@ function App() {
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : 'Falha ao alterar a situacao em lote da apuracao financeira.'
+        : 'Falha ao alterar a situacao em lote do processamento apontamento.'
       const statusCode = error instanceof Error && typeof (error as Error & { statusCode?: number }).statusCode === 'number'
         ? (error as Error & { statusCode?: number }).statusCode
         : null
@@ -6612,7 +6634,7 @@ function App() {
   const handleDeleteApuracaoFinanceira = async (row: ApuracaoFinanceiraGridRow) => {
     if (!hasDeleteFormPermission(appFormEditAccessKeys.apuracaoFinanceira)) {
       setApuracaoFinanceiraStatusTone('warning')
-      setApuracaoFinanceiraStatusMessage(getFormDeletePermissionMessage('Apuracao Financeira'))
+      setApuracaoFinanceiraStatusMessage(getFormDeletePermissionMessage('Processamento Apontamento'))
       return
     }
 
@@ -6630,7 +6652,7 @@ function App() {
 
     setIsDeletingApuracaoFinanceira(true)
     setApuracaoFinanceiraStatusTone('idle')
-    setApuracaoFinanceiraStatusMessage(`Excluindo ${row.items.length} registro(s) da apuracao financeira...`)
+    setApuracaoFinanceiraStatusMessage(`Excluindo ${row.items.length} registro(s) do processamento apontamento...`)
 
     try {
       const deleteResults = await Promise.allSettled(
@@ -6646,7 +6668,7 @@ function App() {
         .map((result) => result.value)
 
       if (deletedKeys.length === 0) {
-        throw new Error('Falha ao excluir registro da apuracao financeira.')
+        throw new Error('Falha ao excluir registro do processamento apontamento.')
       }
 
       const deletedKeySet = new Set(deletedKeys.map((item) => formatApuracaoFinanceiraKey(item)))
@@ -6660,15 +6682,15 @@ function App() {
       setApuracaoFinanceiraStatusTone('success')
       setApuracaoFinanceiraStatusMessage(
         deletedKeys.length === row.items.length
-          ? 'Registro da apuracao financeira excluido com sucesso.'
-          : `${deletedKeys.length} registro(s) da apuracao financeira excluido(s) com sucesso.`,
+          ? 'Registro do processamento apontamento excluido com sucesso.'
+          : `${deletedKeys.length} registro(s) do processamento apontamento excluido(s) com sucesso.`,
       )
       const nextPage = apuracaoFinanceiraItems.length === 1 && apuracaoFinanceiraPage > 1 ? apuracaoFinanceiraPage - 1 : apuracaoFinanceiraPage
       await loadApuracaoFinanceiraItems(nextPage)
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : 'Falha ao excluir registro da apuracao financeira.'
+        : 'Falha ao excluir registro do processamento apontamento.'
 
       setApuracaoFinanceiraStatusTone('error')
       setApuracaoFinanceiraStatusMessage(message)
@@ -7971,7 +7993,7 @@ function App() {
                           }
                         }}
                       >
-                        <span className="menu-subitem-label">Apuracao Financeira</span>
+                        <span className="menu-subitem-label">Processamento Apontamento</span>
                         <span className="menu-toggle-indicator" aria-hidden="true">{collapsedMenuGroups.apuracaoFinanceira ? '▸' : '▾'}</span>
                       </div>
                       <ul className={`menu-sublist menu-sublist-nested ${collapsedMenuGroups.apuracaoFinanceira ? 'menu-sublist-hidden' : ''}`}>
@@ -13121,9 +13143,9 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Operacional financeiro</p>
-              <h2 id="content-title">Apuracao Financeira</h2>
+              <h2 id="content-title">Processamento Apontamento</h2>
               <p className="content-description">
-                Realiza a apuracao das Ordem de Servicos ativas no mes/ano registrando todos os contratos existentes no período.
+                Realiza o processamento do apontamento das Ordens de Servico ativas no mes/ano, registrando todos os contratos existentes no periodo.
               </p>
             </div>
 
@@ -13188,14 +13210,14 @@ function App() {
                       <div className="management-modal-header">
                         <div>
                           <p className="management-modal-kicker">Operacional financeiro - APURFIN019</p>
-                          <h2 id="apuracao-financeira-modal-title">APURACAO FINANCEIRA</h2>
+                          <h2 id="apuracao-financeira-modal-title">PROCESSAMENTO APONTAMENTO</h2>
                         </div>
                         <button
                           type="button"
                           className="secondary-button management-modal-close-button"
                           onClick={handleCancelApuracaoFinanceiraForm}
                           disabled={isSavingApuracaoFinanceira || isProcessingApuracaoFinanceira}
-                          aria-label="Fechar formulario de apuracao financeira"
+                          aria-label="Fechar formulario de processamento apontamento"
                         >
                           X
                         </button>
@@ -13313,6 +13335,41 @@ function App() {
                         </select>
                         {apuracaoFinanceiraTipoPessoaError ? <strong className="field-error">{apuracaoFinanceiraTipoPessoaError}</strong> : null}
                       </label>
+
+                      {apuracaoFinanceiraFormMode === 'view' ? (
+                        <div className="apuracao-financeira-inline-fields">
+                          <label className="field-group" htmlFor="apuracao-financeira-situacao-consulta">
+                            <span>Situacao</span>
+                            <input
+                              id="apuracao-financeira-situacao-consulta"
+                              type="text"
+                              value={apuracaoFinanceiraSituacao || 'Nao informada'}
+                              readOnly
+                              disabled
+                            />
+                          </label>
+                          <label className="field-group" htmlFor="apuracao-financeira-usuario-processamento">
+                            <span>Usuario processamento</span>
+                            <input
+                              id="apuracao-financeira-usuario-processamento"
+                              type="text"
+                              value={apuracaoFinanceiraUsuarioProcessamento || 'Nao informado'}
+                              readOnly
+                              disabled
+                            />
+                          </label>
+                          <label className="field-group" htmlFor="apuracao-financeira-data-processamento">
+                            <span>Data processamento</span>
+                            <input
+                              id="apuracao-financeira-data-processamento"
+                              type="text"
+                              value={formatApuracaoFinanceiraDateTime(apuracaoFinanceiraDataProcessamento)}
+                              readOnly
+                              disabled
+                            />
+                          </label>
+                        </div>
+                      ) : null}
 
                       {apuracaoFinanceiraFormMode === 'batch-status' ? (
                         <label className="field-group" htmlFor="apuracao-financeira-situacao-lote">
@@ -13486,7 +13543,7 @@ function App() {
 
               <div className="management-card management-grid-card dre-list-card">
                 <div className="management-grid-header">
-                  <h2>Registros cadastrados</h2>
+                  <h2>Processamento Apontamento</h2>
                   <span>
                     {isLoadingApuracaoFinanceira ? 'Atualizando...' : `${apuracaoFinanceiraGridRows.length} item(ns) encontrados`}
                   </span>
@@ -13543,9 +13600,6 @@ function App() {
                               <button type="button" className="row-action-button" onClick={() => handleStartViewApuracaoFinanceira(row)}>
                                 Consulta
                               </button>
-                              <button type="button" className="row-action-button" onClick={() => handleOpenApuracaoFinanceiraChildTotals(row)}>
-                                Valores ACM
-                              </button>
                               {hasDeleteFormPermission(appFormEditAccessKeys.apuracaoFinanceira) ? <button
                                 type="button"
                                 className="row-action-button row-action-delete"
@@ -13563,7 +13617,7 @@ function App() {
                   </table>
 
                   {!isLoadingApuracaoFinanceira && apuracaoFinanceiraGridRows.length === 0 ? (
-                    <p className="management-empty-state">Nenhum registro de apuracao financeira encontrado.</p>
+                    <p className="management-empty-state">Nenhum registro de processamento apontamento encontrado.</p>
                   ) : null}
                 </div>
 

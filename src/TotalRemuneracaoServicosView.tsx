@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { listDreItemsPaginated } from './services/dre'
 import type { DreItem } from './services/dre'
 import {
+  exportTotalRemuneracaoServicosExcel,
   listTotalRemuneracaoServicosItems,
   type TotalRemuneracaoServicosItem,
 } from './services/totalRemuneracaoServicos'
@@ -182,6 +183,7 @@ export default function TotalRemuneracaoServicosView() {
   const [isValidationDialogVisible, setIsValidationDialogVisible] = useState(false)
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [monetaryColumnVisibilityMode, setMonetaryColumnVisibilityMode] = useState<MonetaryColumnVisibilityMode>('all')
   const topScrollWrapperRef = useRef<HTMLDivElement | null>(null)
   const topScrollContentRef = useRef<HTMLDivElement | null>(null)
@@ -444,6 +446,37 @@ export default function TotalRemuneracaoServicosView() {
     setPageSize(nextPageSize)
   }
 
+  const handleExportExcel = useCallback(async () => {
+    if (!isValidMonthYear(appliedFilters.mesAno)) {
+      openValidationDialog('Informe um mes/ano valido para exportar o total de remuneracao.')
+      return
+    }
+
+    setIsExporting(true)
+    setStatusTone('idle')
+    setStatusMessage('Gerando Excel fechamento...')
+
+    try {
+      const parsedRevisao = Number.parseInt(appliedFilters.revisao, 10)
+      await exportTotalRemuneracaoServicosExcel({
+        mesAno: appliedFilters.mesAno,
+        dreCodigo: appliedFilters.dreCodigo,
+        crmcCondutor: appliedFilters.crmcCondutor,
+        placa: appliedFilters.placa,
+        revisao: Number.isInteger(parsedRevisao) ? parsedRevisao : 0,
+        tipoPessoa: appliedFilters.tipoPessoa,
+      })
+      setStatusTone('success')
+      setStatusMessage('Excel fechamento exportado com sucesso.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao exportar o total de remuneracao de servicos.'
+      setStatusTone('error')
+      setStatusMessage(message)
+    } finally {
+      setIsExporting(false)
+    }
+  }, [appliedFilters, openValidationDialog])
+
   return (
     <>
       {isValidationDialogVisible ? (
@@ -554,11 +587,19 @@ export default function TotalRemuneracaoServicosView() {
               />
             </label>
             <div className="apontamento-servicos-filter-actions">
-              <button type="submit" className="secondary-button management-filter-button" disabled={isLoading}>
+              <button type="submit" className="secondary-button management-filter-button" disabled={isLoading || isExporting}>
                 Filtrar
               </button>
-              <button type="button" className="secondary-button management-filter-button" onClick={handleClearFilters} disabled={isLoading}>
+              <button type="button" className="secondary-button management-filter-button" onClick={handleClearFilters} disabled={isLoading || isExporting}>
                 Limpar
+              </button>
+              <button
+                type="button"
+                className="secondary-button management-filter-button"
+                onClick={() => void handleExportExcel()}
+                disabled={isLoading || isExporting}
+              >
+                {isExporting ? 'Gerando...' : 'Excel Fechamento'}
               </button>
             </div>
           </form>
