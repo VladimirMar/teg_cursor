@@ -2356,6 +2356,61 @@ body.management-modal-open {
   gap: 12px;
 }
 
+.digitacao-faltas-filter-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.digitacao-faltas-placa-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.digitacao-faltas-placa-field {
+  min-width: 0;
+}
+
+.digitacao-faltas-match-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px solid rgba(121, 91, 56, 0.24);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.digitacao-faltas-match-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+
+.digitacao-faltas-match-item {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.digitacao-faltas-match-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.digitacao-faltas-match-value {
+  font-weight: 600;
+  color: var(--text-strong);
+  word-break: break-word;
+}
+
+.digitacao-faltas-match-placeholder {
+  margin: 0;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
 .management-modal-close-button {
   flex: 0 0 auto;
   min-width: 52px;
