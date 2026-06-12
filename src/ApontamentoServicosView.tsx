@@ -353,6 +353,7 @@ export default function ApontamentoServicosView() {
   const topScrollContentRef = useRef<HTMLDivElement | null>(null)
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
   const importStatusPollTimerRef = useRef<number | null>(null)
+  const faltaPlacaLookupTimerRef = useRef<number | null>(null)
   const shouldFocusFirstGridRecordRef = useRef(false)
   const shouldShowKmAdicionalColumn = appliedFilters.dataReferencia.endsWith('-01')
   const showDailyMetricColumns = columnVisibilityMode !== 'acum-only'
@@ -572,9 +573,33 @@ export default function ApontamentoServicosView() {
     monthYearMismatchMessage,
   ])
 
+  const scheduleFaltaPlacaLookup = useCallback(() => {
+    if (faltaPlacaLookupTimerRef.current !== null) {
+      window.clearTimeout(faltaPlacaLookupTimerRef.current)
+    }
+
+    faltaPlacaLookupTimerRef.current = window.setTimeout(() => {
+      faltaPlacaLookupTimerRef.current = null
+      void lookupFaltaApontamento({ showValidationErrors: true })
+    }, 450)
+  }, [lookupFaltaApontamento])
+
   const handleFaltaPlacaBlur = useCallback(() => {
+    if (faltaPlacaLookupTimerRef.current !== null) {
+      window.clearTimeout(faltaPlacaLookupTimerRef.current)
+      faltaPlacaLookupTimerRef.current = null
+    }
+
     void lookupFaltaApontamento({ showValidationErrors: true })
   }, [lookupFaltaApontamento])
+
+  const handleFaltaLookupFilterBlur = useCallback(() => {
+    if (!faltaPlaca.trim()) {
+      return
+    }
+
+    void lookupFaltaApontamento({ showValidationErrors: true })
+  }, [faltaPlaca, lookupFaltaApontamento])
 
   const openDigitacaoFaltasDialog = useCallback(() => {
     const nextDataReferenciaInput = formatIsoDateToDisplay(appliedFilters.dataReferencia)
@@ -1464,6 +1489,40 @@ export default function ApontamentoServicosView() {
               </div>
 
               <p className="management-modal-subtitle">
+                Selecione um apontamento ou digitalize uma placa. Os dados da OS serao consultados automaticamente.
+              </p>
+
+              <div className="apontamento-servicos-grid-wrapper">
+                <table className="apontamento-servicos-table">
+                  <thead>
+                    <tr>
+                      <th>OS</th>
+                      <th>Revisao</th>
+                      <th>Empresa</th>
+                      <th>Condutor</th>
+                      <th>Placa</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.slice(0, 10).map((item, idx) => (
+                      <tr key={`${idx}-${item.ordem_servico_codigo}`}>
+                        <td>{item.ordem_servico_os_concat || item.ordem_servico_codigo}</td>
+                        <td>{item.revisao}</td>
+                        <td>{item.empresa}</td>
+                        <td>{item.nome_condutor}</td>
+                        <td>{item.placa}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {items.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '12px', color: 'var(--text-soft)' }}>
+                    Nenhum apontamento encontrado com os filtros atuais.
+                  </p>
+                ) : null}
+              </div>
+
+              <p className="management-modal-subtitle">
                 Informe mes/ano, DRE, tipo pessoa, data de referencia e revisao. Ao sair do campo placa, a OS correspondente sera consultada no apontamento.
               </p>
 
@@ -1524,6 +1583,7 @@ export default function ApontamentoServicosView() {
                     placeholder="dd/mm/aaaa"
                     value={faltaDataReferenciaInput}
                     onChange={(event) => setFaltaDataReferenciaInput(normalizeDisplayDateInput(event.target.value))}
+                    onBlur={handleFaltaLookupFilterBlur}
                     disabled={isFaltaSaving || isFaltaLookupLoading}
                   />
                 </label>
@@ -1537,6 +1597,7 @@ export default function ApontamentoServicosView() {
                     step={1}
                     value={faltaRevisao}
                     onChange={(event) => setFaltaRevisao(normalizeIntegerInput(event.target.value))}
+                    onBlur={handleFaltaLookupFilterBlur}
                     disabled={isFaltaSaving || isFaltaLookupLoading}
                   />
                 </label>
@@ -1550,10 +1611,21 @@ export default function ApontamentoServicosView() {
                     type="text"
                     value={faltaPlaca}
                     onChange={(event) => {
-                      setFaltaPlaca(event.target.value.toUpperCase())
+                      const nextPlaca = event.target.value.toUpperCase()
+                      setFaltaPlaca(nextPlaca)
+
                       if (faltaMatch) {
                         setFaltaMatch(null)
                       }
+
+                      const trimmedPlaca = nextPlaca.trim()
+                      if (!trimmedPlaca) {
+                        setFaltaStatusMessage('')
+                        setFaltaStatusTone('idle')
+                        return
+                      }
+
+                      scheduleFaltaPlacaLookup()
                     }}
                     onBlur={handleFaltaPlacaBlur}
                     disabled={isFaltaSaving || isFaltaLookupLoading}
@@ -1583,6 +1655,10 @@ export default function ApontamentoServicosView() {
                         <span className="digitacao-faltas-match-value">{formatDigitacaoFaltasOsDisplay(faltaMatch)}</span>
                       </div>
                     </div>
+                  ) : faltaStatusTone === 'error' && faltaStatusMessage ? (
+                    <p className="digitacao-faltas-match-placeholder digitacao-faltas-match-error">
+                      {faltaStatusMessage}
+                    </p>
                   ) : (
                     <p className="digitacao-faltas-match-placeholder">
                       Os dados da OS serao exibidos ao lado apos a consulta da placa no apontamento.

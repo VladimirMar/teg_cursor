@@ -2411,6 +2411,53 @@ body.management-modal-open {
   font-weight: 600;
 }
 
+.digitacao-faltas-match-error {
+  color: #a9481e;
+}
+
+.apontamento-servicos-grid-wrapper {
+  border: 1px solid rgba(121, 91, 56, 0.24);
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.apontamento-servicos-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.apontamento-servicos-table thead {
+  background: rgba(121, 91, 56, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.apontamento-servicos-table thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--text-strong);
+  border-bottom: 1px solid rgba(121, 91, 56, 0.24);
+}
+
+.apontamento-servicos-table tbody tr {
+  border-bottom: 1px solid rgba(121, 91, 56, 0.12);
+}
+
+.apontamento-servicos-table tbody tr:hover {
+  background: rgba(121, 91, 56, 0.04);
+}
+
+.apontamento-servicos-table tbody td {
+  padding: 8px 12px;
+  color: var(--text-strong);
+}
+
 .management-modal-close-button {
   flex: 0 0 auto;
   min-width: 52px;

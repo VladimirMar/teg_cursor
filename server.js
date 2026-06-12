@@ -4326,10 +4326,10 @@ const findApontamentoMatchesForDigitacaoFaltas = async ({
   const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
   const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
   const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
-  const normalizedPlacaKey = normalizePlacaKey(placa)
+  const normalizedPlacaSearch = normalizeRequestValue(placa)
   const normalizedRevisao = normalizeApuracaoRevisao(revisao)
 
-  if (!normalizedMesAno || !normalizedDreCodigo || !normalizedTipoPessoa || !normalizedDate || !normalizedPlacaKey) {
+  if (!normalizedMesAno || !normalizedDreCodigo || !normalizedTipoPessoa || !normalizedDate || !normalizedPlacaSearch) {
     throw createHttpError(400, 'Informe mes/ano, DRE, tipo pessoa, placa e data de referencia validos.')
   }
 
@@ -4347,7 +4347,7 @@ const findApontamentoMatchesForDigitacaoFaltas = async ({
     revisaoFilter = `AND aps.revisao = $${values.length}`
   }
 
-  values.push(normalizedPlacaKey)
+  values.push(`%${normalizedPlacaSearch}%`)
 
   const result = await executor.query(
     `SELECT
@@ -4358,7 +4358,7 @@ const findApontamentoMatchesForDigitacaoFaltas = async ({
        COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
        COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
        COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
-       COALESCE(BTRIM(aps.crmc_condutor), '') AS crmc_condutor,
+       MAX(COALESCE(BTRIM(aps.crmc_condutor), '')) AS crmc_condutor,
        COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
        COUNT(*)::int AS registros_apontamento
      FROM apuracao_servicos aps
@@ -4370,7 +4370,9 @@ const findApontamentoMatchesForDigitacaoFaltas = async ({
        AND CAST(aps.dre_codigo AS text) = $3
        AND BTRIM(aps.tipo_pessoa) = $4
        ${revisaoFilter}
-       AND regexp_replace(UPPER(COALESCE(os.veiculo_placas, '')), '[^A-Z0-9]', '', 'g') = $${values.length}
+       AND COALESCE(BTRIM(os.veiculo_placas), '') ILIKE $${values.length}
+       AND ${ordemServicoActiveStartDateExpression} <= $1::date
+       AND ${ordemServicoActiveEndDateExpression} >= $1::date
      GROUP BY
        aps.ordem_servico_codigo,
        aps.revisao,
@@ -4379,7 +4381,6 @@ const findApontamentoMatchesForDigitacaoFaltas = async ({
        os.num_os,
        os.termo_adesao,
        os.condutor,
-       aps.crmc_condutor,
        credenciada_lookup.empresa
      ORDER BY aps.ordem_servico_codigo ASC, aps.revisao ASC`,
     values,
