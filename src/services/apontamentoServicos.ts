@@ -10,6 +10,7 @@ export type ApontamentoServicosItem = {
   ordemServicoOsConcat: string
   ordemServicoTermoAdesao: string
   ordemServicoNumOs: string
+  ordemServicoModalidadeDescricao: string
   revisao: number
   tipoEscolaCodigo: string
   tipoEscolaSigla: string

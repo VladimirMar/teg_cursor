@@ -11,9 +11,12 @@ import {
   type RemuneracaoServicosItem,
   type RemuneracaoServicosSaveItem,
 } from './services/remuneracaoServicos'
+import { listApontamentoServicosItems } from './services/apontamentoServicos'
+import { listDigitacaoFaltasConsultaItems } from './services/digitacaoFaltas'
 import {
   APURACAO_TIPO_PESSOA_FILTER_OPTIONS,
 } from './services/apuracaoTipoPessoa'
+import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoaFilter } from './services/apuracaoTipoPessoa'
 import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
 import { formatVeiculoOsEspecialDisplay } from './utils/veiculoDisplay'
@@ -29,6 +32,25 @@ type RemuneracaoServicosFilters = {
   placa: string
   revisao: string
   tipoPessoa: ApuracaoTipoPessoaFilter
+}
+
+type RemuneracaoServicosQuantities = {
+  tegRegularFixo: number
+  tegRegularPercapita: number
+  tegAcessivelFixo: number
+  tegAcessivelPercapita: number
+  tegEspecialRegularFixo: number
+  tegEspecialRegularPercapita: number
+  tegEspecialAcessivelFixo: number
+  tegEspecialAcessivelPercapita: number
+  tegCrecheFixo: number
+  tegCrechePercapita: number
+}
+
+type RemuneracaoServicosItemWithQuantities = RemuneracaoServicosItem & {
+  _quantities?: RemuneracaoServicosQuantities
+  _quantityDiscounts?: RemuneracaoServicosQuantities
+  _faltaTipoLabels?: string[]
 }
 
 const FORM_ACCESS_KEY = 'form_apntsvc024'
@@ -333,6 +355,245 @@ const calculateValorTotal = (item: RemuneracaoServicosItem) => {
   return monetaryColumns.reduce((sum, column) => sum + (item[column.key] || 0), 0)
 }
 
+const getEmptyRemuneracaoQuantities = (): RemuneracaoServicosQuantities => ({
+  tegRegularFixo: 0,
+  tegRegularPercapita: 0,
+  tegAcessivelFixo: 0,
+  tegAcessivelPercapita: 0,
+  tegEspecialRegularFixo: 0,
+  tegEspecialRegularPercapita: 0,
+  tegEspecialAcessivelFixo: 0,
+  tegEspecialAcessivelPercapita: 0,
+  tegCrecheFixo: 0,
+  tegCrechePercapita: 0,
+})
+
+const calculateFaltaWeightedDiscount = (item: {
+  quantidadeAlunosIntegral: number | null
+  quantidadeAlunosMeioPeriodo: number | null
+}) => {
+  const quantidadeIntegral = Math.max(0, Number(item.quantidadeAlunosIntegral) || 0)
+  const quantidadeMeioPeriodo = Math.max(0, Number(item.quantidadeAlunosMeioPeriodo) || 0)
+  return quantidadeIntegral + (quantidadeMeioPeriodo * 0.5)
+}
+
+const subtractQuantity = (value: number, discount: number) => {
+  return Math.max(0, Number((value - discount).toFixed(2)))
+}
+
+const formatQuantityValue = (value: number) => {
+  if (Number.isInteger(value)) {
+    return String(value)
+  }
+
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  })
+}
+
+const formatQuantityCalculation = (finalQuantity: number, discount: number) => {
+  if (discount <= 0) {
+    return formatQuantityValue(finalQuantity)
+  }
+
+  const originalQuantity = Number((finalQuantity + discount).toFixed(2))
+  return `${formatQuantityValue(originalQuantity)} - ${formatQuantityValue(discount)} = ${formatQuantityValue(finalQuantity)}`
+}
+
+const formatQuantityLabel = (label: string, finalQuantity: number, discount: number) => {
+  return `${label}: ${formatQuantityCalculation(finalQuantity, discount)}`
+}
+
+const getFaltaTipoLabels = (item: {
+  ausenciaTotal: boolean
+  quantidadeAlunosIntegral: number | null
+  quantidadeAlunosMeioPeriodo: number | null
+}) => {
+  const labels: string[] = []
+
+  if (item.ausenciaTotal) {
+    labels.push('ausência total')
+  }
+
+  if ((Number(item.quantidadeAlunosIntegral) || 0) > 0) {
+    labels.push('integral')
+  }
+
+  if ((Number(item.quantidadeAlunosMeioPeriodo) || 0) > 0) {
+    labels.push('meio período')
+  }
+
+  return labels
+}
+
+const normalizeTipoEscolaLabel = (value: string) => value
+  .trim()
+  .toUpperCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+
+const isExcludedTipoEscolaFromRegular = (item: {
+  tipoEscolaCodigo?: string
+  tipoEscolaSigla?: string
+  tipoEscolaDescricao?: string
+}) => {
+  const tipoEscolaCodigo = String(item.tipoEscolaCodigo ?? '').trim()
+  const tipoEscolaSigla = normalizeTipoEscolaLabel(item.tipoEscolaSigla ?? '')
+  const tipoEscolaDescricao = normalizeTipoEscolaLabel(item.tipoEscolaDescricao ?? '')
+
+  return tipoEscolaCodigo === '6'
+    || tipoEscolaCodigo === '7'
+    || tipoEscolaSigla === 'CEI'
+    || tipoEscolaSigla === 'CCA'
+    || tipoEscolaDescricao.includes('CENTRO DE EDUCACAO INFANTIL')
+    || tipoEscolaDescricao.includes('CENTRO PARA CRIANCAS E ADOLESCENTES')
+}
+
+const isIncludedTipoEscolaForAcessivel = (item: {
+  tipoEscolaCodigo?: string
+  tipoEscolaSigla?: string
+  tipoEscolaDescricao?: string
+}) => {
+  const tipoEscolaCodigo = String(item.tipoEscolaCodigo ?? '').trim()
+  const tipoEscolaSigla = normalizeTipoEscolaLabel(item.tipoEscolaSigla ?? '')
+  const tipoEscolaDescricao = normalizeTipoEscolaLabel(item.tipoEscolaDescricao ?? '')
+
+  if (tipoEscolaCodigo === '7' || tipoEscolaSigla === 'CCA' || tipoEscolaDescricao.includes('CENTRO PARA CRIANCAS E ADOLESCENTES')) {
+    return false
+  }
+
+  return tipoEscolaCodigo === '6'
+    || tipoEscolaSigla === 'CEI'
+    || tipoEscolaSigla === 'EMEI'
+    || tipoEscolaSigla === 'EMEF'
+    || tipoEscolaSigla === 'EMEE'
+    || tipoEscolaDescricao.includes('CENTRO DE EDUCACAO INFANTIL')
+    || tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO INFANTIL')
+    || tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE ENSINO FUNDAMENTAL')
+    || tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO ESPECIAL')
+}
+
+const isIncludedTipoEscolaForCreche = (item: {
+  tipoEscolaCodigo?: string
+  tipoEscolaSigla?: string
+  tipoEscolaDescricao?: string
+}) => {
+  const tipoEscolaCodigo = String(item.tipoEscolaCodigo ?? '').trim()
+  const tipoEscolaSigla = normalizeTipoEscolaLabel(item.tipoEscolaSigla ?? '')
+  const tipoEscolaDescricao = normalizeTipoEscolaLabel(item.tipoEscolaDescricao ?? '')
+
+  return tipoEscolaCodigo === '6'
+    || tipoEscolaSigla === 'CEI'
+    || tipoEscolaDescricao.includes('CENTRO DE EDUCACAO INFANTIL')
+}
+
+const isIncludedTipoEscolaForEspecialRegular = (item: {
+  tipoEscolaSigla?: string
+  tipoEscolaDescricao?: string
+}) => {
+  const tipoEscolaSigla = normalizeTipoEscolaLabel(item.tipoEscolaSigla ?? '')
+  const tipoEscolaDescricao = normalizeTipoEscolaLabel(item.tipoEscolaDescricao ?? '')
+
+  return tipoEscolaSigla === 'EMEI'
+    || tipoEscolaSigla === 'EMEF'
+    || tipoEscolaSigla === 'EMEE'
+    || tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO INFANTIL')
+    || tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE ENSINO FUNDAMENTAL')
+    || tipoEscolaDescricao.includes('ESCOLA MUNICIPAL DE EDUCACAO ESPECIAL')
+}
+
+const getQuantityForMonetaryGroup = (
+  item: RemuneracaoServicosItemWithQuantities,
+  groupTitle: string,
+) => {
+  const normalizedGroupTitle = normalizeTipoEscolaLabel(groupTitle)
+  const groupHasValue = (columnKeys: MonetaryColumnKey[]) => {
+    return columnKeys.some((columnKey) => (Number(item[columnKey]) || 0) !== 0)
+  }
+  const regularGroupHasSameQuantity = (regularQuantity: number) => {
+    return regularQuantity > 0
+      && groupHasValue(['tegRegularFixo', 'tegRegularPercapita'])
+      && regularQuantity === (item._quantities?.tegRegularFixo ?? 0)
+  }
+
+  if (normalizedGroupTitle.includes('TEG REGULAR')) {
+    const quantity = item._quantities?.tegRegularFixo ?? 0
+    const discount = item._quantityDiscounts?.tegRegularFixo ?? 0
+
+    return groupHasValue(['tegRegularFixo', 'tegRegularPercapita'])
+      ? `Qtd: ${formatQuantityCalculation(quantity, discount)}`
+      : 0
+  }
+
+  if (normalizedGroupTitle.includes('TEG ACESSIVEL')) {
+    if (!groupHasValue(['tegAcessivelFixo', 'tegAcessivelPercapita'])) {
+      return 0
+    }
+
+    const regularQuantity = item._quantities?.tegRegularFixo ?? 0
+    const acessivelQuantity = item._quantities?.tegAcessivelFixo ?? 0
+    const regularDiscount = item._quantityDiscounts?.tegRegularFixo ?? 0
+    const acessivelDiscount = item._quantityDiscounts?.tegAcessivelFixo ?? 0
+
+    if (regularQuantity > 0 && !regularGroupHasSameQuantity(regularQuantity)) {
+      return `${formatQuantityLabel('Reg', regularQuantity, regularDiscount)} / ${formatQuantityLabel('Acess', acessivelQuantity, acessivelDiscount)}`
+    }
+
+    return formatQuantityLabel('Acess', acessivelQuantity, acessivelDiscount)
+  }
+
+  if (normalizedGroupTitle.includes('TEG ESPECIAL')) {
+    if (!groupHasValue([
+      'tegEspecialRegularFixo',
+      'tegEspecialRegularPercapita',
+      'tegEspecialAcessivelFixo',
+      'tegEspecialAcessivelPercapita',
+    ])) {
+      return 0
+    }
+
+    const regularQuantity = item._quantities?.tegEspecialRegularFixo ?? 0
+    const acessivelQuantity = item._quantities?.tegEspecialAcessivelFixo ?? 0
+    const regularDiscount = item._quantityDiscounts?.tegEspecialRegularFixo ?? 0
+    const acessivelDiscount = item._quantityDiscounts?.tegEspecialAcessivelFixo ?? 0
+    const shouldShowRegularQuantity = regularQuantity > 0 && !regularGroupHasSameQuantity(regularQuantity)
+
+    if (shouldShowRegularQuantity && acessivelQuantity > 0) {
+      return `${formatQuantityLabel('Reg', regularQuantity, regularDiscount)} / ${formatQuantityLabel('Acess', acessivelQuantity, acessivelDiscount)}`
+    }
+
+    if (shouldShowRegularQuantity) {
+      return formatQuantityLabel('Reg', regularQuantity, regularDiscount)
+    }
+
+    if (acessivelQuantity > 0) {
+      return formatQuantityLabel('Acess', acessivelQuantity, acessivelDiscount)
+    }
+
+    return 'Qtd: 0'
+  }
+
+  if (normalizedGroupTitle.includes('TEG CRECHE')) {
+    if (!groupHasValue(['tegCrecheFixo', 'tegCrechePercapita'])) {
+      return 0
+    }
+
+    const regularQuantity = item._quantities?.tegRegularFixo ?? 0
+    const crecheQuantity = item._quantities?.tegCrecheFixo ?? 0
+    const regularDiscount = item._quantityDiscounts?.tegRegularFixo ?? 0
+    const crecheDiscount = item._quantityDiscounts?.tegCrecheFixo ?? 0
+
+    if (regularQuantity > 0 && !regularGroupHasSameQuantity(regularQuantity)) {
+      return `${formatQuantityLabel('Reg', regularQuantity, regularDiscount)} / ${formatQuantityLabel('Creche', crecheQuantity, crecheDiscount)}`
+    }
+
+    return formatQuantityLabel('Creche', crecheQuantity, crecheDiscount)
+  }
+
+  return null
+}
+
 export default function RemuneracaoServicosView() {
   const hasEditPermission = hasEditableFormPermission(FORM_ACCESS_KEY) || hasEditableFormPermission(LEGACY_FORM_ACCESS_KEY)
   const initialMesAno = getCurrentMonthYear()
@@ -354,7 +615,7 @@ export default function RemuneracaoServicosView() {
     revisao: '0',
     tipoPessoa: '',
   })
-  const [items, setItems] = useState<RemuneracaoServicosItem[]>([])
+  const [items, setItems] = useState<RemuneracaoServicosItemWithQuantities[]>([])
   const [loadedItemsSnapshot, setLoadedItemsSnapshot] = useState<RemuneracaoServicosItem[]>([])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
@@ -601,12 +862,143 @@ export default function RemuneracaoServicosView() {
         crmcCondutor: filters.crmcCondutor,
         placa: filters.placa,
         revisao: parsedRevisao,
-        tipoPessoa: filters.tipoPessoa,
+        tipoPessoa: filters.tipoPessoa || undefined,
         page: pageToLoad,
         pageSize: pageSizeToLoad,
       })
+      // Also load apontamento servicos to compute summed quantities per OS
+      const apontResult = await listApontamentoServicosItems({
+        mesAno: filters.mesAno,
+        dataReferencia: filters.dataReferencia,
+        dreCodigo: filters.dreCodigo,
+        crmcCondutor: filters.crmcCondutor,
+        placa: filters.placa,
+        revisao: parsedRevisao,
+        tipoPessoa: filters.tipoPessoa || undefined,
+        page: 1,
+        pageSize: 1000,
+      })
 
-      setItems(result.items)
+      // Map quantities by ordemServicoCodigo|revisao|tipoPessoa, matching calculation columns.
+      // Fixo uses the total quantity; Percapita shows the complementary quantity that drives the extra value.
+      const qMap = new Map<string, RemuneracaoServicosQuantities>()
+      const discountMap = new Map<string, RemuneracaoServicosQuantities>()
+      const faltaLabelsMap = new Map<string, Set<string>>()
+      for (const a of apontResult.items) {
+        const key = `${a.ordemServicoCodigo}|${a.revisao}|${a.tipoPessoa}`
+        const prev = qMap.get(key) ?? getEmptyRemuneracaoQuantities()
+        const ncPresAcm = Number(a.naoCadeirantePresencialAcm || 0)
+        const atComplNcAcm = Number(a.atendimentoComplementarNaoCadeiranteAcm || 0)
+        const cadAcm = Number(a.cadeiranteAcm || 0)
+        const atComplCadAcm = Number(a.atendimentoComplementarCadeiranteAcm || 0)
+
+        if (!isExcludedTipoEscolaFromRegular(a)) {
+          prev.tegRegularFixo += ncPresAcm + atComplNcAcm
+          prev.tegRegularPercapita += atComplNcAcm
+        }
+
+        if (isIncludedTipoEscolaForAcessivel(a)) {
+          prev.tegAcessivelFixo += cadAcm + atComplCadAcm
+          prev.tegAcessivelPercapita += atComplCadAcm
+        }
+
+        if (isIncludedTipoEscolaForEspecialRegular(a)) {
+          prev.tegEspecialRegularFixo += ncPresAcm + atComplNcAcm
+          prev.tegEspecialRegularPercapita += atComplNcAcm
+        }
+
+        if (isIncludedTipoEscolaForAcessivel(a)) {
+          prev.tegEspecialAcessivelFixo += cadAcm + atComplCadAcm
+          prev.tegEspecialAcessivelPercapita += atComplCadAcm
+        }
+
+        if (isIncludedTipoEscolaForCreche(a)) {
+          prev.tegCrecheFixo += ncPresAcm + atComplNcAcm
+          prev.tegCrechePercapita += atComplNcAcm
+        }
+
+        qMap.set(key, prev)
+      }
+
+      const dreCodesForFaltas = Array.from(new Set(
+        [...result.items.map((item) => item.dreCodigo), ...apontResult.items.map((item) => item.dreCodigo)]
+          .map((value) => String(value || '').trim())
+          .filter(Boolean),
+      ))
+      const tipoPessoasForFaltas = filters.tipoPessoa
+        ? [filters.tipoPessoa as ApuracaoTipoPessoa]
+        : Array.from(new Set(
+          [...result.items.map((item) => item.tipoPessoa), ...apontResult.items.map((item) => item.tipoPessoa)]
+            .filter((value): value is ApuracaoTipoPessoa => value === 'PF' || value === 'PJ'),
+        ))
+      const faltasItems = (await Promise.all(dreCodesForFaltas.flatMap((currentDreCodigo) => (
+        tipoPessoasForFaltas.map((currentTipoPessoa) => listDigitacaoFaltasConsultaItems({
+          mesAno: filters.mesAno,
+          dataReferencia: filters.dataReferencia,
+          dreCodigo: currentDreCodigo,
+          tipoPessoa: currentTipoPessoa,
+          revisao: parsedRevisao,
+          crmcCondutor: filters.crmcCondutor,
+          placa: filters.placa,
+        }))
+      )))).flat()
+
+      for (const falta of faltasItems) {
+        const discount = calculateFaltaWeightedDiscount(falta)
+        const key = `${falta.ordemServicoCodigo}|${falta.revisao}|${falta.tipoPessoa}`
+        const currentFaltaLabels = faltaLabelsMap.get(key) ?? new Set<string>()
+        for (const label of getFaltaTipoLabels(falta)) {
+          currentFaltaLabels.add(label)
+        }
+        faltaLabelsMap.set(key, currentFaltaLabels)
+
+        if (discount <= 0) {
+          continue
+        }
+
+        const currentQuantities = qMap.get(key)
+        const currentDiscounts = discountMap.get(key) ?? getEmptyRemuneracaoQuantities()
+
+        if (!currentQuantities) {
+          continue
+        }
+
+        if (falta.tegRegular) {
+          currentQuantities.tegRegularFixo = subtractQuantity(currentQuantities.tegRegularFixo, discount)
+          currentDiscounts.tegRegularFixo += discount
+        }
+
+        if (falta.tegAcessivel) {
+          currentQuantities.tegAcessivelFixo = subtractQuantity(currentQuantities.tegAcessivelFixo, discount)
+          currentDiscounts.tegAcessivelFixo += discount
+        }
+
+        if (falta.tegCreche) {
+          currentQuantities.tegCrecheFixo = subtractQuantity(currentQuantities.tegCrecheFixo, discount)
+          currentDiscounts.tegCrecheFixo += discount
+        }
+
+        if (falta.tegEspecial) {
+          currentQuantities.tegEspecialRegularFixo = subtractQuantity(currentQuantities.tegEspecialRegularFixo, discount)
+          currentQuantities.tegEspecialAcessivelFixo = subtractQuantity(currentQuantities.tegEspecialAcessivelFixo, discount)
+          currentDiscounts.tegEspecialRegularFixo += discount
+          currentDiscounts.tegEspecialAcessivelFixo += discount
+        }
+
+        qMap.set(key, currentQuantities)
+        discountMap.set(key, currentDiscounts)
+      }
+
+      // attach _quantities to remuneracao items
+      const itemsWithQuantities = result.items.map((it) => {
+        const key = `${it.ordemServicoCodigo}|${it.revisao}|${it.tipoPessoa}`
+        const q = qMap.get(key) ?? getEmptyRemuneracaoQuantities()
+        const discounts = discountMap.get(key) ?? getEmptyRemuneracaoQuantities()
+        const faltaTipoLabels = Array.from(faltaLabelsMap.get(key) ?? [])
+        return { ...it, _quantities: q, _quantityDiscounts: discounts, _faltaTipoLabels: faltaTipoLabels }
+      })
+
+      setItems(itemsWithQuantities)
       setLoadedItemsSnapshot(result.items)
       setTotalItems(result.total)
       setTotalPages(result.totalPages)
@@ -1216,6 +1608,11 @@ export default function RemuneracaoServicosView() {
                               <div className="remuneracao-servicos-subtitle-line-chips">
                                 <span className="apontamento-servicos-subtitle-chip">Empresa: <strong>{item.empresa || 'Empresa nao informada'}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">Condutor: <strong>{item.nomeCondutor || '-'}</strong></span>
+                                {item._faltaTipoLabels?.length ? (
+                                  <span className="apontamento-servicos-subtitle-chip remuneracao-servicos-falta-chip">
+                                    Falta: <strong>{item._faltaTipoLabels.join(' / ')}</strong>
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                           </td>
@@ -1256,6 +1653,30 @@ export default function RemuneracaoServicosView() {
                             <span className="apontamento-servicos-grid-readonly total-remuneracao-servicos-valor-total-value">
                               {formatMoneyValue(calculateValorTotal(item))}
                             </span>
+                          </td>
+                        ) : null}
+                      </tr>
+                      {/* Second line: display one summarized quantity per monetary group. */}
+                      <tr className="apontamento-servicos-quantities-row" key={`${rowKey}-quantities`}>
+                        <td className="apontamento-servicos-primary-cell remuneracao-servicos-primary-cell apontamento-servicos-quantity-row-title">
+                          Qtde apontada:
+                        </td>
+                        {mergedHeaderGroups.map((group, groupIndex) => {
+                          const quantity = getQuantityForMonetaryGroup(item, group.title)
+
+                          return (
+                            <td
+                              key={`${rowKey}-quant-${group.title}-${groupIndex}`}
+                              colSpan={group.colSpan}
+                              className="apontamento-servicos-cell-compact apontamento-servicos-quantity-cell"
+                            >
+                              <span>{quantity === null ? '-' : quantity}</span>
+                            </td>
+                          )
+                        })}
+                        {showValorTotalColumn ? (
+                          <td className="apontamento-servicos-cell-compact apontamento-servicos-quantity-cell">
+                            <span>-</span>
                           </td>
                         ) : null}
                       </tr>

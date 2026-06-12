@@ -688,6 +688,26 @@
   line-height: 1.15;
 }
 
+/* Styling for the second quantities row under each calculation row */
+.apontamento-servicos-quantities-row td {
+  background: rgba(245, 249, 255, 0.9);
+  color: #17314f;
+  padding: 6px 8px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px dashed rgba(33, 49, 57, 0.08);
+}
+.apontamento-servicos-quantity-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+.apontamento-servicos-quantity-row-title {
+  justify-content: flex-start;
+  text-align: left;
+  font-weight: 700;
+  color: #17314f;
+}
+
 .apontamento-servicos-subtitle-chip strong {
   font-weight: 700;
 }
@@ -2496,6 +2516,11 @@ body.management-modal-open {
   padding: 4px 6px;
   margin-left: 6px;
   font-weight: 600;
+}
+
+.remuneracao-servicos-falta-chip {
+  background: #dc2626;
+  color: #fff;
 }
 
 .apontamento-servicos-table {
