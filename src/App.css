@@ -2476,7 +2476,7 @@ body.management-modal-open {
 }
 
 .digitacao-faltas-consulta-modal {
-  width: min(100%, 1180px);
+  width: min(100%, 1260px);
 }
 
 .digitacao-faltas-consulta-grid-wrapper {
@@ -2485,6 +2485,13 @@ body.management-modal-open {
 
 .digitacao-faltas-consulta-grid-table {
   font-size: 0.82rem;
+}
+
+.digitacao-faltas-consulta-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .digitacao-faltas-consulta-filters {

@@ -4292,6 +4292,7 @@ const mapDigitacaoFaltasRow = (row) => ({
   revisao: Number(row?.revisao) || 0,
   tipoPessoa: normalizeApuracaoTipoPessoa(row?.tipo_pessoa),
   placa: normalizeRequestValue(row?.placa),
+  tegTipo: normalizeRequestValue(row?.teg_tipo),
   tegRegular: Boolean(row?.teg_regular),
   tegAcessivel: Boolean(row?.teg_acessivel),
   tegCreche: Boolean(row?.teg_creche),
@@ -4300,6 +4301,32 @@ const mapDigitacaoFaltasRow = (row) => ({
   quantidadeAlunosIntegral: row?.quantidade_alunos_integral == null ? null : Number(row.quantidade_alunos_integral),
   quantidadeAlunosMeioPeriodo: row?.quantidade_alunos_meio_periodo == null ? null : Number(row.quantidade_alunos_meio_periodo),
 })
+
+const normalizeDigitacaoFaltasTegTipo = ({ tegRegular, tegAcessivel, tegCreche, tegEspecial, tegTipo } = {}) => {
+  const normalizedTegTipo = normalizeRequestValue(tegTipo).toUpperCase()
+
+  if (['REGULAR', 'ACESSIVEL', 'CRECHE', 'ESPECIAL'].includes(normalizedTegTipo)) {
+    return normalizedTegTipo
+  }
+
+  if (tegRegular) {
+    return 'REGULAR'
+  }
+
+  if (tegAcessivel) {
+    return 'ACESSIVEL'
+  }
+
+  if (tegCreche) {
+    return 'CRECHE'
+  }
+
+  if (tegEspecial) {
+    return 'ESPECIAL'
+  }
+
+  return ''
+}
 
 const mapDigitacaoFaltasConsultaRow = (row) => ({
   ...mapDigitacaoFaltasRow(row),
@@ -4534,6 +4561,7 @@ const listDigitacaoFaltasConsultaItems = async ({
        COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
        COALESCE(BTRIM(aps_lookup.crmc_condutor), '') AS crmc_condutor,
        COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
+       COALESCE(BTRIM(df.teg_tipo), '') AS teg_tipo,
        df.ausencia_total,
        df.quantidade_alunos_integral,
        df.quantidade_alunos_meio_periodo,
@@ -4632,6 +4660,7 @@ const getDigitacaoFaltasItem = async ({
   ordemServicoCodigo,
   revisao,
   tipoPessoa,
+  tegTipo,
 }, executor = pool) => {
   const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
   const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
@@ -4639,10 +4668,23 @@ const getDigitacaoFaltasItem = async ({
   const normalizedOrdemServicoCodigo = normalizeRequestValue(ordemServicoCodigo)
   const normalizedRevisao = normalizeApuracaoRevisao(revisao)
   const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const normalizedTegTipo = normalizeDigitacaoFaltasTegTipo({ tegTipo })
 
   if (!normalizedMesAno || !normalizedDate || !normalizedDreCodigo || !normalizedOrdemServicoCodigo || !Number.isInteger(normalizedRevisao) || !normalizedTipoPessoa) {
     return null
   }
+
+  const values = [
+    normalizedMesAno,
+    normalizedDate,
+    normalizedDreCodigo,
+    normalizedOrdemServicoCodigo,
+    normalizedRevisao,
+    normalizedTipoPessoa,
+  ]
+  const tegTipoFilter = normalizedTegTipo
+    ? `AND COALESCE(BTRIM(df.teg_tipo), '') = $${values.push(normalizedTegTipo)}`
+    : ''
 
   const result = await executor.query(
     `SELECT
@@ -4653,6 +4695,7 @@ const getDigitacaoFaltasItem = async ({
        df.revisao,
        COALESCE(BTRIM(df.tipo_pessoa), '') AS tipo_pessoa,
        COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       COALESCE(BTRIM(df.teg_tipo), '') AS teg_tipo,
        df.ausencia_total,
        df.quantidade_alunos_integral,
        df.quantidade_alunos_meio_periodo,
@@ -4667,15 +4710,12 @@ const getDigitacaoFaltasItem = async ({
        AND CAST(df.dre_codigo AS text) = $3
        AND df.ordem_servico_codigo::text = $4
        AND df.revisao = $5
-       AND BTRIM(df.tipo_pessoa) = $6`,
-    [
-      normalizedMesAno,
-      normalizedDate,
-      normalizedDreCodigo,
-      normalizedOrdemServicoCodigo,
-      normalizedRevisao,
-      normalizedTipoPessoa,
-    ],
+       AND BTRIM(df.tipo_pessoa) = $6
+       ${tegTipoFilter}
+     ORDER BY df.data_alteracao DESC NULLS LAST,
+       df.data_inclusao DESC
+     LIMIT 1`,
+    values,
   )
 
   return result.rows[0] ? mapDigitacaoFaltasRow(result.rows[0]) : null
@@ -4708,6 +4748,12 @@ const upsertDigitacaoFaltasItem = async ({
   const normalizedTegAcessivel = Boolean(tegAcessivel)
   const normalizedTegCreche = Boolean(tegCreche)
   const normalizedTegEspecial = Boolean(tegEspecial)
+  const normalizedTegTipo = normalizeDigitacaoFaltasTegTipo({
+    tegRegular: normalizedTegRegular,
+    tegAcessivel: normalizedTegAcessivel,
+    tegCreche: normalizedTegCreche,
+    tegEspecial: normalizedTegEspecial,
+  })
 
   if (!normalizedMesAno || !normalizedDate || !normalizedDreCodigo || !normalizedTipoPessoa) {
     throw createHttpError(400, 'Informe mes/ano, data de referencia, DRE e tipo pessoa validos.')
@@ -4715,6 +4761,10 @@ const upsertDigitacaoFaltasItem = async ({
 
   if (!normalizedPlaca) {
     throw createHttpError(400, 'Informe a placa.')
+  }
+
+  if (!normalizedTegTipo) {
+    throw createHttpError(400, 'Selecione um Tipo TEG.')
   }
 
   const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
@@ -4773,6 +4823,7 @@ const upsertDigitacaoFaltasItem = async ({
        ordem_servico_codigo,
        revisao,
        tipo_pessoa,
+       teg_tipo,
        teg_regular,
        teg_acessivel,
        teg_creche,
@@ -4795,9 +4846,10 @@ const upsertDigitacaoFaltasItem = async ({
        $11,
        $12,
        $13,
+       $14,
        NOW()
      )
-     ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
+     ON CONFLICT (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa, teg_tipo)
      DO UPDATE SET
        teg_regular = EXCLUDED.teg_regular,
        teg_acessivel = EXCLUDED.teg_acessivel,
@@ -4814,6 +4866,7 @@ const upsertDigitacaoFaltasItem = async ({
       normalizedOrdemServicoCodigo,
       normalizedRevisao,
       normalizedTipoPessoa,
+      normalizedTegTipo,
       normalizedTegRegular,
       normalizedTegAcessivel,
       normalizedTegCreche,
@@ -4831,7 +4884,54 @@ const upsertDigitacaoFaltasItem = async ({
     ordemServicoCodigo: normalizedOrdemServicoCodigo,
     revisao: normalizedRevisao,
     tipoPessoa: normalizedTipoPessoa,
+    tegTipo: normalizedTegTipo,
   }, executor)
+}
+
+const deleteDigitacaoFaltasItem = async ({
+  mesAno,
+  dataReferencia,
+  dreCodigo,
+  ordemServicoCodigo,
+  revisao,
+  tipoPessoa,
+  tegTipo,
+}, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedOrdemServicoCodigo = normalizeRequestValue(ordemServicoCodigo)
+  const normalizedRevisao = normalizeApuracaoRevisao(revisao)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const normalizedTegTipo = normalizeDigitacaoFaltasTegTipo({ tegTipo })
+
+  if (!normalizedMesAno || !normalizedDate || !normalizedDreCodigo || !normalizedOrdemServicoCodigo || !Number.isInteger(normalizedRevisao) || !normalizedTipoPessoa || !normalizedTegTipo) {
+    throw createHttpError(400, 'Informe os dados validos da digitacao de faltas para exclusao.')
+  }
+
+  const result = await executor.query(
+    `DELETE FROM digitacao_faltas
+     WHERE mes_ano = $1
+       AND data_referencia = $2::date
+       AND CAST(dre_codigo AS text) = $3
+       AND ordem_servico_codigo::text = $4
+       AND revisao = $5
+       AND BTRIM(tipo_pessoa) = $6
+       AND BTRIM(teg_tipo) = $7`,
+    [
+      normalizedMesAno,
+      normalizedDate,
+      normalizedDreCodigo,
+      normalizedOrdemServicoCodigo,
+      normalizedRevisao,
+      normalizedTipoPessoa,
+      normalizedTegTipo,
+    ],
+  )
+
+  if (!result.rowCount) {
+    throw createHttpError(404, 'Registro de digitacao de faltas nao encontrado para exclusao.')
+  }
 }
 
 const listRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondutor, placa, revisao, tipoPessoa, dataReferencia, page = 1, pageSize = 20 }, executor = pool) => {
@@ -26152,12 +26252,13 @@ const ensureDatabaseSchema = async () => {
       ordem_servico_codigo integer NOT NULL REFERENCES ${ordemServicoTableName}(codigo) ON DELETE RESTRICT,
       revisao integer NOT NULL DEFAULT 0,
       tipo_pessoa varchar(2) NOT NULL DEFAULT 'PF',
+      teg_tipo varchar(12) NOT NULL DEFAULT 'REGULAR',
       ausencia_total boolean NOT NULL DEFAULT false,
       quantidade_alunos_integral integer,
       quantidade_alunos_meio_periodo integer,
       data_inclusao timestamp without time zone NOT NULL DEFAULT NOW(),
       data_alteracao timestamp without time zone,
-      CONSTRAINT digitacao_faltas_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa)
+      CONSTRAINT digitacao_faltas_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa, teg_tipo)
     )
   `)
   await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS mes_ano varchar(7)')
@@ -26166,6 +26267,7 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS ordem_servico_codigo integer')
   await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS revisao integer DEFAULT 0')
   await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS tipo_pessoa varchar(2) DEFAULT \'PF\'')
+  await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS teg_tipo varchar(12)')
   await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS ausencia_total boolean DEFAULT false')
   await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS quantidade_alunos_integral integer')
   await pool.query('ALTER TABLE digitacao_faltas ADD COLUMN IF NOT EXISTS quantidade_alunos_meio_periodo integer')
@@ -26181,11 +26283,51 @@ const ensureDatabaseSchema = async () => {
   await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN ordem_servico_codigo SET NOT NULL')
   await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN revisao SET NOT NULL')
   await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN tipo_pessoa SET NOT NULL')
+  await pool.query(`
+    UPDATE digitacao_faltas
+    SET teg_tipo = CASE
+      WHEN COALESCE(teg_regular, false) THEN 'REGULAR'
+      WHEN COALESCE(teg_acessivel, false) THEN 'ACESSIVEL'
+      WHEN COALESCE(teg_creche, false) THEN 'CRECHE'
+      WHEN COALESCE(teg_especial, false) THEN 'ESPECIAL'
+      ELSE 'REGULAR'
+    END
+    WHERE COALESCE(BTRIM(teg_tipo), '') = ''
+  `)
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN teg_tipo SET DEFAULT \'REGULAR\'')
+  await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN teg_tipo SET NOT NULL')
   await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN ausencia_total SET NOT NULL')
   await pool.query('ALTER TABLE digitacao_faltas ALTER COLUMN data_inclusao SET NOT NULL')
+  await pool.query(`
+    DO $$
+    DECLARE
+      existing_pk_columns text;
+      expected_pk_columns text := 'mes_ano,data_referencia,dre_codigo,ordem_servico_codigo,revisao,tipo_pessoa,teg_tipo';
+    BEGIN
+      SELECT string_agg(att.attname, ',' ORDER BY key_position.ordinality)
+      INTO existing_pk_columns
+      FROM pg_constraint con
+      JOIN unnest(con.conkey) WITH ORDINALITY AS key_position(attnum, ordinality) ON TRUE
+      JOIN pg_attribute att
+        ON att.attrelid = con.conrelid
+       AND att.attnum = key_position.attnum
+      WHERE con.conrelid = 'digitacao_faltas'::regclass
+        AND con.contype = 'p';
+
+      IF existing_pk_columns IS NULL THEN
+        ALTER TABLE digitacao_faltas
+          ADD CONSTRAINT digitacao_faltas_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa, teg_tipo);
+      ELSIF existing_pk_columns <> expected_pk_columns THEN
+        ALTER TABLE digitacao_faltas DROP CONSTRAINT IF EXISTS digitacao_faltas_pk;
+        ALTER TABLE digitacao_faltas
+          ADD CONSTRAINT digitacao_faltas_pk PRIMARY KEY (mes_ano, data_referencia, dre_codigo, ordem_servico_codigo, revisao, tipo_pessoa, teg_tipo);
+      END IF;
+    END $$;
+  `)
   await pool.query('CREATE INDEX IF NOT EXISTS digitacao_faltas_mes_ano_data_referencia_idx ON digitacao_faltas (mes_ano, data_referencia)')
   await pool.query('CREATE INDEX IF NOT EXISTS digitacao_faltas_dre_idx ON digitacao_faltas (dre_codigo)')
   await pool.query('CREATE INDEX IF NOT EXISTS digitacao_faltas_ordem_servico_idx ON digitacao_faltas (ordem_servico_codigo)')
+  await pool.query('CREATE INDEX IF NOT EXISTS digitacao_faltas_teg_tipo_idx ON digitacao_faltas (teg_tipo)')
   await pool.query(`
     CREATE TABLE IF NOT EXISTS remuneracao_servicos (
       mes_ano varchar(7) NOT NULL,
@@ -27812,6 +27954,33 @@ const server = createServer(async (request, response) => {
       const message = error instanceof Error
         ? error.message
         : 'Erro ao gravar a digitacao de faltas.'
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'DELETE' && pathname === '/api/digitacao-faltas') {
+    try {
+      await deleteDigitacaoFaltasItem({
+        mesAno: requestUrl.searchParams.get('mesAno') ?? '',
+        dataReferencia: requestUrl.searchParams.get('dataReferencia') ?? '',
+        dreCodigo: requestUrl.searchParams.get('dreCodigo') ?? '',
+        ordemServicoCodigo: requestUrl.searchParams.get('ordemServicoCodigo') ?? '',
+        revisao: requestUrl.searchParams.get('revisao') ?? '',
+        tipoPessoa: requestUrl.searchParams.get('tipoPessoa') ?? '',
+        tegTipo: requestUrl.searchParams.get('tegTipo') ?? '',
+      })
+
+      sendJson(response, 200, {
+        message: 'Digitacao de faltas excluida com sucesso.',
+      })
+    } catch (error) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao excluir a digitacao de faltas.'
 
       sendJson(response, statusCode, { message })
     }

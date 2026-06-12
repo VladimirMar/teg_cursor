@@ -21,6 +21,7 @@ export type DigitacaoFaltasItem = {
   revisao: number
   tipoPessoa: ApuracaoTipoPessoa
   placa: string
+  tegTipo: string
   tegRegular: boolean
   tegAcessivel: boolean
   tegCreche: boolean
@@ -227,5 +228,38 @@ export async function saveDigitacaoFaltas(params: {
   return {
     message: typeof payload.message === 'string' ? payload.message : 'Digitacao de faltas gravada com sucesso.',
     item: (payload.item as DigitacaoFaltasItem | null) ?? null,
+  }
+}
+
+export async function deleteDigitacaoFaltas(params: Pick<
+  DigitacaoFaltasItem,
+  'mesAno' | 'dataReferencia' | 'dreCodigo' | 'ordemServicoCodigo' | 'revisao' | 'tipoPessoa' | 'tegTipo'
+>): Promise<{ message: string }> {
+  const searchParams = new URLSearchParams({
+    mesAno: params.mesAno,
+    dataReferencia: params.dataReferencia,
+    dreCodigo: params.dreCodigo,
+    ordemServicoCodigo: params.ordemServicoCodigo,
+    revisao: String(params.revisao),
+    tipoPessoa: params.tipoPessoa,
+    tegTipo: params.tegTipo,
+  })
+
+  const response = await fetch(`${getDigitacaoFaltasUrl()}?${searchParams.toString()}`, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  const responseText = await response.text()
+  const payload = parseJsonSafely(responseText)
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(payload))
+  }
+
+  return {
+    message: typeof payload.message === 'string' ? payload.message : 'Digitacao de faltas excluida com sucesso.',
   }
 }

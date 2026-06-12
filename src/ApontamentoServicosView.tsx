@@ -17,6 +17,7 @@ import {
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
 import {
+  deleteDigitacaoFaltas,
   listDigitacaoFaltasApontamentos,
   listDigitacaoFaltasConsultaItems,
   lookupDigitacaoFaltasApontamento,
@@ -920,6 +921,91 @@ export default function ApontamentoServicosView() {
       })
     }
   }, [loadFaltaGridItems, lookupFaltaApontamento, resolveDigitacaoFaltasFilters])
+
+  const handleEditDigitacaoFaltasConsultaItem = useCallback((item: DigitacaoFaltasConsultaItem) => {
+    const displayDate = formatIsoDateToDisplay(item.dataReferencia)
+
+    setFaltaMesAno(item.mesAno)
+    setFaltaDreCodigo(item.dreCodigo)
+    setFaltaTipoPessoa(item.tipoPessoa)
+    setFaltaPlaca(item.placa)
+    setFaltaDataReferenciaInput(displayDate)
+    setFaltaRevisao(String(item.revisao))
+    setFaltaMatch({
+      ordemServicoCodigo: item.ordemServicoCodigo,
+      ordemServicoOsConcat: item.ordemServicoOsConcat,
+      ordemServicoNumOs: item.ordemServicoNumOs,
+      revisao: item.revisao,
+      placa: item.placa,
+      contrato: '',
+      nomeCondutor: item.nomeCondutor,
+      crmcCondutor: item.crmcCondutor,
+      empresa: item.empresa,
+      registrosApontamento: 0,
+    })
+    applyDigitacaoFaltasItemToForm(item, {
+      setFaltaAusenciaTotal,
+      setFaltaQuantidadeIntegral,
+      setFaltaQuantidadeMeioPeriodo,
+      setFaltaTegTipo,
+    })
+    setFaltaFieldErrors({})
+    setFaltaStatusTone('idle')
+    setFaltaStatusMessage('Registro carregado para alteracao. Ajuste os dados e clique em Gravar.')
+    setFaltaGridItems([])
+    setFaltaGridMessage('')
+    setIsDigitacaoFaltasConsultaVisible(false)
+    setIsDigitacaoFaltasVisible(true)
+
+    void loadFaltaGridItems({
+      mesAno: item.mesAno,
+      dreCodigo: item.dreCodigo,
+      tipoPessoa: item.tipoPessoa,
+      dataReferencia: item.dataReferencia,
+      dataReferenciaInput: displayDate,
+      revisao: String(item.revisao),
+    })
+  }, [loadFaltaGridItems])
+
+  const handleDeleteDigitacaoFaltasConsultaItem = useCallback(async (item: DigitacaoFaltasConsultaItem) => {
+    if (!hasEditPermission) {
+      setDigitacaoFaltasConsultaMessage(getEditPermissionDeniedMessage('Apontamento Servicos'))
+      return
+    }
+
+    const confirmed = window.confirm(`Confirma a exclusao da falta ${formatDigitacaoFaltasTegTipoLabel(item)} da OS ${formatDigitacaoFaltasOsDisplay(item)}?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setIsDigitacaoFaltasConsultaLoading(true)
+    setDigitacaoFaltasConsultaMessage('Excluindo digitacao de faltas...')
+
+    try {
+      const result = await deleteDigitacaoFaltas({
+        mesAno: item.mesAno,
+        dataReferencia: item.dataReferencia,
+        dreCodigo: item.dreCodigo,
+        ordemServicoCodigo: item.ordemServicoCodigo,
+        revisao: item.revisao,
+        tipoPessoa: item.tipoPessoa,
+        tegTipo: item.tegTipo,
+      })
+      const filters = digitacaoFaltasConsultaActiveFilters ?? resolveDigitacaoFaltasFilters()
+      await loadDigitacaoFaltasConsultaItems(filters)
+      setDigitacaoFaltasConsultaMessage(result.message)
+    } catch (error) {
+      setDigitacaoFaltasConsultaMessage(error instanceof Error ? error.message : 'Falha ao excluir digitacao de faltas.')
+    } finally {
+      setIsDigitacaoFaltasConsultaLoading(false)
+    }
+  }, [
+    digitacaoFaltasConsultaActiveFilters,
+    hasEditPermission,
+    loadDigitacaoFaltasConsultaItems,
+    resolveDigitacaoFaltasFilters,
+  ])
 
   const handleDigitacaoFaltasSave = useCallback(async () => {
     if (!hasEditPermission) {
@@ -1838,18 +1924,19 @@ export default function ApontamentoServicosView() {
                       <th>Ausencia total</th>
                       <th>Qtd integral</th>
                       <th>Qtd meio periodo</th>
+                      <th>Acoes</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isDigitacaoFaltasConsultaLoading ? (
                       <tr>
-                        <td colSpan={10} className="digitacao-faltas-grid-empty">
+                        <td colSpan={11} className="digitacao-faltas-grid-empty">
                           Carregando digitacao de faltas...
                         </td>
                       </tr>
                     ) : digitacaoFaltasConsultaItems.length > 0 ? (
                       digitacaoFaltasConsultaItems.map((item) => (
-                        <tr key={`${item.ordemServicoCodigo}-${item.revisao}-${item.placa}-${item.tipoPessoa}`}>
+                        <tr key={`${item.ordemServicoCodigo}-${item.revisao}-${item.placa}-${item.tipoPessoa}-${item.tegTipo}`}>
                           <td>{formatDigitacaoFaltasOsDisplay(item)}</td>
                           <td>{item.revisao}</td>
                           <td>{item.empresa || '-'}</td>
@@ -1860,11 +1947,31 @@ export default function ApontamentoServicosView() {
                           <td>{item.ausenciaTotal ? 'Sim' : 'Nao'}</td>
                           <td>{item.ausenciaTotal ? '-' : item.quantidadeAlunosIntegral ?? 0}</td>
                           <td>{item.ausenciaTotal ? '-' : item.quantidadeAlunosMeioPeriodo ?? 0}</td>
+                          <td>
+                            <div className="digitacao-faltas-consulta-actions">
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => handleEditDigitacaoFaltasConsultaItem(item)}
+                                disabled={isDigitacaoFaltasConsultaLoading || !hasEditPermission}
+                              >
+                                Alterar
+                              </button>
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => void handleDeleteDigitacaoFaltasConsultaItem(item)}
+                                disabled={isDigitacaoFaltasConsultaLoading || !hasEditPermission}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={10} className="digitacao-faltas-grid-empty">
+                        <td colSpan={11} className="digitacao-faltas-grid-empty">
                           {digitacaoFaltasConsultaMessage || 'Nenhum registro de digitacao de faltas encontrado.'}
                         </td>
                       </tr>
