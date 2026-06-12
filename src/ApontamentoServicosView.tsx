@@ -17,9 +17,12 @@ import {
 } from './services/apuracaoTipoPessoa'
 import type { ApuracaoTipoPessoa } from './services/apuracaoTipoPessoa'
 import {
+  listDigitacaoFaltasApontamentos,
+  listDigitacaoFaltasConsultaItems,
   lookupDigitacaoFaltasApontamento,
   saveDigitacaoFaltas,
   type DigitacaoFaltasApontamentoMatch,
+  type DigitacaoFaltasConsultaItem,
   type DigitacaoFaltasItem,
 } from './services/digitacaoFaltas'
 import { getEditPermissionDeniedMessage, hasEditableFormPermission } from './utils/formAccess'
@@ -98,8 +101,32 @@ const applyDigitacaoFaltasItemToForm = (
   setters.setFaltaTegTipo(faltaTegTipoFromItem(item))
 }
 
-const formatDigitacaoFaltasOsDisplay = (match: DigitacaoFaltasApontamentoMatch) => {
+const formatDigitacaoFaltasOsDisplay = (
+  match: Pick<DigitacaoFaltasApontamentoMatch, 'ordemServicoOsConcat' | 'ordemServicoNumOs' | 'ordemServicoCodigo'>,
+) => {
   return match.ordemServicoOsConcat || match.ordemServicoNumOs || match.ordemServicoCodigo || '-'
+}
+
+const formatDigitacaoFaltasTegTipoLabel = (
+  item: Pick<DigitacaoFaltasItem, 'tegRegular' | 'tegAcessivel' | 'tegCreche' | 'tegEspecial'>,
+) => {
+  if (item.tegRegular) {
+    return 'TEG Regular'
+  }
+
+  if (item.tegAcessivel) {
+    return 'TEG Acessivel'
+  }
+
+  if (item.tegCreche) {
+    return 'TEG Creche'
+  }
+
+  if (item.tegEspecial) {
+    return 'Especial'
+  }
+
+  return '-'
 }
 
 const normalizeMonthYearInput = (value: string) => {
@@ -340,15 +367,44 @@ export default function ApontamentoServicosView() {
   const [faltaPlaca, setFaltaPlaca] = useState('')
   const [faltaDataReferenciaInput, setFaltaDataReferenciaInput] = useState(formatIsoDateToDisplay(initialDataReferencia))
   const [faltaRevisao, setFaltaRevisao] = useState('0')
-  const [faltaTegTipo, setFaltaTegTipo] = useState<FaltaTegTipo>('')
-  const [faltaAusenciaTotal, setFaltaAusenciaTotal] = useState<FaltaSimNao>('')
+  const [faltaTegTipo, setFaltaTegTipo] = useState<FaltaTegTipo>('REGULAR')
+  const [faltaAusenciaTotal, setFaltaAusenciaTotal] = useState<FaltaSimNao>('NAO')
   const [faltaQuantidadeIntegral, setFaltaQuantidadeIntegral] = useState('0')
   const [faltaQuantidadeMeioPeriodo, setFaltaQuantidadeMeioPeriodo] = useState('0')
+  const [faltaFieldErrors, setFaltaFieldErrors] = useState<{ integral?: string; meio?: string }>({})
   const [faltaMatch, setFaltaMatch] = useState<DigitacaoFaltasApontamentoMatch | null>(null)
   const [faltaStatusMessage, setFaltaStatusMessage] = useState('')
   const [faltaStatusTone, setFaltaStatusTone] = useState<StatusTone>('idle')
+  const [faltaGridItems, setFaltaGridItems] = useState<DigitacaoFaltasApontamentoMatch[]>([])
+  const [faltaGridMessage, setFaltaGridMessage] = useState('')
+  const [isFaltaGridLoading, setIsFaltaGridLoading] = useState(false)
   const [isFaltaLookupLoading, setIsFaltaLookupLoading] = useState(false)
   const [isFaltaSaving, setIsFaltaSaving] = useState(false)
+  const [isDigitacaoFaltasConsultaVisible, setIsDigitacaoFaltasConsultaVisible] = useState(false)
+  const [digitacaoFaltasConsultaItems, setDigitacaoFaltasConsultaItems] = useState<DigitacaoFaltasConsultaItem[]>([])
+  const [digitacaoFaltasConsultaMessage, setDigitacaoFaltasConsultaMessage] = useState('')
+  const [isDigitacaoFaltasConsultaLoading, setIsDigitacaoFaltasConsultaLoading] = useState(false)
+  const [digitacaoFaltasConsultaActiveFilters, setDigitacaoFaltasConsultaActiveFilters] = useState<{
+    mesAno: string
+    dreCodigo: string
+    tipoPessoa: ApuracaoTipoPessoa
+    dataReferencia: string
+    dataReferenciaInput: string
+    revisao: string
+    crmcCondutor: string
+    placa: string
+  } | null>(null)
+  // Combobox options for placa: combine plates from falta grid and main items
+  const faltaPlacaOptions = useMemo(() => {
+    const setPlacas = new Set<string>()
+    for (const it of faltaGridItems) {
+      if (it.placa) setPlacas.add(it.placa)
+    }
+    for (const it of items) {
+      if (it.placa) setPlacas.add(it.placa)
+    }
+    return Array.from(setPlacas).filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  }, [faltaGridItems, items])
   const topScrollWrapperRef = useRef<HTMLDivElement | null>(null)
   const topScrollContentRef = useRef<HTMLDivElement | null>(null)
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
@@ -436,14 +492,90 @@ export default function ApontamentoServicosView() {
     setFaltaPlaca(appliedFilters.placa)
     setFaltaDataReferenciaInput(formatIsoDateToDisplay(appliedFilters.dataReferencia))
     setFaltaRevisao(appliedFilters.revisao)
-    setFaltaTegTipo('')
-    setFaltaAusenciaTotal('')
+    setFaltaTegTipo('REGULAR')
+    setFaltaAusenciaTotal('NAO')
     setFaltaQuantidadeIntegral('0')
     setFaltaQuantidadeMeioPeriodo('0')
     setFaltaMatch(null)
     setFaltaStatusMessage('')
     setFaltaStatusTone('idle')
+    setFaltaGridItems([])
+    setFaltaGridMessage('')
   }, [appliedFilters])
+
+  const loadFaltaGridItems = useCallback(async (overrides?: {
+    mesAno?: string
+    dreCodigo?: string
+    tipoPessoa?: ApuracaoTipoPessoa
+    dataReferencia?: string
+    dataReferenciaInput?: string
+    revisao?: string
+  }) => {
+    const normalizedMesAno = (overrides?.mesAno ?? faltaMesAno).trim()
+    const normalizedDreCodigo = (overrides?.dreCodigo ?? faltaDreCodigo).trim()
+    const normalizedTipoPessoa = overrides?.tipoPessoa ?? faltaTipoPessoa
+    const normalizedDataReferencia = overrides?.dataReferencia?.trim()
+      || parseDisplayDateToIso((overrides?.dataReferenciaInput ?? faltaDataReferenciaInput).trim())
+    const normalizedRevisao = (overrides?.revisao ?? faltaRevisao).trim()
+
+    if (!isValidMonthYear(normalizedMesAno)) {
+      setFaltaGridItems([])
+      setFaltaGridMessage('Informe mes/ano valido (mm/aaaa) para listar o apontamento.')
+      return
+    }
+
+    if (!normalizedDreCodigo) {
+      setFaltaGridItems([])
+      setFaltaGridMessage('Selecione a DRE para listar o apontamento.')
+      return
+    }
+
+    if (!normalizedDataReferencia) {
+      setFaltaGridItems([])
+      setFaltaGridMessage('Informe a data de referencia para listar o apontamento.')
+      return
+    }
+
+    if (!doesDateBelongToMonthYear(normalizedDataReferencia, normalizedMesAno)) {
+      setFaltaGridItems([])
+      setFaltaGridMessage(monthYearMismatchMessage)
+      return
+    }
+
+    setIsFaltaGridLoading(true)
+    setFaltaGridMessage('Carregando apontamento...')
+
+    try {
+      const loadedItems = await listDigitacaoFaltasApontamentos({
+        mesAno: normalizedMesAno,
+        dreCodigo: normalizedDreCodigo,
+        tipoPessoa: normalizedTipoPessoa,
+        dataReferencia: normalizedDataReferencia,
+        revisao: normalizedRevisao,
+      })
+
+      setFaltaGridItems(loadedItems)
+      setFaltaGridMessage(
+        loadedItems.length
+          ? ''
+          : 'Nenhum apontamento encontrado com os filtros informados.',
+      )
+    } catch (error) {
+      setFaltaGridItems([])
+      setFaltaGridMessage(
+        error instanceof Error ? error.message : 'Falha ao carregar o apontamento para digitacao de faltas.',
+      )
+    } finally {
+      setIsFaltaGridLoading(false)
+    }
+  }, [
+    faltaDataReferenciaInput,
+    faltaDreCodigo,
+    faltaMesAno,
+    faltaRevisao,
+    faltaTipoPessoa,
+    monthYearMismatchMessage,
+  ])
 
   const closeDigitacaoFaltasDialog = useCallback(() => {
     if (isFaltaSaving || isFaltaLookupLoading) {
@@ -594,44 +726,200 @@ export default function ApontamentoServicosView() {
   }, [lookupFaltaApontamento])
 
   const handleFaltaLookupFilterBlur = useCallback(() => {
+    void loadFaltaGridItems()
+
     if (!faltaPlaca.trim()) {
       return
     }
 
     void lookupFaltaApontamento({ showValidationErrors: true })
-  }, [faltaPlaca, lookupFaltaApontamento])
+  }, [faltaPlaca, loadFaltaGridItems, lookupFaltaApontamento])
+
+  const handleFaltaGridRowSelect = useCallback((item: DigitacaoFaltasApontamentoMatch) => {
+    const nextPlaca = item.placa.trim()
+
+    if (!nextPlaca) {
+      return
+    }
+
+    setFaltaPlaca(nextPlaca)
+    setFaltaMatch(null)
+    setFaltaStatusMessage('')
+    setFaltaStatusTone('idle')
+    void lookupFaltaApontamento({
+      showValidationErrors: true,
+      overrides: { placa: nextPlaca },
+    })
+  }, [lookupFaltaApontamento])
+
+  const resolveDigitacaoFaltasFilters = useCallback(() => {
+    const nextMesAno = mesAno.trim() || appliedFilters.mesAno
+    const nextDreCodigo = dreCodigo.trim() || appliedFilters.dreCodigo
+    const nextDataReferenciaInput = dataOperacaoInput.trim() || formatIsoDateToDisplay(appliedFilters.dataReferencia)
+    const nextDataReferencia = parseDisplayDateToIso(nextDataReferenciaInput) || appliedFilters.dataReferencia
+
+    return {
+      mesAno: nextMesAno,
+      dreCodigo: nextDreCodigo,
+      tipoPessoa,
+      dataReferencia: nextDataReferencia,
+      dataReferenciaInput: nextDataReferenciaInput,
+      revisao: revisao.trim() || appliedFilters.revisao,
+      crmcCondutor: crmcCondutor.trim() || appliedFilters.crmcCondutor,
+      placa: placa.trim() || appliedFilters.placa,
+    }
+  }, [
+    appliedFilters,
+    crmcCondutor,
+    dataOperacaoInput,
+    dreCodigo,
+    mesAno,
+    placa,
+    revisao,
+    tipoPessoa,
+  ])
+
+  const loadDigitacaoFaltasConsultaItems = useCallback(async (filters: ReturnType<typeof resolveDigitacaoFaltasFilters>) => {
+    if (!isValidMonthYear(filters.mesAno)) {
+      setDigitacaoFaltasConsultaItems([])
+      setDigitacaoFaltasConsultaMessage('Informe mes/ano valido (mm/aaaa) para consultar digitacao de faltas.')
+      return
+    }
+
+    if (!filters.dreCodigo) {
+      setDigitacaoFaltasConsultaItems([])
+      setDigitacaoFaltasConsultaMessage('Selecione a DRE para consultar digitacao de faltas.')
+      return
+    }
+
+    if (!filters.dataReferencia) {
+      setDigitacaoFaltasConsultaItems([])
+      setDigitacaoFaltasConsultaMessage('Informe a data de referencia para consultar digitacao de faltas.')
+      return
+    }
+
+    if (!doesDateBelongToMonthYear(filters.dataReferencia, filters.mesAno)) {
+      setDigitacaoFaltasConsultaItems([])
+      setDigitacaoFaltasConsultaMessage(monthYearMismatchMessage)
+      return
+    }
+
+    setIsDigitacaoFaltasConsultaLoading(true)
+    setDigitacaoFaltasConsultaMessage('Carregando digitacao de faltas...')
+
+    try {
+      const loadedItems = await listDigitacaoFaltasConsultaItems({
+        mesAno: filters.mesAno,
+        dreCodigo: filters.dreCodigo,
+        tipoPessoa: filters.tipoPessoa,
+        dataReferencia: filters.dataReferencia,
+        revisao: filters.revisao,
+        crmcCondutor: filters.crmcCondutor,
+        placa: filters.placa,
+      })
+
+      setDigitacaoFaltasConsultaItems(loadedItems)
+      setDigitacaoFaltasConsultaMessage(
+        loadedItems.length
+          ? `${loadedItems.length} registro(s) de digitacao de faltas encontrado(s).`
+          : 'Nenhum registro de digitacao de faltas encontrado para os filtros informados.',
+      )
+    } catch (error) {
+      setDigitacaoFaltasConsultaItems([])
+      setDigitacaoFaltasConsultaMessage(
+        error instanceof Error ? error.message : 'Falha ao consultar digitacao de faltas.',
+      )
+    } finally {
+      setIsDigitacaoFaltasConsultaLoading(false)
+    }
+  }, [monthYearMismatchMessage])
+
+  const closeDigitacaoFaltasConsultaDialog = useCallback(() => {
+    setIsDigitacaoFaltasConsultaVisible(false)
+    setDigitacaoFaltasConsultaItems([])
+    setDigitacaoFaltasConsultaMessage('')
+  }, [])
+
+  const openDigitacaoFaltasConsultaDialog = useCallback(() => {
+    const filters = resolveDigitacaoFaltasFilters()
+
+    if (!isValidMonthYear(filters.mesAno)) {
+      openValidationDialog('Informe um mes/ano valido para consultar digitacao de faltas.')
+      return
+    }
+
+    if (!filters.dreCodigo) {
+      openValidationDialog('Selecione a DRE para consultar digitacao de faltas.')
+      return
+    }
+
+    if (!filters.dataReferencia) {
+      openValidationDialog('Informe uma data de referencia valida para consultar digitacao de faltas.')
+      return
+    }
+
+    if (!doesDateBelongToMonthYear(filters.dataReferencia, filters.mesAno)) {
+      openValidationDialog(monthYearMismatchMessage)
+      return
+    }
+
+    setDigitacaoFaltasConsultaItems([])
+    setDigitacaoFaltasConsultaMessage('')
+    setDigitacaoFaltasConsultaActiveFilters(filters)
+    setIsDigitacaoFaltasConsultaVisible(true)
+    void loadDigitacaoFaltasConsultaItems(filters)
+  }, [
+    loadDigitacaoFaltasConsultaItems,
+    monthYearMismatchMessage,
+    openValidationDialog,
+    resolveDigitacaoFaltasFilters,
+  ])
 
   const openDigitacaoFaltasDialog = useCallback(() => {
-    const nextDataReferenciaInput = formatIsoDateToDisplay(appliedFilters.dataReferencia)
-    setFaltaMesAno(appliedFilters.mesAno)
-    setFaltaDreCodigo(appliedFilters.dreCodigo)
-    setFaltaTipoPessoa(appliedFilters.tipoPessoa)
-    setFaltaPlaca(appliedFilters.placa)
-    setFaltaDataReferenciaInput(nextDataReferenciaInput)
-    setFaltaRevisao(appliedFilters.revisao)
-    setFaltaTegTipo('')
-    setFaltaAusenciaTotal('')
+    const filters = resolveDigitacaoFaltasFilters()
+
+    // Populate form fields from current toolbar inputs (or applied filters)
+    setFaltaMesAno(filters.mesAno)
+    setFaltaDreCodigo(filters.dreCodigo)
+    setFaltaTipoPessoa(filters.tipoPessoa)
+    setFaltaPlaca(filters.placa)
+    setFaltaDataReferenciaInput(filters.dataReferenciaInput)
+    setFaltaRevisao(filters.revisao)
+    // defaults
+    setFaltaTegTipo('REGULAR')
+    setFaltaAusenciaTotal('NAO')
     setFaltaQuantidadeIntegral('0')
     setFaltaQuantidadeMeioPeriodo('0')
     setFaltaMatch(null)
     setFaltaStatusMessage('')
     setFaltaStatusTone('idle')
+    setFaltaGridItems([])
+    setFaltaGridMessage('')
     setIsDigitacaoFaltasVisible(true)
 
-    if (appliedFilters.placa.trim()) {
+    void loadFaltaGridItems({
+      mesAno: filters.mesAno,
+      dreCodigo: filters.dreCodigo,
+      tipoPessoa: filters.tipoPessoa,
+      dataReferencia: filters.dataReferencia,
+      dataReferenciaInput: filters.dataReferenciaInput,
+      revisao: filters.revisao,
+    })
+
+    if (filters.placa) {
       void lookupFaltaApontamento({
         showValidationErrors: true,
         overrides: {
-          mesAno: appliedFilters.mesAno,
-          dreCodigo: appliedFilters.dreCodigo,
-          tipoPessoa: appliedFilters.tipoPessoa,
-          placa: appliedFilters.placa,
-          dataReferenciaInput: nextDataReferenciaInput,
-          revisao: appliedFilters.revisao,
+          mesAno: filters.mesAno,
+          dreCodigo: filters.dreCodigo,
+          tipoPessoa: filters.tipoPessoa,
+          placa: filters.placa,
+          dataReferenciaInput: filters.dataReferenciaInput,
+          revisao: filters.revisao,
         },
       })
     }
-  }, [appliedFilters, lookupFaltaApontamento])
+  }, [loadFaltaGridItems, lookupFaltaApontamento, resolveDigitacaoFaltasFilters])
 
   const handleDigitacaoFaltasSave = useCallback(async () => {
     if (!hasEditPermission) {
@@ -680,6 +968,37 @@ export default function ApontamentoServicosView() {
       setFaltaStatusTone('error')
       setFaltaStatusMessage('Selecione a ausencia total.')
       return
+    }
+
+    // Validate quantities when not ausencia total
+    const intQtdIntegral = Number.parseInt(faltaQuantidadeIntegral || '0', 10) || 0
+    const intQtdMeio = Number.parseInt(faltaQuantidadeMeioPeriodo || '0', 10) || 0
+
+    if (faltaAusenciaTotal !== 'SIM') {
+      // At least one quantity must be provided
+      if (intQtdIntegral + intQtdMeio === 0) {
+        setFaltaFieldErrors({
+          integral: 'Informe ao menos uma quantidade.',
+          meio: 'Informe ao menos uma quantidade.',
+        })
+        setFaltaStatusTone('error')
+        setFaltaStatusMessage('Corrija os campos destacados.')
+        return
+      }
+
+      // If a TEG type was chosen, prohibit both quantities being zero (redundant but explicit)
+      if (faltaTegTipo && intQtdIntegral + intQtdMeio === 0) {
+        setFaltaFieldErrors({
+          integral: 'Quando um Tipo TEG é escolhido, informe ao menos uma quantidade.',
+          meio: 'Quando um Tipo TEG é escolhido, informe ao menos uma quantidade.',
+        })
+        setFaltaStatusTone('error')
+        setFaltaStatusMessage('Corrija os campos destacados.')
+        return
+      }
+    } else {
+      // when ausencia total, clear any quantity errors
+      setFaltaFieldErrors({})
     }
 
     setIsFaltaSaving(true)
@@ -898,7 +1217,13 @@ export default function ApontamentoServicosView() {
   }, [appliedFilters, loadItems, page, pageSize])
 
   useEffect(() => {
-    if (!isValidationDialogVisible && !isImportDialogVisible && !isImportRequestDialogVisible && !isDigitacaoFaltasVisible) {
+    if (
+      !isValidationDialogVisible
+      && !isImportDialogVisible
+      && !isImportRequestDialogVisible
+      && !isDigitacaoFaltasVisible
+      && !isDigitacaoFaltasConsultaVisible
+    ) {
       return
     }
 
@@ -921,6 +1246,10 @@ export default function ApontamentoServicosView() {
         if (isDigitacaoFaltasVisible) {
           closeDigitacaoFaltasDialog()
         }
+
+        if (isDigitacaoFaltasConsultaVisible) {
+          closeDigitacaoFaltasConsultaDialog()
+        }
       }
     }
 
@@ -931,10 +1260,12 @@ export default function ApontamentoServicosView() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [
+    closeDigitacaoFaltasConsultaDialog,
     closeDigitacaoFaltasDialog,
     closeImportDialog,
     closeImportRequestDialog,
     closeValidationDialog,
+    isDigitacaoFaltasConsultaVisible,
     isDigitacaoFaltasVisible,
     isImportDialogVisible,
     isImportRequestDialogVisible,
@@ -1455,6 +1786,112 @@ export default function ApontamentoServicosView() {
         </div>
       ) : null}
 
+      {isDigitacaoFaltasConsultaVisible ? (
+        <div className="management-modal-overlay" onClick={closeDigitacaoFaltasConsultaDialog}>
+          <div
+            className="management-modal-shell management-modal-shell-wide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="apontamento-servicos-digitacao-faltas-consulta-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="management-card management-modal-form-card digitacao-faltas-consulta-modal">
+              <div className="management-modal-header">
+                <div>
+                  <p className="management-modal-kicker">Operacional financeiro - APNTSVC024</p>
+                  <h2 id="apontamento-servicos-digitacao-faltas-consulta-title">CONSULTA DIGITACAO DE FALTAS</h2>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button management-modal-close-button"
+                  onClick={closeDigitacaoFaltasConsultaDialog}
+                  disabled={isDigitacaoFaltasConsultaLoading}
+                  aria-label="Fechar consulta de digitacao de faltas"
+                >
+                  X
+                </button>
+              </div>
+
+              <p className="management-modal-subtitle">
+                Consulta dos registros gravados em digitacao de faltas com os mesmos filtros do apontamento de servicos.
+              </p>
+              {digitacaoFaltasConsultaActiveFilters ? (
+                <div className="digitacao-faltas-consulta-filters" aria-live="polite">
+                  <strong>Mes/Ano:</strong> {digitacaoFaltasConsultaActiveFilters.mesAno || '-'} &nbsp;&nbsp;
+                  <strong>Data referência:</strong> {digitacaoFaltasConsultaActiveFilters.dataReferenciaInput || '-'} &nbsp;&nbsp;
+                  <strong>DRE:</strong> {digitacaoFaltasConsultaActiveFilters.dreCodigo || '-'} &nbsp;&nbsp;
+                  <strong>Tipo pessoa:</strong> {digitacaoFaltasConsultaActiveFilters.tipoPessoa || '-'}
+                </div>
+              ) : null}
+
+              <div className="apontamento-servicos-grid-wrapper digitacao-faltas-grid-wrapper digitacao-faltas-consulta-grid-wrapper">
+                <table className="apontamento-servicos-table digitacao-faltas-grid-table digitacao-faltas-consulta-grid-table">
+                  <thead>
+                    <tr>
+                      <th>OS</th>
+                      <th>Revisao</th>
+                      <th>Empresa</th>
+                      <th>Condutor</th>
+                      <th>CRMC</th>
+                      <th>Placa</th>
+                      <th>TEG</th>
+                      <th>Ausencia total</th>
+                      <th>Qtd integral</th>
+                      <th>Qtd meio periodo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isDigitacaoFaltasConsultaLoading ? (
+                      <tr>
+                        <td colSpan={10} className="digitacao-faltas-grid-empty">
+                          Carregando digitacao de faltas...
+                        </td>
+                      </tr>
+                    ) : digitacaoFaltasConsultaItems.length > 0 ? (
+                      digitacaoFaltasConsultaItems.map((item) => (
+                        <tr key={`${item.ordemServicoCodigo}-${item.revisao}-${item.placa}-${item.tipoPessoa}`}>
+                          <td>{formatDigitacaoFaltasOsDisplay(item)}</td>
+                          <td>{item.revisao}</td>
+                          <td>{item.empresa || '-'}</td>
+                          <td>{item.nomeCondutor || '-'}</td>
+                          <td>{item.crmcCondutor || '-'}</td>
+                          <td>{item.placa || '-'}</td>
+                          <td>{formatDigitacaoFaltasTegTipoLabel(item)}</td>
+                          <td>{item.ausenciaTotal ? 'Sim' : 'Nao'}</td>
+                          <td>{item.ausenciaTotal ? '-' : item.quantidadeAlunosIntegral ?? 0}</td>
+                          <td>{item.ausenciaTotal ? '-' : item.quantidadeAlunosMeioPeriodo ?? 0}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={10} className="digitacao-faltas-grid-empty">
+                          {digitacaoFaltasConsultaMessage || 'Nenhum registro de digitacao de faltas encontrado.'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className={`status-message status-${digitacaoFaltasConsultaItems.length ? 'success' : 'idle'}`} aria-live="polite">
+                {digitacaoFaltasConsultaMessage}
+              </p>
+
+              <div className="button-row dre-button-row management-modal-footer">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={closeDigitacaoFaltasConsultaDialog}
+                  disabled={isDigitacaoFaltasConsultaLoading}
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {isDigitacaoFaltasVisible ? (
         <div className="management-modal-overlay" onClick={closeDigitacaoFaltasDialog}>
           <div
@@ -1489,41 +1926,7 @@ export default function ApontamentoServicosView() {
               </div>
 
               <p className="management-modal-subtitle">
-                Selecione um apontamento ou digitalize uma placa. Os dados da OS serao consultados automaticamente.
-              </p>
-
-              <div className="apontamento-servicos-grid-wrapper">
-                <table className="apontamento-servicos-table">
-                  <thead>
-                    <tr>
-                      <th>OS</th>
-                      <th>Revisao</th>
-                      <th>Empresa</th>
-                      <th>Condutor</th>
-                      <th>Placa</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.slice(0, 10).map((item, idx) => (
-                      <tr key={`${idx}-${item.ordem_servico_codigo}`}>
-                        <td>{item.ordem_servico_os_concat || item.ordem_servico_codigo}</td>
-                        <td>{item.revisao}</td>
-                        <td>{item.empresa}</td>
-                        <td>{item.nome_condutor}</td>
-                        <td>{item.placa}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {items.length === 0 ? (
-                  <p style={{ textAlign: 'center', padding: '12px', color: 'var(--text-soft)' }}>
-                    Nenhum apontamento encontrado com os filtros atuais.
-                  </p>
-                ) : null}
-              </div>
-
-              <p className="management-modal-subtitle">
-                Informe mes/ano, DRE, tipo pessoa, data de referencia e revisao. Ao sair do campo placa, a OS correspondente sera consultada no apontamento.
+                Informe mes/ano, DRE, tipo pessoa, data de referencia e revisao. O grid de apontamento sera carregado automaticamente.
               </p>
 
               <div className="management-modal-form-grid digitacao-faltas-filter-grid">
@@ -1537,7 +1940,8 @@ export default function ApontamentoServicosView() {
                     placeholder="mm/aaaa"
                     value={faltaMesAno}
                     onChange={(event) => setFaltaMesAno(normalizeMonthYearInput(event.target.value))}
-                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                    onBlur={() => void loadFaltaGridItems()}
+                    disabled
                   />
                 </label>
 
@@ -1546,8 +1950,11 @@ export default function ApontamentoServicosView() {
                   <select
                     id="digitacao-faltas-dre"
                     value={faltaDreCodigo}
-                    onChange={(event) => setFaltaDreCodigo(event.target.value)}
-                    disabled={isFaltaSaving || isFaltaLookupLoading || isLoadingOptions}
+                    onChange={(event) => {
+                      setFaltaDreCodigo(event.target.value)
+                      void loadFaltaGridItems({ dreCodigo: event.target.value })
+                    }}
+                    disabled
                   >
                     <option value="">Selecione</option>
                     {dreOptions.map((item) => (
@@ -1563,8 +1970,12 @@ export default function ApontamentoServicosView() {
                   <select
                     id="digitacao-faltas-tipo-pessoa"
                     value={faltaTipoPessoa}
-                    onChange={(event) => setFaltaTipoPessoa(event.target.value as ApuracaoTipoPessoa)}
-                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                    onChange={(event) => {
+                      const nextTipoPessoa = event.target.value as ApuracaoTipoPessoa
+                      setFaltaTipoPessoa(nextTipoPessoa)
+                      void loadFaltaGridItems({ tipoPessoa: nextTipoPessoa })
+                    }}
+                    disabled
                   >
                     {APURACAO_TIPO_PESSOA_OPTIONS.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -1584,7 +1995,7 @@ export default function ApontamentoServicosView() {
                     value={faltaDataReferenciaInput}
                     onChange={(event) => setFaltaDataReferenciaInput(normalizeDisplayDateInput(event.target.value))}
                     onBlur={handleFaltaLookupFilterBlur}
-                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                    disabled={isFaltaSaving || isFaltaLookupLoading || isFaltaGridLoading}
                   />
                 </label>
 
@@ -1598,9 +2009,57 @@ export default function ApontamentoServicosView() {
                     value={faltaRevisao}
                     onChange={(event) => setFaltaRevisao(normalizeIntegerInput(event.target.value))}
                     onBlur={handleFaltaLookupFilterBlur}
-                    disabled={isFaltaSaving || isFaltaLookupLoading}
+                    disabled={isFaltaSaving || isFaltaLookupLoading || isFaltaGridLoading}
                   />
                 </label>
+              </div>
+
+              <p className="management-modal-subtitle">
+                Selecione um apontamento no grid ou digitalize uma placa. Os dados da OS serao consultados automaticamente.
+              </p>
+
+              <div className="apontamento-servicos-grid-wrapper digitacao-faltas-grid-wrapper">
+                <table className="apontamento-servicos-table digitacao-faltas-grid-table">
+                  <thead>
+                    <tr>
+                      <th>OS</th>
+                      <th>Revisao</th>
+                      <th>Empresa</th>
+                      <th>Condutor</th>
+                      <th>Placa</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isFaltaGridLoading ? (
+                      <tr>
+                        <td colSpan={5} className="digitacao-faltas-grid-empty">
+                          Carregando apontamento...
+                        </td>
+                      </tr>
+                    ) : faltaGridItems.length > 0 ? (
+                      faltaGridItems.map((item) => (
+                        <tr
+                          key={`${item.ordemServicoCodigo}-${item.revisao}-${item.placa}`}
+                          className="digitacao-faltas-grid-row"
+                          onClick={() => handleFaltaGridRowSelect(item)}
+                          title="Selecionar placa para digitacao de faltas"
+                        >
+                          <td>{formatDigitacaoFaltasOsDisplay(item)}</td>
+                          <td>{item.revisao}</td>
+                          <td>{item.empresa}</td>
+                          <td>{item.nomeCondutor}</td>
+                          <td>{item.placa}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="digitacao-faltas-grid-empty">
+                          {faltaGridMessage || 'Nenhum apontamento encontrado com os filtros informados.'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
 
               <div className="digitacao-faltas-placa-row">
@@ -1608,6 +2067,7 @@ export default function ApontamentoServicosView() {
                   <span>Placa</span>
                   <input
                     id="digitacao-faltas-placa"
+                    list="digitacao-faltas-placa-list"
                     type="text"
                     value={faltaPlaca}
                     onChange={(event) => {
@@ -1632,6 +2092,13 @@ export default function ApontamentoServicosView() {
                     placeholder="Informe a placa"
                   />
                 </label>
+
+                {/* Combobox suggestions for placas */}
+                <datalist id="digitacao-faltas-placa-list">
+                  {faltaPlacaOptions.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
 
                 <div className="digitacao-faltas-match-panel" aria-live="polite">
                   {isFaltaLookupLoading ? (
@@ -1668,25 +2135,6 @@ export default function ApontamentoServicosView() {
               </div>
 
               <fieldset className="field-radio-group" disabled={isFaltaSaving || isFaltaLookupLoading}>
-                <legend>Tipo TEG</legend>
-                <div className="field-radio-options">
-                  {FALTA_TEG_TIPO_OPTIONS.map((option) => (
-                    <label key={option.value} className="field-radio-option" htmlFor={`digitacao-faltas-teg-${option.value}`}>
-                      <input
-                        id={`digitacao-faltas-teg-${option.value}`}
-                        type="radio"
-                        name="digitacao-faltas-teg-tipo"
-                        value={option.value}
-                        checked={faltaTegTipo === option.value}
-                        onChange={() => setFaltaTegTipo(option.value)}
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset className="field-radio-group" disabled={isFaltaSaving || isFaltaLookupLoading}>
                 <legend>Ausencia total</legend>
                 <div className="field-radio-options">
                   <label className="field-radio-option" htmlFor="digitacao-faltas-ausencia-total-sim">
@@ -1718,15 +2166,39 @@ export default function ApontamentoServicosView() {
                 </div>
               </fieldset>
 
+              {faltaAusenciaTotal !== 'SIM' ? (
+                <fieldset className="field-radio-group" disabled={isFaltaSaving || isFaltaLookupLoading}>
+                  <legend>Tipo TEG</legend>
+                  <div className="field-radio-options">
+                    {FALTA_TEG_TIPO_OPTIONS.map((option) => (
+                      <label key={option.value} className="field-radio-option" htmlFor={`digitacao-faltas-teg-${option.value}`}>
+                        <input
+                          id={`digitacao-faltas-teg-${option.value}`}
+                          type="radio"
+                          name="digitacao-faltas-teg-tipo"
+                          value={option.value}
+                          checked={faltaTegTipo === option.value}
+                          onChange={() => setFaltaTegTipo(option.value)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
+
               <div className="management-modal-form-grid">
                 {faltaAusenciaTotal !== 'SIM' ? (
                   <>
                     <label className="field-group" htmlFor="digitacao-faltas-qtd-integral">
                       <span>Quantidade de alunos integral</span>
-                      <select
+                    <select
                         id="digitacao-faltas-qtd-integral"
                         value={faltaQuantidadeIntegral}
-                        onChange={(event) => setFaltaQuantidadeIntegral(event.target.value)}
+                      onChange={(event) => {
+                        setFaltaQuantidadeIntegral(event.target.value)
+                        setFaltaFieldErrors((prev) => ({ ...prev, integral: '' }))
+                      }}
                         disabled={isFaltaSaving || isFaltaLookupLoading}
                       >
                         {FALTA_QUANTIDADE_OPTIONS.map((value) => (
@@ -1735,14 +2207,18 @@ export default function ApontamentoServicosView() {
                           </option>
                         ))}
                       </select>
+                    {faltaFieldErrors.integral ? <p className="field-error">{faltaFieldErrors.integral}</p> : null}
                     </label>
 
                     <label className="field-group" htmlFor="digitacao-faltas-qtd-meio-periodo">
                       <span>Quantidade de alunos meio periodo</span>
-                      <select
+                    <select
                         id="digitacao-faltas-qtd-meio-periodo"
                         value={faltaQuantidadeMeioPeriodo}
-                        onChange={(event) => setFaltaQuantidadeMeioPeriodo(event.target.value)}
+                      onChange={(event) => {
+                        setFaltaQuantidadeMeioPeriodo(event.target.value)
+                        setFaltaFieldErrors((prev) => ({ ...prev, meio: '' }))
+                      }}
                         disabled={isFaltaSaving || isFaltaLookupLoading}
                       >
                         {FALTA_QUANTIDADE_OPTIONS.map((value) => (
@@ -1751,6 +2227,7 @@ export default function ApontamentoServicosView() {
                           </option>
                         ))}
                       </select>
+                    {faltaFieldErrors.meio ? <p className="field-error">{faltaFieldErrors.meio}</p> : null}
                     </label>
                   </>
                 ) : null}
@@ -1894,6 +2371,14 @@ export default function ApontamentoServicosView() {
             </button>
             <button type="button" className="primary-button" onClick={handleSave} disabled={isSaving || isLoading || isImporting || !items.length}>
               {isSaving ? 'Salvando...' : 'Salvar apontamento digitado'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={openDigitacaoFaltasConsultaDialog}
+              disabled={isSaving || isLoading || isImporting || isDigitacaoFaltasConsultaLoading}
+            >
+              {isDigitacaoFaltasConsultaLoading ? 'Consultando faltas...' : 'Consultar digitacao de faltas'}
             </button>
             <button
               type="button"

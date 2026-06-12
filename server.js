@@ -4301,6 +4301,17 @@ const mapDigitacaoFaltasRow = (row) => ({
   quantidadeAlunosMeioPeriodo: row?.quantidade_alunos_meio_periodo == null ? null : Number(row.quantidade_alunos_meio_periodo),
 })
 
+const mapDigitacaoFaltasConsultaRow = (row) => ({
+  ...mapDigitacaoFaltasRow(row),
+  ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
+  ordemServicoNumOs: normalizeRequestValue(row?.ordem_servico_num_os),
+  nomeCondutor: normalizeRequestValue(row?.nome_condutor),
+  crmcCondutor: normalizeRequestValue(row?.crmc_condutor),
+  empresa: normalizeRequestValue(row?.empresa),
+  dataInclusao: normalizeRequestValue(row?.data_inclusao),
+  dataAlteracao: normalizeRequestValue(row?.data_alteracao),
+})
+
 const mapDigitacaoFaltasApontamentoMatchRow = (row) => ({
   ordemServicoCodigo: normalizeRequestValue(row?.ordem_servico_codigo),
   ordemServicoOsConcat: normalizeRequestValue(row?.ordem_servico_os_concat),
@@ -4387,6 +4398,181 @@ const findApontamentoMatchesForDigitacaoFaltas = async ({
   )
 
   return result.rows.map(mapDigitacaoFaltasApontamentoMatchRow)
+}
+
+const listApontamentosForDigitacaoFaltas = async ({
+  mesAno,
+  dreCodigo,
+  tipoPessoa,
+  dataReferencia,
+  revisao,
+}, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const normalizedRevisao = normalizeApuracaoRevisao(revisao)
+
+  if (!normalizedMesAno || !normalizedDreCodigo || !normalizedTipoPessoa || !normalizedDate) {
+    throw createHttpError(400, 'Informe mes/ano, DRE, tipo pessoa e data de referencia validos.')
+  }
+
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
+
+  if (!monthRange || normalizedDate < monthRange.monthStart || normalizedDate > monthRange.monthEnd) {
+    throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
+  }
+
+  const values = [normalizedDate, normalizedMesAno, normalizedDreCodigo, normalizedTipoPessoa]
+  let revisaoFilter = ''
+
+  if (Number.isInteger(normalizedRevisao)) {
+    values.push(normalizedRevisao)
+    revisaoFilter = `AND aps.revisao = $${values.length}`
+  }
+
+  const result = await executor.query(
+    `SELECT
+       aps.ordem_servico_codigo::text AS ordem_servico_codigo,
+       aps.revisao,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
+       COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+       COALESCE(BTRIM(os.termo_adesao), '') AS contrato,
+       COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
+       MAX(COALESCE(BTRIM(aps.crmc_condutor), '')) AS crmc_condutor,
+       COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
+       COUNT(*)::int AS registros_apontamento
+     FROM apuracao_servicos aps
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo = aps.ordem_servico_codigo
+     LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+     LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+     WHERE aps.data_referencia = $1::date
+       AND aps.mes_ano = $2
+       AND CAST(aps.dre_codigo AS text) = $3
+       AND BTRIM(aps.tipo_pessoa) = $4
+       ${revisaoFilter}
+       AND COALESCE(BTRIM(os.veiculo_placas), '') <> ''
+       AND ${ordemServicoActiveStartDateExpression} <= $1::date
+       AND ${ordemServicoActiveEndDateExpression} >= $1::date
+     GROUP BY
+       aps.ordem_servico_codigo,
+       aps.revisao,
+       os.veiculo_placas,
+       os.os_concat,
+       os.num_os,
+       os.termo_adesao,
+       os.condutor,
+       credenciada_lookup.empresa
+     ORDER BY os.veiculo_placas ASC, aps.ordem_servico_codigo ASC, aps.revisao ASC`,
+    values,
+  )
+
+  return result.rows.map(mapDigitacaoFaltasApontamentoMatchRow)
+}
+
+const listDigitacaoFaltasConsultaItems = async ({
+  mesAno,
+  dreCodigo,
+  tipoPessoa,
+  dataReferencia,
+  revisao,
+  crmcCondutor,
+  placa,
+}, executor = pool) => {
+  const normalizedMesAno = normalizeApuracaoFinanceiraMesAno(mesAno)
+  const normalizedDreCodigo = normalizeRequestValue(dreCodigo)
+  const normalizedTipoPessoa = normalizeApuracaoTipoPessoa(tipoPessoa)
+  const normalizedDate = normalizeApontamentoServicosDate(dataReferencia)
+  const normalizedRevisao = normalizeApuracaoRevisao(revisao)
+  const normalizedCrmcCondutor = normalizeRequestValue(crmcCondutor)
+  const normalizedPlacaSearch = normalizeRequestValue(placa)
+
+  if (!normalizedMesAno || !normalizedDreCodigo || !normalizedTipoPessoa || !normalizedDate) {
+    throw createHttpError(400, 'Informe mes/ano, DRE, tipo pessoa e data de referencia validos.')
+  }
+
+  const monthRange = buildApuracaoFinanceiraMonthRange(normalizedMesAno)
+
+  if (!monthRange || normalizedDate < monthRange.monthStart || normalizedDate > monthRange.monthEnd) {
+    throw createHttpError(400, 'A data de referencia deve pertencer ao mes/ano informado.')
+  }
+
+  const values = [normalizedMesAno, normalizedDate, normalizedDreCodigo, normalizedTipoPessoa]
+  let revisaoFilter = ''
+
+  if (Number.isInteger(normalizedRevisao)) {
+    values.push(normalizedRevisao)
+    revisaoFilter = `AND df.revisao = $${values.length}`
+  }
+
+  let crmcFilter = ''
+
+  if (normalizedCrmcCondutor) {
+    values.push(`%${normalizedCrmcCondutor}%`)
+    crmcFilter = `AND COALESCE(BTRIM(aps_lookup.crmc_condutor), '') ILIKE $${values.length}`
+  }
+
+  let placaFilter = ''
+
+  if (normalizedPlacaSearch) {
+    values.push(`%${normalizedPlacaSearch}%`)
+    placaFilter = `AND COALESCE(BTRIM(os.veiculo_placas), '') ILIKE $${values.length}`
+  }
+
+  const result = await executor.query(
+    `SELECT
+       BTRIM(df.mes_ano) AS mes_ano,
+       TO_CHAR(df.data_referencia, 'YYYY-MM-DD') AS data_referencia,
+       CAST(df.dre_codigo AS text) AS dre_codigo,
+       df.ordem_servico_codigo::text AS ordem_servico_codigo,
+       df.revisao,
+       COALESCE(BTRIM(df.tipo_pessoa), '') AS tipo_pessoa,
+       COALESCE(BTRIM(os.veiculo_placas), '') AS placa,
+       COALESCE(BTRIM(os.os_concat), '') AS ordem_servico_os_concat,
+       COALESCE(BTRIM(os.num_os), '') AS ordem_servico_num_os,
+       COALESCE(BTRIM(os.condutor), '') AS nome_condutor,
+       COALESCE(BTRIM(aps_lookup.crmc_condutor), '') AS crmc_condutor,
+       COALESCE(BTRIM(credenciada_lookup.empresa), '') AS empresa,
+       df.ausencia_total,
+       df.quantidade_alunos_integral,
+       df.quantidade_alunos_meio_periodo,
+       df.teg_regular,
+       df.teg_acessivel,
+       df.teg_creche,
+       df.teg_especial,
+       TO_CHAR(df.data_inclusao, 'YYYY-MM-DD"T"HH24:MI:SS') AS data_inclusao,
+       TO_CHAR(df.data_alteracao, 'YYYY-MM-DD"T"HH24:MI:SS') AS data_alteracao
+     FROM digitacao_faltas df
+     INNER JOIN ${ordemServicoTableName} os ON os.codigo = df.ordem_servico_codigo
+     LEFT JOIN ${credenciamentoTermoTableName} termo_lookup ON termo_lookup.codigo = os.termo_codigo
+     LEFT JOIN ${credenciadaTableName} credenciada_lookup ON credenciada_lookup.codigo = termo_lookup.credenciada_codigo
+     LEFT JOIN LATERAL (
+       SELECT MAX(COALESCE(BTRIM(aps.crmc_condutor), '')) AS crmc_condutor
+       FROM apuracao_servicos aps
+       WHERE BTRIM(aps.mes_ano) = BTRIM(df.mes_ano)
+         AND aps.data_referencia = df.data_referencia
+         AND CAST(aps.dre_codigo AS text) = CAST(df.dre_codigo AS text)
+         AND aps.ordem_servico_codigo = df.ordem_servico_codigo
+         AND aps.revisao = df.revisao
+         AND BTRIM(aps.tipo_pessoa) = BTRIM(df.tipo_pessoa)
+     ) aps_lookup ON true
+     WHERE df.mes_ano = $1
+       AND df.data_referencia = $2::date
+       AND CAST(df.dre_codigo AS text) = $3
+       AND BTRIM(df.tipo_pessoa) = $4
+       ${revisaoFilter}
+       ${crmcFilter}
+       ${placaFilter}
+     ORDER BY credenciada_lookup.empresa ASC,
+       os.condutor ASC,
+       os.veiculo_placas ASC,
+       df.ordem_servico_codigo ASC,
+       df.revisao ASC`,
+    values,
+  )
+
+  return result.rows.map(mapDigitacaoFaltasConsultaRow)
 }
 
 const buildDigitacaoFaltasPlacaNotFoundMessage = (placa, mesAno) => {
@@ -5185,8 +5371,95 @@ const listTotalRemuneracaoServicosItems = async ({ mesAno, dreCodigo, crmcCondut
     pagedValues,
   )
 
+  const items = result.rows.map(mapTotalRemuneracaoServicosRow)
+
+  // Check digitacao_faltas existence for the month start date (useful as dataReferencia default)
+  try {
+    const dataReferenciaToCheck = monthRange.monthStart
+
+    for (let i = 0; i < items.length; i += 1) {
+      const it = items[i]
+      try {
+        const dfItem = await getDigitacaoFaltasItem({
+          mesAno: normalizedMesAno,
+          dataReferencia: dataReferenciaToCheck,
+          dreCodigo: it.dreCodigo,
+          ordemServicoCodigo: it.ordemServicoCodigo,
+          revisao: it.revisao,
+          tipoPessoa: it.tipoPessoa,
+        }, executor)
+
+        if (dfItem) {
+          it.faltaExists = true
+          it.faltaAusenciaTotal = Boolean(dfItem.ausenciaTotal)
+          it.faltaQuantidadeIntegral = dfItem.quantidadeAlunosIntegral == null ? 0 : Number(dfItem.quantidadeAlunosIntegral)
+          it.faltaQuantidadeMeioPeriodo = dfItem.quantidadeAlunosMeioPeriodo == null ? 0 : Number(dfItem.quantidadeAlunosMeioPeriodo)
+          it.faltaQuantidadeTotal = (it.faltaQuantidadeIntegral || 0) + (it.faltaQuantidadeMeioPeriodo || 0)
+
+          // Determine TEG tipo from flags regardless of ausenciaTotal so we always keep the chosen TEG descriptor
+          if (dfItem.tegRegular) {
+            it.faltaTegTipo = 'REGULAR'
+          } else if (dfItem.tegAcessivel) {
+            it.faltaTegTipo = 'ACESSIVEL'
+          } else if (dfItem.tegCreche) {
+            it.faltaTegTipo = 'CRECHE'
+          } else if (dfItem.tegEspecial) {
+            it.faltaTegTipo = 'ESPECIAL'
+          } else {
+            it.faltaTegTipo = ''
+          }
+          it.faltaTipo = it.faltaAusenciaTotal ? 'AUSENCIA' : it.faltaTegTipo
+        } else {
+          it.faltaExists = false
+          it.faltaAusenciaTotal = false
+          it.faltaTegTipo = ''
+          it.faltaTipo = ''
+          it.faltaQuantidadeIntegral = 0
+          it.faltaQuantidadeMeioPeriodo = 0
+          it.faltaQuantidadeTotal = 0
+        }
+      } catch {
+        it.faltaExists = false
+        it.faltaTipo = ''
+      }
+    }
+  } catch {
+    // ignore failures in optional falta lookup
+  }
+  // If ausencia total is true for an item, zero its monetary fields so totals/sums exclude it
+  try {
+    const monetaryKeys = [
+      'tegRegularFixo',
+      'tegRegularPercapita',
+      'tegAcessivelFixo',
+      'tegAcessivelPercapita',
+      'tegEspecialRegularFixo',
+      'tegEspecialRegularPercapita',
+      'tegEspecialAcessivelFixo',
+      'tegEspecialAcessivelPercapita',
+      'tegCrecheFixo',
+      'tegCrechePercapita',
+      'kmValor',
+      'continuaRegular',
+      'continuaCadeirante',
+      'ccaValor',
+    ]
+
+    for (const it of items) {
+      if (it.faltaAusenciaTotal) {
+        for (const key of monetaryKeys) {
+          if (Object.prototype.hasOwnProperty.call(it, key)) {
+            it[key] = 0
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   return {
-    items: result.rows.map(mapTotalRemuneracaoServicosRow),
+    items,
     total,
     page: normalizedPage,
     pageSize: normalizedPageSize,
@@ -27400,6 +27673,71 @@ const server = createServer(async (request, response) => {
         : 'Erro ao consultar as opcoes de ordem de servico.'
 
       sendJson(response, 500, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/digitacao-faltas/apontamentos') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+      const dataReferencia = normalizeApontamentoServicosDate(requestUrl.searchParams.get('dataReferencia') ?? '')
+      const revisao = requestUrl.searchParams.get('revisao')
+      const items = await listApontamentosForDigitacaoFaltas({
+        mesAno,
+        dreCodigo,
+        tipoPessoa,
+        dataReferencia,
+        revisao,
+      })
+
+      sendJson(response, 200, { items })
+    } catch (error) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao listar apontamentos para digitacao de faltas.'
+
+      sendJson(response, statusCode, { message })
+    }
+
+    return
+  }
+
+  if (request.method === 'GET' && pathname === '/api/digitacao-faltas') {
+    try {
+      const mesAno = normalizeApuracaoFinanceiraMesAno(requestUrl.searchParams.get('mesAno') ?? '')
+      const dreCodigo = normalizeRequestValue(requestUrl.searchParams.get('dreCodigo') ?? '')
+      const tipoPessoa = normalizeApuracaoTipoPessoa(requestUrl.searchParams.get('tipoPessoa') ?? '')
+      const dataReferencia = normalizeApontamentoServicosDate(requestUrl.searchParams.get('dataReferencia') ?? '')
+      const revisao = requestUrl.searchParams.get('revisao')
+      const crmcCondutor = normalizeRequestValue(requestUrl.searchParams.get('crmcCondutor') ?? '')
+      const placa = normalizeRequestValue(requestUrl.searchParams.get('placa') ?? '')
+      const items = await listDigitacaoFaltasConsultaItems({
+        mesAno,
+        dreCodigo,
+        tipoPessoa,
+        dataReferencia,
+        revisao,
+        crmcCondutor,
+        placa,
+      })
+
+      sendJson(response, 200, {
+        items,
+        total: items.length,
+        mesAno,
+        dataReferencia,
+      })
+    } catch (error) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+      const message = error instanceof Error
+        ? error.message
+        : 'Erro ao consultar digitacao de faltas.'
+
+      sendJson(response, statusCode, { message })
     }
 
     return

@@ -105,6 +105,16 @@ const formatTipoVeiculoDisplay = (value: string) => {
   return normalizedValue.toUpperCase()
 }
 
+const formatFaltaTegTipoDisplay = (value?: string) => {
+  const v = String(value || '').trim().toUpperCase()
+  if (!v) return '-'
+  if (v === 'REGULAR') return 'Regular'
+  if (v === 'ACESSIVEL') return 'Acessível'
+  if (v === 'CRECHE') return 'Creche'
+  if (v === 'ESPECIAL') return 'Especial'
+  return value
+}
+
 const buildRowKey = (item: Pick<TotalRemuneracaoServicosItem, 'mesAno' | 'dreCodigo' | 'ordemServicoCodigo' | 'revisao' | 'tipoPessoa'>) => {
   return `${item.mesAno}|${item.dreCodigo}|${item.ordemServicoCodigo}|${item.revisao}|${item.tipoPessoa}`
 }
@@ -671,11 +681,13 @@ export default function TotalRemuneracaoServicosView() {
                       <span className="remuneracao-servicos-header-line">{group.title}</span>
                     </th>
                   ))}
-                  {showValorTotalColumn ? (
-                    <th rowSpan={2} className="apontamento-servicos-header-detail remuneracao-servicos-header-detail remuneracao-servicos-header-valor-total">
-                      <span className="remuneracao-servicos-header-line">Valor Total</span>
-                    </th>
-                  ) : null}
+                  {/* Group header for Faltas spanning the five columns */}
+                  <th colSpan={5} className="apontamento-servicos-header-detail remuneracao-servicos-header-detail">
+                    <span className="remuneracao-servicos-header-line">Faltas</span>
+                  </th>
+                  <th rowSpan={2} className="apontamento-servicos-header-detail remuneracao-servicos-header-detail remuneracao-servicos-header-valor-total">
+                    <span className="remuneracao-servicos-header-line">Valor Total</span>
+                  </th>
                 </tr>
                 <tr>
                   {visibleMonetaryColumns.map((column) => (
@@ -683,6 +695,12 @@ export default function TotalRemuneracaoServicosView() {
                       <span className="remuneracao-servicos-header-line">{column.columnTitle}</span>
                     </th>
                   ))}
+                  {/* Individual headers under Faltas group */}
+                  <th className="apontamento-servicos-header-detail remuneracao-servicos-header-detail"><span className="remuneracao-servicos-header-line">TEG escolhido</span></th>
+                  <th className="apontamento-servicos-header-detail remuneracao-servicos-header-detail"><span className="remuneracao-servicos-header-line">Ausência total</span></th>
+                  <th className="apontamento-servicos-header-detail remuneracao-servicos-header-detail"><span className="remuneracao-servicos-header-line">Qtd integral</span></th>
+                  <th className="apontamento-servicos-header-detail remuneracao-servicos-header-detail"><span className="remuneracao-servicos-header-line">Qtd meio período</span></th>
+                  <th className="apontamento-servicos-header-detail remuneracao-servicos-header-detail"><span className="remuneracao-servicos-header-line">Total</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -694,7 +712,7 @@ export default function TotalRemuneracaoServicosView() {
                   return (
                     <Fragment key={`${rowKey}|${index}`}>
                       {isFirstRowOfGroup ? (
-                        <tr className="apontamento-servicos-subtitle-row" key={`${rowKey}-subtitle`}>
+                        <tr className={`apontamento-servicos-subtitle-row ${item.faltaAusenciaTotal ? 'apontamento-servicos-subtitle-row-falta' : ''}`} key={`${rowKey}-subtitle`}>
                           <td colSpan={tableColumnCount}>
                             <div className="apontamento-servicos-subtitle-band apontamento-servicos-subtitle-band-main remuneracao-servicos-subtitle-band-main">
                               <div className="remuneracao-servicos-subtitle-line-chips">
@@ -703,6 +721,9 @@ export default function TotalRemuneracaoServicosView() {
                                 <span className="apontamento-servicos-subtitle-chip">Placa: <strong>{item.placa || '-'}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">OS especial: <strong>{formatVeiculoOsEspecialDisplay(item.veiculoOsEspecial)}</strong></span>
                                 <span className="apontamento-servicos-subtitle-chip">Periodo: <strong>{formatPeriodLabel(item) || '-'}</strong></span>
+                                {item.faltaAusenciaTotal ? (
+                                  <span className="apontamento-servicos-subtitle-chip apontamento-servicos-subtitle-chip-falta">Falta: <strong>Ausência total</strong></span>
+                                ) : null}
                               </div>
                               <div className="remuneracao-servicos-subtitle-line-chips">
                                 <span className="apontamento-servicos-subtitle-chip">Empresa: <strong>{item.empresa || 'Empresa nao informada'}</strong></span>
@@ -730,6 +751,23 @@ export default function TotalRemuneracaoServicosView() {
                             <span className="apontamento-servicos-grid-readonly">{formatMoneyValue(item[column.key])}</span>
                           </td>
                         ))}
+                        {/* Digitacao de faltas columns in new order */}
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{formatFaltaTegTipoDisplay(item.faltaTegTipo)}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.faltaAusenciaTotal ? 'Sim' : 'Nao'}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.faltaQuantidadeIntegral ?? 0}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.faltaQuantidadeMeioPeriodo ?? 0}</span>
+                        </td>
+                        <td className="apontamento-servicos-cell-compact">
+                          <span className="apontamento-servicos-grid-readonly">{item.faltaQuantidadeTotal ?? 0}</span>
+                        </td>
+                        {/* 'Falta' column removed as requested */}
                         {showValorTotalColumn ? (
                           <td className="apontamento-servicos-cell-compact total-remuneracao-servicos-valor-total-cell">
                             <span className="apontamento-servicos-grid-readonly total-remuneracao-servicos-valor-total-value">

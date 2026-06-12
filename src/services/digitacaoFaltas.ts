@@ -30,6 +30,26 @@ export type DigitacaoFaltasItem = {
   quantidadeAlunosMeioPeriodo: number | null
 }
 
+export type DigitacaoFaltasConsultaItem = DigitacaoFaltasItem & {
+  ordemServicoOsConcat: string
+  ordemServicoNumOs: string
+  nomeCondutor: string
+  crmcCondutor: string
+  empresa: string
+  dataInclusao: string
+  dataAlteracao: string
+}
+
+export type DigitacaoFaltasConsultaListParams = {
+  mesAno: string
+  dreCodigo: string
+  tipoPessoa: ApuracaoTipoPessoa
+  dataReferencia: string
+  revisao?: string | number
+  crmcCondutor?: string
+  placa?: string
+}
+
 export type DigitacaoFaltasApontamentoLookupResponse = {
   matched: boolean
   message: string
@@ -57,6 +77,82 @@ const getErrorMessage = (payload: Record<string, unknown>) => {
   return typeof payload.message === 'string' && payload.message.trim()
     ? payload.message
     : 'Falha ao processar a digitacao de faltas.'
+}
+
+export async function listDigitacaoFaltasConsultaItems(
+  params: DigitacaoFaltasConsultaListParams,
+): Promise<DigitacaoFaltasConsultaItem[]> {
+  const searchParams = new URLSearchParams({
+    mesAno: params.mesAno,
+    dreCodigo: params.dreCodigo,
+    tipoPessoa: params.tipoPessoa,
+    dataReferencia: params.dataReferencia,
+  })
+
+  if (params.revisao !== undefined && params.revisao !== '') {
+    searchParams.set('revisao', String(params.revisao))
+  }
+
+  if (params.crmcCondutor?.trim()) {
+    searchParams.set('crmcCondutor', params.crmcCondutor.trim())
+  }
+
+  if (params.placa?.trim()) {
+    searchParams.set('placa', params.placa.trim())
+  }
+
+  const response = await fetch(`${getDigitacaoFaltasUrl()}?${searchParams.toString()}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  const responseText = await response.text()
+  const payload = parseJsonSafely(responseText)
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(payload))
+  }
+
+  const items = Array.isArray(payload.items) ? payload.items : []
+  return items as DigitacaoFaltasConsultaItem[]
+}
+
+export async function listDigitacaoFaltasApontamentos(params: {
+  mesAno: string
+  dreCodigo: string
+  tipoPessoa: ApuracaoTipoPessoa
+  dataReferencia: string
+  revisao?: string | number
+}): Promise<DigitacaoFaltasApontamentoMatch[]> {
+  const searchParams = new URLSearchParams({
+    mesAno: params.mesAno,
+    dreCodigo: params.dreCodigo,
+    tipoPessoa: params.tipoPessoa,
+    dataReferencia: params.dataReferencia,
+  })
+
+  if (params.revisao !== undefined && params.revisao !== '') {
+    searchParams.set('revisao', String(params.revisao))
+  }
+
+  const response = await fetch(`${getDigitacaoFaltasUrl()}/apontamentos?${searchParams.toString()}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+
+  const responseText = await response.text()
+  const payload = parseJsonSafely(responseText)
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(payload))
+  }
+
+  const items = Array.isArray(payload.items) ? payload.items : []
+  return items as DigitacaoFaltasApontamentoMatch[]
 }
 
 export async function lookupDigitacaoFaltasApontamento(params: {

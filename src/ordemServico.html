@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ORDEM DE SERVICO</title>
+    <title>ORDEM DE SERVIÇO</title>
 
     <link rel="stylesheet" href="css/login.css?v=20260504-resumo-os-single-panel-30" />
     <script src="/backspace-navigation-guard.js"></script>
@@ -229,7 +229,7 @@
 
       body:has(#ordem-servico-grid-body) #ordem-servico-filter-situacao {
         flex: 0 0 170px;
-        min-width: 170px;
+        min-width: 200px;
         min-height: 38px;
         padding: 10px 14px;
         border-radius: 14px;
@@ -326,6 +326,35 @@
       body.dsc-dashboard-popup-mode #ordem-servico-form-modal .dsc-card {
         border-radius: 16px;
       }
+
+      .dsc-processing-popup-overlay:not(.dsc-hidden) {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(15, 23, 42, 0.38);
+        backdrop-filter: blur(2px);
+        z-index: 1200;
+      }
+
+      .dsc-processing-popup {
+        width: min(100%, 320px);
+        padding: 20px 24px;
+        border-radius: 18px;
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
+          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
+        text-align: center;
+      }
+
+      .dsc-processing-popup strong {
+        display: block;
+        font-size: 18px;
+        color: #0f172a;
+      }
     </style>
   </head>
   <body>
@@ -342,14 +371,14 @@
                 <input class="dsc-form-control dsc-access-filter-input" id="ordem-servico-search" type="text" placeholder="Filtrar por termo, num OS, revisao, OS, credenciado, DRE, condutor, monitor, placa ou CRM" />
                 <button type="submit" class="dsc-btn dsc-btn-white">Filtrar</button>
                 <button type="button" class="dsc-btn dsc-btn-white" id="clear-ordem-servico-filter-button">Limpar</button>
-                <button type="button" class="dsc-btn dsc-btn-white" id="open-ordem-servico-eol-button">Pendencias EOL</button>
-                <select class="dsc-form-control" id="ordem-servico-filter-situacao" aria-label="Filtrar por situacao">
-                  <option value="">Todas as situacoes</option>
+                <button type="button" class="dsc-btn dsc-btn-white" id="open-ordem-servico-eol-button">Pendências EOL</button>
+                <select class="dsc-form-control" id="ordem-servico-filter-situacao" aria-label="Filtrar por situação">
+                  <option value="">Todas as situações</option>
                   <option value="Ativo">Ativo</option>
                   <option value="Rascunho">Rascunho</option>
                   <option value="Inativo">Inativo</option>
                   <option value="Cancelado">Cancelado</option>
-                  <option value="Substituido">Substituido</option>
+                  <option value="Substituido">Substituído</option>
                 </select>
               </form>
             </div>
@@ -359,7 +388,7 @@
                 <section class="dsc-card dsc-hidden" id="ordem-servico-rejection-panel">
                   <div class="dsc-popup-header dsc-popup-header-sticky dsc-popup-header-with-compact-close">
                     <div class="dsc-popup-header-copy">
-                      <h2 id="ordem-servico-rejection-title">Registros nao importados</h2>
+                      <h2 id="ordem-servico-rejection-title">Registros não importados</h2>
                       <span id="ordem-servico-rejection-total"></span>
                     </div>
                     <button type="button" class="dsc-btn dsc-btn-white dsc-popup-close-button dsc-popup-compact-close-button" id="close-ordem-servico-rejection-panel-button" aria-label="Fechar recusas xml">X</button>
@@ -394,48 +423,14 @@
                     <p class="dsc-empty-state dsc-hidden" id="ordem-servico-rejection-empty-state">Nenhum registro recusado encontrado.</p>
                   </div>
 
-
-                      .dsc-processing-popup-overlay {
-                        position: fixed;
-                        inset: 0;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 24px;
-                        background: rgba(15, 23, 42, 0.38);
-                        backdrop-filter: blur(2px);
-                        z-index: 1200;
-                      }
-
-                      .dsc-processing-popup {
-                        width: min(100%, 320px);
-                        padding: 20px 24px;
-                        border-radius: 18px;
-                        background:
-          radial-gradient(circle at top left, rgba(255, 255, 255, 0.74), transparent 20%),
-          linear-gradient(180deg, rgba(255, 251, 243, 0.96), rgba(222, 236, 233, 0.9));
-                        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
-                        text-align: center;
-                      }
-
-                      .dsc-processing-popup strong {
-                        display: block;
-                        font-size: 18px;
-                        color: #0f172a;
-                      }
                   <p class="dsc-feedback" id="ordem-servico-rejection-grid-feedback"></p>
 
                   <div class="dsc-access-pagination">
-                    <button type="button" class="dsc-btn dsc-btn-white" id="first-ordem-servico-rejection-page-button" title="Primeiro registro">|ÃƒÂ¢Ã¢â‚¬â€Ã¢â€šÂ¬</button>
-                    <div class="dsc-processing-popup-overlay dsc-hidden" id="ordem-servico-processing-overlay" aria-hidden="true">
-                      <div class="dsc-processing-popup" role="alertdialog" aria-modal="true" aria-live="polite" aria-label="Processamento em andamento">
-                        <strong>Aguarde em processamento...</strong>
-                      </div>
-                    </div>
-                    <button type="button" class="dsc-btn dsc-btn-white" id="previous-ordem-servico-rejection-page-button" title="Registro anterior">ÃƒÂ¢Ã¢â‚¬â€Ã¢â€šÂ¬</button>
+                    <button type="button" class="dsc-btn dsc-btn-white" id="first-ordem-servico-rejection-page-button" title="Primeiro registro">|◀</button>
+                    <button type="button" class="dsc-btn dsc-btn-white" id="previous-ordem-servico-rejection-page-button" title="Registro anterior">◀</button>
                     <span id="ordem-servico-rejection-pagination-info">Pagina 1 de 1</span>
-                    <button type="button" class="dsc-btn dsc-btn-white" id="next-ordem-servico-rejection-page-button" title="Proximo registro">ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¶</button>
-                    <button type="button" class="dsc-btn dsc-btn-white" id="last-ordem-servico-rejection-page-button" title="Ultimo registro">ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¶|</button>
+                    <button type="button" class="dsc-btn dsc-btn-white" id="next-ordem-servico-rejection-page-button" title="Proximo registro">▶</button>
+                    <button type="button" class="dsc-btn dsc-btn-white" id="last-ordem-servico-rejection-page-button" title="Ultimo registro">▶|</button>
                   </div>
                 </section>
               </div>
@@ -840,15 +835,15 @@
                       </th>
                       <th>Condutor</th>
                       <th>Monitor</th>
-                      <th>Placa</th>
-                      <th>Situacao</th>
-                      <th class="dsc-grid-actions-column">Acoes</th>
+                      <th>Placas</th>
+                      <th>Situação</th>
+                      <th class="dsc-grid-actions-column">AÇÕES</th>
                     </tr>
                   </thead>
                   <tbody id="ordem-servico-grid-body"></tbody>
                 </table>
 
-                <p class="dsc-empty-state dsc-hidden" id="ordem-servico-empty-state">Nenhuma OrdemServico encontrada.</p>
+                <p class="dsc-empty-state dsc-hidden" id="ordem-servico-empty-state">Nenhuma Ordem de Serviço encontrada.</p>
               </div>
 
               <p class="dsc-feedback" id="ordem-servico-grid-feedback"></p>
@@ -865,6 +860,12 @@
         </div>
       </section>
     </main>
+
+    <div class="dsc-processing-popup-overlay dsc-hidden" id="ordem-servico-processing-overlay" aria-hidden="true">
+      <div class="dsc-processing-popup" role="alertdialog" aria-modal="true" aria-live="polite" aria-label="Processamento em andamento">
+        <strong>Aguarde em processamento...</strong>
+      </div>
+    </div>
 
     <script>
       const formPermissions = window.tegFormPermissions || {

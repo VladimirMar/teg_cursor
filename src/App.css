@@ -167,6 +167,19 @@
   background: rgba(255, 247, 235, 0.96);
 }
 
+/* Visual highlight for selected radio option (uses :has for parent selector) */
+.field-radio-option:has(input:checked) {
+  border-color: var(--action);
+  box-shadow: 0 0 0 3px rgba(200, 92, 44, 0.12);
+  background: linear-gradient(180deg, rgba(255, 247, 235, 0.98), rgba(255, 251, 243, 0.96));
+}
+
+/* Slight emphasis for default values (non-invasive) */
+.digitacao-faltas-modal .field-radio-option:has(input:checked) span {
+  font-weight: 800;
+  color: #17314f;
+}
+
 .perfil-acesso-matrix-card {
   display: grid;
   gap: 12px;
@@ -2229,6 +2242,10 @@ body.management-modal-open {
   max-height: calc(100vh - 36px);
 }
 
+.management-modal-shell-wide {
+  width: min(100%, 1180px);
+}
+
 .resumo-financeiro-modal-shell {
   width: min(100%, 1680px);
 }
@@ -2422,6 +2439,63 @@ body.management-modal-open {
   margin-bottom: 16px;
   max-height: 300px;
   overflow-y: auto;
+}
+
+.digitacao-faltas-grid-row {
+  cursor: pointer;
+}
+
+.digitacao-faltas-grid-row:hover td {
+  background: rgba(121, 91, 56, 0.08);
+}
+
+.digitacao-faltas-grid-empty {
+  text-align: center;
+  padding: 12px;
+  color: var(--text-soft);
+}
+
+.digitacao-faltas-consulta-modal {
+  width: min(100%, 1180px);
+}
+
+.digitacao-faltas-consulta-grid-wrapper {
+  max-height: 420px;
+}
+
+.digitacao-faltas-consulta-grid-table {
+  font-size: 0.82rem;
+}
+
+.digitacao-faltas-consulta-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 8px 12px;
+  color: var(--text-strong);
+  font-size: 0.95rem;
+}
+
+.digitacao-faltas-consulta-grid-table th:nth-child(2),
+.digitacao-faltas-consulta-grid-table td:nth-child(2) {
+  width: 64px;
+  max-width: 64px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Highlight subtitle row when there is an ausencia total */
+.apontamento-servicos-subtitle-row-falta td {
+  background: linear-gradient(180deg, rgba(255, 243, 244, 0.9), rgba(255, 233, 234, 0.9));
+}
+
+.apontamento-servicos-subtitle-chip-falta {
+  background: rgba(255, 220, 220, 0.9);
+  color: #9b1c1c;
+  border-radius: 6px;
+  padding: 4px 6px;
+  margin-left: 6px;
+  font-weight: 600;
 }
 
 .apontamento-servicos-table {

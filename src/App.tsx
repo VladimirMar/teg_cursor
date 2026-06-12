@@ -11928,9 +11928,9 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Cadastro administrativo</p>
-              <h2 id="content-title">Tabela Titular do CRM</h2>
+              <h2 id="content-title">Titular do CRM</h2>
               <p className="content-description">
-                Cadastre e consulte os registros de titulares do CRM carregados inicialmente a partir do XML. O codigo e gerado automaticamente, com filtro, ordenacao, paginacao e CRUD completo.
+                Cadastre e consulte os registros de titulares do CRM.
               </p>
             </div>
 
@@ -12999,7 +12999,7 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Cadastro operacional</p>
-              <h2 id="content-title">Tabela Condutor</h2>
+              <h2 id="content-title">Condutores</h2>
               <p className="content-description">
                 Consulte, inclua e altere os registros de condutores no mesmo padrao do controle de acesso.
               </p>
@@ -13017,7 +13017,7 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Cadastro operacional</p>
-              <h2 id="content-title">Tabela Monitor</h2>
+              <h2 id="content-title">Monitores</h2>
               <p className="content-description">
                 Consulte, inclua, altere e importe os registros de monitores no mesmo padrao operacional da tela de condutor.
               </p>
@@ -13035,9 +13035,9 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Cadastro operacional</p>
-              <h2 id="content-title">Tabela Credenciamento Termo</h2>
+              <h2 id="content-title">Termos</h2>
               <p className="content-description">
-                Consulte, inclua, altere e importe credenciamentos termo a partir do XML com relacao automatica da credenciada e desdobramento por aditivo.
+                Consulte, inclua, altere e importe termos a partir do XML com relacao automática da credenciada e desdobramento por aditivo.
               </p>
             </div>
 
@@ -13071,9 +13071,9 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Cadastro operacional</p>
-              <h2 id="content-title">Tabela Veiculo</h2>
+              <h2 id="content-title">Veículos</h2>
               <p className="content-description">
-                Consulte, inclua, altere e importe os registros de veiculos a partir do XML no mesmo padrao operacional da tela de monitor.
+                Consulte, inclua, altere e importe os registros de veículos a partir do XML.
               </p>
             </div>
 
@@ -13749,9 +13749,9 @@ function App() {
           <>
             <div className="content-copy">
               <p className="content-kicker">Cadastro operacional</p>
-              <h2 id="content-title">OrdemServico</h2>
+              <h2 id="content-title">Ordens de Serviço</h2>
               <p className="content-description">
-                Consulte, inclua, altere e importe Ordens de Servico com busca relacional de credenciada, DRE, condutor, preposto, veiculo, monitor e tipo de troca.
+                Consulte, inclua, altere e importe Ordens de Serviço com busca relacional de Credenciado, DRE, condutor, preposto, veículo, monitor e tipo de troca.
               </p>
             </div>
 

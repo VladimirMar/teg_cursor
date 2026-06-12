@@ -36,6 +36,13 @@ export type TotalRemuneracaoServicosItem = {
   continuaRegular: number
   continuaCadeirante: number
   ccaValor: number
+  faltaExists?: boolean
+  faltaTipo?: string
+  faltaTegTipo?: string
+  faltaAusenciaTotal?: boolean
+  faltaQuantidadeIntegral?: number
+  faltaQuantidadeMeioPeriodo?: number
+  faltaQuantidadeTotal?: number
 }
 
 type TotalRemuneracaoServicosListResponse = {
